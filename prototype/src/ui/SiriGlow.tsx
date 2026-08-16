@@ -22,18 +22,25 @@ if (typeof window !== 'undefined' && window.matchMedia('(max-width: 820px), (poi
 function useGlowQuality(): Quality {
   const [q, setQ] = useState<Quality>(verdict ?? 'full')
   useEffect(() => {
-    if (verdict) return
+    // 'full' is final; 'lite' from a probe re-checks on the next activation, so one
+    // noisy first-load window (fonts, layout, artifact iframe warmup) can't stick.
+    if (verdict === 'full') return
     let alive = true
     let frames = 0
-    const t0 = performance.now()
+    let t0 = 0
+    const start = performance.now()
     const tick = () => {
       if (!alive) return
+      const now = performance.now()
+      if (now - start < 400) { requestAnimationFrame(tick); return } // warmup: skip the mount storm
+      if (!t0) t0 = now
       frames++
-      const dt = performance.now() - t0
+      const dt = now - t0
       if (dt < 1200) requestAnimationFrame(tick)
       else {
-        verdict = frames / (dt / 1000) < 30 ? 'lite' : 'full'
-        setQ(verdict)
+        const decided: Quality = frames / (dt / 1000) < 30 ? 'lite' : 'full'
+        if (decided === 'full') verdict = 'full'
+        setQ(decided)
       }
     }
     requestAnimationFrame(tick)

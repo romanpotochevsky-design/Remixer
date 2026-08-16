@@ -209,7 +209,7 @@ export default function App() {
                 {busy && (
                   <>
                     {/* like iOS: the content recedes a step while the glow works */}
-                    {world.project === 'built' && !reloading && (
+                    {world.project === 'built' && (
                       <div className="absolute inset-0 z-10 bg-[#09090b73]" style={{ animation: 'siri-in 0.5s var(--ease-std) both' }} aria-hidden />
                     )}
                     <SiriGlow />
