@@ -51,6 +51,18 @@ export type Lang = 'en' | 'uk'
 export type Project = 'empty' | 'generating' | 'built'
 export type Chat = 'empty' | 'short' | 'long' | 'working' | 'error'
 
+/**
+ * One line of the conversation.
+ *
+ * User text is verbatim — whatever was typed. Canned Remixer replies carry both
+ * languages, because the prototype can be demoed in either.
+ */
+export interface Message {
+  id: number
+  who: 'user' | 'ai'
+  text: string | { en: string; uk: string }
+}
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -67,6 +79,15 @@ export interface World {
   /** Edits made since the last publish. Drives the stale-publish signal. */
   unpublished: number
   chat: Chat
+  /**
+   * The live transcript, once the user has actually typed something.
+   *
+   * Empty means "render the scenario's demo thread" (see modules/chat/thread.ts);
+   * the first sent message seeds this array with that demo thread and takes over,
+   * after which `chat` is only a status flag. Deliberately NOT in the URL keys —
+   * a shareable link carries the situation, not somebody's typing.
+   */
+  sent: Message[]
 }
 
 export const DEFAULT_WORLD: World = {
@@ -81,6 +102,7 @@ export const DEFAULT_WORLD: World = {
   project: 'built',
   unpublished: 0,
   chat: 'long',
+  sent: [],
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -210,6 +232,10 @@ export const useWorld = create<Store>((set, get) => ({
   world: initialWorld(),
   preset: null,
   set: (patch, preset = null) => {
+    // Moving the chat axis means a different situation is being staged, so a
+    // transcript typed under the old one is stale — unless the caller is the
+    // composer, which always hands over both at once.
+    if (patch.chat !== undefined && patch.sent === undefined) patch = { ...patch, sent: [] }
     const world = { ...get().world, ...patch }
     syncUrl(world)
     set({ world, preset })

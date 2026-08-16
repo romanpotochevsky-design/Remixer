@@ -58,9 +58,14 @@
     --black-800: #09090bb8;
     --black-900: #09090bcc;
 
-    /* glass surface: the semi-transparent chrome pill (Figma: rgba(24,24,27,.8) + blur 16) */
+    /* glass surface — read straight off Figma "Preview buttons" (25819:143747):
+       fill rgba(24,24,27,.8), backdrop blur 16, 1px rim on Neutral Alpha/200,
+       inner dividers on Neutral Alpha/50. In the dark theme those variables
+       resolve to #ffffff1f and #ffffff0a. Nothing else — no specular highlight,
+       no drop shadow. */
     --glass-bg: #18181bcc;
-    --glass-border: #ffffff26;
+    --glass-border: #ffffff1f;
+    --glass-divider: #ffffff0a;
 
     /* credits — the amber pill gradient (Figma: rgba(255,224,130,…)) */
     --credit-from: #ffe0822b;
@@ -165,35 +170,30 @@
    * the top-left and bottom edges. The rim values are the ones read off the Figma hover
    * variant (white .32 → .08 → .24), drawn with a mask so it follows any border-radius.
    */
+  /*
+   * Glass, the macOS way — restrained.
+   *
+   * An earlier cut wore a bright specular rim (a 32%-white gradient down one
+   * edge), an inner top highlight and a drop shadow. That is the iOS "liquid
+   * glass" look, and next to the real thing it screams. macOS keeps a control
+   * quiet: a tinted translucent fill, a real blur behind it, one even hairline
+   * — the surface reads as glass because of what shows THROUGH it, not because
+   * of the light painted ON it. Figma specifies exactly that, and nothing else.
+   *
+   * The rim is an inset ring rather than a border so it never shifts layout.
+   */
   .liquid-glass {
     position: relative;
-    isolation: isolate;
-    background:
-      linear-gradient(to bottom, #ffffff12, #ffffff05),
-      #18181b8f;
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    backdrop-filter: blur(16px) saturate(150%);
-    box-shadow: inset 0 1px 0 #ffffff14, 0 8px 24px #00000033;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow: inset 0 0 0 1px var(--glass-border);
   }
-  .liquid-glass::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(165deg, #ffffff52 0%, #ffffff14 38%, #ffffff0d 62%, #ffffff3d 100%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-  /* Quieter cut of the same glass — chat bubbles, large panels. */
+  /* Quieter cut — chat bubbles, large panels. Figma gives the bubble a faint
+     6%→2% wash instead of a flat fill; the rim drops to 8%. */
   .liquid-glass--subtle {
-    box-shadow: inset 0 1px 0 #ffffff0f;
-  }
-  .liquid-glass--subtle::before {
-    background: linear-gradient(165deg, #ffffff33 0%, #ffffff0f 40%, #ffffff0a 62%, #ffffff24 100%);
+    background: linear-gradient(to bottom, #ffffff0f, #ffffff05);
+    box-shadow: inset 0 0 0 1px #ffffff14;
   }
 
   /*

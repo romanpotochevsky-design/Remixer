@@ -4,8 +4,8 @@
  *
  * Layout: AI chat column 432px on the LEFT, canvas in the middle, icon rail 56px on
  * the RIGHT, both toolbars 52px. Chrome controls are "glass": rgba(24,24,27,.8) with
- * a 16px backdrop blur and a 15%-white hairline. Ground is gray-950; the site preview
- * floats on it with an 8px gutter.
+ * a 16px backdrop blur and one even 12%-white hairline — macOS-restrained, no specular
+ * rim. Ground is gray-950; the site preview floats on it with an 8px gutter.
  *
  * Everything still renders from the world store — the scenario console and flows
  * drive this shell exactly as they drove the old one.
@@ -27,7 +27,7 @@ import {
   IconChatBubble,
 } from '@/ui/icons'
 
-/** Glass pill: the shared chrome surface — liquid-glass fill, blur and gradient rim. */
+/** Glass pill: the shared chrome surface — tinted fill, backdrop blur, one hairline. */
 function Glass({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={`liquid-glass flex items-center rounded-[12px] ${className}`}>
@@ -78,7 +78,7 @@ export default function App() {
             >
               <IconHistory size={18} />
             </button>
-            <span className="h-8 w-px bg-[var(--gray-850)]" aria-hidden />
+            <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
             <button
               aria-label={t({ en: 'Collapse chat', uk: 'Згорнути чат' })}
               className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
@@ -113,7 +113,10 @@ export default function App() {
                   <IconReload size={17} />
                 </span>
               </button>
-              <span className="h-8 w-px bg-[var(--white-100)]" aria-hidden />
+              <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+              {/* Both device icons stay visible — Figma "Preview buttons" (25819:143747)
+                  is a 73×36 pair of 32px buttons with a divider. The current one is lit,
+                  the other stays available: a segmented choice, not a hidden toggle. */}
               <button
                 onClick={() => setDevice('desktop')}
                 aria-pressed={device === 'desktop'}
@@ -126,7 +129,7 @@ export default function App() {
               >
                 <IconMonitor size={17} />
               </button>
-              <span className="h-8 w-px bg-[var(--white-100)]" aria-hidden />
+              <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
               <button
                 onClick={() => setDevice('mobile')}
                 aria-pressed={device === 'mobile'}
