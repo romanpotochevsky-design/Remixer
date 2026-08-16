@@ -245,3 +245,47 @@ export const IconMore = ({ size = 20, className }: IconProps) => (
     <circle cx="18.5" cy="12" r="1.6" />
   </svg>
 )
+
+/* ---- domains dashboard set (Figma 27085:106382 / 26181:33524) ---- */
+
+export const IconSearch = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <circle cx="9" cy="9" r="5.6" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M13.4 13.4L17 17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
+)
+
+export const IconArrowRight = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path d="M3.5 10h12M11 4.5 16.5 10 11 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+export const IconGlobe = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <circle cx="10" cy="10" r="7.2" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M2.8 10h14.4M10 2.8c-2 2-3 4.4-3 7.2s1 5.2 3 7.2c2-2 3-4.4 3-7.2s-1-5.2-3-7.2Z" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+)
+
+export const IconClose = ({ size = 12, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 12 12" fill="none" className={className} aria-hidden>
+    <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/** The AI sparkle by the "AI suggestions" header — purple→blue, like the Best-match tag. */
+export const IconSparkleAI = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <defs>
+      <linearGradient id="sparkle-ai" x1="0" y1="0" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#cb79ff" />
+        <stop offset="1" stopColor="#66a6ff" />
+      </linearGradient>
+    </defs>
+    <path
+      d="M10 1.6c.5 3.6 1.6 5.6 2.9 6.6 1.2 1 3 1.5 5.5 1.8-2.5.3-4.3.8-5.5 1.8-1.3 1-2.4 3-2.9 6.6-.5-3.6-1.6-5.6-2.9-6.6-1.2-1-3-1.5-5.5-1.8 2.5-.3 4.3-.8 5.5-1.8 1.3-1 2.4-3 2.9-6.6Z"
+      fill="url(#sparkle-ai)"
+    />
+  </svg>
+)

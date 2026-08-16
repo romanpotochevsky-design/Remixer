@@ -415,6 +415,25 @@
     border: 1px solid #ffffff3d;
   }
 
+  /*
+   * The Best-match hero's rim (Figma 27085:107276): #be59ff fading out along the
+   * diagonal. Drawn as a ring mask, NOT as a border-box background layer — the
+   * card's own fill is 10% alpha, so an opaque gradient underneath would show
+   * straight through it (it did: the whole label row went solid purple).
+   */
+  .bestmatch-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(135deg, #be59ff, rgba(190, 89, 255, 0) 78%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
   .scroll-area { position: relative; }
   .scroll-thumb {
     position: absolute;

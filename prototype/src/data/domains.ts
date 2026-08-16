@@ -50,15 +50,35 @@ export interface Suggestion {
 export const AI_SUGGESTIONS: Suggestion[] = [
   {
     domain: 'fit-ration.com', tld: '.com',
-    reason: { en: 'Matches your site name — easiest to remember', uk: 'Збігається з назвою сайту — найлегше запам’ятати' },
+    reason: { en: 'Exact brand match · the .com people try first', uk: 'Точний збіг із брендом · .com пробують першим' },
+  },
+  {
+    domain: 'fit-ration.net', tld: '.net',
+    reason: { en: 'A trusted and established extension', uk: 'Перевірена і давно знайома зона' },
   },
   {
     domain: 'fitration.shop', tld: '.shop',
     reason: { en: 'Signals ordering right in the address', uk: 'Адреса одразу каже, що тут замовляють' },
   },
   {
+    domain: 'getfitration.com', tld: '.com',
+    reason: { en: 'Strong call-to-action, easy to remember', uk: 'Сильний заклик до дії, легко запамʼятати' },
+  },
+  {
     domain: 'fitration.online', tld: '.online',
     reason: { en: 'Short and available almost everywhere', uk: 'Коротко і майже завжди вільно' },
+  },
+  {
+    domain: 'fitration.me', tld: '.me',
+    reason: { en: 'Creates a personal connection with customers', uk: 'Створює особистий звʼязок із клієнтами' },
+  },
+  {
+    domain: 'shopfitration.com', tld: '.com',
+    reason: { en: 'Ideal for your online storefront', uk: 'Ідеально для онлайн-вітрини' },
+  },
+  {
+    domain: 'fit-ration.org', tld: '.org',
+    reason: { en: 'Reads as an organisation people trust', uk: 'Читається як організація, якій довіряють' },
   },
 ]
 
@@ -66,12 +86,18 @@ export const AI_SUGGESTIONS: Suggestion[] = [
 export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string; uk: string } }[]> = {
   'dh-free': [
     { domain: 'fit-ration.com', note: { en: 'In your DreamHost account · not used yet', uk: 'У вашому акаунті DreamHost · ще не використовується' } },
+    { domain: 'odesa-coffee-roasters.com', note: { en: 'In your DreamHost account', uk: 'У вашому акаунті DreamHost' } },
+    { domain: 'design-portfolio.net', note: { en: 'In your DreamHost account', uk: 'У вашому акаунті DreamHost' } },
+    { domain: 'vegan-burger-delivery.co', note: { en: 'In your DreamHost account', uk: 'У вашому акаунті DreamHost' } },
   ],
   'dh-in-use': [
     { domain: 'fit-ration.com', note: { en: 'In your DreamHost account · already serves a site', uk: 'У вашому акаунті DreamHost · вже обслуговує сайт' } },
+    { domain: 'odesa-coffee-roasters.com', note: { en: 'In your DreamHost account', uk: 'У вашому акаунті DreamHost' } },
+    { domain: 'design-portfolio.net', note: { en: 'In your DreamHost account', uk: 'У вашому акаунті DreamHost' } },
   ],
   'dh-external-ns': [
     { domain: 'fit-ration.com', note: { en: 'Registered with us · managed at Cloudflare', uk: 'Зареєстровано в нас · керується на Cloudflare' } },
+    { domain: 'design-portfolio.net', note: { en: 'Registered with us', uk: 'Зареєстровано в нас' } },
   ],
 }
 

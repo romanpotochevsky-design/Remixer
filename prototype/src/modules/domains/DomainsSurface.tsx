@@ -17,13 +17,15 @@ import { useState } from 'react'
 import { useWorld, hasPlan } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
-import { AI_SUGGESTIONS, OWNED_DOMAINS, TLD_PRICES, CUSTOM_DOMAIN } from '@/data/domains'
+import { AI_SUGGESTIONS, OWNED_DOMAINS, TLD_PRICES, CUSTOM_DOMAIN, priceFor } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
+import { IconSearch, IconArrowRight, IconGlobe, IconClose, IconSparkleAI } from '@/ui/icons'
 import { surface } from '@/ui/motion'
 
 
 /* ------------------------------------------------------------------ shared bits */
 
+/** The content sheet under the top bar — every screen renders inside one. */
 function Screen({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
@@ -31,10 +33,45 @@ function Screen({ children }: { children: React.ReactNode }) {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="mx-auto w-full max-w-[560px] px-6 py-10"
+      className="min-h-0 flex-1 rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)]"
     >
-      {children}
+      <ScrollArea className="h-full">
+        <div className="mx-auto w-full max-w-[560px] px-6 py-10">{children}</div>
+      </ScrollArea>
     </motion.div>
+  )
+}
+
+/* --------------------------------------------------- dashboard building blocks */
+
+/** Outlined 36px action — the mockup's row button (Figma 26181:64330). */
+function RowButton({ label, onClick }: { label: Text; onClick?: () => void }) {
+  const { t } = useT()
+  return (
+    <button
+      onClick={onClick}
+      className="h-9 flex-none rounded-[8px] border border-[#ffffff3d] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+    >
+      {t(label)}
+    </button>
+  )
+}
+
+/** Price stack: big figure + honest renewal line (never hidden — audit rule). */
+function PriceStack({ register, renew, strike }: { register: number; renew: number; strike?: boolean }) {
+  const { t } = useT()
+  return (
+    <div className="flex flex-col items-end gap-[5px]">
+      <p className="flex items-baseline gap-1 leading-none">
+        {strike && (
+          <span className="font-display text-[15px] text-[#ffffff7a] line-through">${renew.toFixed(2)}</span>
+        )}
+        <span className="font-display text-[18px] font-medium text-[#f5f5fa]">${register.toFixed(2)}</span>
+      </p>
+      <p className="font-display text-[12px] font-medium leading-none text-[#ffffff7a]">
+        {t({ en: `Renews at $${renew.toFixed(2)}`, uk: `Продовження $${renew.toFixed(2)}` })}
+      </p>
+    </div>
   )
 }
 
@@ -60,7 +97,12 @@ function PrimaryButton({ label, onClick }: { label: Text; onClick?: () => void }
 
 /* ------------------------------------------------------------------ screens */
 
-/** Home: the universal field + owned domains on top + AI suggestions as empty state. */
+/**
+ * Home: the domain dashboard (Figma 27085:106382; two-list variant 26181:33524).
+ * A 195px header (40px title + 880px search pill) over the content sheet; with
+ * DreamHost domains in the account the sheet splits into "Existing domains" +
+ * "AI suggestions", otherwise the suggestions column centres alone.
+ */
 function HomeScreen() {
   const { world } = useWorld()
   const { goDomains } = useUI()
@@ -68,6 +110,8 @@ function HomeScreen() {
   const [query, setQuery] = useState('')
 
   const owned = OWNED_DOMAINS[world.inventory] ?? []
+  const [best, ...rest] = AI_SUGGESTIONS
+  const bestPrice = priceFor(best.tld)!
 
   const submit = () => {
     const q = query.trim().toLowerCase()
@@ -80,86 +124,145 @@ function HomeScreen() {
   }
 
   return (
-    <Screen>
-      <Eyebrow>{t({ en: 'Domains', uk: 'Домени' })}</Eyebrow>
-      <h2 className="font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">
-        {t({ en: 'Put your site on its own address', uk: 'Дайте сайту власну адресу' })}
-      </h2>
-
-      {/* The universal field. One input, three intents. */}
-      <div className="mt-5 flex gap-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder={t({
-            en: 'Search a new name, or type a domain you own',
-            uk: 'Шукайте нову назву або введіть свій домен',
-          })}
-          className="h-12 min-w-0 flex-1 rounded-control border border-[var(--gray-700)] bg-[var(--gray-900)] px-4 text-[15px] text-[var(--white-900)] placeholder:text-[var(--white-300)] focus:border-[var(--action)] focus:outline-none"
-        />
-        <button
-          onClick={submit}
-          className="h-12 flex-none rounded-control bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-        >
-          {t({ en: 'Search', uk: 'Шукати' })}
-        </button>
-      </div>
-
-      {/* Domains already in the account come first — the zero-record go-live case. */}
-      {owned.length > 0 && (
-        <div className="mt-7">
-          <p className="mb-2 text-[13px] font-semibold text-[var(--white-500)]">
-            {t({ en: 'Your DreamHost domains', uk: 'Ваші домени DreamHost' })}
-          </p>
-          {owned.map((o) => (
+    <motion.div
+      variants={surface}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      {/* ------------------------------- header: title + search (Figma 27085:107047) */}
+      <div className="flex-none rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)] pt-2">
+        <h2 className="pb-[30px] pt-[29px] text-center font-display text-[40px] font-semibold leading-[1.2] text-white">
+          {t({ en: 'Find your domain name', uk: 'Знайдіть свій домен' })}
+        </h2>
+        <div className="flex justify-center px-8 pb-6">
+          {/* the 56px pill: gray-700, NA/50 rim, white round submit inside its right end */}
+          <div className="flex h-14 w-full max-w-[880px] items-center rounded-full border border-[#ffffff0a] bg-[var(--gray-700)] pl-4 pr-2">
+            <span className="flex-none text-[#ffffff7a]"><IconSearch size={20} /></span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              placeholder={t({
+                en: 'Search a name to buy, or enter one you already own',
+                uk: 'Шукайте назву для купівлі або введіть свою',
+              })}
+              className="ml-4 h-full min-w-0 flex-1 bg-transparent text-[17px] text-[var(--white-900)] outline-none placeholder:text-[#ffffff7a]"
+            />
             <button
-              key={o.domain}
-              onClick={() => goDomains('own', o.domain)}
-              className="flex w-full items-center justify-between rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] px-4 py-3.5 text-left transition-colors duration-[var(--dur-fast)] ease-std hover:border-[var(--gray-700)]"
+              onClick={submit}
+              aria-label={t({ en: 'Search', uk: 'Шукати' })}
+              className="grid h-8 w-8 flex-none place-items-center rounded-full bg-white text-[#09090b] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#e4e4e7]"
             >
-              <div>
-                <p className="text-[15px] font-medium">{o.domain}</p>
-                <p className="mt-0.5 text-[12.5px] text-[var(--white-400)]">{t(o.note)}</p>
-              </div>
-              <span className="text-[13px] font-medium text-[var(--action)]">
-                {t({ en: 'Connect', uk: 'Підключити' })}
-              </span>
+              <IconArrowRight size={18} />
             </button>
-          ))}
-        </div>
-      )}
-
-      {/* AI suggestions ARE the empty state — not a separate mode. */}
-      <div className="mt-7">
-        <p className="mb-2 text-[13px] font-semibold text-[var(--white-500)]">
-          {t({ en: 'Names that fit your site', uk: 'Назви, що пасують вашому сайту' })}
-        </p>
-        <div className="space-y-2">
-          {AI_SUGGESTIONS.map((s) => {
-            const price = TLD_PRICES.find((p) => p.tld === s.tld)!
-            return (
-              <button
-                key={s.domain}
-                onClick={() => goDomains('results', s.domain)}
-                className="flex w-full items-center justify-between rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] px-4 py-3.5 text-left transition-colors duration-[var(--dur-fast)] ease-std hover:border-[var(--gray-700)]"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-[15px] font-medium">{s.domain}</p>
-                  <p className="mt-0.5 text-[12.5px] text-[var(--white-400)]">{t(s.reason)}</p>
-                </div>
-                <div className="flex-none text-right">
-                  <p className="text-[14px] font-semibold tabular-nums">${price.register}</p>
-                  <p className="text-[11.5px] tabular-nums text-[var(--white-300)]">
-                    {t({ en: `then $${price.renew}/yr`, uk: `далі $${price.renew}/рік` })}
-                  </p>
-                </div>
-              </button>
-            )
-          })}
+          </div>
         </div>
       </div>
-    </Screen>
+
+      {/* ------------------------------------ page sheet: the lists (27085:107102) */}
+      <div className="flex min-h-0 flex-1 justify-center gap-8 rounded-t-[8px] border-t border-[#ffffff0a] bg-[var(--gray-900)] px-8 pb-2 pt-2">
+        {/* Existing domains — only when the account holds any (26181:34790).
+            Name + outlined Connect, nothing else: owned domains have no price. */}
+        {owned.length > 0 && (
+          <div className="flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col">
+            <div className="flex h-16 flex-none items-center px-4">
+              <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
+                {t({ en: 'Existing domains', uk: 'Наявні домени' })}
+              </h3>
+            </div>
+            <div className="min-h-0 flex-1 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] p-2">
+              <ScrollArea className="h-full">
+                {owned.map((o, i) => (
+                  <div key={o.domain}>
+                    {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
+                    <div className="flex h-[72px] items-center justify-between rounded-[16px] px-5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
+                      <p className="min-w-0 truncate text-[17px] font-medium text-white">{o.domain}</p>
+                      <RowButton
+                        label={{ en: 'Connect', uk: 'Підключити' }}
+                        onClick={() => goDomains('own', o.domain)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </ScrollArea>
+            </div>
+          </div>
+        )}
+
+        {/* AI suggestions (27085:107262) */}
+        <div className="flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col">
+          <div className="flex h-16 flex-none items-center gap-2.5 px-2">
+            <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
+              {t({ en: 'AI suggestions', uk: 'AI-пропозиції' })}
+            </h3>
+            <IconSparkleAI size={20} />
+          </div>
+
+          {/* Best-match hero (27085:107276): purple tint, gradient rim fading out */}
+          <div
+            className="relative flex-none rounded-[16px] px-1 pb-1"
+            style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
+          >
+            <i className="bestmatch-rim" aria-hidden />
+            <div className="flex h-10 items-center pl-6 pr-4">
+              <span
+                className="font-display text-[14px] font-semibold"
+                style={{
+                  backgroundImage: 'linear-gradient(81deg, #cb79ff 31%, #66a6ff 118%)',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent',
+                }}
+              >
+                {t({ en: 'Best match', uk: 'Найкращий збіг' })}
+              </span>
+            </div>
+            <div className="flex h-[94px] items-center justify-between rounded-[14px] border border-[#ffffff0a] bg-[#1d1d1f] px-6">
+              <div className="min-w-0 pb-1">
+                <p className="truncate text-[22px] font-medium leading-normal text-white">{best.domain}</p>
+                <p className="mt-[7px] truncate text-[13px] leading-normal text-[#ffffff7a]">{t(best.reason)}</p>
+              </div>
+              <div className="flex flex-none items-center gap-8">
+                {/* honest promo: first-year price big, regular price struck */}
+                <PriceStack register={bestPrice.register} renew={bestPrice.renew} strike />
+                <button
+                  onClick={() => goDomains('results', best.domain)}
+                  className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+                >
+                  {t({ en: 'Buy', uk: 'Купити' })}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* suggestion list (27085:107303): one card, hairline dividers, own scroll */}
+          <div className="mt-4 min-h-0 flex-1 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] py-2 pl-2 pr-3">
+            <ScrollArea className="h-full">
+              {rest.map((sg, i) => {
+                const price = priceFor(sg.tld)!
+                return (
+                  <div key={sg.domain}>
+                    {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
+                    <div className="flex h-[72px] items-center justify-between gap-6 rounded-[16px] px-5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
+                      <div className="min-w-0 pb-0.5">
+                        <p className="truncate text-[17px] font-medium leading-normal text-white">{sg.domain}</p>
+                        <p className="mt-1 truncate text-[13px] leading-normal text-[#ffffff7a]">{t(sg.reason)}</p>
+                      </div>
+                      <div className="flex flex-none items-center gap-8">
+                        <PriceStack register={price.register} renew={price.renew} />
+                        <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={() => goDomains('results', sg.domain)} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </ScrollArea>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
@@ -481,17 +584,34 @@ export function DomainsSurface() {
   const gated = !hasPlan(world)
 
   return (
-    <ScrollArea
-      className="h-full overflow-hidden rounded-shell"
-      innerClassName="relative bg-[var(--gray-950)]"
+    /* The dashboard window (Figma 27085:106964): radius 16, gray-800 border, a
+       darker base tone (24% black over gray-900) that stays visible behind the
+       top bar — the content sheets repaint themselves gray-900 below it. */
+    <div
+      className="flex h-full flex-col overflow-hidden rounded-[16px] border border-[var(--gray-800)]"
+      style={{
+        background: 'linear-gradient(rgba(9,9,11,0.24), rgba(9,9,11,0.24)), var(--gray-900)',
+        boxShadow: '0px 8px 8px rgba(0,0,0,0.12), 0px 56px 72px rgba(0,0,0,0.12)',
+      }}
     >
-      <button
-        onClick={closeSurface}
-        aria-label={t({ en: 'Close', uk: 'Закрити' })}
-        className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-control text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)] hover:text-[var(--white-700)]"
-      >
-        ✕
-      </button>
+      {/* top bar (27085:106980): globe tile + label left, close right */}
+      <div className="flex h-12 flex-none items-center justify-between px-2">
+        <div className="flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[#09090b8f] text-white">
+            <IconGlobe size={20} />
+          </span>
+          <span className="pb-px text-[13px] font-medium text-[#e4e4e7]">
+            {t({ en: 'Domains', uk: 'Домени' })}
+          </span>
+        </div>
+        <button
+          onClick={closeSurface}
+          aria-label={t({ en: 'Close', uk: 'Закрити' })}
+          className="grid h-8 w-8 place-items-center rounded-[8px] bg-[var(--white-100)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+        >
+          <IconClose size={11} />
+        </button>
+      </div>
 
       {gated ? (
         <Screen>
@@ -528,6 +648,6 @@ export function DomainsSurface() {
           <Current key={domainScreen} />
         </AnimatePresence>
       )}
-    </ScrollArea>
+    </div>
   )
 }
