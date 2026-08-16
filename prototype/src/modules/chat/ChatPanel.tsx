@@ -391,7 +391,8 @@ export function ChatPanel() {
                 className={`grid h-8 w-8 place-items-center rounded-full border transition-colors duration-[var(--dur-fast)] ease-std ${
                   armed
                     ? 'border-[var(--action)] bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
-                    : 'border-[var(--white-100)] bg-[var(--white-100)] text-[var(--white-500)]'
+                    : /* Figma 28016:43545 — outlined, no fill, Neutral Alpha/100 rim */
+                      'border-[var(--white-100)] text-[var(--white-500)]'
                 }`}
               >
                 <IconArrowUp size={17} />

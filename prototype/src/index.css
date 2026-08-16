@@ -388,7 +388,7 @@
    * point — the composer is meant to sit brighter than the rest of the chrome.
    */
   .composer-field {
-    background: linear-gradient(#ffffff14, #ffffff14), rgba(9, 9, 11, 0.8);
+    background: linear-gradient(#ffffff14, #ffffff14), var(--glass-bg);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     border: 1px solid #ffffff3d;
