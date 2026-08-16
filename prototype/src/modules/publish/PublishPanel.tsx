@@ -87,8 +87,12 @@ export function PublishPanel() {
           initial="initial"
           animate="animate"
           exit="exit"
-          className="absolute top-[var(--topbar-h)] z-40 w-[548px] origin-top-right rounded-[20px] border border-[#ffffff0a] bg-[var(--gray-850)]"
-          style={{ right: 'calc(var(--rail-w) + 8px)', boxShadow: '0px 24px 28px rgba(0,0,0,0.5)' }}
+          /* Figma pins it at x1961 y48 on the 2560 frame: 51px off the right edge
+             (5px over the rail), 48px down (4px over the topbar). FIXED, not
+             absolute: mounted inside <main>, "right" used to resolve against the
+             centre column, so the panel drifted with the chat width. */
+          className="fixed right-[51px] top-12 z-40 w-[548px] origin-top-right rounded-[20px] border border-[#ffffff0a] bg-[var(--gray-850)]"
+          style={{ boxShadow: '0px 24px 28px rgba(0,0,0,0.5)' }}
         >
           {/* light runs the rim once as the glass forms */}
           <b className="glass-sheen" aria-hidden><i /></b>
@@ -104,7 +108,7 @@ export function PublishPanel() {
           {/* ---------------------------------------------------------- body card */}
           <div className="px-1.5">
             {/* Figma: Neutral Alpha/50 (#ffffff0a) for both the fill and the hairline */}
-            <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] px-4 pb-4 pt-[19px]">
+            <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a] px-4 pb-4 pt-[19px]">
               {/* website URL */}
               <div className="mb-[19px] flex flex-col gap-[7px]">
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
@@ -136,9 +140,14 @@ export function PublishPanel() {
               {!live && !connecting && (
                 <button
                   onClick={() => openDomains('home')}
-                  className="flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:border-[var(--white-300)] hover:bg-[var(--white-100)]/[0.04]"
+                  /* Hover per Figma 26125:3832: the dashed rim brightens (NA/200 →
+                     NA/300) and the "+" disc fills WHITE with a dark plus — the
+                     row itself keeps its fill. Colours ease over the base duration
+                     so the state melts in rather than snapping. */
+                  className="group flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std hover:border-[var(--white-300)]"
                 >
-                  <span className="liquid-glass grid h-8 w-8 flex-none place-items-center rounded-[12px] text-[var(--white-700)]">
+                  {/* Figma 26125:3802: NA/100 fill + 15%-white rim, not the shell glass */}
+                  <span className="grid h-8 w-8 flex-none place-items-center rounded-[12px] border border-[#ffffff26] bg-[#ffffff14] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std group-hover:border-[#ffffff40] group-hover:bg-white group-hover:text-[#09090b]">
                     <IconPlus size={13} />
                   </span>
                   <span className="min-w-0">
