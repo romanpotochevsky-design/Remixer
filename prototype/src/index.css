@@ -262,6 +262,95 @@
     .stream-word { animation: none; }
   }
 
+  /*
+   * "Thinking" — a light sweeps across the letters, as in Lovable. The gradient
+   * is clipped to the glyphs and its position is animated, which does repaint
+   * each frame; that is affordable here and nowhere else, because the element
+   * is one short word and it only exists while an answer is being written.
+   */
+  .thinking {
+    background: linear-gradient(
+      100deg,
+      var(--white-400) 0%, var(--white-400) 38%,
+      #ffffff 50%,
+      var(--white-400) 62%, var(--white-400) 100%
+    );
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: thinking-sweep 1.7s linear infinite;
+  }
+  @keyframes thinking-sweep {
+    from { background-position: 130% 0; }
+    to   { background-position: -30% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .thinking { animation: none; color: var(--white-400); }
+  }
+
+  /*
+   * The send flash: coloured light runs once around the composer, the way
+   * Google lights its search field when you hit AI Mode.
+   *
+   * Same engine as the preview glow, scaled down: the hues live on an oversized
+   * square that is painted ONCE and rotated, and a ring mask cuts it to the
+   * border. Nothing repaints per frame — animating a gradient's angle would,
+   * and that is the 9fps mistake this project already made once.
+   */
+  .composer-glow {
+    position: absolute;
+    inset: -3px;
+    border-radius: 27px;
+    pointer-events: none;
+    z-index: 2;
+    animation: composer-glow-life 1.7s var(--ease-out) both;
+  }
+  .composer-glow > i {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    container-type: size;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+  /* the crisp filament on the border itself */
+  .composer-glow .composer-glow-core { padding: 2px; }
+  /* and the light it throws outward */
+  .composer-glow .composer-glow-bloom { padding: 10px; filter: blur(9px); opacity: 0.85; }
+
+  .composer-glow > i > b {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 142cqmax;
+    height: 142cqmax;
+    background: conic-gradient(
+      from 0deg,
+      #1587ff 0deg, #4aa8ff 44deg, #8b5cff 96deg,
+      #e0559a 150deg, #ff7a45 198deg, #ffc857 240deg,
+      #6fe3c4 288deg, #1587ff 360deg
+    );
+    animation: composer-glow-spin 1.7s linear both;
+    will-change: transform;
+  }
+  @keyframes composer-glow-spin {
+    from { transform: translate(-50%, -50%) rotate(-40deg); }
+    to   { transform: translate(-50%, -50%) rotate(380deg); }
+  }
+  @keyframes composer-glow-life {
+    0%   { opacity: 0; }
+    10%  { opacity: 1; }
+    68%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .composer-glow { display: none; }
+  }
+
   .scroll-area { position: relative; }
   .scroll-thumb {
     position: absolute;

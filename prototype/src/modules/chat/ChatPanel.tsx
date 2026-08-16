@@ -21,7 +21,7 @@ import {
 import { ScrollArea } from '@/ui/ScrollArea'
 import { baselineThread } from './thread'
 import { sendMessage } from './send'
-import { bubbleSend, messageIn } from '@/ui/motion'
+import { bubbleSend } from '@/ui/motion'
 
 /** Where a freshly sent message parks: just clear of the 48px top fade. */
 const TOP_INSET = 48
@@ -136,12 +136,10 @@ function StreamedText({ text }: { text: string }) {
 /** Figma: message column, 9px between the text and its action row. */
 function AiMessage({ text, actions, animate }: { text: string; actions?: boolean; animate: boolean }) {
   return (
-    <motion.div
-      variants={messageIn}
-      initial={animate ? 'initial' : false}
-      animate="animate"
-      className="flex flex-col gap-[9px] pr-8"
-    >
+    /* No container fade here: the words do the arriving. Nesting a motion
+       opacity animation around per-word CSS animations left the whole block
+       parked at opacity 0 with the word animations sitting at currentTime 0. */
+    <div className="flex flex-col gap-[9px] pr-8">
       <p className="whitespace-pre-wrap text-[15px] leading-[25px] text-[var(--gray-350,#c7c7cd)]">
         {animate ? <StreamedText text={text} /> : text}
       </p>
@@ -154,7 +152,7 @@ function AiMessage({ text, actions, animate }: { text: string; actions?: boolean
           <AiActions text={text} />
         </span>
       )}
-    </motion.div>
+    </div>
   )
 }
 
@@ -173,6 +171,8 @@ export function ChatPanel() {
   const { world } = useWorld()
   const { t } = useT()
   const [draft, setDraft] = useState('')
+  /* Bumped on every send; the key restarts the flash even on rapid sends. */
+  const [flash, setFlash] = useState(0)
   const field = useRef<HTMLTextAreaElement>(null)
   const viewport = useRef<HTMLDivElement | null>(null)
   const anchor = useRef<HTMLDivElement>(null)
@@ -186,6 +186,10 @@ export function ChatPanel() {
    * itself — and the relayout that caused threw off the scroll measurement below.
    */
   const seen = useRef<Set<number> | null>(null)
+  /* Once a message has been marked fresh it STAYS fresh: `seen` flips on the
+     next render, and if `isFresh` flipped with it the animated words would be
+     torn out and replaced by plain text mid-flight. */
+  const fresh = useRef<Set<number>>(new Set())
 
   const live = world.sent.length > 0
   const thread = live ? world.sent : baselineThread(world.chat)
@@ -195,7 +199,8 @@ export function ChatPanel() {
 
   // Whatever is on screen at the first paint counts as already seen.
   if (seen.current === null) seen.current = new Set(thread.map((m) => m.id))
-  const isFresh = (id: number) => !seen.current!.has(id)
+  for (const m of thread) if (!seen.current.has(m.id)) fresh.current.add(m.id)
+  const isFresh = (id: number) => fresh.current.has(id)
 
   // Grow the field with the text, up to five lines, then let it scroll.
   useLayoutEffect(() => {
@@ -254,6 +259,7 @@ export function ChatPanel() {
     if (!armed) return
     sendMessage(draft)
     setDraft('')
+    setFlash((n) => n + 1)
     field.current?.focus()
   }
 
@@ -304,9 +310,8 @@ export function ChatPanel() {
 
           {working && (
             <div className="pr-8">
-              <p className="inline-flex items-center gap-2 text-[15px] leading-[25px] text-[var(--white-400)]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" aria-hidden />
-                {t({ en: 'Working on it…', uk: 'Працюю над цим…' })}
+              <p className="thinking text-[15px] leading-[25px]">
+                {t({ en: 'Thinking', uk: 'Думаю' })}
               </p>
             </div>
           )}
@@ -334,7 +339,15 @@ export function ChatPanel() {
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
-        <div className="liquid-glass rounded-[24px] pb-2 pr-2">
+        <div className="relative">
+          {/* light runs the rim once on send — Google's AI Mode flash */}
+          {flash > 0 && (
+            <span key={flash} className="composer-glow" aria-hidden>
+              <i className="composer-glow-bloom"><b /></i>
+              <i className="composer-glow-core"><b /></i>
+            </span>
+          )}
+        <div className="liquid-glass relative rounded-[24px] pb-2 pr-2">
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
             <textarea
               ref={field}
@@ -385,6 +398,7 @@ export function ChatPanel() {
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
