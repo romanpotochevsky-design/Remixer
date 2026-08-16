@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, violations, type World } from '@/state/world'
 import { AXES, GROUPS, PRESETS, describe } from '@/state/scenarios'
 import { FlowList } from './FlowPlayer'
+import { ScrollArea } from '@/ui/ScrollArea'
 import { useT } from '@/i18n'
 
 const EASE = [0.2, 0, 0, 1] as const
@@ -122,7 +123,7 @@ export function ScenarioPanel() {
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4">
+            <ScrollArea className="min-h-0 flex-1" innerClassName="px-4 py-4" thumb="dark">
               {/* whole flows, played end to end */}
               <FlowList />
 
@@ -230,7 +231,7 @@ export function ScenarioPanel() {
                   </section>
                 )
               })}
-            </div>
+            </ScrollArea>
 
             {/* footer */}
             <footer className="flex items-center gap-2 border-t border-black/10 bg-white px-4 py-3">

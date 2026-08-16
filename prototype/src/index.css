@@ -84,41 +84,46 @@
   html, body, #root { height: 100%; }
 
   /*
-   * Scrollbars, phone-style: thin, invisible at rest, appearing while the surface
-   * is scrolled or hovered — and AWARE OF THEIR SURFACE: a white translucent thumb
-   * on the dark builder chrome, a black translucent one inside light surfaces
-   * (marked `.scroll-light`), so the thumb is always visible against its backdrop.
+   * Scrollbars, phone-style. Native ones are off EVERYWHERE: a classic scrollbar
+   * takes a column out of the layout and paints it with the scroller's own
+   * background — on the two-tone demo site that drew a white strip down the full
+   * right edge, including the dark half. Phones don't do that; neither do we.
    *
-   * Driven by the standard `scrollbar-color`, NOT `::-webkit-scrollbar`: once
-   * `scrollbar-color` is set, Chrome ignores every ::-webkit-scrollbar rule, so
-   * mixing the two silently drops the webkit half. The `data-scrolling` attribute
-   * is toggled by `ui/scroll.ts` on scroll and clears ~700ms after it stops.
+   * Every scroll surface is `<ScrollArea>` (ui/ScrollArea.tsx), which floats a
+   * translucent bar OVER the content: invisible at rest, visible while the
+   * surface moves or is hovered. Anything scrollable that is NOT a ScrollArea
+   * therefore has no visible indicator at all — that is the trade, and it is
+   * why new scroll surfaces must use the component.
    */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  }
-  /* dark chrome — light thumb */
-  *:hover,
-  [data-scrolling] {
-    scrollbar-color: #ffffff40 transparent;
-  }
-  /* light surfaces — dark thumb */
-  .scroll-light:hover,
-  .scroll-light[data-scrolling] {
-    scrollbar-color: #09090b40 transparent;
-  }
+  * { scrollbar-width: none; }
+  ::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
-  /* Fallback for engines that still honour the webkit pseudo-elements
-     (they are ignored wherever scrollbar-color above applies). */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-corner { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
-  *:hover::-webkit-scrollbar-thumb,
-  [data-scrolling]::-webkit-scrollbar-thumb { background: #ffffff40; }
-  .scroll-light:hover::-webkit-scrollbar-thumb,
-  .scroll-light[data-scrolling]::-webkit-scrollbar-thumb { background: #09090b40; }
+  .scroll-area { position: relative; }
+  .scroll-thumb {
+    position: absolute;
+    top: 0;
+    right: 3px;
+    width: 4px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s var(--ease-std);
+    will-change: transform;
+  }
+  .scroll-thumb[data-off] { display: none; }
+  .scroll-thumb[data-on],
+  .scroll-area:hover > .scroll-thumb { opacity: 1; }
+
+  /* dark chrome — light bar */
+  .scroll-thumb--light { background: #ffffff5c; }
+  /* light panels — dark bar */
+  .scroll-thumb--dark { background: #09090b47; }
+  /* content of unknown or mixed brightness (a generated site): iOS paints a dark
+     bar with a light hairline, which stays legible over white and black alike */
+  .scroll-thumb--auto {
+    background: #0000005e;
+    box-shadow: 0 0 0 1px #ffffff8c;
+  }
 
   /*
    * Liquid glass. The Figma kit's glass controls (and Apple's Liquid Glass they nod to)

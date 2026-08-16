@@ -10,7 +10,7 @@
 import { useWorld, canUseAI, hasPlan, trialDaysLeft } from '@/state/world'
 import { useT } from '@/i18n'
 import { IconPlus, IconMic, IconArrowUp } from '@/ui/icons'
-import { revealScrollbar } from '@/ui/scroll'
+import { ScrollArea } from '@/ui/ScrollArea'
 
 /** Demo transcript for the fit-ration project — hardcoded, like all prototype data. */
 const DEMO_THREAD = [
@@ -62,7 +62,7 @@ export function ChatPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
-      <div onScroll={revealScrollbar} className="relative min-h-0 flex-1 overflow-y-auto pl-4 pr-2 pt-4">
+      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2 pt-4">
         {/* scroll fade under the toolbar (Figma: BG + BG Gradient, 48px) */}
         <div
           className="pointer-events-none sticky top-0 -ml-4 -mr-2 -mt-4 h-12 flex-none"
@@ -112,7 +112,7 @@ export function ChatPanel() {
             </>
           )}
         </div>
-      </div>
+      </ScrollArea>
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
