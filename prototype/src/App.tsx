@@ -205,8 +205,12 @@ export default function App() {
                     {world.project === 'built' && (
                       <div className="absolute inset-0 z-10 bg-[#09090b47]" style={{ animation: 'siri-in 0.5s var(--ease-std) both' }} aria-hidden />
                     )}
-                    <div className="siri-glow" aria-hidden />
-                    <div className="siri-glow-bloom" aria-hidden />
+                    <div className="siri-glow" aria-hidden>
+                      <i className="siri-blob siri-blob--1" />
+                      <i className="siri-blob siri-blob--2" />
+                      <i className="siri-blob siri-blob--3" />
+                      <i className="siri-blob siri-blob--4" />
+                    </div>
                   </>
                 )}
               </div>

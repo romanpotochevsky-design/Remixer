@@ -129,77 +129,89 @@
    * Registered @property drives the rotation (Chromium); browsers without it get
    * a static ring, and prefers-reduced-motion freezes it via the global rule.
    */
-  @property --siri-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-  @property --siri-b { syntax: '<angle>'; inherits: false; initial-value: 90deg; }
-  @property --siri-c { syntax: '<angle>'; inherits: false; initial-value: 210deg; }
-
-  .siri-glow,
-  .siri-glow-bloom {
+  /*
+   * The effect is NOT a rotating gradient ring. On iOS it's several large soft
+   * masses of coloured light that TRAVEL along the screen edge at different speeds,
+   * overtake each other, mix additively where they overlap, and breathe. So:
+   * four blurred radial blobs orbit the container's perimeter (centres pinned to
+   * the edge — overflow clips the outer half, the inner half becomes the glow),
+   * with per-blob speed, phase, size and pulse. A thin edge line lights up as the
+   * light passes. prefers-reduced-motion freezes everything via the global rule.
+   */
+  .siri-glow {
     position: absolute;
     inset: 0;
     border-radius: inherit;
     overflow: hidden;
     pointer-events: none;
     z-index: 20;
-    animation: siri-in 0.5s var(--ease-std) both;
+    isolation: isolate;
+    animation: siri-in 0.6s var(--ease-std) both;
   }
-  .siri-glow::before,
-  .siri-glow::after,
-  .siri-glow-bloom::before {
+  /* the crisp line on the very edge — faint white base, coloured by the blobs through blend */
+  .siri-glow::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
+    padding: 2px;
+    background: #ffffff2e;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
   }
-  /* layer 1 — the crisp core line on the very edge, white-hot where colours peak */
-  .siri-glow::before {
-    padding: 2px;
-    background: conic-gradient(
-      from var(--siri-a),
-      #1f7cff, #7db9ff, #9d60ff, #e6d4ff, #be59ff, #ff5f8f, #ffd9c4, #ffb56b, #38c6ff, #d9f3ff, #1f7cff
-    );
-    animation: siri-spin-a 3.6s linear infinite;
+  .siri-blob {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 38%;
+    aspect-ratio: 1.9;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    filter: blur(26px);
+    mix-blend-mode: plus-lighter;
+    will-change: left, top, transform;
   }
-  /* layer 2 — the colour bloom hugging the line, slower, so hues slide over each other */
-  .siri-glow::after {
-    padding: 12px;
-    background: conic-gradient(
-      from var(--siri-b),
-      #1f7cff, #4274ff, #9d60ff, #be59ff, #ff5f8f, #ffb56b, #38c6ff, #1f7cff
-    );
-    filter: blur(14px) hue-rotate(0deg);
-    opacity: 0.7;
-    animation: siri-spin-b 5.8s linear infinite, siri-hue 7s ease-in-out infinite alternate;
+  /* each blob: its own colour, orbit speed, phase (negative delay) and pulse rhythm */
+  .siri-blob--1 {
+    background: radial-gradient(closest-side, #1f7cffe6 0%, #1f7cff66 42%, transparent 64%);
+    animation: siri-orbit 8.4s linear infinite, siri-pulse 3.1s ease-in-out infinite;
   }
-  /* layer 3 — the wide inner halo that breathes, like Siri listening */
-  .siri-glow-bloom::before {
-    padding: 34px;
-    background: conic-gradient(
-      from var(--siri-c),
-      #1f7cff, #9d60ff, #ff5f8f, #ffb56b, #4274ff, #1f7cff
-    );
-    filter: blur(38px);
-    animation: siri-spin-c 4.6s linear infinite, siri-breathe 2.8s ease-in-out infinite;
+  .siri-blob--2 {
+    width: 46%;
+    background: radial-gradient(closest-side, #9d60ffe6 0%, #9d60ff66 42%, transparent 64%);
+    animation: siri-orbit 11s linear infinite, siri-pulse 2.5s ease-in-out infinite;
+    animation-delay: -2.7s, -0.9s;
   }
-  @keyframes siri-spin-a { to { --siri-a: 360deg; } }
-  @keyframes siri-spin-b { from { --siri-b: 90deg; } to { --siri-b: 450deg; } }
-  @keyframes siri-spin-c { from { --siri-c: 210deg; } to { --siri-c: 570deg; } }
-  @keyframes siri-hue {
-    from { filter: blur(14px) hue-rotate(-18deg); }
-    to { filter: blur(14px) hue-rotate(24deg); }
+  .siri-blob--3 {
+    background: radial-gradient(closest-side, #ff5f8fe6 0%, #ff5f8f66 42%, transparent 64%);
+    animation: siri-orbit 9.6s linear infinite, siri-pulse 3.7s ease-in-out infinite;
+    animation-delay: -5.5s, -1.8s;
   }
-  @keyframes siri-breathe {
-    0%, 100% { opacity: 0.28; }
-    50% { opacity: 0.6; }
+  .siri-blob--4 {
+    background: radial-gradient(closest-side, #ffb56bd9 0%, #ffb56b59 42%, transparent 64%);
+    animation: siri-orbit 13.2s linear infinite, siri-pulse 2.9s ease-in-out infinite;
+    animation-delay: -8.8s, -0.4s;
+    width: 32%;
+  }
+  /* travel the perimeter through the corners; the centre of the blob rides the edge */
+  @keyframes siri-orbit {
+    0%   { left: 0%;   top: 0%; }
+    25%  { left: 100%; top: 0%; }
+    50%  { left: 100%; top: 100%; }
+    75%  { left: 0%;   top: 100%; }
+    100% { left: 0%;   top: 0%; }
+  }
+  /* the light masses swell and settle, like Siri listening */
+  @keyframes siri-pulse {
+    0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.85); }
+    50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.18); }
   }
   /* the glow arrives like on iOS: swells from the edge, settles */
   @keyframes siri-in {
     from { opacity: 0; transform: scale(1.012); }
-    to { opacity: 1; transform: scale(1); }
+    to   { opacity: 1; transform: scale(1); }
   }
   body {
     background: var(--gray-900);
