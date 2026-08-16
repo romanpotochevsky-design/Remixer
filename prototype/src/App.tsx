@@ -6,8 +6,11 @@
  * visibly drives the interface. Real screens from Figma replace the insides, not the frame.
  */
 import { useWorld, canUseAI, hasPlan, trialDaysLeft } from '@/state/world'
+import { useUI } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
+import { PublishPanel } from '@/modules/publish/PublishPanel'
+import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { useT } from '@/i18n'
 
 const RAIL = [
@@ -20,6 +23,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
+  const { surface, openDomains, togglePublish } = useUI()
   const { t } = useT()
 
   const address =
@@ -51,7 +55,10 @@ export default function App() {
         <div className="flex-1" />
 
         {/* the live address lives in permanent chrome — nobody else in the category does this */}
-        <button className="flex h-10 items-center gap-2 rounded-[10px] px-3 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-[var(--ease-std)] hover:bg-[var(--gray-800)]">
+        <button
+          onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' ? 'status' : 'home')}
+          className="flex h-10 items-center gap-2 rounded-[10px] px-3 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-[var(--ease-std)] hover:bg-[var(--gray-800)]"
+        >
           {world.domain === 'live' && (
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--live)]" aria-hidden />
           )}
@@ -65,6 +72,7 @@ export default function App() {
         <div className="flex-1" />
 
         <button
+          onClick={() => togglePublish()}
           className={
             publish.tone === 'action'
               ? 'h-10 rounded-[10px] bg-[var(--action)] px-4 text-[14px] font-medium text-white transition-colors duration-[var(--dur-fast)] ease-[var(--ease-std)] hover:bg-[var(--action-hover)]'
@@ -113,16 +121,23 @@ export default function App() {
         </nav>
 
         {/* ------------------------------------------------------------ canvas */}
-        <main className="min-w-0 flex-1 pb-2 pr-2">
-          <div className="grid h-full place-items-center rounded-shell bg-[var(--gray-950)]">
-            <p className="font-mono text-[12px] text-[var(--white-300)]">
-              {world.project === 'empty'
-                ? t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })
-                : world.project === 'generating'
-                  ? t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })
-                  : 'preview'}
-            </p>
-          </div>
+        {/* A surface module (domains today; analytics, library… tomorrow) renders in
+            place of the preview inside the same frame — the pattern Lovable ships
+            as "More" and Remixer already uses in production. */}
+        <main className="relative min-w-0 flex-1 pb-2 pr-2">
+          {surface === 'domains' ? (
+            <DomainsSurface />
+          ) : (
+            <div className="grid h-full place-items-center rounded-shell bg-[var(--gray-950)]">
+              <p className="font-mono text-[12px] text-[var(--white-300)]">
+                {world.project === 'empty'
+                  ? t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })
+                  : world.project === 'generating'
+                    ? t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })
+                    : 'preview'}
+              </p>
+            </div>
+          )}
         </main>
 
         {/* -------------------------------------------------------- chat panel */}
@@ -160,6 +175,7 @@ export default function App() {
         </aside>
       </div>
 
+      <PublishPanel />
       <FlowRunner />
       <ScenarioPanel />
     </div>
