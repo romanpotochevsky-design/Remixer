@@ -73,10 +73,17 @@ function deliverAnswer(prompt: string) {
  * `sent`) is left untouched — burning glow is exactly what that demo stages.
  */
 export function resumeInterrupted() {
-  const { world } = useWorld.getState()
+  const { world, set, preset } = useWorld.getState()
   if (world.chat !== 'working' || pending) return
   const last = world.sent[world.sent.length - 1]
-  if (!last || last.who !== 'user') return
+  if (!last) return
+  if (last.who !== 'user') {
+    // A 'working' flag over a transcript that already ends in an answer is a
+    // leftover from a state saved by an older build — nothing to resume, just
+    // settle it so the glow stops and the composer unlocks.
+    set({ chat: 'long' }, preset)
+    return
+  }
   const text = typeof last.text === 'string' ? last.text : ''
   pending = setTimeout(() => deliverAnswer(text), 1400)
 }
