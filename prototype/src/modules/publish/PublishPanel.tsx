@@ -132,7 +132,7 @@ export function PublishPanel() {
                   onClick={() => openDomains('home')}
                   className="flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:border-[var(--white-300)] hover:bg-[var(--white-100)]/[0.04]"
                 >
-                  <span className="grid h-8 w-8 flex-none place-items-center rounded-[12px] border border-[var(--glass-border)] bg-[var(--white-100)] text-[var(--white-700)]">
+                  <span className="liquid-glass grid h-8 w-8 flex-none place-items-center rounded-[12px] text-[var(--white-700)]">
                     <IconPlus size={13} />
                   </span>
                   <span className="min-w-0">

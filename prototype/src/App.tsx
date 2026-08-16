@@ -25,10 +25,10 @@ import {
   IconChatBubble,
 } from '@/ui/icons'
 
-/** Glass pill: the shared chrome surface (Figma: blur 16, #18181b @ 80%, white 15% border). */
+/** Glass pill: the shared chrome surface — liquid-glass fill, blur and gradient rim. */
 function Glass({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`flex items-center rounded-[12px] border border-[var(--glass-border)] bg-[var(--glass-bg)] backdrop-blur-[16px] ${className}`}>
+    <div className={`liquid-glass flex items-center rounded-[12px] ${className}`}>
       {children}
     </div>
   )
