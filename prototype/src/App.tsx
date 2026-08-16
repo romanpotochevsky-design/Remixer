@@ -12,7 +12,7 @@
  */
 import { motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
-import { useUI, MOBILE_WIDTH } from '@/state/ui'
+import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
@@ -114,33 +114,19 @@ export default function App() {
                 </span>
               </button>
               <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-              {/* Both device icons stay visible — Figma "Preview buttons" (25819:143747)
-                  is a 73×36 pair of 32px buttons with a divider. The current one is lit,
-                  the other stays available: a segmented choice, not a hidden toggle. */}
+              {/* ONE control, as in Lovable (verified on a screen recording of their
+                  builder): the icon IS the view you are in — a monitor while the canvas
+                  is desktop, a phone once you switch — and clicking flips it. */}
               <button
-                onClick={() => setDevice('desktop')}
-                aria-pressed={device === 'desktop'}
-                aria-label={t({ en: 'Desktop preview', uk: 'Прев’ю для десктопа' })}
-                className={`grid h-8 w-8 place-items-center rounded-[10px] transition-colors duration-[var(--dur-fast)] ease-std ${
+                onClick={() => setDevice(device === 'desktop' ? 'mobile' : 'desktop')}
+                aria-label={
                   device === 'desktop'
-                    ? 'bg-[var(--white-100)] text-[var(--white-900)]'
-                    : 'text-[var(--white-400)] hover:bg-[var(--white-100)] hover:text-[var(--white-700)]'
-                }`}
+                    ? t({ en: 'Switch to mobile view', uk: 'Перемкнути на мобільний вигляд' })
+                    : t({ en: 'Switch to desktop view', uk: 'Перемкнути на вигляд десктопа' })
+                }
+                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
               >
-                <IconMonitor size={17} />
-              </button>
-              <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-              <button
-                onClick={() => setDevice('mobile')}
-                aria-pressed={device === 'mobile'}
-                aria-label={t({ en: 'Mobile preview', uk: 'Прев’ю для мобільного' })}
-                className={`grid h-8 w-8 place-items-center rounded-[10px] transition-colors duration-[var(--dur-fast)] ease-std ${
-                  device === 'mobile'
-                    ? 'bg-[var(--white-100)] text-[var(--white-900)]'
-                    : 'text-[var(--white-400)] hover:bg-[var(--white-100)] hover:text-[var(--white-700)]'
-                }`}
-              >
-                <IconPhone size={17} />
+                {device === 'desktop' ? <IconMonitor size={17} /> : <IconPhone size={17} />}
               </button>
             </Glass>
           </div>
@@ -205,16 +191,20 @@ export default function App() {
             return surface === 'domains' ? (
               <DomainsSurface />
             ) : (
-              <div className="flex h-full justify-center">
+              <div className="flex h-full items-center justify-center">
                 <motion.div
                   /* the phone frame gets a hairline: floating on the ground, the site's
                      own dark sections would otherwise bleed into the shell. Lovable
                      outlines its preview the same way (measured border #41413D). */
-                  className={`site-stage relative h-full overflow-hidden rounded-shell ${
+                  className={`site-stage relative overflow-hidden rounded-shell ${
                     device === 'mobile' ? 'ring-1 ring-[#ffffff14]' : ''
                   }`}
                   initial={false}
-                  animate={{ width: device === 'mobile' ? MOBILE_WIDTH : '100%' }}
+                  animate={{
+                    width: device === 'mobile' ? MOBILE_WIDTH : '100%',
+                    height: device === 'mobile' ? MOBILE_HEIGHT : '100%',
+                  }}
+                  style={{ maxHeight: '100%' }}
                   transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
                 >
                   {world.project === 'built' ? (

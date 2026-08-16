@@ -34,7 +34,11 @@ export type DomainScreen =
  * width — the modal phone on the US market this product sells to.
  */
 export type Device = 'desktop' | 'mobile'
+/** iPhone 14/15 logical size. A fixed device, not a full-height column —
+ *  measured off a Lovable screen recording: their phone frame keeps a wide
+ *  margin above and below and floats in the middle of the canvas. */
 export const MOBILE_WIDTH = 390
+export const MOBILE_HEIGHT = 844
 
 interface UIStore {
   surface: Surface

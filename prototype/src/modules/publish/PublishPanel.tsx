@@ -18,7 +18,7 @@ import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { IconPlus, IconEdit, IconExternal } from '@/ui/icons'
-import { popover } from '@/ui/motion'
+import { popover, popoverContent } from '@/ui/motion'
 
 
 /** The inset URL field: value + muted suffix, one trailing icon button. */
@@ -90,6 +90,8 @@ export function PublishPanel() {
           className="absolute top-[var(--topbar-h)] z-40 w-[548px] origin-top-right rounded-[20px] border border-[#ffffff0a] bg-[var(--gray-850)]"
           style={{ right: 'calc(var(--rail-w) + 8px)', boxShadow: '0px 24px 28px rgba(0,0,0,0.5)' }}
         >
+          {/* The glass inflates first, its contents arrive a beat later (motion.ts rule 3). */}
+          <motion.div variants={popoverContent}>
           {/* -------------------------------------------------------- header, 64px */}
           <div className="flex h-16 items-center pl-6">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">
@@ -181,6 +183,7 @@ export function PublishPanel() {
               {t(primary)}
             </button>
           </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
