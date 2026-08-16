@@ -217,7 +217,7 @@ export function ChatPanel() {
 
         {/* pb clears exactly the height of the bottom fade, so at rest nothing
             sits under it — the fade only bites into content once you scroll. */}
-        <div className="space-y-5 pb-16">
+        <div className="space-y-5 pb-8">
           {thread.length === 0 && !working ? (
             <p className="pt-10 text-center text-[14px] text-[var(--white-400)]">
               {t({ en: 'Describe what you want to build.', uk: 'Опишіть, що збудувати.' })}
@@ -252,11 +252,12 @@ export function ChatPanel() {
           <div ref={bottom} />
         </div>
 
-        {/* …and the mirror of it above the composer, so a message slides out of
-            sight instead of being cut off by the input field's top edge. */}
+        {/* …and above the composer. Figma pins a 32px "BG Gradient" (28016:46454)
+            immediately over the input field, transparent to solid, with no flat
+            head — a short, purely graded hand-off, not a curtain. */}
         <div
-          className="pointer-events-none sticky bottom-0 z-10 -ml-4 -mr-2 -mt-16 h-16 flex-none"
-          style={{ background: 'linear-gradient(to top, #09090b 0%, #09090b 38%, #09090b00 100%)' }}
+          className="pointer-events-none sticky bottom-0 z-10 -ml-4 -mr-2 -mt-8 h-8 flex-none"
+          style={{ background: 'linear-gradient(to bottom, #09090b00, #09090b)' }}
           aria-hidden
         />
       </ScrollArea>
