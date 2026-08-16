@@ -1,0 +1,25 @@
+# Remixer maintenance page — Apache / DreamHost shared hosting
+#
+# NOTE: this file is for the REAL maintenance mode. For a dev preview link,
+# upload index.html only (a plain 200 is what you want when people are just
+# looking at the design) and delete this file.
+#
+# Live behaviour: every request answers with the maintenance page and a proper
+# 503 Service Unavailable, so Google treats the outage as temporary and keeps
+# the URLs. Do NOT add a noindex meta tag — with a 503 it is unnecessary and,
+# crawled repeatedly, it can drop the pages from the index.
+
+RewriteEngine On
+
+# Let the page itself (and nothing else) be served normally
+RewriteCond %{REQUEST_URI} !^/maintenance\.html$
+RewriteCond %{REQUEST_URI} !^/index\.html$
+RewriteRule ^ - [R=503,L]
+
+ErrorDocument 503 /index.html
+
+<IfModule mod_headers.c>
+  # Come back in an hour — adjust to the real window if it is known
+  Header always set Retry-After "3600"
+  Header always set Cache-Control "no-store, must-revalidate"
+</IfModule>

@@ -1,0 +1,865 @@
+<title>Remixer: аудит конкурентов — AI-билдеры сайтов, Q3 2026</title>
+
+<style>
+:root{
+  --paper:#FAF7F0; --s1:#F5F1E7; --s2:#EFEADD; --s3:#E7E0D0; --rule:#DDD5C2; --rule-soft:#E8E1D2;
+  --ink:#1A1713; --ink-2:#4A443A; --ink-3:#6E6759; --ink-4:#948C7C;
+  --accent:#0E6B72; --accent-soft:#0E6B7218; --accent-line:#0E6B7240;
+  --good:#3D6B2E; --good-bg:#3D6B2E14;
+  --warn:#9A6408; --warn-bg:#9A640814;
+  --bad:#A32E2E; --bad-bg:#A32E2E14;
+  --brand:#5B3FD1;
+  --shadow:0 0 0 1px #1A171314, 0 1px 1px -.5px #1A171310, 0 3px 3px -1.5px #1A17130D, 0 6px 6px -3px #1A17130A;
+  --measure:68ch;
+  --display:"Gilroy","Gilroy SemiBold","Avenir Next","Segoe UI Variable Display",system-ui,-apple-system,sans-serif;
+  --body:"Proxima Nova","Avenir Next",-apple-system,system-ui,"Segoe UI",sans-serif;
+  --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#181613; --s1:#1E1B18; --s2:#24211D; --s3:#2B2722; --rule:#3A342C; --rule-soft:#2E2A24;
+    --ink:#F4F0E7; --ink-2:#CBC4B6; --ink-3:#9C9384; --ink-4:#736C5F;
+    --accent:#4FC3C9; --accent-soft:#4FC3C91F; --accent-line:#4FC3C94D;
+    --good:#8FC47A; --good-bg:#8FC47A1A;
+    --warn:#E0A94A; --warn-bg:#E0A94A1A;
+    --bad:#E38080; --bad-bg:#E380801A;
+    --brand:#A48CF5;
+    --shadow:0 0 0 1px #00000040, 0 1px 1px -.5px #00000030, 0 3px 3px -1.5px #00000028, 0 6px 6px -3px #00000020;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#181613; --s1:#1E1B18; --s2:#24211D; --s3:#2B2722; --rule:#3A342C; --rule-soft:#2E2A24;
+  --ink:#F4F0E7; --ink-2:#CBC4B6; --ink-3:#9C9384; --ink-4:#736C5F;
+  --accent:#4FC3C9; --accent-soft:#4FC3C91F; --accent-line:#4FC3C94D;
+  --good:#8FC47A; --good-bg:#8FC47A1A;
+  --warn:#E0A94A; --warn-bg:#E0A94A1A;
+  --bad:#E38080; --bad-bg:#E380801A;
+  --brand:#A48CF5;
+  --shadow:0 0 0 1px #00000040, 0 1px 1px -.5px #00000030, 0 3px 3px -1.5px #00000028, 0 6px 6px -3px #00000020;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:16.5px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 28px 120px}
+
+/* ---------- masthead ---------- */
+.masthead{padding:64px 0 40px; border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 20px}
+h1{
+  font-family:var(--display); font-weight:700; margin:0 0 18px;
+  font-size:clamp(34px,5.4vw,56px); line-height:1.06; letter-spacing:-0.04em; text-wrap:balance; max-width:20ch;
+}
+.dek{font-size:19px; line-height:1.5; color:var(--ink-2); max-width:60ch; margin:0 0 30px}
+.meta{display:flex; flex-wrap:wrap; gap:8px 28px; font-family:var(--mono); font-size:11.5px; color:var(--ink-3); letter-spacing:.02em}
+.meta b{color:var(--ink-2); font-weight:500}
+
+/* ---------- layout ---------- */
+.cols{display:grid; grid-template-columns:190px minmax(0,1fr); gap:56px; margin-top:48px; align-items:start}
+@media (max-width:940px){ .cols{grid-template-columns:1fr; gap:0} nav.toc{display:none} }
+nav.toc{position:sticky; top:24px; font-size:13px; line-height:1.45}
+nav.toc .tl{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-4); margin-bottom:12px}
+nav.toc a{display:block; padding:5px 0 5px 12px; color:var(--ink-3); text-decoration:none; border-left:2px solid var(--rule-soft)}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--accent); border-left-color:var(--accent)}
+nav.toc a .n{font-family:var(--mono); font-size:10px; color:var(--ink-4); margin-right:7px}
+
+section{padding-top:56px; scroll-margin-top:20px}
+h2{
+  font-family:var(--display); font-weight:700; font-size:clamp(25px,3vw,32px); line-height:1.12; letter-spacing:-0.032em;
+  margin:0 0 8px; text-wrap:balance; display:flex; gap:14px; align-items:baseline;
+}
+h2 .num{font-family:var(--mono); font-size:12px; font-weight:400; letter-spacing:.06em; color:var(--accent); flex:none; transform:translateY(-2px)}
+h3{font-family:var(--display); font-weight:700; font-size:20px; line-height:1.22; letter-spacing:-0.02em; margin:38px 0 10px; text-wrap:balance}
+h4{font-family:var(--body); font-weight:700; font-size:15.5px; margin:26px 0 6px; letter-spacing:-0.005em}
+.sub{color:var(--ink-3); font-size:15px; max-width:var(--measure); margin:0 0 20px; padding-bottom:14px; border-bottom:1px solid var(--rule-soft)}
+p{max-width:var(--measure); margin:0 0 15px}
+ul,ol{max-width:var(--measure); margin:0 0 16px; padding-left:20px}
+li{margin-bottom:7px}
+li::marker{color:var(--ink-4)}
+strong{font-weight:700; color:var(--ink)}
+a{color:var(--accent); text-underline-offset:2px}
+code,.m{font-family:var(--mono); font-size:.87em; background:var(--s2); padding:1.5px 5px; border-radius:4px; color:var(--ink-2)}
+hr{border:0; border-top:1px solid var(--rule); margin:44px 0}
+
+/* ---------- tables ---------- */
+.scroll{overflow-x:auto; margin:22px 0 28px; border:1px solid var(--rule); border-radius:10px; background:var(--s1)}
+table{border-collapse:collapse; width:100%; font-size:14px; min-width:520px}
+th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule-soft); vertical-align:top}
+thead th{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3);
+  background:var(--s2); border-bottom:1px solid var(--rule); position:sticky; top:0; white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--s2)}
+td.num,th.num{font-family:var(--mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+.stick{position:sticky; left:0; background:var(--s1); font-weight:700; min-width:186px; border-right:1px solid var(--rule)}
+tbody tr:hover .stick{background:var(--s2)}
+thead .stick{background:var(--s2); z-index:2}
+caption{caption-side:bottom; text-align:left; padding:10px 14px; font-size:12.5px; color:var(--ink-3); border-top:1px solid var(--rule-soft)}
+
+/* score cell */
+.sc{display:flex; align-items:center; gap:7px; font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:13px}
+.sc i{display:block; height:4px; border-radius:2px; background:var(--accent); opacity:.55; width:calc(var(--s,0) * 9px)}
+.sc.us{color:var(--ink); font-weight:700}
+.sc.us i{background:var(--brand); opacity:.85}
+.sc.nt{background:none; padding:0; color:var(--ink-4)}
+
+/* ---------- chips ---------- */
+.chip{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px; letter-spacing:.05em;
+  text-transform:uppercase; padding:2.5px 7px; border-radius:4px; white-space:nowrap; font-weight:500}
+.ok{background:var(--good-bg); color:var(--good)}
+.wr{background:var(--warn-bg); color:var(--warn)}
+.bd{background:var(--bad-bg); color:var(--bad)}
+.nt{background:var(--s3); color:var(--ink-3)}
+.ac{background:var(--accent-soft); color:var(--accent)}
+
+/* ---------- panels ---------- */
+.brief{background:var(--s2); border:1px solid var(--rule); border-radius:12px; padding:32px 34px; margin:40px 0 8px}
+.brief h2{font-size:23px; margin-bottom:14px}
+.brief p,.brief ul{max-width:74ch}
+.brief .lang{font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-4); margin-bottom:16px}
+
+.note{border-left:3px solid var(--accent); background:var(--accent-soft); padding:14px 18px; border-radius:0 8px 8px 0; margin:22px 0; max-width:var(--measure)}
+.note.warnbox{border-left-color:var(--warn); background:var(--warn-bg)}
+.note.badbox{border-left-color:var(--bad); background:var(--bad-bg)}
+.note p:last-child{margin-bottom:0}
+.note .lbl{font-family:var(--mono); font-size:10.5px; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3); display:block; margin-bottom:6px}
+
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(238px,1fr)); gap:14px; margin:24px 0 30px}
+.card{background:var(--s1); border:1px solid var(--rule); border-radius:10px; padding:17px 19px}
+.card .k{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-4); margin-bottom:7px}
+.card .v{font-family:var(--display); font-weight:700; font-size:17px; letter-spacing:-0.015em; margin-bottom:6px; line-height:1.2}
+.card p{font-size:13.5px; color:var(--ink-3); margin:0; line-height:1.5}
+
+/* swatches */
+.sw{display:inline-block; width:15px; height:15px; border-radius:3px; border:1px solid #00000026; vertical-align:-3px; margin-right:7px; flex:none}
+.ramp{display:flex; gap:0; border-radius:7px; overflow:hidden; border:1px solid var(--rule); margin:6px 0 18px; max-width:var(--measure)}
+.ramp span{flex:1; height:38px}
+
+/* step sequence */
+.steps{counter-reset:st; list-style:none; padding:0; margin:24px 0 30px; max-width:var(--measure)}
+.steps li{counter-increment:st; position:relative; padding:0 0 20px 44px; border-left:1px solid var(--rule); margin:0}
+.steps li:last-child{border-left-color:transparent; padding-bottom:0}
+.steps li::before{
+  content:counter(st); position:absolute; left:-13px; top:-2px; width:25px; height:25px; border-radius:50%;
+  background:var(--paper); border:1px solid var(--rule); color:var(--ink-3);
+  font-family:var(--mono); font-size:11px; display:grid; place-items:center;
+}
+.steps b{display:block; font-family:var(--display); font-size:16px; letter-spacing:-0.01em; margin-bottom:3px}
+.steps p{margin:0; font-size:14.5px; color:var(--ink-2)}
+
+.ui{font-family:var(--mono); font-size:12.5px; background:var(--s2); border:1px solid var(--rule); border-radius:8px;
+  padding:13px 16px; margin:16px 0; max-width:var(--measure); white-space:pre-wrap; line-height:1.75; color:var(--ink-2)}
+
+.kv{display:grid; grid-template-columns:auto 1fr; gap:5px 16px; font-size:14px; margin:14px 0 22px; max-width:var(--measure)}
+.kv dt{font-family:var(--mono); font-size:12px; color:var(--ink-3); white-space:nowrap}
+.kv dd{margin:0}
+
+footer{margin-top:80px; padding-top:26px; border-top:2px solid var(--ink); font-size:13.5px; color:var(--ink-3); max-width:74ch}
+
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:3px}
+@media (prefers-reduced-motion: no-preference){ a,.card{transition:color .12s cubic-bezier(.2,0,0,1), border-color .12s cubic-bezier(.2,0,0,1)} }
+@media (max-width:640px){ .wrap{padding:0 18px 80px} .brief{padding:24px 20px} .masthead{padding-top:40px} }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">DreamHost Remixer · конкурентный аудит</p>
+  <h1>Догнать и перегнать: что на самом деле делают AI-билдеры</h1>
+  <p class="dek">Разбор Lovable, Bolt, Base44, GoDaddy Airo и v0 — по интерфейсу, продуктовым решениям и экономике. С измерениями, снятыми с живых продуктов, и с честным списком того, что проверить не удалось.</p>
+  <div class="meta">
+    <span><b>Дата:</b> 13 августа 2026</span>
+    <span><b>Основа:</b> 6 досье · 6 UX-линз · адверсариальный фактчек · живой обход интерфейсов</span>
+    <span><b>Объём:</b> 17 агентов, 786 обращений к источникам</span>
+  </div>
+</header>
+
+<div class="cols">
+
+<nav class="toc">
+  <p class="tl">Содержание</p>
+  <a href="#brief"><span class="n">EN</span>Executive brief</a>
+  <a href="#shift"><span class="n">01</span>Что изменилось</a>
+  <a href="#field"><span class="n">02</span>Поле игроков</a>
+  <a href="#lovable"><span class="n">03</span>Lovable вблизи</a>
+  <a href="#publish"><span class="n">04</span>Публикация и домен</a>
+  <a href="#others"><span class="n">05</span>Остальные четверо</a>
+  <a href="#tokens"><span class="n">06</span>Измеренные токены</a>
+  <a href="#stakes"><span class="n">07</span>Обязательный минимум</a>
+  <a href="#we"><span class="n">08</span>Где мы сейчас</a>
+  <a href="#catchup"><span class="n">09</span>Догнать</a>
+  <a href="#overtake"><span class="n">10</span>Перегнать</a>
+  <a href="#craft"><span class="n">11</span>Правила крафта</a>
+  <a href="#risks"><span class="n">12</span>Возражения и дыры</a>
+  <a href="#next"><span class="n">13</span>Что дальше</a>
+</nav>
+
+<main>
+
+<!-- ================= EN BRIEF ================= -->
+<section id="brief">
+<div class="brief">
+  <p class="lang">Executive summary — English</p>
+  <h2 style="display:block">The category moved, and it moved against three of our assumptions</h2>
+
+  <p><strong>1. Everyone is a registrar now.</strong> Lovable sells and registers domains in-app and states in its own docs that it "becomes the registrar for that domain." Vercel sells domains inside v0's publish flow. Bolt, Base44 and even Emergent — a startup with no infrastructure — resell. Selling a domain in-flow is table stakes, not a moat. <strong>Retire the internal line that competitors "structurally cannot" do this.</strong></p>
+
+  <p><strong>2. One-click external DNS was bought, not built.</strong> Replit — neither registrar nor host — closed the exact gap we still have by buying Entri, which signs into the user's registrar and writes records for them. Lovable uses Entri too. Our missing Domain Connect is category-standard today, but the fix is a purchase order, not a roadmap.</p>
+
+  <p><strong>3. Publishing is free everywhere except here.</strong> Lovable: "Publishing itself is free." GoDaddy charges only for agent actions, and publishing is not one. Bolt, Base44, Figma Make and Replit all exempt it. Remixer charges credits to publish a change. The only comparable product is Emergent, which bills rent on a live deployment and sits near 2.7/5 on Trustpilot.</p>
+
+  <h3 style="margin-top:26px">What decides whether we win</h3>
+  <ul>
+    <li><strong>Unmeter the finish line.</strong> Publishing must cost zero credits, and the free-action list must live inside the product, not in a KB article. This is our most attackable line on any comparison page.</li>
+    <li><strong>Own the sixty seconds around go-live</strong> — not "sell a domain," which everyone now does. Zero-record connect for domains already in the customer's DreamHost account; Entri or Domain Connect for external ones; a named state machine with a recovery verb per failure; and a real mailbox provisioned in the same transaction that writes the A record.</li>
+    <li><strong>Stop dressing like the thing we generate.</strong> Inter, an indigo-to-purple gradient and a cool near-black are three of the four documented AI-slop tells, and all three are in our current spec. Our action blue <span class="m">#1587FF</span> sits three points from Bolt's <span class="m">#1488FC</span>.</li>
+  </ul>
+
+  <div class="note badbox" style="max-width:74ch">
+    <span class="lbl">Correction to our own thesis</span>
+    <p>The claim that registrar + host + mail "exists nowhere else" is <strong>false</strong>. Wix — which owns Base44 — has all three. So do GoDaddy, IONOS and Hostinger. Cloudflare gives away at-cost registration, the fastest domain attach in existence, 300+ PoPs and free inbound email routing. What DreamHost actually holds is <strong>a book of existing customers with parked domains</strong>: a distribution advantage with a shelf life, not a structural moat. Plan accordingly — convert the installed base before it churns.</p>
+  </div>
+</div>
+</section>
+
+<!-- ================= 01 ================= -->
+<section id="shift">
+<h2><span class="num">01</span>Что изменилось в 2026 году</h2>
+<p class="sub">Три сдвига за последние четыре месяца, и все три бьют по нашим исходным допущениям.</p>
+
+<h3>Категория стала регистраторами</h3>
+<p>Lovable теперь полноценный регистратор: продаёт домены внутри продукта, регистрирует их даже без привязки к проекту, поддерживает трансфер по EPP-коду с переносом записей A/AAAA/CNAME/MX/TXT/CAA/NS и переключатель WHOIS-приватности. Формулировка из их документации прямая: «Lovable becomes the registrar for that domain». Vercel продаёт домены прямо в publish-флоу v0 по себестоимости. Bolt перепродаёт с 60-дневной блокировкой трансфера. Base44 — через Wix или IONOS. Emergent, стартап вообще без инфраструктуры, перепродаёт домены IONOS с бесплатным первым годом и SSL меньше чем за десять минут.</p>
+<p><strong>Вывод, который надо принять:</strong> «продать домен внутри флоу» — это уже гигиена, а не преимущество. Формулировку про то, что конкуренты «структурно не могут», надо убрать из всех внутренних материалов.</p>
+
+<h3>DNS в один клик оказался покупным</h3>
+<p>Replit — ни регистратор, ни хостер — закрыл ровно ту дыру, которая осталась у нас. Их документация описывает «автоматическую настройку DNS через Entri, стороннего сервиса, который заходит в ваш регистратор и пишет записи за вас». Релиз-нот от 5 июня 2026: «настройка DNS для кастомного домена автоматизирована; ручная конфигурация записей больше не нужна». Lovable использует тот же Entri, оставляя ручной путь как запасной (A → <span class="m">185.158.133.1</span>, TXT на хосте <span class="m">_lovable</span>).</p>
+<p>Наш подтверждённый пробел с Domain Connect сегодня <em>среднерыночный</em> — Bolt, Base44, Figma и GoDaddy для внешних доменов всё ещё выдают таблицу записей. Но он закрывается вокруг нас, и закрывается закупкой, а не разработкой. Ориентир цены Entri — около $249/мес за 600 подключений в год <span class="chip nt">не подтверждено</span>.</p>
+
+<h3>Пейволл ушёл с финишной черты — везде, кроме нас</h3>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Продукт</th><th>Позиция по оплате публикации</th><th>Источник</th></tr></thead>
+<tbody>
+<tr><td class="stick">Lovable</td><td>Публикация бесплатна. Кредиты тратят только бэкенд-операции и AI.</td><td>«Publishing itself is free.» <span class="chip ok">проверено</span></td></tr>
+<tr><td class="stick">GoDaddy Airo</td><td>Кредиты списываются только за действия агентов. Публикация агентом не является.</td><td>Правило опубликовано <span class="chip ok">проверено</span></td></tr>
+<tr><td class="stick">Bolt</td><td>Освобождены откаты версий, действия по кнопкам и аудиты безопасности.</td><td>Документация <span class="chip ok">проверено</span></td></tr>
+<tr><td class="stick">Base44</td><td>Освобождены все ручные визуальные правки и все операции с БД.</td><td>Документация <span class="chip ok">проверено</span></td></tr>
+<tr><td class="stick">Emergent</td><td>50 кредитов/мес как аренда за живой деплой.</td><td>Рейтинг ≈2.7/5 <span class="chip nt">не подтверждено</span></td></tr>
+<tr><td class="stick"><strong>Remixer</strong></td><td><strong>Кредиты списываются за публикацию изменений.</strong></td><td>Наши собственные данные <span class="chip bd">хуже всех в поле</span></td></tr>
+</tbody>
+</table>
+<caption>Из четырнадцати изученных продуктов единственный аналог нашей модели — Emergent, и это худший по репутации игрок выборки.</caption>
+</div>
+
+<div class="note">
+<span class="lbl">Личная проверка</span>
+<p>Я опубликовал реальный проект с <strong>бесплатного</strong> аккаунта Lovable — публикация прошла без единого кредита и без пейволла. Пейволл появился только на кнопке «+ Add domain». Это подтверждает правило на живом продукте, а не по документации.</p>
+</div>
+</section>
+
+<!-- ================= 02 ================= -->
+<section id="field">
+<h2><span class="num">02</span>Поле игроков</h2>
+<p class="sub">Оценки 1–5. 3 = соответствует рынку, 5 = определяет уровень. Таблица прокручивается вбок.</p>
+
+<div class="scroll">
+<table>
+<thead><tr>
+<th class="stick">Dimension</th><th class="num">Lovable</th><th class="num">v0</th><th class="num">Base44</th><th class="num">Replit</th><th class="num">Bolt</th><th class="num">Airo</th><th class="num">Figma Make</th><th class="num">Remixer</th>
+</tr></thead>
+<tbody>
+<tr><td class="stick">Onboarding / time-to-wow</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc nt">—</span></td><td><span class="sc us" style="--s:3"><i></i>3</span></td></tr>
+<tr><td class="stick">Anti-generic generation</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc us" style="--s:1"><i></i>1</span></td></tr>
+<tr><td class="stick">Читаемость генерации</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc nt">—</span></td><td><span class="sc us" style="--s:2"><i></i>2</span></td></tr>
+<tr><td class="stick">Шелл и навигация</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc us" style="--s:3"><i></i>3</span></td></tr>
+<tr><td class="stick">Цикл работы с агентом</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc us" style="--s:2"><i></i>2</span></td></tr>
+<tr><td class="stick">Публикация и деплой</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc us" style="--s:2"><i></i>2</span></td></tr>
+<tr><td class="stick">Домены / DNS / SSL</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:4.5"><i></i>4.5</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:3"><i></i>4/2</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc us" style="--s:3"><i></i>3</span></td></tr>
+<tr><td class="stick">Почта / ящики</td>
+<td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc nt">0</span></td><td><span class="sc" style="--s:1"><i></i>1</span></td><td><span class="sc nt">0</span></td><td><span class="sc nt">0</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc nt">0</span></td><td><span class="sc us nt">0 сейчас</span></td></tr>
+<tr><td class="stick">Экономика и пейволлы</td>
+<td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:2"><i></i>2</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc us" style="--s:2"><i></i>2</span></td></tr>
+<tr><td class="stick">Крафт и моушен</td>
+<td><span class="sc" style="--s:5"><i></i>5</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:3"><i></i>3</span></td><td><span class="sc" style="--s:2"><i></i>3/2</span></td><td><span class="sc" style="--s:4"><i></i>4</span></td><td><span class="sc us" style="--s:2"><i></i>2</span></td></tr>
+</tbody>
+</table>
+<caption>Оценки экспертные, без формальной рубрики — читайте их как направление, а не как измерение. Четыре ячейки по Remixer в исходном материале стояли как «неизвестно»: у нас нет своих данных по визуальному редактированию, версиям, восстановлению и постлончу.</caption>
+</div>
+
+<h3>Однострочные вердикты</h3>
+<div class="cards">
+  <div class="card"><p class="k">Эталон</p><p class="v">Lovable</p><p>Не потому что какая-то фича непобедима, а потому что это единственный продукт, где весь цикл — договориться, сделать, проверить, откатить — спроектирован как одна система с одним словарём.</p></div>
+  <div class="card"><p class="k">Воронка</p><p class="v">v0</p><p>Лучшее «докажи до регистрации» в категории и единственный агент, который публично проверяет себя скриншотами. Потом выставляет за это счёт по сырым токенам.</p></div>
+  <div class="card"><p class="k">Токены и масштаб</p><p class="v">Base44</p><p>Самая зрелая система токенов в выборке и единственный билдер, всерьёз спроектированный под сайт на 40+ страниц. Портят ветки, пишущие в продовые данные, и 5 кредитов в день на free.</p></div>
+  <div class="card"><p class="k">Раскрытие кода</p><p class="v">Bolt</p><p>Самый чистый ответ на «показать код, не напугав» — целая IDE с терминалом за одной иконкой <span class="m">&lt;&gt;</span>. Всё остальное заложник тарификации по сырым токенам.</p></div>
+  <div class="card"><p class="k">Наш двойник</p><p class="v">GoDaddy Airo</p><p>Регистратор + хостер прикрутил AI-билдер. Лучший входной экран в поле, чистое правило списания — и free-тариф, который <strong>вообще не может публиковать</strong>.</p></div>
+  <div class="card"><p class="k">Предостережение</p><p class="v">Hostinger Horizons</p><p>Ближайшее структурное зеркало Remixer. Ящики по тарифам (0/1/2/5) доказывают, что почта конвертит. Билдер, закопанный в hPanel, доказывает, что бывает без своей парадной двери.</p></div>
+</div>
+</section>
+
+<!-- ================= 03 ================= -->
+<section id="lovable">
+<h2><span class="num">03</span>Lovable вблизи</h2>
+<p class="sub">Раздел, против которого надо строить. Ниже — в том числе замеры, снятые мной внутри реального залогиненного билдера 13 августа.</p>
+
+<h3>Один композер на три контекста</h3>
+<p>Самое важное архитектурное решение Lovable: <strong>герой на маркетинге, поле «новый проект» на дашборде и чат внутри редактора — это один и тот же компонент</strong>. Одинаковый <span class="m">data-testid</span>, одинаковые аффордансы. Маркетинговый сайт не рекламирует продукт — он <em>и есть</em> его основной орган управления. Мышечная память, сформированная до регистрации, переносится внутрь без потерь.</p>
+<p>Плейсхолдер учит грамматике промпта: скрытый от скринридера спан плавно перебирает подсказки вида «Ask Lovable to create a landing page for my…» с кросс-фейдом 500 мс. Это снимает паралич чистого листа без модалки, тултипа и тура — и попутно тренирует форму «глагол вперёд», пока человек колеблется.</p>
+<p><strong>Никакой преднастройки перед генерацией.</strong> В документации прямо: «шаблонов и выбора стиля в этом флоу не существует». Одно решение до первой генерации. Стена регистрации срабатывает <em>на отправке</em>, и промпт её переживает — человек попадает на дашборд с уже запущенной сборкой. Итого: набрать, отправить, один клик OAuth.</p>
+
+<h3>Механизм против «генеричности»</h3>
+<p>Для визуально открытых задач Lovable генерирует <strong>три параллельных дизайн-направления</strong> для сравнения бок о бок, с уточнением до шести раз. Там, где нужна более сильная идентичность, вместо этого запускаются «дизайн-вопросы»: типографика (пары шрифтов, сгруппированные по эстетике), цвет (кураторские палитры по настроению), раскладка (вайрфреймы). Ответы компилируются в бриф с конкретными шрифтами, hex-кодами и подходом к раскладке.</p>
+<p>Критично: этот шаг <strong>полностью пропускается</strong> для дашбордов, админок, клонов по URL и проектов на готовой дизайн-системе — там нужна скорость, а не арт-дирекшен. Список исключений здесь не менее важен, чем сама фича.</p>
+
+<h3>Шелл — замерено на живом продукте</h3>
+<div class="note">
+<span class="lbl">Первичные данные</span>
+<p>Синтез исследования отмечал, что ширины панелей Lovable «за авторизацией и не проверяемы». Я снял их напрямую через <span class="m">getBoundingClientRect</span> на вьюпорте <strong>2560×1212</strong>.</p>
+</div>
+<dl class="kv">
+  <dt>Верхняя панель</dt><dd><strong>48 px</strong> высотой; все контролы внутри — пилюли ровно <strong>28 px</strong>, иконки 28×28</dd>
+  <dt>Панель чата</dt><dd><strong>324 px</strong> — то есть превью отдано ~87% ширины экрана</dd>
+  <dt>Фон шелла</dt><dd><span class="sw" style="background:#1F1F1E"></span><span class="m">#1F1F1E</span> — <strong>тёплый</strong> тёмно-серый (R31 G31 B30), не холодный</dd>
+  <dt>Фон вокруг превью</dt><dd><span class="sw" style="background:#272726"></span><span class="m">#272726</span> — ровно на одну ступень светлее шелла</dd>
+  <dt>Границы</dt><dd><span class="sw" style="background:#41413D"></span><span class="m">#41413D</span> — тоже тёплые</dd>
+  <dt>Шрифт в приложении</dt><dd><strong>Camera Plain Variable</strong> — тот же, что на маркетинге, включая начертание 480</dd>
+</dl>
+
+<p><strong>Раскладка верхней панели слева направо:</strong> логотип-переключатель проекта 32×32 → имя проекта в две строки с подписью «Last saved version» → «View history» → «Close sidebar» → сегментированная группа <strong>Preview · Files · Code · More</strong> → по центру: выбор устройства, обновление, <strong>селектор страницы, показывающий маршрут <span class="m">/Homepage</span></strong>, открыть в новой вкладке → справа <strong>Share · Upgrade · Publish</strong>.</p>
+
+<div class="note">
+<span class="lbl">Подтверждение нашего правила акцента</span>
+<p>Замеренные заливки кнопок: <strong>Publish</strong> = <span class="m">oklch(0.5243 0.2396 264.41)</span> — это токен <span class="m">--bg-accent</span> (синий). <strong>Upgrade</strong> = <span class="m">oklch(0.5899 0.2523 294.88)</span> — токен <span class="m">--bg-special</span> (фиолетовый). Эталон красит <em>действие</em> синим, а <em>план и бренд</em> — фиолетовым. Это ровно то правило, которое мы уже приняли в Remixer. Наша дисциплина акцента совпадает с лучшей в поле.</p>
+</div>
+
+<h3>Раздел More — панель на месте превью</h3>
+<p>URL вида <span class="m">?view=more&amp;subview=analytics</span>. Восемь разделов в левой навигации: <strong>Analytics · Cloud · AI · Agent integrations · Payments · Connectors · Security · SEO &amp; AI search</strong>. Структурно это тот же ход, который делает Remixer — модуль рендерится вместо превью сайта. Мы не одиноки в нём, и это хорошо.</p>
+
+<div class="cards">
+  <div class="card"><p class="k">Analytics</p><p class="v">Живёт отдельно</p><p>Метрики Visitors / Page views / Views per visit / Visit duration / Bounce rate, разрезы Source / Page / Device / Country. <strong>Аналитики нет в панели публикации</strong> — независимое подтверждение решения, которое команда уже приняла.</p></div>
+  <div class="card"><p class="k">Cloud</p><p class="v">Managed Supabase</p><p>Карточка «Enable more features» с прогрессивным включением БД и файлового хранилища, плюс выход для своих: «Already have a Supabase project? Connect it here».</p></div>
+  <div class="card"><p class="k">Agent integrations</p><p class="v">Приложение как MCP</p><p>«Your app isn't just for people anymore. It's for AI too.» Сгенерированное приложение публикуется как MCP-сервер для ChatGPT и Claude. Здесь они реально впереди поля.</p></div>
+  <div class="card"><p class="k">Security</p><p class="v">Два уровня скана</p><p><strong>Deep</strong> (основная) и <strong>Basic</strong> (вторичная) — выбор глубины вынесен в две кнопки, а не в дропдаун. Плюс кнопка «Edit security memory»: у сканирующего агента есть редактируемая память.</p></div>
+  <div class="card"><p class="k">SEO &amp; AI search</p><p class="v">Настройки через чат</p><p>Вместо формы — живое превью выдачи и две кнопки: <strong>«Ask Lovable to edit details»</strong> и «Ask Lovable to edit icon». Настройка возвращает задачу в чат, а не строит вторую CMS.</p></div>
+  <div class="card"><p class="k">Payments</p><p class="v">Два пути</p><p>Built-in payments («Lovable подберёт оптимальный шлюз») и Shopify connector для физических товаров. Одна кнопка «Explore payments».</p></div>
+</div>
+
+<h3>Цикл агента</h3>
+<p><strong>Два режима с асимметричной ценой.</strong> Build (0.5–2.0 кредита по факту) и Plan (<strong>фиксированный 1 кредит за сообщение, кода не касается</strong>). Асимметрия цены и есть UX: думать дёшево и предсказуемо, делать — по счётчику.</p>
+<p><strong>Plan-режим рисует редактируемый документ с настоящим диффом.</strong> Полноэкранный план с обзором, ключевыми решениями, компонентами, моделями данных и последовательностью. Пользователь правит markdown напрямую или выделяет фрагмент и получает поле «Describe the change…». Правки показываются диффом: удалённое зачёркнуто, новое подсвечено, переключатель «Show changes / Edit plan». Это заимствованный из Google Docs жест рецензирования, применённый к намерению AI.</p>
+<p><strong>Ожидание продуктивно.</strong> Промпты, отправленные во время работы агента, попадают в видимую очередь над полем ввода, где их можно поставить на паузу, переставить, отредактировать, удалить. Остановка на середине сохраняет сделанное и списывает только отработанное.</p>
+<p><strong>Стоимость раскрыта в точке трат.</strong> У каждого завершённого ответа в меню «···» — <strong>стоимость сообщения, длительность и ссылка на него</strong>.</p>
+
+<h4>Что бесплатно — и это опубликовано</h4>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Действие</th><th>Формулировка Lovable</th></tr></thead>
+<tbody>
+<tr><td class="stick">Публикация и переиздание</td><td>«Publishing itself is free.»</td></tr>
+<tr><td class="stick">Хостинг, SSL, CDN</td><td>Тарифы не ограничивают посетителей, запросы и трафик</td></tr>
+<tr><td class="stick">Сканы безопасности</td><td>И Basic, и Deep — ноль кредитов</td></tr>
+<tr><td class="stick">«Try to fix» / «Try to fix all»</td><td>«free within our fair use policy»</td></tr>
+<tr><td class="stick">Первые 100 правок текста в день</td><td>Полностью снимает плату за исправление опечатки</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Словарь и копирайт</h3>
+<p><strong>Один статусный словарь на несвязанные подсистемы.</strong> «Up to date» / «Out of date» / «Scanning your project…» встречаются идентично и в Security, и в SEO. Именно поэтому продукт ощущается одной вещью, а не набором фич.</p>
+<p><strong>Четырёхуровневый язык иконок вместо красный/зелёный:</strong> зелёная галочка — пройдено, синяя лампочка — низкое влияние, янтарный треугольник — среднее, красный крест — высокое. С расшифровкой человеческим языком: Error — «критические проблемы, требующие внимания прямо сейчас».</p>
+<p><strong>Глагол восстановления для каждого состояния отказа.</strong> Verifying → «Check status». Stalled → «Retry». Offline → «Recover». Removed → «Reconnect». Для доменов с Cloudflare — конкретный совет: поставить записи в <strong>DNS only (серое облако)</strong>, а не Proxied.</p>
+
+<h3>Что Lovable делает плохо</h3>
+<ul>
+<li><strong>Сгорание кредитов — главная претензия к продукту.</strong> Месячные кредиты переносятся, но сгорают через 2 месяца; годовые — через месяц после периода; дневные — в тот же день. В FAQ по ценам три оборонительных вопроса подряд про сгорание и возврат.</li>
+<li><strong>Нулевой баланс ставит на паузу бэкенд живого приложения.</strong> Клиентское приложение может сломаться из-за того, что у владельца кончились кредиты <em>на сборку</em>.</li>
+<li><strong>Точечные визуальные правки молча перезатираются</strong> последующими промптами — визуальный редактор и чат пишут в одни файлы без блокировки.</li>
+<li><strong>Неосновные домены редиректят 302</strong>, то есть временно — ссылочный вес не консолидируется.</li>
+<li><strong>Три инцидента безопасности за тринадцать месяцев</strong>, включая BOLA-уязвимость с утечкой исходников, ключей Supabase и истории AI-переписок; 48 дней открытой, сначала отрицалась.</li>
+</ul>
+</section>
+
+<!-- ================= 04 ================= -->
+<section id="publish">
+<h2><span class="num">04</span>Публикация и домен — снято по шагам</h2>
+<p class="sub">Самая ценная для нас часть. Я прошёл флоу целиком на реальном проекте: панель — это поповер под кнопкой в верхней панели, не модалка и не страница.</p>
+
+<ol class="steps">
+<li><b>Не опубликовано</b>
+<p>Заголовком служит сам статус: <strong>● Not published</strong> плюс кебаб <span class="m">⋮</span>. Ниже — закрываемая карточка первого запуска: «Ready to put your site live? / This lets visitors view what you've built. They never see the changes you make until you publish them.» Дальше лейбл «Website URL», поле с доменом в два тона и карандашом, строка «🌐 Visible to anyone with the link ›», строка «🛡 No security issues found» и синяя кнопка Publish.</p>
+<p style="margin-top:8px"><strong>Кастомного домена в этом состоянии нет вообще.</strong> Он появляется только после первой публикации; в SEO-вкладке правило сказано прямо: «Publish your project before connecting a custom domain».</p></li>
+
+<li><b>Публикуется — около 90 секунд</b>
+<p>Кнопка в верхней панели <em>сама</em> становится <strong>Publishing</strong>: состояние живёт на том контроле, который его вызвал. Тело поповера целиком заменяется на спиннер и текст «Publishing your project / This can take a minute or two. <strong>You can close this and keep chatting with Lovable.</strong>» Ни частичного интерфейса, ни задизейбленных полей — копирайт прямо отпускает пользователя.</p></li>
+
+<li><b>Успех</b>
+<p>«Your website is live» / «Share it to get your first visitors.» и две кнопки: <strong>⧉ Copy link</strong> и <strong>Visit site ↗</strong>. Обратите внимание: копирайт толкает к <em>распространению</em>, а не просто подтверждает факт.</p></li>
+
+<li><b>Опубликовано и актуально — состояние покоя</b>
+<p>Заголовок <strong>● Published</strong> с зелёной точкой, справа <strong>👁 0</strong> — счётчик визитов — и кебаб. Подпись «Your website is up to date». В строке лейбла «Website URL» справа — <strong>+ Add domain</strong> синей ссылкой и фиолетовый бейдж <strong>Pro</strong>. В поле домена ровно <strong>две</strong> иконки: карандаш и копирование. Внизу <strong>Publish changes</strong>, визуально <em>задизейбленная</em>, потому что менять нечего.</p></li>
+
+<li><b>Пейволл домена</b>
+<p>Модалка ~470 px. H1 «Upgrade to Pro», подзаголовок <strong>«You need to be on a pro plan to connect a domain.»</strong> — требование заявлено голым утверждением, без иконки замка. Карточка цены: <strong>$25</strong> + «due today». Список «You will unlock» из шести пунктов. Отдельной строкой <strong>«Next billing cycle (Sep 13, 2026)» → «Your plan will update to $25 / month for 100 credits»</strong>. Внизу <strong>Cancel</strong> и <strong>Upgrade</strong>.</p></li>
+</ol>
+
+<h3>Что это подтверждает в наших решениях</h3>
+<ul>
+<li><strong>Счётчик визитов как один глиф и одно число в шапке панели</strong> — это действительно конвенция Lovable, как мы и предполагали.</li>
+<li><strong>Задизейбленная основная кнопка, когда публиковать нечего</strong> — существует.</li>
+<li><strong>Ровно две иконки в поле домена.</strong> Три — уже угадайка.</li>
+<li><strong>Аналитика не в панели публикации.</strong></li>
+<li><strong>Прогресс не блокирует</strong>, и копирайт освобождает пользователя продолжать работу.</li>
+<li><strong>Требование плана формулируется прямым текстом.</strong> Не «включено в тариф», а «вам нужен план, чтобы подключить домен».</li>
+<li><strong>Домен идёт после первой публикации</strong>, а предусловие раскрыто строкой, а не скрытием кнопки.</li>
+</ul>
+
+<h3>Где эталон делает <em>наоборот</em> — фиксируем честно</h3>
+<div class="note warnbox">
+<p><strong>1. Cancel и ✕ одновременно</strong> на конверсионном диалоге. Наше правило это прямо запрещает. Lovable всё равно так делает.</p>
+<p><strong>2. Зелёная точка на спокойном состоянии.</strong> Наше «правило одной точки» говорит, что в норме точек быть не должно, а смысл несёт зелёное слово. Дух правила не нарушен — точка одна, — но буква нарушена.</p>
+<p><strong>3. Мёртвая задизейбленная кнопка в главном слоте футера</strong>, где наше решение ставит живое «Visit site ↗». Здесь наш выбор лучше: самый ценный слот панели не должен занимать неработающий контрол.</p>
+<p><strong>4. Никакой иконки замка</strong> на гейте. Мы закладывали 🔒 плюс жирное требование; они добиваются той же однозначности одними словами.</p>
+</div>
+
+<h3>Что у них есть, а у нас нет — и стоит взять</h3>
+<ul>
+<li><strong>«✓ No security issues found» прямо в панели публикации.</strong> Сигнал доверия ровно в момент выхода на публику. Дёшево, и больше никто так не делает.</li>
+<li><strong>Раскрытие двух дат в пейволле:</strong> что списывается <em>сегодня</em> и что повторится <em>с названной даты</em> — двумя отдельными строками.</li>
+<li><strong>Карточка первого запуска</strong>, которая двумя предложениями объясняет модель «черновик против живого сайта» и потом исчезает навсегда.</li>
+<li><strong>Копирайт успеха, толкающий к распространению</strong>, а не просто подтверждающий.</li>
+</ul>
+
+<div class="note">
+<span class="lbl">Слабое место эталона, которое легко обыграть</span>
+<p>Пейволл перечисляет шесть общих преимуществ тарифа, и <strong>«Custom domains» стоит вторым пунктом</strong>. Человек пришёл ровно за одной вещью — и вынужден искать её в списке. Вынести наверх то, за чем кликнули, и только потом остальное — дешёвая и очевидная победа. Плюс в заголовке карточки протекает внутреннее имя тарифа: «Upgrade to Pro 1».</p>
+</div>
+</section>
+
+<!-- ================= 05 ================= -->
+<section id="others">
+<h2><span class="num">05</span>Остальные четверо</h2>
+<p class="sub">Что каждый умеет лучше всех и что ломает.</p>
+
+<h3>Bolt.new — раскрытие кода и контроль радиуса поражения</h3>
+<p>Вся IDE — дерево файлов, редактор и нижний ящик с вкладками <strong>Bolt / Publish Output / Terminal</strong> — спрятана за одной иконкой <span class="m">&lt;&gt;</span>. В их же документации это описано как «сделано так, чтобы казаться доступным любому, кто захочет копнуть глубже». Один контрол обслуживает обе аудитории без переключателя режимов.</p>
+<p><strong>Самая недооценённая идея в категории — управление вниманием агента через контекстное меню файла.</strong> Под заголовком «Guide Bolt's focus»: <strong>Target file</strong> (закрепить внимание), <strong>Lock file / Lock all</strong> (исключить из правок). Одно меню закрывает три разные жалобы разом: «он поменял то, что я не просил», «он сломал другую страницу», «он сжёг мои кредиты на перечитывание всего».</p>
+<p><strong>Замеренная раскладка:</strong> <span class="m">--chat-default-width: 450px</span>, <span class="m">--header-height</span> и <span class="m">--panel-header-height</span> оба по <strong>50 px</strong> — намеренно совпадают, чтобы шов читался одной полосой. Радиусы бимодальны с реальным правилом: 6 px хром, 8 px база, а <strong>полные пилюли зарезервированы за AI-контролами</strong> — «Plan», «Build now», чипы импорта. Хром прямоугольный, действия агента — капсулы.</p>
+<div class="note badbox">
+<p><strong>Ломается на экономике.</strong> Из их собственного FAQ: «большая часть токенов уходит на синхронизацию файловой системы проекта с AI: чем больше проект, тем больше токенов на сообщение». Смена цвета кнопки в зрелом проекте может стоить дороже целой фичи в новом. Ошибки тарифицируются по полной. Публичные $25 Pro — приманка: реальная лестница Pro 50 / 100 / 200 показывается только после регистрации.</p>
+</div>
+<p><strong>Живая проверка:</strong> при открытии проекта от 29 июля превью показало <strong>«No preview available»</strong> — WebContainer не поднял dev-сервер. Браузерный рантайм, который и есть их отличие, одновременно их налог на надёжность. Ещё замечено: маркетинг у Bolt тёмный, а само приложение светлое — <strong>идентичность рвётся на входе</strong>, ровно наоборот, чем у Lovable.</p>
+
+<h3>Base44 — токены, прямые манипуляции и масштаб</h3>
+<p><strong>Самая зрелая система токенов в выборке.</strong> Две параллельные нейтральные шкалы: тёплая <span class="m">stone</span> для <em>всех</em> поверхностей и границ, холодная <span class="m">neutral</span> — только для disabled и тёмного шиммера. <strong>Base44 никогда не использует холодный серый как поверхность.</strong> Тени тёплые, 5% чёрного с тёплым подмесом. Состояния взаимодействия закодированы <em>прозрачностью</em>, а не дополнительными цветами: disabled .4, muted .65, hover .85, press .75.</p>
+<div class="note">
+<p><strong>«Premium» у них — полноценное семантическое намерение.</strong> Есть токены <span class="m">--sem-fill-premium-*</span>, <span class="m">--sem-border-premium-*</span>, <span class="m">--focus-ring-premium</span> и <span class="m">--gradient-premium</span>. Апселл <em>спроектирован</em>, а не приклеен. Эту идею стоит забрать дословно.</p>
+</div>
+<p><strong>Ручные визуальные правки стоят ноль кредитов</strong>, и это опубликовано. Панель редактирования отдаёт настоящие токены — цвета, шрифт, отступы по сторонам в px, радиус, прозрачность — и <strong>поле сырых Tailwind-классов</strong>. <span class="m">Cmd+.</span> переключает Default / Discuss / Edit <em>прямо во время набора промпта</em>, сохраняя текст.</p>
+<p><strong>Спроектировано под масштаб:</strong> выпадающий список страниц с поиском, держащий <strong>600 страниц</strong>, и обратный просмотр «Files used in this page» — лучший в поле мост между ментальной моделью не-программиста и файловой системой.</p>
+<div class="note badbox">
+<p><strong>Ветки пишут в живые продовые данные.</strong> Продаются как «Branch your app to try changes safely», но в документации подтверждено: все ветки читают и пишут одни и те же записи. Плюс в ветках отключены публикация, секреты, коннекторы, воркфлоу, редактор кода и восстановление версий. И самая взрывоопасная фраза их документации: <strong>«Credits are non-refundable for tool behavior and AI mistakes.»</strong></p>
+</div>
+
+<h3>GoDaddy Airo — стратегический двойник</h3>
+<p>Тот же ход, что делаем мы: регистратор и хостер прикручивает AI-билдер к существующему аккаунту. Поэтому здесь важны и приёмы, и ловушки.</p>
+<h4>Что стоит скопировать</h4>
+<ul>
+<li><strong>Воронка от домена.</strong> Последовательность: ввести идею в AI-поиск домена → выбрать и <em>купить домен</em> → опубликовать одностраничник. Транзакция — это домен, а сайт идёт подарком. Покупка домена открывает 12 вариантов логотипа, почтовый ящик, подсказки соцсетей и «персональный одностраничник, доставленный мгновенно».</li>
+<li><strong>Именованные агенты вместо одного безликого ассистента:</strong> Airo Agent (оркестратор), App Builder, Compliance Agent, Domain Search and Registration Agent, Website Builder Agent, Logo Agent.</li>
+<li><strong>Дисциплина фиолетового.</strong> Фиолетовый появляется только на бейдже BETA, чередующихся словах заголовка, свечении поля ввода, кнопках отправки и AI-искре. Все не-AI контролы нейтральны. Это ровно то правило, которому должен следовать наш индиго.</li>
+<li><strong>Одно чистое опубликованное правило списания</strong> и документация, которая <em>уводит пользователя со счётчика</em>: «Нужно поменять текст, картинку или цвет — используйте Edit, а не промпт. Это бесплатно. Берегите чат для сложных задач».</li>
+<li><strong>Восстановление никогда не публикует само.</strong> И History, и Backups заканчиваются одной инструкцией: «Once restored, select Publish to make it live.» Это правильная модель.</li>
+<li><strong>Порядок списания заявлен:</strong> сначала тратятся кредиты с ближайшим сроком сгорания, и бесплатные раньше платных.</li>
+<li><strong>MCP-дистрибуция.</strong> С 14 февраля 2026 поиск домена работает внутри разговоров с Claude. Регистратор переносит верх своей воронки в чужие ассистенты — за этим надо следить.</li>
+</ul>
+<h4>Ловушки легаси-хостера, которые нам нельзя повторить</h4>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Ловушка</th><th>Как выглядит</th></tr></thead>
+<tbody>
+<tr><td class="stick">Разрастание брендов</td><td>Четыре пересекающихся билдера и справочная статья <em>«Какой из билдеров GoDaddy у меня?»</em>. Необходимость статьи-разъяснения — это и есть диагноз.</td></tr>
+<tr><td class="stick">Баланс кредитов вне рабочей поверхности</td><td>Меню → «Manage my plan» → «Total AI Credit Usage». Обозреватели называют это одной из главных претензий. <strong>Наш постоянный чип кредитов в верхней панели уже лучше — не двигать никогда.</strong></td></tr>
+<tr><td class="stick">Архитектура, показывающая свою историю</td><td>Панель режимов из шести пунктов, где <em>два</em> соседних — разные менеджеры ассетов («Menu» и «Media»).</td></tr>
+<tr><td class="stick">Дрейф формулировок</td><td>Один и тот же селектор устройств называется «Preview Desktop» в одной статье и «Change device» в другой.</td></tr>
+<tr><td class="stick">Протечка внутренностей dev-сервера</td><td>Кнопка «Refresh Preview» и официальный совет при проблемах — написать в чат «Restart dev server».</td></tr>
+<tr><td class="stick">Настройка вставленным промптом</td><td>Официальная статья про контактную форму велит вставлять в чат готовые строки вроде «CC [ваш адрес] to my email contact form».</td></tr>
+<tr><td class="stick">Выход из билдера за доменом</td><td>Задокументированный путь у крупнейшего регистратора мира: уйти в магазин доменов, купить, вернуться, выбрать приложение, Domain → Settings → Connect Domain. <strong>Это самая большая незанятая дыра в категории.</strong></td></tr>
+<tr><td class="stick">Разрыв идентичности на входе</td><td>Тёмный фиолетовый входной экран сменяется <strong>светлым</strong> билдером. Продукт, в который влюбился, — не тот, которым пользуешься.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="note badbox">
+<span class="lbl">Поправка фактчека — не цитируйте старую версию</span>
+<p>Утверждение, что бесплатные сайты Airo живут на длинном поддомене <span class="m">godaddysites.com</span>, <strong>опровергнуто</strong>. Free-тариф Airo <strong>вообще не может публиковать</strong> — «нужно перейти на платный план, если вы хотите опубликовать сайт». Публикация начинается со Starter $9.99/мес, а проекты живут на <span class="m">*.airoapp.ai</span>. Конкурентный смысл сохраняется — free-тариф без публикации ещё жёстче плохого поддомена, — но механизм в исходной формулировке неверен.</p>
+</div>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Тариф Airo</th><th class="num">Цена (год)</th><th class="num">Кредитов/мес</th><th class="num">Сайтов</th><th>Заметки</th></tr></thead>
+<tbody>
+<tr><td class="stick">Free</td><td class="num">$0</td><td class="num">50</td><td class="num">0</td><td>Без карты, строить можно без ограничений — публиковать нельзя</td></tr>
+<tr><td class="stick">Starter</td><td class="num">$9.99/мес</td><td class="num">150</td><td class="num">1</td><td>Зачёркнуто $14.99</td></tr>
+<tr><td class="stick">Professional</td><td class="num">$24.99/мес</td><td class="num">300</td><td class="num">10</td><td>«Most Popular», добавляет подключение домена и выгрузку кода</td></tr>
+<tr><td class="stick">Ultimate</td><td class="num">$99.99/мес</td><td class="num">750</td><td class="num">50</td><td>Цифра кредитов <span class="chip nt">не подтверждена</span></td></tr>
+</tbody>
+</table>
+<caption>Замеренный расход — около 8 кредитов на промпт <span class="chip nt">один обозреватель</span>. При таком темпе 50 бесплатных кредитов ≈ шесть промптов.</caption>
+</div>
+
+<h3>v0 — доказательство до регистрации и самопроверка агента</h3>
+<p><strong>Стены перед генерацией нет вообще.</strong> Разлогиненный посетитель получает полноценную, стилизованную, многосекционную страницу, которую агент сам же проверил. Стена приходит <em>после</em>, модалкой: «Create your own app / Sign up to build your idea <strong>or duplicate this chat</strong>». Вторая половина фразы прямо конвертирует боязнь потери.</p>
+<p><strong>Агент вслух объявляет арт-дирекшен до того, как писать код:</strong> строка «Generated design direction», затем фраза «I'll commit to a warm, editorial craft-coffee direction with a deep espresso palette and amber accents». И только потом <strong>пишет цветовые токены и шрифты — до единого компонента</strong>.</p>
+<p><strong>Потом он снимает скриншот собственной работы.</strong> В чат выводятся шаги «Verified page in browser», «Screenshotted full page» и даже сама команда оболочки, а десктопный и мобильный рендеры появляются превьюшками. В замеренном прогоне агент нашёл настоящий баг в <em>своём же</em> стартовом компоненте Button и починил его.</p>
+<p><strong>Design Systems 2.0 — сильнейшая история заземления в поле.</strong> Дизайн-система становится «навыком», импортируется из GitHub, Figma, Storybook или npm, порождает <span class="m">v0.json</span>, проходит верификационный чат со сборкой демо-приложения и <strong>паузой на одобрение человеком</strong>. После подключения агент «отказывается использовать компоненты, пропсы и токены, которые не может подтвердить по источникам».</p>
+<div class="note badbox">
+<p><strong>Шесть минут двадцать одна секунда</strong> до первого рендера, с бейджем «Worked for 6m 21s» и пустой панелью превью всё это время. Самолечение при этом <em>тарифицируется</em>: около трети видимых шагов ушло на починку несовместимости в стартовом компоненте самого v0. Индивидуального платного тарифа нет: free ($5 кредитов и жёсткие 7 сообщений в день) → сразу $30 за пользователя. И вся панель инструментов билдера едет с <span class="m">aria-label</span> и <span class="m">title</span> равными null.</p>
+</div>
+</section>
+
+<!-- ================= 06 ================= -->
+<section id="tokens">
+<h2><span class="num">06</span>Измеренные токены</h2>
+<p class="sub">Снято 13 августа со всех пяти маркетинговых сайтов через computed styles и дамп CSS-переменных. Этих данных нет ни в одной статье.</p>
+
+<div class="scroll">
+<table>
+<thead><tr>
+<th class="stick">Параметр</th><th>Lovable</th><th>Bolt</th><th>v0</th><th>Base44</th><th>GoDaddy Airo</th>
+</tr></thead>
+<tbody>
+<tr><td class="stick">Дисплейный шрифт</td><td>Camera Plain Variable <span class="chip ac">лицензионный</span></td><td>Inter Display</td><td>GeistSans</td><td>Dazzed</td><td>gdsherpa + Instrument Serif italic</td></tr>
+<tr><td class="stick">Фон</td><td><span class="sw" style="background:#FAFAFA"></span>#FAFAFA</td><td><span class="sw" style="background:#171719"></span>#171719</td><td><span class="sw" style="background:#000"></span>#000000</td><td><span class="sw" style="background:#F9F8F6"></span>#F9F8F6</td><td><span class="sw" style="background:#fff"></span>белый + тёмный герой</td></tr>
+<tr><td class="stick">Трекинг дисплея</td><td class="num">−0.04em</td><td class="num">−0.025em</td><td class="num">−0.02 → −0.06em</td><td class="num">−0.04em</td><td class="num"><strong>0</strong></td></tr>
+<tr><td class="stick">Интерлиньяж дисплея</td><td class="num">1.10</td><td class="num">1.00</td><td class="num">1.17</td><td class="num">0.89–1.05</td><td class="num"><strong>1.25</strong></td></tr>
+<tr><td class="stick">Система токенов</td><td>206 семантических OKLCH</td><td>167 <span class="m">--bolt-ds-*</span> RGB</td><td>Geist <span class="m">--ds-*</span></td><td>shadcn + один бренд</td><td><strong>571 хешированное имя</strong></td></tr>
+<tr><td class="stick">Радиус поля промпта</td><td class="num">28 px</td><td class="num">24 px</td><td class="num">12 px</td><td class="num">8 px</td><td class="num">пилюля</td></tr>
+<tr><td class="stick">Стекло (backdrop)</td><td>1 элемент, blur(4px)</td><td>blur(10px) saturate(1.2)</td><td>нет</td><td>нет</td><td>кольцо свечения</td></tr>
+<tr><td class="stick">Фон героя</td><td><strong>&lt;canvas&gt; + 40 с эмбиент + параллакс</strong></td><td>CSS-свечение + точечная сетка</td><td>плоский чёрный</td><td>точечная сетка</td><td>градиент + продуктовые снимки</td></tr>
+<tr><td class="stick">Фирменная кривая</td><td>.16,1,.3,1</td><td>.4,0,.2,1</td><td><strong>.31,.1,.08,.96</strong></td><td>.22,1,.36,1</td><td>.16,1,.3,1</td></tr>
+<tr><td class="stick">Кастомный домен</td><td><strong>Pro $25/мес</strong></td><td><strong>Pro $25/мес</strong></td><td>в платных</td><td>в платных</td><td>Professional $24.99</td></tr>
+<tr><td class="stick">Единица продажи</td><td>кредиты</td><td>токены</td><td>кредиты</td><td>сообщения</td><td>AI-кредиты (50/мес free)</td></tr>
+</tbody>
+</table>
+<caption>Для сравнения: Remixer — $9.99/мес, где кастомный домен, хостинг, CDN и SSL уже включены. Оба лидера гейтят домен на $25/мес — в 2.5 раза дороже всего нашего тарифа за одну фичу, которая у нас в базе.</caption>
+</div>
+
+<h3>Единственное число, которое объясняет «дорого» и «дёшево»</h3>
+<p>Посмотрите на две строки — трекинг и интерлиньяж дисплея. Все четверо «новых» игроков сжимают крупный текст: трекинг от −0.02 до −0.06em, интерлиньяж от 0.89 до 1.17. GoDaddy — <strong>ровно ноль трекинга и постоянные 1.25 на всех заголовках</strong>. Это самый читаемый признак «корпоративного и устаревшего» во всей выборке, и он бесплатный в исправлении.</p>
+<p>Второй маркер — гигиена системы. У Lovable 206 переменных с человеческими семантическими именами в OKLCH. У GoDaddy — <strong>571 переменная с машинными хешами</strong> вроде <span class="m">--ux-1s0t9v0</span>. Радиусы у GoDaddy: 4, 6, 8, 12, <strong>21.6</strong>, 26, 32, 46, 50 — шкалы нет.</p>
+
+<h3>Формула цвета Lovable, вытащенная целиком</h3>
+<p>Высота поверхности выражена <strong>ступенями светлоты, а не тенями</strong>: 95.49% → 96.99% → 98.51% → 99.99%, все на тоне 107 — то есть серые у них <em>тёплые</em>, никогда не чистый #F5F5F5. Текстовая шкала: 10 / 30 / 50 / 69%.</p>
+<div class="ramp">
+  <span style="background:#EDEDEB"></span><span style="background:#F2F2F0"></span><span style="background:#F8F8F6"></span><span style="background:#FCFCFA"></span><span style="background:#FEFEFC"></span>
+</div>
+<p>Каждое семантическое семейство порождается одной формулой: текст = основной цвет минус ~8.5% светлоты; граница = плюс ~8.9% при альфе .4; полупрозрачная заливка — .16. Взаимодействие: hover .08, pressed .16; нейтральные — чёрный .04 и .08. <strong>Одна лестница альф — .04 / .08 / .16 — переиспользована везде.</strong></p>
+
+<h3>Почему их кнопки выглядят отлитыми</h3>
+<p>Тени у Lovable — <strong>накопительная шестиступенчатая лестница</strong>: каждая следующая ступень добавляет слой, смещения удваиваются, разброс уполовинивается (1/1 → 3/3 −1.5 → 6/6 −3 → 12/12 −6 → 24/24 −12), и <strong>каждый слой держит постоянные 4% чёрного</strong>, а не дефолтные 10%. Плюс волосяное кольцо.</p>
+<p>Кнопки получают отдельный рецепт, имитирующий подсветку фаски: <span class="m">inset 0 1px 0 #fff</span> сверху, <span class="m">inset 0 -1px 0 #fffc</span> снизу и цветное внутреннее кольцо в тёмном оттенке акцента. Поля инвертируют логику — <strong>кнопки выглядят приподнятыми, поля вдавленными</strong>.</p>
+</section>
+
+<!-- ================= 07 ================= -->
+<section id="stakes">
+<h2><span class="num">07</span>Обязательный минимум категории</h2>
+<p class="sub">Конвенции, которые есть у всех серьёзных игроков. Это не преимущества — это порог входа.</p>
+
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Конвенция</th><th>У кого есть</th><th class="num">Remixer</th></tr></thead>
+<tbody>
+<tr><td class="stick">Воронка от промпта, стена после него или её отсутствие</td><td>Lovable, v0, GoDaddy, Wix, Framer</td><td><span class="chip wr">передача промпта не проверена</span></td></tr>
+<tr><td class="stick">Ноль вопросов до генерации</td><td>Lovable, v0, GoDaddy, Bolt</td><td><span class="chip ok">есть</span></td></tr>
+<tr><td class="stick">Именованные шаги генерации и время</td><td>Lovable, v0, GoDaddy, Replit, Base44</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Режим планирования дешевле сборки</td><td>Lovable (1.0), Base44 (0.3), Bolt, Replit</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Бесплатная полоса прямых правок</td><td>Base44, Replit, Lovable, GoDaddy, Figma Make</td><td><span class="chip nt">неизвестно</span></td></tr>
+<tr><td class="stick">Опубликованный список бесплатных действий</td><td>Lovable, GoDaddy, Bolt, Base44</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Чек стоимости у каждого сообщения</td><td>только Lovable</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Откат на каждом шаге + превью до восстановления</td><td>Base44, Lovable, GoDaddy, Bolt</td><td><span class="chip nt">неизвестно</span></td></tr>
+<tr><td class="stick">Бесплатное исправление ошибок агента</td><td>Lovable, GoDaddy, Bolt, Base44</td><td><span class="chip nt">неизвестно</span></td></tr>
+<tr><td class="stick">Состояние деплоя, выраженное согласованно</td><td>Lovable (3 способа), Bolt (2)</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Публикация бесплатна</td><td>все, кроме Emergent</td><td><span class="chip bd">берём деньги</span></td></tr>
+<tr><td class="stick">Покупка домена внутри флоу</td><td>Lovable, v0, Bolt, Base44, Replit</td><td><span class="chip wr">частично</span></td></tr>
+<tr><td class="stick">Машина состояний домена с глаголом на каждый отказ</td><td>Lovable, Replit</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Механизм против генеричности</td><td>Lovable (3), Base44 (4), AI Studio (5)</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Ссылка-превью неопубликованных изменений</td><td>Base44, Lovable (7 дней)</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Контроль радиуса поражения агента</td><td>Bolt, Base44</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Ежедневная выдача кредитов</td><td>Lovable, v0, Bolt, Framer, Replit, Base44</td><td><span class="chip bd">нет</span></td></tr>
+<tr><td class="stick">Постоянный бесплатный тариф</td><td>все восемь</td><td><span class="chip bd">только 30-дневный триал</span></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ================= 08 ================= -->
+<section id="we">
+<h2><span class="num">08</span>Где мы сейчас</h2>
+<p class="sub">Честно, по измерениям. Четыре позиции честно помечены как неизвестные — у нас нет своих данных.</p>
+
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Измерение</th><th>Позиция</th><th>Основание</th></tr></thead>
+<tbody>
+<tr><td class="stick">Время до первого рендера</td><td><span class="chip ok">впереди</span></td><td>2–3 мин против 6м21с у v0 и ~5 мин у Bolt. <strong>Но это наша маркетинговая цифра, а не измеренная p50/p90</strong></td></tr>
+<tr><td class="stick">Триал без карты</td><td><span class="chip ok">впереди</span></td><td>30 дней — самый длинный. Но у всех остальных <em>постоянный</em> free, так что это другая форма, а не однозначная победа</td></tr>
+<tr><td class="stick">Дешёвый платный вход с хостингом</td><td><span class="chip ok">впереди</span></td><td>$9.99/мес. Lovable Pro $25, v0 $30 за пользователя</td></tr>
+<tr><td class="stick">Видимость баланса кредитов</td><td><span class="chip ok">впереди</span></td><td>Постоянный чип в верхней панели. У GoDaddy это главная претензия пользователей</td></tr>
+<tr><td class="stick">Домен в основном хроме</td><td><span class="chip ok">впереди</span></td><td>Центральный переключатель домена в топ-баре — <strong>ни у кого больше живого адреса нет в постоянном хроме</strong></td></tr>
+<tr><td class="stick">Структурный стек</td><td><span class="chip wr">впереди, не задействовано</span></td><td>Регистратор + хостер + почта + CDN. Ничего из этого не выведено в билдер</td></tr>
+<tr><td class="stick">Скелет шелла</td><td><span class="chip nt">вровень</span></td><td>Чат слева / канвас в центре / рейл справа — рыночный стандарт</td></tr>
+<tr><td class="stick">Тёмная тема без разрыва</td><td><span class="chip nt">вровень / впереди</span></td><td>Мы держим одну среду; GoDaddy рвёт идентичность на входе</td></tr>
+<tr><td class="stick">DNS для внешних доменов</td><td><span class="chip bd">позади</span></td><td>Нет Domain Connect. Среднерыночно сегодня, но Lovable и Replit купили Entri</td></tr>
+<tr><td class="stick">Экономика публикации</td><td><span class="chip bd">хуже всех</span></td><td>Кредиты за публикацию. Все освобождают</td></tr>
+<tr><td class="stick">Механизм против генеричности</td><td><span class="chip bd">позади</span></td><td>Механизма нет вообще</td></tr>
+<tr><td class="stick">Читаемость цикла агента</td><td><span class="chip bd">позади</span></td><td>Нет плана, чека стоимости, очереди, видимости подагентов, самопроверки</td></tr>
+<tr><td class="stick">Зрелость дизайн-системы</td><td><span class="chip bd">позади</span></td><td>Один hex шелла — это не система. Нет лестницы высот, шкалы радиусов, рампы теней, сетки отступов</td></tr>
+<tr><td class="stick">Визуальная идентичность</td><td><span class="chip bd">позади</span></td><td>Inter + индиго-фиолетовый градиент + холодный near-black = три из четырёх признаков AI-слопа</td></tr>
+<tr><td class="stick">Почта в билдере</td><td><span class="chip bd">ноль</span></td><td>Мы <em>являемся</em> почтовым провайдером. Поверхности в publish-флоу нет</td></tr>
+<tr><td class="stick">Обрыв после триала</td><td><span class="chip bd">позади</span></td><td>На 31-й день у неконвертнувшегося нет пути назад</td></tr>
+<tr><td class="stick">Постлонч</td><td><span class="chip nt">неизвестно</span></td><td>Ничего не говорит, выведены ли логи и CDN в билдер</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ================= 09 ================= -->
+<section id="catchup">
+<h2><span class="num">09</span>Догнать</h2>
+<p class="sub">Всё здесь — обязательный минимум, который кто-то уже возит. Приоритет первого уровня: высокий эффект при низкой или средней цене.</p>
+
+<div class="scroll">
+<table>
+<thead><tr><th class="num">#</th><th class="stick">Пункт</th><th>Как это выглядит</th><th class="num">Цена</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td class="stick">Перестать брать кредиты за публикацию</td><td>Строка в панели: «Публикация бесплатна. Кредиты тратятся, только когда Remixer строит или правит». Пункт на странице тарифов под $9.99.</td><td class="num">средняя</td></tr>
+<tr><td class="num">2</td><td class="stick">Панель «всегда бесплатно» в поповере кредитов</td><td>Баланс и дата сброса; зелёный чек-лист бесплатного; таблица типовых цен действий (страница ~40, правка ~10, генерация ~120).</td><td class="num">низкая</td></tr>
+<tr><td class="num">3</td><td class="stick">Три согласованных сигнала деплоя</td><td>Янтарная точка на Publish, когда сборка новее живой; пилюля статуса у переключателя домена; текст про снапшот в панели. Всё из одного значения состояния.</td><td class="num">низкая</td></tr>
+<tr><td class="num">4</td><td class="stick">Пронести промпт с лендинга через SSO</td><td>Черновик по подписанной ссылке, приземление в билдер с уже идущей генерацией и словами пользователя первым сообщением чата.</td><td class="num">средняя</td></tr>
+<tr><td class="num">5</td><td class="stick">Хореография генерации</td><td>Осмысленные шаги прошедшим временем, три следующих притушены, минимум две строки называют дизайн-решение словами. Финальный бейдж <strong>«Собрано за 2м 41с»</strong>. Канвас собирается вживую, никогда не пустой.</td><td class="num">средняя</td></tr>
+<tr><td class="num">6</td><td class="stick">Восстановление никогда не публикует</td><td>«Восстановлено. Живой сайт не изменился — нажмите Publish, чтобы эта версия стала живой.» Плюс отдельная строка про данные.</td><td class="num">низкая</td></tr>
+<tr><td class="num">7</td><td class="stick">Заявить порядок списания</td><td>«Сначала тратятся кредиты с ближайшим сроком — бесплатные и бонусные раньше оплаченных.» Критично из-за нашего бонуса в 1000 кредитов первого месяца.</td><td class="num">низкая</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Второй уровень — дороже, но с тем же эффектом</h3>
+<ul>
+<li><strong>Режим планирования</strong> — фиксированная цена ниже сборки, редактируемый документ с диффом, кнопка «Собрать по плану». Три из пяти крупных игроков возят это и оценивают дешевле сборки.</li>
+<li><strong>Бесплатная полоса прямых правок</strong> с зелёным чипом «Бесплатно» и автоматической эскалацией: «Здесь нужен AI — примерно 8 кредитов».</li>
+<li><strong>Бесплатное исправление собственных ошибок агента</strong> с подписью «Исправление ошибок Remixer не тратит кредиты». Самое хвалимое решение Lovable и лучшее противоядие от обиды за кредиты.</li>
+<li><strong>Контроль радиуса поражения</strong> — правый клик по странице → «Сфокусировать AI здесь» / «Заблокировать страницу». Одно меню закрывает три жалобы и попутно чинит перезатирание визуальных правок.</li>
+<li><strong>DNS в один клик для внешних доменов</strong> — определить регистратора и предложить настроить за пользователя, ручные записи спрятать под «Предпочитаю сам». Replit закрыл это, не будучи регистратором: покупать, а не строить.</li>
+<li><strong>Машина состояний домена</strong> с одним глаголом на каждое не-зелёное состояние и карточками типовых поломок (проксирование Cloudflare, чужие NS, конфликт CAA).</li>
+<li><strong>Ссылка-превью неопубликованных изменений</strong> с коротким сроком жизни и полосой «Это не живой сайт».</li>
+</ul>
+</section>
+
+<!-- ================= 10 ================= -->
+<section id="overtake">
+<h2><span class="num">10</span>Перегнать</h2>
+<p class="sub">Здесь важно быть точным в формулировках, иначе мы построим стратегию на неправде.</p>
+
+<div class="note badbox">
+<span class="lbl">Сначала поправка, без которой остальное развалится</span>
+<p>Черновик этого аудита утверждал, что связка «регистратор + хостер + почта» <strong>не существует больше нигде</strong>. Это <strong>неверно</strong>. Она есть у Wix — который владеет Base44. У GoDaddy. У IONOS, который снабжает Emergent. У Hostinger. А Cloudflare раздаёт бесплатно регистрацию по себестоимости, самое быстрое подключение домена в природе, 300+ точек присутствия и <strong>бесплатную входящую почтовую маршрутизацию</strong>.</p>
+<p>Правильная формулировка слабее, но верна: <strong>у нас есть 12–18 месяцев форы на незанятой позиции</strong>, и настоящий актив — не структура, а <strong>база существующих клиентов с припаркованными доменами</strong>. Это дистрибуционное преимущество со сроком годности. Из чего следует другой приоритет: конвертировать и удержать свою базу, пока она не утекла.</p>
+</div>
+
+<h3>Ноль записей — «ваш домен уже здесь»</h3>
+<p>При первой публикации опросить аккаунт DreamHost на домены, которыми человек уже владеет и которые ничего не обслуживают. Показать лучшего кандидата первой строкой панели публикации, <em>над</em> адресом стейджинга.</p>
+<div class="ui">●  emberandoak.com  —  уже в вашем аккаунте DreamHost
+   0 записей менять не нужно            [ Подключить и опубликовать ]</div>
+<p>По клику — записи пишутся на сервере, сертификат выпускается, состояние доходит до Live быстрее минуты, с видимыми шагами. <strong>Никогда не показывать таблицу записей. Никогда не просить открыть другую вкладку.</strong></p>
+<div class="note warnbox">
+<p><strong>Две оговорки, без которых это опасно.</strong> Первая: домен, зарегистрированный у нас, но с чужими NS (чаще всего Cloudflare), <em>не отреагирует</em> на записи, которые мы пишем у себя — нужна явная ветка для внешних NS, иначе отказ будет невидимым и необъяснимым. Вторая: «Заменить то, что сейчас на emberandoak.com?» за одним подтверждением может снести живой WordPress или, что хуже, живую рабочую почту. Здесь нужна защита жёстче одного диалога.</p>
+</div>
+
+<h3>Настоящий почтовый ящик в флоу публикации</h3>
+<p>Сразу после выхода домена в Live предложить одну карточку: <span class="m">hello@</span> на их домене, 25 ГБ, вебмейл, антиспам. По клику — завести ящик и записать <strong>MX, SPF, DKIM и DMARC в той же транзакции, которая уже пишет A-запись</strong>, чтобы выравнивание было верным по построению, а не по усилиям пользователя. Дальше вплести в нарратив сборки: когда агент делает контактную форму, шаг читается «Создана форма → письма приходят на hello@…».</p>
+<p><strong>Почему это сильно:</strong> Lovable отправляет 50 000 писем в месяц с домена клиента и в документации прямо пишет, что <em>ящиков не предоставляет</em>. Base44: «кастомные почтовые домены только для отправки». У Bolt во всём наборе документации по доменам слово «ящик» не встречается. У v0 почты нет ни на одном тарифе. GoDaddy ящики <em>перепродаёт</em> — Microsoft 365 за $7.99/мес.</p>
+<div class="note badbox">
+<span class="lbl">И самое серьёзное возражение по всему документу</span>
+<p>Бесплатный ящик на каждый домен — <strong>самый опасный пункт аудита</strong>. Он наследует «у меня не работает почта» — самый массовый и самый убыточный класс обращений в хостинге — от аудитории, которая по определению не может его отладить. Он сажает ящики новичков на общую репутацию отправки. Он требует контроля злоупотреблений и KYC. И он может каннибализировать текущую выручку DreamHost по почте. Выпускать это как включённое в $9.99 без плана по доставляемости и злоупотреблениям — способ превратить отличие в кризис поддержки.</p>
+</div>
+
+<h3>Откатывать запуск, а не только сборку</h3>
+<p>Вкладка «Live» рядом с историей: каждая строка — одна публикация, со временем, меткой версии и бейджами вроде «домен подключён» или «DNS изменён». Кнопка «Откатить живой сайт» восстанавливает снапшот и чистит кэш на всех точках.</p>
+<div class="note warnbox">
+<p><strong>Но откат DNS галочкой — мина.</strong> Он молча ломает MX (у человека отваливается почта) и TXT-записи сторонних верификаций — Search Console, Stripe, подтверждение домена в соцсетях. И обещание «посетители увидят прошлую версию примерно через 30 секунд» невыполнимо через рекурсивные резолверы: такой копирайт сам по себе генератор обращений в поддержку.</p>
+</div>
+
+<h3>Телеметрия из продакшена</h3>
+<p>Панель здоровья сайта с четырьмя строками, которые может посчитать только оператор регистратора, хостинга, DNS и почты одновременно: срок продления домена, срок сертификата, <strong>дрейф DNS</strong> («ваша A-запись изменилась вне Remixer 9 августа») с кнопкой восстановления, и выравнивание SPF/DKIM/DMARC.</p>
+<div class="note warnbox">
+<p>Здесь есть ловушка: «ваш сайт вернул 12 ошибок за час» — это <em>нормальное</em> состояние покоя любого сайта в интернете, по которому ходят боты. Сырые ошибки origin, показанные новичку, дают вечно янтарную панель и приучают игнорировать предупреждения. Нужен фильтр и порог, иначе мы повторим ровно то, за что критикуем аналитику Bolt.</p>
+</div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section id="craft">
+<h2><span class="num">11</span>Правила крафта для нашего интерфейса</h2>
+<p class="sub">Численно и конкретно. Оговорка: этот раздел выведен из чужих CSS, а не из наших проблем — применять после того, как посмотрим на свои экраны.</p>
+
+<h3>Поверхности: шесть тёплых ступеней вместо одного hex</h3>
+<p>Заменить единственный <span class="m">#18181B</span> на шесть токенов примерно по 2.5% светлоты друг от друга, <strong>развёрнутых в тепло</strong> (тон 60–80) вместо нынешнего холодного near-black, у которого синего больше, чем красного.</p>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Токен</th><th class="num">Светлота</th><th>Роль</th></tr></thead>
+<tbody>
+<tr><td class="stick"><span class="m">--surface-depth</span></td><td class="num">~20.5%</td><td>Подложка приложения за панелями</td></tr>
+<tr><td class="stick"><span class="m">--surface-base</span></td><td class="num">~23%</td><td>Поле вокруг канваса</td></tr>
+<tr><td class="stick"><span class="m">--surface-primary</span></td><td class="num">~24.7%</td><td>Панель чата, правый рейл</td></tr>
+<tr><td class="stick"><span class="m">--surface-secondary</span></td><td class="num">~27.2%</td><td>Сообщения, карточки, чип кредитов</td></tr>
+<tr><td class="stick"><span class="m">--surface-tertiary</span></td><td class="num">~30%</td><td>Ховер строк, поля ввода</td></tr>
+<tr><td class="stick"><span class="m">--surface-quaternary</span></td><td class="num">~32.8%</td><td>Поповеры, меню, панель публикации</td></tr>
+</tbody>
+</table>
+<caption>Правило: в компонентах не должно остаться ни одного сырого hex. Любой фон разрешается в одну из шести ступеней.</caption>
+</div>
+
+<h3>Типографика: два ритма и точный трекинг</h3>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Роль</th><th class="num">Размер</th><th class="num">Интерлиньяж</th><th class="num">Трекинг</th><th class="num">Начертание</th></tr></thead>
+<tbody>
+<tr><td class="stick">Display XL</td><td class="num">48</td><td class="num">52.8 (1.10)</td><td class="num">−0.04em</td><td class="num">600</td></tr>
+<tr><td class="stick">Display L</td><td class="num">36</td><td class="num">39.6 (1.10)</td><td class="num">−0.04em</td><td class="num">600</td></tr>
+<tr><td class="stick">Display M</td><td class="num">28</td><td class="num">30.8 (1.10)</td><td class="num">−0.04em</td><td class="num">600</td></tr>
+<tr><td class="stick">Основной текст</td><td class="num">16</td><td class="num">24 (1.5)</td><td class="num">0</td><td class="num">400</td></tr>
+<tr><td class="stick">Вторичный / UI</td><td class="num">14</td><td class="num">24</td><td class="num">0</td><td class="num">400</td></tr>
+<tr><td class="stick">Мелкий / мета</td><td class="num">12</td><td class="num">16</td><td class="num">0</td><td class="num">500</td></tr>
+<tr><td class="stick">Групповой лейбл</td><td class="num">11</td><td class="num">16</td><td class="num">+0.06em, капс</td><td class="num">600</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Про уход от Inter — честно.</strong> Аргумент «четверо из пяти возят собственную гарнитуру, а пятый выглядит дешевле всех» — это корреляция на выборке из пяти без пользовательских данных. Лицензия шрифта плюс переверстка всего хрома — реальные деньги. Либо назовите метрику, которую это должно сдвинуть, либо переведите в третий приоритет и так и скажите. <strong>Сжатие трекинга до −0.04em стоит ноль и даёт большую часть эффекта прямо сейчас.</strong></p>
+
+<h3>Дисциплина цвета</h3>
+<ul>
+<li><strong>Синий <span class="m">#1587FF</span> — только действие.</strong> Он сидит в трёх пунктах от <span class="m">#1488FC</span> у Bolt. Либо сдвинуть тон настолько, чтобы он различался на скриншоте рядом, либо сознательно принять «категорийный синий» и отличаться типографикой, теплом и высотами. Это должно быть решением, а не дрейфом.</li>
+<li><strong>Индиго-фиолетовый — только AI, ровно на пяти поверхностях:</strong> искра AI, кнопка отправки в композере, чип AI-режима, свечение генерации, ореол композера на лендинге. <strong>Запрещено:</strong> фиолетовые градиенты как фон секций и героя, фиолетовые рамки карточек, фиолетовые заголовки, фиолетовый на любом не-AI CTA.</li>
+<li><strong>Зелёный — живое. Янтарный — нужно действие.</strong> Больше ни на что их не тратить.</li>
+<li><strong>Завести намерение «metered»</strong> по образцу «premium» у Base44 — и привязать к нему <em>все</em> коммерческие поверхности: чип кредитов, докупку, бейдж триала, гейт публикации. Ни один контрол не получает собственного самодельного «апгрейдного» оформления вне этого намерения.</li>
+</ul>
+
+<h3>Тени и моушен</h3>
+<p><strong>Запретить одиночные тени.</strong> Шесть ступеней: волосяное кольцо плюс удваивающиеся смещения, <strong>каждый слой на 4% чёрного с тёплым подмесом</strong>, никогда не 10% и никогда не чистый чёрный. Кнопкам — отдельный рецепт фаски: светлая внутренняя линия сверху, тёмная снизу.</p>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Токен</th><th class="num">Длительность</th><th>Кривая</th><th>Что анимирует</th></tr></thead>
+<tbody>
+<tr><td class="stick"><span class="m">--dur-fast</span></td><td class="num">120 мс</td><td><span class="m">cubic-bezier(.2,0,0,1)</span></td><td>Цвет, прозрачность, фокус</td></tr>
+<tr><td class="stick"><span class="m">--dur-base</span></td><td class="num">200 мс</td><td><span class="m">cubic-bezier(.2,0,0,1)</span></td><td>Трансформации, открытие панелей и меню</td></tr>
+<tr><td class="stick"><span class="m">--dur-slow</span></td><td class="num">300 мс</td><td><span class="m">cubic-bezier(.4,0,.2,1)</span></td><td>Оверлеи, модалки, переходы канваса</td></tr>
+</tbody>
+</table>
+<caption>Никаких пружин и перелётов в шелле. Всегда перечислять анимируемые свойства — никогда <span class="m">transition: all</span>. Появление при скролле — один жест: прозрачность плюс сдвиг на 12 px, ни масштаба, ни блюра.</caption>
+</div>
+<p>Философская развилка: брендированное ожидание Lovable (около 39 именованных кейфреймов) и прямо противоположная позиция Vercel («по умолчанию неподвижность; никаких бегущих строк, имитаций набора и декоративно пульсирующих индикаторов») — <strong>обе читаются дорого</strong>. Дёшево читается середина: немотивированное движение. Правило простое: каждая анимация обязана называть состояние, которое объясняет, иначе её вырезают.</p>
+
+<h3>Признаки AI-слопа, против которых работаем</h3>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Признак</th><th>Наша текущая уязвимость</th><th>Что делать</th></tr></thead>
+<tbody>
+<tr><td class="stick">Inter как UI-гарнитура</td><td><span class="chip bd">названа в нашей спеке</span></td><td>Сжать трекинг сейчас, гарнитуру — решением позже</td></tr>
+<tr><td class="stick">Индиго→фиолетовый градиент</td><td><span class="chip bd">названа в нашей спеке</span></td><td>Оставить пяти AI-поверхностям, запретить как фон</td></tr>
+<tr><td class="stick">Холодные серые поверхности</td><td><span class="chip wr">#18181B синит</span></td><td>Развернуть лестницу в тепло</td></tr>
+<tr><td class="stick">Одна тень на 10%</td><td><span class="chip nt">неизвестно</span></td><td>Шестиступенчатая рампа на 4%</td></tr>
+<tr><td class="stick">Три скруглённые карточки в ряд</td><td><span class="chip nt">неизвестно</span></td><td>Проверить маркетинг и билдер на этот паттерн</td></tr>
+<tr><td class="stick">Тонкие взаимозаменяемые иконки</td><td><span class="chip wr">вероятно Lucide</span></td><td>Своё 16 px семейство для хрома</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section id="risks">
+<h2><span class="num">12</span>Возражения и дыры этого аудита</h2>
+<p class="sub">Раздел написан против самого документа. Читать до того, как что-то из него попадёт в презентацию.</p>
+
+<h3>Сильнейший контраргумент ко всей конструкции</h3>
+<div class="note badbox">
+<p><strong>Все три главные ставки — это инфраструктурный UX <em>после</em> генерации, для людей, которые уже собрали что-то, что им нравится. А большинство до этого не доходит.</strong></p>
+<p>Аудит сам ставит нам 1 из 5 за защиту от генеричности и 2 из 5 за цикл агента — и после этого ставит домены и публикацию выше. Но реальный отток в категории случается <em>раньше</em>: люди уходят, потому что результат посредственный и агент не может его надёжно починить, а не потому что DNS оказался сложным. Если узкое место — качество вывода и надёжность правок, то подключение домена в ноль записей, встроенный ящик и откат с DNS — это дорогая отделка последней мили пути, который заканчивается на второй миле. <strong>Данных воронки в документе нет вообще, поэтому исключить эту версию он не может.</strong></p>
+</div>
+
+<h3>Чего в аудите нет</h3>
+<ul>
+<li><strong>Cloudflare — ноль упоминаний.</strong> Самый опасный структурный конкурент всей десятой главы: регистратор по себестоимости, authoritative DNS с самым быстрым подключением, Pages, 300+ точек и <strong>бесплатная маршрутизация входящей почты</strong>. Любой конкурент, который скажет «просто переведите NS на Cloudflare», получает подключение в ноль записей бесплатно и навсегда.</li>
+<li><strong>Качество вывода не измерено ни разу.</strong> Ни одного Lighthouse, веса страницы, Core Web Vitals, проверки axe/WCAG или schema.org ни у одного конкурента. Мы оцениваем «защиту от генеричности» по маркетинговым обещаниям про количество дизайн-направлений и ни разу не смотрим, что выходит с другого конца. Для хостинга производительность сгенерированных сайтов — это ещё и статья себестоимости.</li>
+<li><strong>WordPress.</strong> База DreamHost — преимущественно WordPress и DreamPress. Аудит ни разу не спрашивает, каннибализирует Remixer её, мигрирует в неё или игнорирует. Это крупнейший стратегический пробел документа.</li>
+<li><strong>Импорт и «пересобери мой сайт».</strong> Отмечен у GoDaddy как крючок для переключателей — и не разобран. Для хостера это самая высокоинтентная поверхность привлечения и единственное, что можно сделать своей же базе при нулевой стоимости привлечения.</li>
+<li><strong>Злоупотребления, фрод и доставляемость.</strong> Бесплатная публикация плюс бесплатный ящик плюс постоянный free-тариф внутри аккредитованного ICANN регистратора — это фишинговая фабрика со службой поддержки. Lovable такое переживёт; регистратор — нет.</li>
+<li><strong>Рыночные данные.</strong> Ни выручки, ни числа пользователей, ни трафика, ни оттока ни по одному конкуренту. По этому документу нельзя понять, у Lovable 50 тысяч пользователей или 5 миллионов — то есть эталон это или хорошо сделанная ниша.</li>
+<li><strong>Наши собственные данные.</strong> Ни одной сессии, ни цифры воронки, ни разбора обращений в поддержку. Документ знает альфа-значения теней Lovable до второго знака и не знает, есть ли у нас история версий.</li>
+</ul>
+
+<h3>Что нельзя цитировать в презентации</h3>
+<div class="scroll">
+<table>
+<thead><tr><th class="stick">Утверждение</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td class="stick">Free-сайты Airo живут на godaddysites.com</td><td><span class="chip bd">опровергнуто</span> Free вообще не публикует; платные живут на <span class="m">*.airoapp.ai</span></td></tr>
+<tr><td class="stick">Сканы SEO и качества кода у Airo бесплатны</td><td><span class="chip bd">опровергнуто</span> Бесплатны безопасность и QA; SEO и юридический стоят кредитов</td></tr>
+<tr><td class="stick">Firebase Studio закрыт 19 марта 2026</td><td><span class="chip bd">опровергнуто</span> 19 марта — объявление; полное закрытие 22 марта 2027</td></tr>
+<tr><td class="stick">Ограничения рантайма Base44 (150 операций/мин и прочее)</td><td><span class="chip wr">не проверяемо</span> Единственный источник — враждебный сайт, который сам признаёт, что цифра нигде не документирована</td></tr>
+<tr><td class="stick">У Airo нет горячих клавиш и командной палитры</td><td><span class="chip wr">не проверяемо</span> Документация отдаёт 403; отсутствие документации не доказательство отсутствия</td></tr>
+<tr><td class="stick">Trustpilot Bolt 1.4/5; Emergent ≈2.7/5</td><td><span class="chip wr">один источник</span></td></tr>
+<tr><td class="stick">Наши «2–3 минуты» против «6м21с» у v0</td><td><span class="chip wr">несопоставимо</span> Наша маркетинговая цифра против одного прогона, включавшего генерацию картинок и браузерную проверку</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Рекомендации, которые могут навредить новичку</h3>
+<ul>
+<li><strong>Чек стоимости у каждого сообщения</strong> противоречит задаче снижать тревогу за кредиты. Ценник на каждой реплике учит новичка, что разговаривать дорого, и душит ровно ту итеративность, на которой продукт живёт. Нужно выбрать одно: либо счётчик невидим, пока не важен, либо он на каждом сообщении. Не оба.</li>
+<li><strong>Три дизайн-направления до сборки</strong> добавляют решение и ожидание к единственному нашему преимуществу — скорости — и просят новичка выбрать между тремя абстрактными эстетиками. Правильный вариант — <em>после</em> сборки.</li>
+<li><strong>Ветка с форком данных.</strong> «Копируем схему и часть строк» ломает ссылочную целостность и даёт непонятные пустые состояния тому, кто как раз не может в них разобраться. Base44 обрезал ветки не от некомпетентности. Плюс копирование продовых персональных данных в песочницу — вопрос GDPR.</li>
+<li><strong>Безусловно бесплатная публикация.</strong> Если публикация запускает сборку, безлимитная бесплатная переиздача — это неограниченная себестоимость и тривиальный вектор злоупотребления. Границу честного использования лучше спроектировать сразу, чем объявить «бесплатно» и потом отыгрывать назад.</li>
+<li><strong>Стать провайдером Domain Connect</strong> — симметричная штука: это делает подключение доменов DreamHost к Wix, Squarespace и Lovable тоже одним кликом. Ускоритель оттока, записанный как канал привлечения.</li>
+</ul>
+</section>
+
+<!-- ================= 13 ================= -->
+<section id="next">
+<h2><span class="num">13</span>Что делать дальше</h2>
+<p class="sub">Восемь вопросов по убыванию ценности. Первые три стоят больше, чем все остальные вместе.</p>
+
+<ol>
+<li><strong>Где на самом деле отваливаются пользователи Remixer?</strong> Разметить путь от отправки промпта до возврата на седьмой день, посмотреть 20 записей сессий и прочитать 200 обращений в поддержку. Пока этого нет, любой приоритет в этом документе — догадка.</li>
+<li><strong>Насколько хорош наш вывод, в измерениях?</strong> Прогнать одни и те же 10 брифов через Remixer, Lovable, v0, Base44, Airo и Squarespace. Считать Lighthouse и CWV, вес страницы, нарушения axe, корректность мета и sitemap — и отдельно слепое ранжирование дизайна пятью дизайнерами, не знающими источников.</li>
+<li><strong>Какова реальная себестоимость</strong> генерации, переиздания и почтового ящика — включая инференс, трафик, минуты поддержки по почте, риск доставляемости и разбор злоупотреблений? Именно этот ответ определяет, является ли пункт №1 переключателем в биллинге или архитектурным проектом с неограниченной стоимостью.</li>
+<li><strong>Что Remixer делает с базой WordPress DreamHost?</strong> Изучить 10Web, Hostinger AI, Bluehost AI, Elementor AI. Оценить риск каннибализации и размер возможности «пересобери мой существующий сайт на DreamHost» — это самая дешёвая стоимость привлечения в компании.</li>
+<li><strong>Не обнуляет ли Cloudflare весь инфраструктурный тезис?</strong> Какая доля доменов, зарегистрированных у нас, уже сидит на внешних NS? Сколько времени и денег стоит пользователю связка Cloudflare Registrar + Pages + Email Routing против нашей десятой главы?</li>
+<li><strong>Владельцу малого бизнеса нужен новый ящик — или нужно, чтобы форма писала на его текущий Gmail?</strong> Самый дешёвый тест на свете: поставить карточку ящика в флоу публикации как заглушку, измерить кликабельность и опросить 15 кликнувших. Это гейт на всю почтовую инвестицию.</li>
+<li><strong>Каков объём злоупотреблений и рисков доставляемости</strong> при бесплатной публикации и бесплатных ящиках внутри аккредитованного регистратора? Это вопрос с правом вето сразу на три рекомендации.</li>
+<li><strong>Нормализовать цены.</strong> Собрать стандартную корзину задач — «сайт ресторана на 5 страниц, 3 правки, 1 замена картинки, публикация, подключение домена» — и прогнать её на самом дешёвом платном тарифе каждого конкурента, записывая потраченные кредиты и деньги. Такой таблицы нет ни у кого на рынке.</li>
+</ol>
+
+<div class="note">
+<span class="lbl">Итог</span>
+<p>Центр тяжести категории сместился с «умеет ли он сгенерировать хороший сайт» на «уважает ли цикл после генерации деньги, время и работу человека». Lovable выигрывает сегодня, потому что ответил на этот вопрос одной системой, а не списком фич. v0 выигрывает воронку. Base44 — токены и масштаб. Bolt — раскрытие кода. GoDaddy выигрывает входной экран и проигрывает всё, что после него.</p>
+<p>Remixer приходит с самой быстрой генерацией, самым длинным триалом без карты и самым дешёвым платным входом с настоящим хостингом. Два из этих трёх преимуществ уже размываются. Третье — связка регистратора, хостера и почтового провайдера — не отгружено вообще, и фора по нему измеряется месяцами, а не годами.</p>
+</div>
+</section>
+
+<footer>
+  <p><strong>Метод.</strong> Шесть исследовательских досье по конкурентам, шесть сквозных UX-линз, три независимых фактчекера, работавших на опровержение, и синтез с критиком. Плюс мой собственный обход: замеры computed styles на пяти маркетинговых сайтах и полный проход по живому залогиненному билдеру Lovable, включая публикацию реального проекта, — 13 августа 2026.</p>
+  <p><strong>Оговорка о статусе.</strong> Пометка «проверено» означает чтение с живой страницы, из DOM или из первоисточника. «Не подтверждено» — единственный сторонний источник или оценка по скриншоту. Ни одна оценка 1–5 не имеет формальной рубрики: это экспертное направление, а не измерение.</p>
+  <p style="margin-top:16px; color:var(--ink-4)">Внутренний рабочий документ DreamHost. Данные конкурентов собраны из публичных источников и из аккаунтов, к которым доступ был предоставлен явно.</p>
+</footer>
+
+</main>
+</div>
+</div>

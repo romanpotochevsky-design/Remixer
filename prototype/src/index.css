@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Token layer.
+ *
+ * Values measured from the live Remixer (panel.dreamhost.com/ai-editor) on 13 Aug 2026.
+ * Two deliberate corrections to what ships today, both documented in the audit:
+ *   1. The blue ramp keeps ONE hue. In production --blue-100…500 are alphas of #2554F7
+ *      while --blue-600…1000 are #0073EC, so a blue tint and a blue button are different
+ *      colours. Here every step is derived from the dark-mode blue.
+ *   2. A dark UI uses the dark-mode blue. Production paints Publish #0073EC, the
+ *      light-mode token; #1587FF is defined in the system and goes unused.
+ */
+@layer base {
+  :root {
+    /* surfaces — Tailwind zinc, as shipped */
+    --gray-950: #09090b;
+    --gray-900: #18181b;
+    --gray-850: #1f1f22;
+    --gray-800: #27272a;
+    --gray-750: #33333a;
+    --gray-700: #3f3f46;
+    --gray-600: #52525b;
+    --gray-500: #71717a;
+    --gray-400: #a1a1aa;
+
+    /* white alpha ladder, as shipped */
+    --white-100: #ffffff14;
+    --white-200: #ffffff1f;
+    --white-300: #ffffff33;
+    --white-400: #ffffff66;
+    --white-500: #ffffffb2;
+    --white-700: #ffffffd9;
+    --white-900: #fffffff2;
+
+    /* action — one hue, all steps */
+    --action-100: #1587ff14;
+    --action-200: #1587ff1f;
+    --action-300: #1587ff33;
+    --action: #1587ff;
+    --action-hover: #3d9bff;
+    --action-pressed: #0073ec;
+
+    /* semantic */
+    --live: #48ba79;
+    --attention: #e5c359;
+    --danger: #ef4444;
+
+    /* brand — AI surfaces only, never a background */
+    --brand-from: #9b7bff;
+    --brand-to: #4a2bc3;
+
+    /* shell geometry, measured */
+    --topbar-h: 57px;
+    --rail-w: 64px;
+    --chat-w: 522px;
+
+    /* motion — three durations, two curves. Never `transition: all`. */
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+    --dur-slow: 300ms;
+    --ease-std: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html, body, #root { height: 100%; }
+  body {
+    background: var(--gray-900);
+    color: var(--white-900);
+    font-family: 'Proxima Nova', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Motion is feedback, not decoration — drop it when asked to. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
