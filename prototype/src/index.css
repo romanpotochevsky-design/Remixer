@@ -227,7 +227,7 @@
   .siri-layer--core .siri-spin {
     background: conic-gradient(
       from 0deg,
-      #ff9d5c, #38c6ff8f 12% 16%, #1f7cff 30%, #8b5cff73 42% 46%, #be59ff 58%, #ff2f6d8f 70% 74%, #ff705c 86%, #ff9d5c
+      #ff9d5c, #38c6ff8f 11% 17%, #1f7cff 30%, #8b5cff66 40% 48%, #be59ff 58%, #ff2f6d80 66% 76%, #ff705c 86%, #ff9d5c
     );
     animation: siri-rot 8s linear infinite;
   }
@@ -241,7 +241,7 @@
   .siri-layer--dense .siri-spin {
     background: conic-gradient(
       from 40deg,
-      #ff9d5c, #38c6ff0f 9% 15%, #1f7cff 26%, #8b5cff1f 36% 42%, #be59ff 52%, #ff2f6d0a 61% 67%, #ff705c 78%, #ff9d5c29 86% 91%, #ff9d5c
+      #ff9d5c, #38c6ff0f 8% 14%, #1f7cff 24%, #8b5cff1f 34% 40%, #be59ff 50%, #ff2f6d0a 58% 72%, #ff705c 82%, #ff9d5c29 88% 93%, #ff9d5c
     );
     animation: siri-rot 6.5s linear infinite;
   }
@@ -256,7 +256,7 @@
   .siri-layer--soft .siri-spin {
     background: conic-gradient(
       from 300deg,
-      #ff9d5c, #38c6ff1a 11% 16%, #1f7cff 28%, #8b5cff14 40% 45%, #be59ff 56%, #ff2f6d26 68% 73%, #ff705c 83%, #ff9d5c1a 90% 94%, #ff9d5c
+      #ff9d5c, #38c6ff14 10% 26%, #1f7cff 36%, #8b5cff14 46% 51%, #be59ff 60%, #ff2f6d1f 70% 76%, #ff705c 84%, #ff9d5c1a 91% 95%, #ff9d5c
     );
     animation: siri-rot 9s linear infinite;
   }
