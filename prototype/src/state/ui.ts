@@ -35,6 +35,8 @@ interface UIStore {
   publishOpen: boolean
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
+  /** Bumps on every reload so the site remounts and plays its entrance. */
+  reloadTick: number
 
   openSurface: (s: Surface) => void
   openDomains: (screen?: DomainScreen, domain?: string | null) => void
@@ -53,6 +55,7 @@ export const useUI = create<UIStore>((set, get) => ({
   activeDomain: null,
   publishOpen: false,
   reloading: false,
+  reloadTick: 0,
 
   openSurface: (surface) => set({ surface, publishOpen: false }),
   openDomains: (screen = 'home', domain = null) =>
@@ -63,7 +66,7 @@ export const useUI = create<UIStore>((set, get) => ({
   togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)
-    set({ reloading: true })
+    set({ reloading: true, reloadTick: get().reloadTick + 1 })
     reloadTimer = setTimeout(() => set({ reloading: false }), ms)
   },
 }))

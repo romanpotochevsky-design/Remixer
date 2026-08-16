@@ -17,6 +17,45 @@ const MEALS = [
   { name: 'Protein Pancakes', kcal: 430, protein: 31, tint: 'linear-gradient(135deg,#f9ecdf,#f0d3b0)', emoji: '🥞' },
 ]
 
+/** The blank-page skeleton shown while the site "reloads" — grey slabs shimmering
+ *  where the nav, hero and menu grid will land. Reads instantly as a page loading. */
+export function SiteSkeleton() {
+  return (
+    <div className="h-full overflow-hidden bg-[#fbfaf7]" aria-hidden>
+      <div className="flex items-center justify-between border-b border-[#1d1f1a0f] px-10 py-4">
+        <div className="skeleton h-6 w-14" />
+        <div className="flex gap-4">
+          <div className="skeleton h-4 w-14" /><div className="skeleton h-4 w-20" />
+          <div className="skeleton h-4 w-14" /><div className="skeleton h-4 w-10" />
+        </div>
+        <div className="skeleton h-9 w-28 rounded-full" />
+      </div>
+      <div className="mx-auto max-w-[880px] px-10 pt-16 text-center">
+        <div className="skeleton mx-auto h-3.5 w-44" />
+        <div className="skeleton mx-auto mt-6 h-11 w-[70%]" />
+        <div className="skeleton mx-auto mt-3 h-11 w-[52%]" />
+        <div className="skeleton mx-auto mt-7 h-4 w-[64%]" />
+        <div className="skeleton mx-auto mt-2 h-4 w-[46%]" />
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <div className="skeleton h-12 w-40 rounded-full" />
+          <div className="skeleton h-12 w-40 rounded-full" />
+        </div>
+      </div>
+      <div className="mx-auto mt-16 grid max-w-[980px] grid-cols-3 gap-4 px-10">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="overflow-hidden rounded-[14px] border border-[#1d1f1a0f] bg-white">
+            <div className="skeleton h-28 rounded-none" />
+            <div className="p-4">
+              <div className="skeleton h-4 w-2/3" />
+              <div className="skeleton mt-2 h-3 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function SitePreview() {
   const { t } = useT()
   return (

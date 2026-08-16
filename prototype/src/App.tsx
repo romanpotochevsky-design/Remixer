@@ -17,7 +17,7 @@ import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
-import { SitePreview } from '@/modules/preview/SitePreview'
+import { SitePreview, SiteSkeleton } from '@/modules/preview/SitePreview'
 import { useT } from '@/i18n'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
@@ -44,7 +44,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload } = useUI()
+  const { surface, openDomains, togglePublish, reloading, reloadTick, triggerReload } = useUI()
   const { t } = useT()
 
   const address =
@@ -185,7 +185,13 @@ export default function App() {
             ) : (
               <div className="relative h-full overflow-hidden rounded-shell">
                 {world.project === 'built' ? (
-                  <SitePreview />
+                  reloading ? (
+                    <SiteSkeleton />
+                  ) : (
+                    <div key={reloadTick} className={reloadTick > 0 ? 'site-enter h-full' : 'h-full'}>
+                      <SitePreview />
+                    </div>
+                  )
                 ) : (
                   <div className="grid h-full place-items-center bg-[var(--gray-900)]">
                     {world.project === 'generating' ? (
@@ -202,7 +208,7 @@ export default function App() {
                 {busy && (
                   <>
                     {/* like iOS: the content recedes a step while the glow works */}
-                    {world.project === 'built' && (
+                    {world.project === 'built' && !reloading && (
                       <div className="absolute inset-0 z-10 bg-[#09090b73]" style={{ animation: 'siri-in 0.5s var(--ease-std) both' }} aria-hidden />
                     )}
                     <div className="siri-glow" aria-hidden>

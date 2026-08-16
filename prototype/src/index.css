@@ -92,20 +92,17 @@
     scrollbar-width: thin;
     scrollbar-color: #ffffff2e transparent;
   }
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-corner { background: transparent; }
-  ::-webkit-scrollbar-thumb {
-    background: #ffffff2e;
-    border-radius: 999px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-  ::-webkit-scrollbar-thumb:hover { background: #ffffff52; background-clip: padding-box; }
+  /* hidden at rest like on a phone; appears when the scroll area is hovered */
+  ::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
+  *:hover::-webkit-scrollbar-thumb { background: #ffffff2e; }
+  ::-webkit-scrollbar-thumb:hover { background: #ffffff52; }
 
   .scroll-light { scrollbar-color: #09090b2e transparent; }
-  .scroll-light::-webkit-scrollbar-thumb { background: #09090b2e; background-clip: padding-box; }
-  .scroll-light::-webkit-scrollbar-thumb:hover { background: #09090b52; background-clip: padding-box; }
+  .scroll-light:hover::-webkit-scrollbar-thumb { background: #09090b2e; }
+  .scroll-light::-webkit-scrollbar-thumb:hover { background: #09090b52; }
 
   /*
    * Liquid glass. The Figma kit's glass controls (and Apple's Liquid Glass they nod to)
@@ -250,6 +247,24 @@
     0%, 100% { opacity: 0.6; }
     50%      { opacity: 1; }
   }
+  /* a freshly (re)loaded site rises in like a real page paint */
+  .site-enter { animation: site-enter 0.5s var(--ease-std) both; }
+  @keyframes site-enter {
+    from { opacity: 0; transform: translateY(8px) scale(0.997); }
+    to   { opacity: 1; transform: none; }
+  }
+  /* loading skeleton blocks, shimmering left to right */
+  .skeleton {
+    background: linear-gradient(90deg, #eceae4 25%, #f7f6f2 45%, #eceae4 65%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.3s linear infinite;
+    border-radius: 8px;
+  }
+  @keyframes skeleton-shimmer {
+    from { background-position: 150% 0; }
+    to   { background-position: -150% 0; }
+  }
+
   /* the glow arrives like on iOS: swells from the edge, settles */
   @keyframes siri-in {
     from { opacity: 0; transform: scale(1.012); }
