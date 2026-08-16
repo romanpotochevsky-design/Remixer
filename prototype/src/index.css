@@ -52,10 +52,26 @@
     --brand-from: #9b7bff;
     --brand-to: #4a2bc3;
 
-    /* shell geometry, measured */
-    --topbar-h: 57px;
-    --rail-w: 64px;
-    --chat-w: 522px;
+    /* black alpha ladder — Figma "Black/…", used on glass controls */
+    --black-300: #09090b3d;
+    --black-700: #09090ba3;
+    --black-800: #09090bb8;
+    --black-900: #09090bcc;
+
+    /* glass surface: the semi-transparent chrome pill (Figma: rgba(24,24,27,.8) + blur 16) */
+    --glass-bg: #18181bcc;
+    --glass-border: #ffffff26;
+
+    /* credits — the amber pill gradient (Figma: rgba(255,224,130,…)) */
+    --credit-from: #ffe0822b;
+    --credit-to: #ffe08212;
+    --credit-border: #ffe08226;
+
+    /* shell geometry — Figma "Website Builder" redesign, node 25819:143144 (16.08.2026):
+       chat 432 LEFT, topbar 52, rail 56 RIGHT. */
+    --topbar-h: 52px;
+    --rail-w: 56px;
+    --chat-w: 432px;
 
     /* motion — three durations, two curves. Never `transition: all`. */
     --dur-fast: 120ms;

@@ -196,11 +196,13 @@ function initialWorld(): World {
   return DEFAULT_WORLD
 }
 
-/** Keep the address bar in step so any state is a shareable link. */
+/** Keep the address bar in step so any state is a shareable link.
+ *  Both calls are best-effort: inside a sandboxed embed (the published artifact)
+ *  history and storage may be walled off, and the prototype must still run. */
 function syncUrl(w: World) {
   const qs = worldToParams(w)
   const url = window.location.pathname + (qs ? `?${qs}` : '')
-  window.history.replaceState(null, '', url)
+  try { window.history.replaceState(null, '', url) } catch { /* ignore */ }
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(w)) } catch { /* ignore */ }
 }
 
