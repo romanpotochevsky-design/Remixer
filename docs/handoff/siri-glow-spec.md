@@ -51,8 +51,10 @@ full frame on the CPU every frame. That is the 9fps failure mode.
 4. `--alt` — sparse counter-rotating colour accents, `plus-lighter`, 23s:
    makes hues recompose instead of visibly spinning.
 
-Four independent clocks (16s colour drift, 23s counter-drift, 9s and 13s
-waves) mean the pattern repeats only on a multi-minute cycle.
+Wave gaps are alpha holes baked into each layer's conic (flat 5-6% arcs at
+near-zero alpha). Four clocks — core 10s, dense 6.5s, soft 9s, accents 12s
+reverse — so the holes align and part continuously and the full pattern
+repeats only on a multi-minute cycle.
 
 ## The quality governor
 
