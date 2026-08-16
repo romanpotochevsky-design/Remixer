@@ -311,18 +311,19 @@
     pointer-events: none;
     animation: composer-glow-life 0.55s var(--ease-out) both;
   }
-  /* 3px past the field's edge: the plate hides everything inside the field, so
+  /* 2px past the field's edge: the plate hides everything inside the field, so
      without this overhang the visible light would be only the blur's outer
-     tail — too faint to read. The overhang is the filament, the blur its halo. */
+     tail — too faint to read. The overhang is the filament, the blur its halo.
+     Halved from the first cut on request — it was catching too much eye. */
   .composer-glow > i {
     position: absolute;
-    inset: -3px;
-    border-radius: 27px;
+    inset: -2px;
+    border-radius: 26px;
     overflow: hidden;
     container-type: size;
   }
-  .composer-glow .composer-glow-core { filter: blur(7px); opacity: 1; }
-  .composer-glow .composer-glow-bloom { inset: -4px; filter: blur(20px); opacity: 0.7; }
+  .composer-glow .composer-glow-core { filter: blur(4px); opacity: 0.95; }
+  .composer-glow .composer-glow-bloom { filter: blur(11px); opacity: 0.55; }
   .composer-glow .composer-glow-plate {
     position: absolute;
     inset: 0;
