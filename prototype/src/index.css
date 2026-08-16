@@ -309,7 +309,7 @@
     inset: 0;
     border-radius: 24px;
     pointer-events: none;
-    animation: composer-glow-life 0.55s var(--ease-out) both;
+    animation: composer-glow-life 0.65s var(--ease-out) both;
   }
   /* 2px past the field's edge: the plate hides everything inside the field, so
      without this overhang the visible light would be only the blur's outer
@@ -317,13 +317,13 @@
      Halved from the first cut on request — it was catching too much eye. */
   .composer-glow > i {
     position: absolute;
-    inset: -2px;
-    border-radius: 26px;
+    inset: -1px;
+    border-radius: 25px;
     overflow: hidden;
     container-type: size;
   }
-  .composer-glow .composer-glow-core { filter: blur(4px); opacity: 0.95; }
-  .composer-glow .composer-glow-bloom { filter: blur(11px); opacity: 0.55; }
+  .composer-glow .composer-glow-core { filter: blur(3px); opacity: 0.95; }
+  .composer-glow .composer-glow-bloom { filter: blur(8px); opacity: 0.5; }
   .composer-glow .composer-glow-plate {
     position: absolute;
     inset: 0;
@@ -351,23 +351,28 @@
       #6fe3c400 198deg,
       #1587ff00 360deg
     );
-    animation: composer-glow-spin 0.55s var(--ease-out) both;
+    animation: composer-glow-spin 0.65s var(--ease-out) both;
     will-change: transform;
   }
-  .composer-glow .composer-glow-bloom b { animation-duration: 0.62s; }
+  .composer-glow .composer-glow-bloom b { animation-duration: 0.72s; }
   /*
    * Born AT the trigger: the arc starts pointed at the send button
    * (bottom-right ≈ 135° in conic terms) and sweeps ~150° away from it,
    * rather than lapping the field.
    */
+  /* Ends at 300°, not 255: the arc's head (gradient ≈198°) then lands at
+     ≈138° on screen — the bottom-right corner, i.e. the send button. The
+     light finishes its run where the gesture began. */
   @keyframes composer-glow-spin {
     from { transform: translate(-50%, -50%) rotate(105deg); }
-    to   { transform: translate(-50%, -50%) rotate(255deg); }
+    to   { transform: translate(-50%, -50%) rotate(300deg); }
   }
+  /* Holds until the arc has finished its run — fading from 42% meant the light
+     died mid-journey and its arrival at the send button was invisible. */
   @keyframes composer-glow-life {
     0%   { opacity: 0; }
-    14%  { opacity: 1; }
-    42%  { opacity: 0.92; }
+    12%  { opacity: 1; }
+    72%  { opacity: 0.95; }
     100% { opacity: 0; }
   }
   @media (prefers-reduced-motion: reduce) {
