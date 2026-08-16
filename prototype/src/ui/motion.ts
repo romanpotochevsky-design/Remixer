@@ -46,6 +46,34 @@ export const popoverContent = {
   exit: { opacity: 0, transition: { duration: 0.1 } },
 }
 
+/**
+ * Sending a message, the iMessage way.
+ *
+ * The bubble does not fade in where it will sit — it comes OUT of the composer:
+ * small, low, and anchored at its bottom-right corner (the send button's side),
+ * then springs up to full size. The spring is deliberately livelier than the
+ * house one: a send is the most tactile thing in the whole product, and the
+ * little overshoot is what makes it feel like the message left your hand.
+ */
+export const bubbleSend = {
+  initial: { opacity: 0, scale: 0.6, y: 26 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    /* Duration-based spring rather than stiffness/damping/mass: `bounce` states
+       how much pop there is and `duration` how long it takes, which is what a
+       designer actually wants to tune. 0.34 is one clear overshoot. */
+    transition: { type: 'spring', bounce: 0.34, duration: 0.5 },
+  },
+}
+
+/** The reply, arriving. Calmer than a send — it is not your gesture. */
+export const messageIn = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
+}
+
 /** Full-surface swaps — a screen replacing another inside the same shell. */
 export const surface = {
   initial: { opacity: 0, scale: 0.985, y: 8 },

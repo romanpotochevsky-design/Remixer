@@ -83,6 +83,7 @@ export function ChatResizer() {
     >
       <span className="chat-resizer-line" aria-hidden />
       <span className="chat-resizer-bloom" aria-hidden />
+      <span className="chat-resizer-core" aria-hidden />
       <span className="chat-resizer-grip" aria-hidden>
         <svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor">
           <path d="M4.6 1v8L.8 5.2a.3.3 0 0 1 0-.4L4.6 1Z" />

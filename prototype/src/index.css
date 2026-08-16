@@ -161,36 +161,57 @@
     position: absolute;
     inset: 0 -5px;
   }
+  /*
+   * The line itself never turns fully blue. A full-height blue bar is just a
+   * blue bar — the light has to be somewhere for it to read as light. So the
+   * line only picks up a faint tint while dragging, and everything bright is
+   * local to the pointer: a hot core on the line plus a halo that spills onto
+   * both panels and dies out well before the top and bottom edges.
+   */
   .chat-resizer-line {
     position: absolute;
     inset: 0;
     background: var(--white-100);
-    transition: background 0.18s var(--ease-std), box-shadow 0.18s var(--ease-std);
+    transition: background 0.18s var(--ease-std);
   }
   .chat-resizer:hover .chat-resizer-line { background: var(--white-300); }
-  .chat-resizer[data-drag] .chat-resizer-line {
-    background: var(--action);
-    box-shadow: 0 0 10px 0 #1587ff73, 0 0 26px 1px #1587ff33;
-  }
+  .chat-resizer[data-drag] .chat-resizer-line { background: #1587ff3d; }
 
-  /* the travelling bloom — centred on the pointer, dies out along the line */
+  /* the halo — soft blue light spilling sideways, centred on the pointer */
   .chat-resizer-bloom {
     position: absolute;
     left: 50%;
     top: 0;
-    width: 3px;
-    height: 320px;
-    margin-left: -1.5px;
-    border-radius: 999px;
-    background: linear-gradient(to bottom, #1587ff00, #1587ff 42%, #4aa8ff 50%, #1587ff 58%, #1587ff00);
-    filter: blur(3px);
+    width: 64px;
+    height: 460px;
+    margin-left: -32px;
+    background: radial-gradient(50% 50% at 50% 50%, #1587ffbf 0%, #1587ff59 34%, #1587ff00 70%);
+    filter: blur(12px);
     opacity: 0;
-    transform: translate3d(0, calc(var(--glow-y) - 160px), 0);
-    transition: opacity 0.2s var(--ease-std);
+    transform: translate3d(0, calc(var(--glow-y) - 230px), 0);
+    transition: opacity 0.22s var(--ease-std);
     pointer-events: none;
   }
-  .chat-resizer:hover .chat-resizer-bloom { opacity: 0.45; }
+  /* the core — the hot filament right under the cursor */
+  .chat-resizer-core {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 300px;
+    margin-left: -1px;
+    border-radius: 999px;
+    background: linear-gradient(to bottom, #4aa8ff00 0%, #4aa8ff 34%, #cfe6ff 50%, #4aa8ff 66%, #4aa8ff00 100%);
+    filter: blur(0.6px);
+    opacity: 0;
+    transform: translate3d(0, calc(var(--glow-y) - 150px), 0);
+    transition: opacity 0.22s var(--ease-std);
+    pointer-events: none;
+  }
+  .chat-resizer:hover .chat-resizer-bloom { opacity: 0.3; }
+  .chat-resizer:hover .chat-resizer-core { opacity: 0.5; }
   .chat-resizer[data-drag] .chat-resizer-bloom { opacity: 1; }
+  .chat-resizer[data-drag] .chat-resizer-core { opacity: 1; }
 
   /* the grip, parked at the pointer like Lovable's */
   .chat-resizer-grip {
@@ -214,6 +235,32 @@
     transform: translate3d(0, calc(var(--glow-y) - 14px), 0) scale(1);
   }
   .chat-resizer[data-drag] .chat-resizer-grip { color: #fff; }
+
+  /*
+   * A reply arriving, word by word — the way a streaming model reads.
+   *
+   * Real streaming appends tokens to state; doing that here would re-render the
+   * chat dozens of times per answer for a transcript we already hold in full.
+   * Instead every word is laid out at once and revealed on a stagger, which is
+   * visually the same thing and costs one render.
+   *
+   * Deliberately opacity + a 2px rise, no blur: a blur-in looks lovely but
+   * re-rasterises text every frame, and a long answer has ~15 words in flight
+   * at any moment. That is exactly the kind of per-frame paint this project
+   * banned after the 9fps glow.
+   */
+  .stream-word {
+    display: inline-block;
+    white-space: pre;
+    animation: stream-in 0.32s var(--ease-out) both;
+  }
+  @keyframes stream-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stream-word { animation: none; }
+  }
 
   .scroll-area { position: relative; }
   .scroll-thumb {

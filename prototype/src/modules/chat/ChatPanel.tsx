@@ -11,6 +11,7 @@
  * from a canned set (modules/chat/thread.ts). See send.ts for what one message moves.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import { useWorld, canUseAI } from '@/state/world'
 import { useT } from '@/i18n'
 import {
@@ -20,13 +21,19 @@ import {
 import { ScrollArea } from '@/ui/ScrollArea'
 import { baselineThread } from './thread'
 import { sendMessage } from './send'
+import { bubbleSend, messageIn } from '@/ui/motion'
 
-function UserBubble({ children }: { children: React.ReactNode }) {
+function UserBubble({ children, animate }: { children: React.ReactNode; animate: boolean }) {
   return (
     <div className="flex justify-end">
-      <div className="liquid-glass liquid-glass--subtle max-w-[320px] rounded-[24px] rounded-br-[8px] px-5 pb-[11px] pt-[13px]">
+      <motion.div
+        variants={bubbleSend}
+        initial={animate ? 'initial' : false}
+        animate="animate"
+        className="liquid-glass liquid-glass--subtle max-w-[320px] origin-bottom-right rounded-[24px] rounded-br-[8px] px-5 pb-[11px] pt-[13px]"
+      >
         <p className="whitespace-pre-wrap text-[15px] leading-[26px] text-[var(--gray-350,#c7c7cd)]">{children}</p>
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -89,13 +96,54 @@ function AiActions({ text }: { text: string }) {
   )
 }
 
-/** Figma: message column, 9px between the text and its action row. */
-function AiMessage({ text, actions }: { text: string; actions?: boolean }) {
+/**
+ * A reply revealing itself word by word, the way a streaming answer reads.
+ * The whole sentence is laid out at once and each word fades up on a stagger —
+ * the step shrinks as the answer grows, so a long paragraph still finishes in
+ * about a second instead of crawling.
+ */
+/** How long the word-by-word reveal of this text will take, in ms. */
+function streamDuration(text: string) {
+  const n = Math.max(text.split(' ').length, 1)
+  return Math.round((n - 1) * Math.min(26, 820 / n)) + 320
+}
+
+function StreamedText({ text }: { text: string }) {
+  const words = text.split(' ')
+  const step = Math.min(26, 820 / Math.max(words.length, 1))
   return (
-    <div className="flex flex-col gap-[9px] pr-8">
-      <p className="whitespace-pre-wrap text-[15px] leading-[25px] text-[var(--gray-350,#c7c7cd)]">{text}</p>
-      {actions && <AiActions text={text} />}
-    </div>
+    <>
+      {words.map((w, i) => (
+        <span key={i} className="stream-word" style={{ animationDelay: `${Math.round(i * step)}ms` }}>
+          {i < words.length - 1 ? `${w} ` : w}
+        </span>
+      ))}
+    </>
+  )
+}
+
+/** Figma: message column, 9px between the text and its action row. */
+function AiMessage({ text, actions, animate }: { text: string; actions?: boolean; animate: boolean }) {
+  return (
+    <motion.div
+      variants={messageIn}
+      initial={animate ? 'initial' : false}
+      animate="animate"
+      className="flex flex-col gap-[9px] pr-8"
+    >
+      <p className="whitespace-pre-wrap text-[15px] leading-[25px] text-[var(--gray-350,#c7c7cd)]">
+        {animate ? <StreamedText text={text} /> : text}
+      </p>
+      {actions && (
+        /* the row waits for the answer to finish writing itself */
+        <span
+          className={animate ? 'stream-word' : undefined}
+          style={animate ? { animationDelay: `${streamDuration(text)}ms` } : undefined}
+        >
+          <AiActions text={text} />
+        </span>
+      )}
+    </motion.div>
   )
 }
 
@@ -116,6 +164,10 @@ export function ChatPanel() {
   const [draft, setDraft] = useState('')
   const field = useRef<HTMLTextAreaElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
+  /* Messages present on the first paint are already there — only what arrives
+     afterwards gets the send/receive animation. Otherwise the whole transcript
+     would pop on every page load. */
+  const settled = useRef(false)
 
   const live = world.sent.length > 0
   const thread = live ? world.sent : baselineThread(world.chat)
@@ -129,6 +181,10 @@ export function ChatPanel() {
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 132)}px`
   }, [draft])
+
+  useEffect(() => {
+    settled.current = true
+  }, [])
 
   // Follow the conversation down as it grows, the way every chat does.
   useEffect(() => {
@@ -170,9 +226,9 @@ export function ChatPanel() {
             thread.map((m) => {
               const body = typeof m.text === 'string' ? m.text : t(m.text)
               return m.who === 'user' ? (
-                <UserBubble key={m.id}>{body}</UserBubble>
+                <UserBubble key={m.id} animate={settled.current}>{body}</UserBubble>
               ) : (
-                <AiMessage key={m.id} text={body} actions />
+                <AiMessage key={m.id} text={body} actions animate={settled.current} />
               )
             })
           )}
