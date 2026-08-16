@@ -298,48 +298,70 @@
    * border. Nothing repaints per frame — animating a gradient's angle would,
    * and that is the 9fps mistake this project already made once.
    */
+  /*
+   * It sits BEHIND the field, not on it. Google never draws a coloured stroke:
+   * the field's own edge stays dark and the colour is light escaping from
+   * behind it. A crisp ring on the border reads as neon trim instead.
+   */
   .composer-glow {
     position: absolute;
-    inset: -3px;
-    border-radius: 27px;
+    inset: -7px;
+    border-radius: 31px;
+    z-index: 20;
     pointer-events: none;
-    z-index: 2;
     animation: composer-glow-life 1.7s var(--ease-out) both;
   }
+  /*
+   * ⚠️ The ring mask and the blur MUST sit on the same element. Chrome renders
+   * nothing when a masked (or overflow-clipped) element is nested inside one
+   * carrying a `filter` — verified by toggling each on its own: either alone
+   * paints, nested they vanish. The cost of putting them together is that the
+   * mask crops the blur's spill, so the ring is made generous relative to the
+   * blur and pushed OUT from the border, where the crop lands in light that is
+   * already faint. Google's glow is off the box, not on it, so that suits.
+   */
   .composer-glow > i {
     position: absolute;
     inset: 0;
     border-radius: inherit;
     overflow: hidden;
     container-type: size;
+    padding: 9px;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
   }
-  /* the crisp filament on the border itself */
-  .composer-glow .composer-glow-core { padding: 2px; }
-  /* and the light it throws outward */
-  .composer-glow .composer-glow-bloom { padding: 10px; filter: blur(9px); opacity: 0.85; }
+  .composer-glow .composer-glow-core { padding: 4px; filter: blur(3.5px); opacity: 0.85; }
+  .composer-glow .composer-glow-bloom { filter: blur(13px); opacity: 0.5; }
 
-  .composer-glow > i > b {
+  .composer-glow b {
     position: absolute;
     left: 50%;
     top: 50%;
     width: 142cqmax;
     height: 142cqmax;
+    /*
+     * A travelling ARC, not a full ring. Most of the circle is transparent, so
+     * at any moment one stretch of the perimeter is lit and the rest is dark —
+     * which is what makes the light look like it is moving around the field
+     * rather than the field being outlined.
+     */
     background: conic-gradient(
       from 0deg,
-      #1587ff 0deg, #4aa8ff 44deg, #8b5cff 96deg,
-      #e0559a 150deg, #ff7a45 198deg, #ffc857 240deg,
-      #6fe3c4 288deg, #1587ff 360deg
+      #1587ff00 0deg,
+      #1587ffcc 26deg, #4aa8ff 52deg, #8b5cff 96deg,
+      #e0559a 132deg, #ff7a45 162deg, #ffc857 186deg,
+      #ffc85700 214deg,
+      #1587ff00 360deg
     );
     animation: composer-glow-spin 1.7s linear both;
     will-change: transform;
   }
+  .composer-glow .composer-glow-bloom b { animation-duration: 1.9s; }
   @keyframes composer-glow-spin {
-    from { transform: translate(-50%, -50%) rotate(-40deg); }
-    to   { transform: translate(-50%, -50%) rotate(380deg); }
+    from { transform: translate(-50%, -50%) rotate(-70deg); }
+    to   { transform: translate(-50%, -50%) rotate(400deg); }
   }
   @keyframes composer-glow-life {
     0%   { opacity: 0; }

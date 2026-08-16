@@ -347,7 +347,7 @@ export function ChatPanel() {
               <i className="composer-glow-core"><b /></i>
             </span>
           )}
-        <div className="liquid-glass relative rounded-[24px] pb-2 pr-2">
+        <div className="relative rounded-[24px] border border-[#ffffff3d] bg-[#09090b] pb-2 pr-2">
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
             <textarea
               ref={field}
