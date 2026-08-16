@@ -371,15 +371,14 @@
    */
   /*
    * The run, as marked up on the designer's screenshot: born at the "+", up
-   * and across the top, dying on the send button — and it stays OFF the
-   * bottom edge. The box is wide, so in conic terms its bottom-left corner
-   * sits at ≈257° and the bottom-right at ≈103°, not the square-box 225/135
-   * used before (which parked both ends of the run ON the bottom edge).
-   * Head (gradient ≈99°) goes 262° → 458°: corner to corner, never below.
+   * and across the top, dying on the send button — never along the bottom.
+   * Angles are in SQUARE space now (the <u> stretch maps them to the box),
+   * so the corners are the honest 225°/135°: head (gradient ≈99°) goes from
+   * just above bottom-left (232°) to just above bottom-right (488°).
    */
   @keyframes composer-glow-spin {
-    from { transform: translate(-50%, -50%) rotate(163deg); }
-    to   { transform: translate(-50%, -50%) rotate(359deg); }
+    from { transform: translate(-50%, -50%) rotate(133deg); }
+    to   { transform: translate(-50%, -50%) rotate(389deg); }
   }
   /* Holds until the arc has finished its run — fading from 42% meant the light
      died mid-journey and its arrival at the send button was invisible. */

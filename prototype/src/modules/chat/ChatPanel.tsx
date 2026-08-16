@@ -272,10 +272,19 @@ export function ChatPanel() {
     return () => window.clearTimeout(park)
   }, [thread])
 
+  const composerBox = useRef<HTMLDivElement>(null)
+
   function submit() {
     if (!armed) return
     sendMessage(draft)
     setDraft('')
+    // The flash's conic is drawn square and stretched to the box (index.css);
+    // hand it the box's real aspect so the stretch is exact at any chat width.
+    const el = composerBox.current
+    if (el) {
+      const r = el.getBoundingClientRect()
+      el.style.setProperty('--flash-sx', (r.width / Math.max(r.height, 1)).toFixed(3))
+    }
     setFlash((n) => n + 1)
     field.current?.focus()
   }
@@ -356,12 +365,12 @@ export function ChatPanel() {
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
-        <div className="relative z-20">
+        <div ref={composerBox} className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}
           {flash > 0 && (
             <span key={flash} className="composer-glow" aria-hidden>
-              <i className="composer-glow-bloom"><b /></i>
-              <i className="composer-glow-core"><b /></i>
+              <i className="composer-glow-bloom"><u><b /></u></i>
+              <i className="composer-glow-core"><u><b /></u></i>
               {/* keeps the light outside: the field is 80% translucent, and
                   without this plate the glow bleeds straight through it */}
               <s className="composer-glow-plate" />
