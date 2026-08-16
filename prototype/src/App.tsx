@@ -10,7 +10,7 @@
  * Everything still renders from the world store — the scenario console and flows
  * drive this shell exactly as they drove the old one.
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
@@ -49,6 +49,25 @@ const RAIL = [
 export default function App() {
   const { world } = useWorld()
   const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth } = useUI()
+
+  /*
+   * The glow waits for the send choreography to finish.
+   *
+   * Measured on the published build: with the glow running the page renders
+   * 4fps, without it 60 — so anything animating alongside it (the bubble
+   * springing out of the composer, the reply typing itself in) loses its frames
+   * and reads as "no animation at all". Blurred surfaces this large are simply
+   * expensive, and moving the blur around inside the effect does not help.
+   * Holding it back ~700ms costs nothing in meaning — the work has barely
+   * started — and gives the chat its frames back.
+   */
+  const busy = world.project === 'generating' || world.chat === 'working' || reloading
+  const [glow, setGlow] = useState(false)
+  useEffect(() => {
+    if (!busy) { setGlow(false); return }
+    const t = window.setTimeout(() => setGlow(true), 700)
+    return () => window.clearTimeout(t)
+  }, [busy])
 
   // The resizer writes --chat-w straight to <html> during a drag; this keeps the
   // stored value authoritative everywhere else (reset, reload, another session).
@@ -200,7 +219,6 @@ export default function App() {
             390px frame centred on the ground, not a scaled-down desktop. */}
         <main className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
           {(() => {
-            const busy = world.project === 'generating' || world.chat === 'working' || reloading
             return surface === 'domains' ? (
               <DomainsSurface />
             ) : (
@@ -237,7 +255,7 @@ export default function App() {
                       )}
                     </div>
                   )}
-                  <SiriGlow active={busy} surface={world.project === 'built' ? 'split' : 'dark'} />
+                  <SiriGlow active={glow} surface={world.project === 'built' ? 'split' : 'dark'} />
                 </motion.div>
               </div>
             )
