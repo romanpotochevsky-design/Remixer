@@ -244,15 +244,32 @@ export function ChatPanel() {
 
     // One frame later: the bubble is in the DOM and laid out, so the numbers
     // below are the ones the user will actually see.
+    let park = 0
     requestAnimationFrame(() => {
+      // Collapsing the spacer to measure shortens the scrollable range, and the
+      // browser clamps scrollTop to fit — which yanked the whole thread up and
+      // back (measured: 234 → 33 → 294). Save the position and put it back in
+      // the same frame, so the measurement is invisible.
+      const keep = vp.scrollTop
       sp.style.height = '0px'
       // NOT vp.scrollHeight: it never reports less than the viewport, so on a
       // short thread it reads as "content already fills the panel" and no room
       // gets made. The list's own box is the honest measurement.
       const below = ls.offsetTop + ls.offsetHeight - an.offsetTop
       sp.style.height = `${Math.max(0, vp.clientHeight - TOP_INSET - below)}px`
-      vp.scrollTo({ top: Math.max(0, an.offsetTop - TOP_INSET), behavior: 'smooth' })
+      vp.scrollTop = keep
+
+      /*
+       * The scroll waits for the bubble to land. Run both at once and the send
+       * animation is simply not visible: the bubble springs while the entire
+       * thread slides underneath it, and the eye follows the bigger motion.
+       * Bubble first, then the thread carries it up to the top.
+       */
+      park = window.setTimeout(() => {
+        vp.scrollTo({ top: Math.max(0, an.offsetTop - TOP_INSET), behavior: 'smooth' })
+      }, 320)
     })
+    return () => window.clearTimeout(park)
   }, [thread])
 
   function submit() {
