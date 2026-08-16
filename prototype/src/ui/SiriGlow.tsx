@@ -69,7 +69,7 @@ const LITE_LAYERS = ['dense', 'core'] as const
  * saturated rim survives (like real light against white); 'dark' renders the
  * full bloom. The real effect never dims the content — no scrim here.
  */
-export function SiriGlow({ active, surface = 'dark' }: { active: boolean; surface?: 'light' | 'dark' }) {
+export function SiriGlow({ active, surface = 'dark' }: { active: boolean; surface?: 'light' | 'dark' | 'split' }) {
   const quality = useGlowQuality()
   const [mounted, setMounted] = useState(active)
   useEffect(() => {
@@ -84,7 +84,7 @@ export function SiriGlow({ active, surface = 'dark' }: { active: boolean; surfac
   const glowClass = [
     'siri-glow',
     quality === 'lite' ? 'siri-glow--lite' : '',
-    surface === 'light' ? 'siri-glow--on-light' : '',
+    surface === 'light' ? 'siri-glow--on-light' : surface === 'split' ? 'siri-glow--split' : '',
     out ? 'siri-glow--out' : '',
   ].join(' ').trim()
 

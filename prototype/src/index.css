@@ -295,23 +295,16 @@
   .siri-glow--on-light .siri-layer--dense { filter: blur(10px) saturate(165%); }
   .siri-glow--on-light .siri-layer--core { filter: blur(3px) saturate(175%) brightness(1.2); }
 
-  /* a freshly (re)loaded site rises in like a real page paint */
-  .site-enter { animation: site-enter 0.5s var(--ease-std) both; }
-  @keyframes site-enter {
-    from { opacity: 0; transform: translateY(8px) scale(0.997); }
-    to   { opacity: 1; transform: none; }
+  /* Split page (light top, dark bottom): the wide wash fades in only over the
+     dark half via a STATIC vertical mask — physics for free, no per-frame cost. */
+  .siri-glow--split .siri-layer--soft,
+  .siri-glow--split .siri-layer--alt {
+    mask-image: linear-gradient(to bottom, transparent 38%, #000 58%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 38%, #000 58%);
   }
-  /* loading skeleton blocks, shimmering left to right */
-  .skeleton {
-    background: linear-gradient(90deg, #eceae4 25%, #f7f6f2 45%, #eceae4 65%);
-    background-size: 200% 100%;
-    animation: skeleton-shimmer 1.3s linear infinite;
-    border-radius: 8px;
-  }
-  @keyframes skeleton-shimmer {
-    from { background-position: 150% 0; }
-    to   { background-position: -150% 0; }
-  }
+  .siri-glow--split .siri-layer--dense { filter: blur(11px) saturate(160%); }
+  .siri-glow--split .siri-layer--core { filter: blur(3px) saturate(170%) brightness(1.2); }
+
   @keyframes siri-in {
     from { opacity: 0; transform: scale(1.012); }
     to   { opacity: 1; transform: none; }
@@ -347,20 +340,6 @@
     from { opacity: 1; transform: none; }
     to   { opacity: 0; transform: scale(1.01); }
   }
-  /* the content-recede scrim, entering and leaving in sync with the glow */
-  .siri-scrim {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    background: #09090b73;
-    pointer-events: none;
-    animation: siri-scrim-in 0.5s var(--ease-std) both;
-  }
-  .siri-scrim--out { animation: siri-scrim-out 0.7s var(--ease-out) both; }
-  @keyframes siri-scrim-in { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes siri-scrim-out { from { opacity: 1; } to { opacity: 0; } }
-
-
   /* the glow arrives like on iOS: swells from the edge, settles */
   @keyframes siri-in {
     from { opacity: 0; transform: scale(1.012); }

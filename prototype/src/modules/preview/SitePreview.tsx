@@ -18,45 +18,6 @@ const MEALS = [
   { name: 'Protein Pancakes', kcal: 430, protein: 31, tint: 'linear-gradient(135deg,#f9ecdf,#f0d3b0)', emoji: '🥞' },
 ]
 
-/** The blank-page skeleton shown while the site "reloads" — grey slabs shimmering
- *  where the nav, hero and menu grid will land. Reads instantly as a page loading. */
-export function SiteSkeleton() {
-  return (
-    <div className="h-full overflow-hidden bg-[#fbfaf7]" aria-hidden>
-      <div className="flex items-center justify-between border-b border-[#1d1f1a0f] px-10 py-4">
-        <div className="skeleton h-6 w-14" />
-        <div className="flex gap-4">
-          <div className="skeleton h-4 w-14" /><div className="skeleton h-4 w-20" />
-          <div className="skeleton h-4 w-14" /><div className="skeleton h-4 w-10" />
-        </div>
-        <div className="skeleton h-9 w-28 rounded-full" />
-      </div>
-      <div className="mx-auto max-w-[880px] px-10 pt-16 text-center">
-        <div className="skeleton mx-auto h-3.5 w-44" />
-        <div className="skeleton mx-auto mt-6 h-11 w-[70%]" />
-        <div className="skeleton mx-auto mt-3 h-11 w-[52%]" />
-        <div className="skeleton mx-auto mt-7 h-4 w-[64%]" />
-        <div className="skeleton mx-auto mt-2 h-4 w-[46%]" />
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <div className="skeleton h-12 w-40 rounded-full" />
-          <div className="skeleton h-12 w-40 rounded-full" />
-        </div>
-      </div>
-      <div className="mx-auto mt-16 grid max-w-[980px] grid-cols-3 gap-4 px-10">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="overflow-hidden rounded-[14px] border border-[#1d1f1a0f] bg-white">
-            <div className="skeleton h-28 rounded-none" />
-            <div className="p-4">
-              <div className="skeleton h-4 w-2/3" />
-              <div className="skeleton mt-2 h-3 w-1/2" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export function SitePreview() {
   const { t } = useT()
   return (
@@ -93,31 +54,34 @@ export function SitePreview() {
         </div>
       </div>
 
-      {/* menu grid */}
-      <div className="mx-auto max-w-[980px] px-10 pb-16">
-        <div className="mb-5 flex items-end justify-between">
-          <h2 className="text-[24px] font-bold tracking-[-0.02em]">This week’s menu</h2>
-          <span className="text-[13px] font-medium text-[#2e7d4f]">Full menu →</span>
-        </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-          {MEALS.map((m) => (
-            <div key={m.name} className="overflow-hidden rounded-[14px] border border-[#1d1f1a12] bg-white">
-              <div className="grid h-28 place-items-center text-[40px]" style={{ background: m.tint }} aria-hidden>
-                {m.emoji}
+      {/* menu grid — the DARK half of the page, so the glow can be judged on both
+          grounds at once (narrow rim over the white hero, full bloom over this) */}
+      <div className="bg-[#101210] pb-16 pt-12 text-[#f4f4f0]">
+        <div className="mx-auto max-w-[980px] px-10">
+          <div className="mb-5 flex items-end justify-between">
+            <h2 className="text-[24px] font-bold tracking-[-0.02em]">This week’s menu</h2>
+            <span className="text-[13px] font-medium text-[#7ac996]">Full menu →</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+            {MEALS.map((m) => (
+              <div key={m.name} className="overflow-hidden rounded-[14px] border border-[#ffffff14] bg-[#191b17]">
+                <div className="grid h-28 place-items-center text-[40px]" style={{ background: m.tint }} aria-hidden>
+                  {m.emoji}
+                </div>
+                <div className="p-4">
+                  <p className="text-[15px] font-semibold">{m.name}</p>
+                  <p className="mt-1 text-[12.5px] tabular-nums text-[#f4f4f080]">
+                    {m.kcal} kcal · {m.protein} g protein
+                  </p>
+                </div>
               </div>
-              <div className="p-4">
-                <p className="text-[15px] font-semibold">{m.name}</p>
-                <p className="mt-1 text-[12.5px] tabular-nums text-[#1d1f1a80]">
-                  {m.kcal} kcal · {m.protein} g protein
-                </p>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
       {/* footer strip */}
-      <div className="border-t border-[#1d1f1a14] bg-[#12140f] px-10 py-10 text-center">
+      <div className="bg-[#0b0d0a] px-10 py-10 text-center">
         <p className="text-[18px] font-bold text-white">
           {t({ en: 'Ready when you are.', uk: 'Готові, коли готові ви.' })}
         </p>

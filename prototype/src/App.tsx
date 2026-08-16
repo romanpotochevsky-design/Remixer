@@ -17,7 +17,7 @@ import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
-import { SitePreview, SiteSkeleton } from '@/modules/preview/SitePreview'
+import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
 import { useT } from '@/i18n'
 import {
@@ -45,7 +45,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, reloadTick, triggerReload } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload } = useUI()
   const { t } = useT()
 
   const address =
@@ -186,13 +186,9 @@ export default function App() {
             ) : (
               <div className="relative h-full overflow-hidden rounded-shell">
                 {world.project === 'built' ? (
-                  reloading ? (
-                    <SiteSkeleton />
-                  ) : (
-                    <div key={reloadTick} className={reloadTick > 0 ? 'site-enter h-full' : 'h-full'}>
-                      <SitePreview />
-                    </div>
-                  )
+                  /* During a reload the page itself stays put — the edge glow alone
+                     carries the "working" signal (no skeleton, no remount flicker). */
+                  <SitePreview />
                 ) : (
                   <div className="grid h-full place-items-center bg-[var(--gray-900)]">
                     {world.project === 'generating' ? (
@@ -206,7 +202,7 @@ export default function App() {
                     )}
                   </div>
                 )}
-                <SiriGlow active={busy} surface={world.project === 'built' ? 'light' : 'dark'} />
+                <SiriGlow active={busy} surface={world.project === 'built' ? 'split' : 'dark'} />
               </div>
             )
           })()}

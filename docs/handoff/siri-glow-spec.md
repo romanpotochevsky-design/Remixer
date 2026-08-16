@@ -58,10 +58,19 @@ lighting up.
 app and a black app): the content is NEVER dimmed; over a `light` surface only
 the narrow saturated rim renders (a faint wide tail is invisible against white
 anyway — `--soft` is dropped, saturation lifted), over `dark` the full bloom.
-The host passes `surface="light" | "dark"` — each screen knows its own theme.
+The host passes `surface="light" | "dark" | "split"` — each screen knows its
+own theme. `split` is for pages that are light on top and dark below (a common
+real-site shape): a static vertical mask fades the wide layers in across the
+boundary, so the top edge stays a narrow rim while the bottom half blooms.
+The mask is painted once — it does not violate the performance contract.
+
+The glow is the ONLY loading indicator over the preview: no skeleton, no
+overlay, no remount. The page stays fully visible and readable underneath;
+the ignition flash plus the moving edge carry the entire "working" signal —
+same as the real effect, which plays over whatever is on screen.
 
 Wave gaps are alpha holes baked into each layer's conic (flat 5-6% arcs at
-near-zero alpha). Four clocks — core 10s, dense 6.5s, soft 9s, accents 12s
+near-zero alpha). Four clocks — core 8s, dense 6.5s, soft 9s, accents 12s
 reverse — so the holes align and part continuously and the full pattern
 repeats only on a multi-minute cycle.
 
