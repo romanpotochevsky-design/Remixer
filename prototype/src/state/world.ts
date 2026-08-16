@@ -210,11 +210,29 @@ const STORAGE_KEY = 'remixer-prototype/world'
 
 function initialWorld(): World {
   const fromUrl = paramsToWorld(window.location.search)
-  if (Object.keys(fromUrl).length) return { ...DEFAULT_WORLD, ...fromUrl }
+  let saved: Partial<World> = {}
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) return { ...DEFAULT_WORLD, ...JSON.parse(saved) }
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) saved = JSON.parse(raw) as Partial<World>
   } catch { /* ignore corrupt storage */ }
+
+  if (Object.keys(fromUrl).length) {
+    /*
+     * The URL wins — it is the shareable state — but the transcript never
+     * travels in it. A reload mid-send therefore used to restore chat:'working'
+     * with an empty transcript: a working flag with no answer ever coming, the
+     * glow burning and the composer locked. In exactly that case (and no other,
+     * so a shared scenario link stays a clean stage) carry the transcript over
+     * from storage; send.ts resumes the interrupted job from it on mount.
+     */
+    const resumable =
+      fromUrl.chat === 'working' &&
+      Array.isArray(saved.sent) &&
+      saved.sent.length > 0 &&
+      saved.sent[saved.sent.length - 1].who === 'user'
+    return { ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent } : null) }
+  }
+  if (Object.keys(saved).length) return { ...DEFAULT_WORLD, ...saved }
   return DEFAULT_WORLD
 }
 

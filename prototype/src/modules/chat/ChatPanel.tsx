@@ -20,7 +20,7 @@ import {
 } from '@/ui/icons'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { baselineThread } from './thread'
-import { sendMessage } from './send'
+import { sendMessage, resumeInterrupted } from './send'
 import { bubbleSend } from '@/ui/motion'
 
 /** Where a freshly sent message parks: just clear of the 48px top fade. */
@@ -213,6 +213,8 @@ export function ChatPanel() {
   useEffect(() => {
     const vp = viewport.current
     if (vp) vp.scrollTop = vp.scrollHeight
+    // a reload mid-send restores chat:'working' with no timer behind it
+    resumeInterrupted()
   }, [])
 
   // Everything rendered this pass has now been seen.

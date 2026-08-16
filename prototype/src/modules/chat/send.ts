@@ -43,18 +43,40 @@ export function sendMessage(raw: string) {
   )
 
   if (pending) clearTimeout(pending)
-  pending = setTimeout(() => {
-    const now = useWorld.getState()
-    const answer: Message = { id: ++seq, who: 'ai', text: replyTo(text) }
-    now.set(
-      {
-        sent: [...now.world.sent, answer],
-        chat: 'long',
-        project: 'built',
-        credits: Math.max(0, now.world.credits - COST),
-        unpublished: now.world.unpublished + 1,
-      },
-      now.preset,
-    )
-  }, THINKING_MS)
+  pending = setTimeout(() => deliverAnswer(text), THINKING_MS)
+}
+
+function deliverAnswer(prompt: string) {
+  const now = useWorld.getState()
+  const answer: Message = { id: ++seq, who: 'ai', text: replyTo(prompt) }
+  now.set(
+    {
+      sent: [...now.world.sent, answer],
+      chat: 'long',
+      project: 'built',
+      credits: Math.max(0, now.world.credits - COST),
+      unpublished: now.world.unpublished + 1,
+    },
+    now.preset,
+  )
+}
+
+/**
+ * Pick up a send that a reload interrupted.
+ *
+ * The world persists (localStorage + URL — any state is a shareable link), but
+ * the reply timer does not. Reload while Remixer is "working" and the restored
+ * flag has no timer behind it: the glow burns forever and the composer stays
+ * locked. If the transcript ends on an unanswered user message, the job is
+ * clearly a real interrupted send — resume it and answer shortly after load.
+ * A STAGED 'working' (scenario console; its transcript is the demo thread, not
+ * `sent`) is left untouched — burning glow is exactly what that demo stages.
+ */
+export function resumeInterrupted() {
+  const { world } = useWorld.getState()
+  if (world.chat !== 'working' || pending) return
+  const last = world.sent[world.sent.length - 1]
+  if (!last || last.who !== 'user') return
+  const text = typeof last.text === 'string' ? last.text : ''
+  pending = setTimeout(() => deliverAnswer(text), 1400)
 }
