@@ -362,7 +362,8 @@
     animation: composer-glow-spin 0.5s var(--ease-out) both;
     will-change: transform;
   }
-  .composer-glow .composer-glow-bloom b { animation-duration: 0.56s; }
+  /* Same clock as the core — the bloom's span is nested inside the core's, and
+     a lagging clock would push the thick middle out past the thin tail. */
   /*
    * Born AT the trigger: the arc starts pointed at the send button
    * (bottom-right ≈ 135° in conic terms) and sweeps ~150° away from it,
