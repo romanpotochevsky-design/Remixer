@@ -93,6 +93,25 @@ export const messageIn = {
   animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
 }
 
+/**
+ * App-modal: the checkout sheet over the 70% scrim (Figma 27254/27275).
+ *
+ * Centred sheets have no trigger corner to grow out of, so rule 2 cannot apply —
+ * the substitute is a very short rise. Scale starts nearer 1 than a popover's:
+ * a 600px sheet inflating from .94 reads as a zoom, not as a surface arriving.
+ */
+export const modalScrim = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+}
+
+export const modalSheet = {
+  initial: { opacity: 0, scale: 0.97, y: 12 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: SPRING_SOFT },
+  exit: { opacity: 0, scale: 0.985, y: 6, transition: EXIT },
+}
+
 /** Full-surface swaps — a screen replacing another inside the same shell. */
 export const surface = {
   initial: { opacity: 0, scale: 0.985, y: 8 },

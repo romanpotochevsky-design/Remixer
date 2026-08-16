@@ -82,6 +82,66 @@ export const AI_SUGGESTIONS: Suggestion[] = [
   },
 ]
 
+/**
+ * Search results (Figma 27729:14650) — built from whatever the user typed.
+ *
+ * Two lists, and the split is meaningful rather than cosmetic. The classic block
+ * is the SAME NAME in other endings, which is why its footer reads "Show more
+ * endings"; the AI block is other NAMES, each with the reason it was suggested.
+ * Per-name rationales are rare in the field — the research called that gap ours
+ * to take, so no row ever ships without one.
+ *
+ * The mockup's rows are placeholder copy (three identical `gettrulieve.com`
+ * entries) and its renewal figure — $11.86 — appears nowhere in DreamHost's
+ * verified price table. Prices here come from TLD_PRICES; the layout is the
+ * mockup's, the numbers are the real ones.
+ */
+export interface ResultRow {
+  domain: string
+  tld: string
+  reason: { en: string; uk: string }
+}
+
+/** Strip whatever ending the user typed — we are about to offer our own. */
+const stem = (q: string) => {
+  const clean = q.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+  return clean || 'yourbrand'
+}
+
+/** The exact match, shown as the hero: the name they asked for, in .com. */
+export const exactMatch = (q: string): ResultRow => ({
+  domain: `${stem(q.split('.')[0])}.com`,
+  tld: '.com',
+  reason: {
+    en: 'Exact brand match · the .com people try first',
+    uk: 'Точний збіг із брендом · .com пробують першим',
+  },
+})
+
+/** Same name, other endings — the classic registrar list. */
+export const otherEndings = (q: string): ResultRow[] => {
+  const s = stem(q.split('.')[0])
+  return [
+    { domain: `${s}.net`, tld: '.net', reason: { en: 'A trusted and established extension', uk: 'Перевірена і давно знайома зона' } },
+    { domain: `${s}.shop`, tld: '.shop', reason: { en: 'Perfect for e-commerce and retail', uk: 'Ідеально для торгівлі та e-commerce' } },
+    { domain: `${s}.org`, tld: '.org', reason: { en: 'Reads as an organisation people trust', uk: 'Читається як організація, якій довіряють' } },
+    { domain: `${s}.online`, tld: '.online', reason: { en: 'Short and available almost everywhere', uk: 'Коротко і майже завжди вільно' } },
+    { domain: `${s}.io`, tld: '.io', reason: { en: 'Favoured by software and product teams', uk: 'Улюблена зона софтверних і продуктових команд' } },
+  ]
+}
+
+/** Other names entirely — the AI block, each with the reason it was picked. */
+export const nameIdeas = (q: string): ResultRow[] => {
+  const s = stem(q.split('.')[0])
+  return [
+    { domain: `get${s}.com`, tld: '.com', reason: { en: 'Strong call-to-action, easy to remember', uk: 'Сильний заклик до дії, легко запамʼятати' } },
+    { domain: `try${s}.com`, tld: '.com', reason: { en: 'Invites people to start right away', uk: 'Запрошує почати просто зараз' } },
+    { domain: `shop${s}.com`, tld: '.com', reason: { en: 'Ideal for your online storefront', uk: 'Ідеально для онлайн-вітрини' } },
+    { domain: `my${s}.com`, tld: '.com', reason: { en: 'Creates a personal connection with customers', uk: 'Створює особистий звʼязок із клієнтами' } },
+    { domain: `${s}hq.com`, tld: '.com', reason: { en: 'Reads as the official home of the brand', uk: 'Читається як офіційний дім бренду' } },
+  ]
+}
+
 /** Domains already sitting in the customer's DreamHost account, per inventory axis. */
 export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string; uk: string } }[]> = {
   'dh-free': [

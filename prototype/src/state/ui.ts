@@ -28,6 +28,24 @@ export type DomainScreen =
   | 'status'    // connecting / verifying / live status page
 
 /**
+ * The checkout sheet that sits on top of everything (Figma 27275:33023 and siblings).
+ *
+ * It is an APP-modal, not a canvas-modal: the 70% scrim in the mockup covers the chat
+ * column and the right rail too. Which body it renders is a product question answered
+ * by the world (does the account hold a plan?), so only the intent lives here.
+ *
+ *  - `connect-existing` — a domain DreamHost already registers for this customer
+ *  - `buy`              — a name from search or the AI suggestions
+ *  - `connect-external` — a domain registered somewhere else
+ */
+export type DomainModalKind = 'connect-existing' | 'buy' | 'connect-external'
+
+export interface DomainModal {
+  kind: DomainModalKind
+  domain: string
+}
+
+/**
  * Canvas device emulation. Same two stops every builder in the category ships
  * (Lovable, Bolt, v0): the desktop view fills the canvas, the mobile view is a
  * phone-width frame floating on the ground. 390px is the iPhone 14/15 logical
@@ -51,6 +69,8 @@ interface UIStore {
   domainScreen: DomainScreen
   /** The domain the user is acting on inside the domains surface. */
   activeDomain: string | null
+  /** The checkout sheet over the whole app, or null when nothing is being confirmed. */
+  domainModal: DomainModal | null
   publishOpen: boolean
   /** Which device the canvas is emulating. Navigation, not product truth. */
   device: Device
@@ -64,6 +84,8 @@ interface UIStore {
   openSurface: (s: Surface) => void
   openDomains: (screen?: DomainScreen, domain?: string | null) => void
   goDomains: (screen: DomainScreen, domain?: string | null) => void
+  openDomainModal: (kind: DomainModalKind, domain: string) => void
+  closeDomainModal: () => void
   closeSurface: () => void
   togglePublish: (open?: boolean) => void
   triggerReload: (ms?: number) => void
@@ -76,6 +98,7 @@ export const useUI = create<UIStore>((set, get) => ({
   surface: 'preview',
   domainScreen: 'home',
   activeDomain: null,
+  domainModal: null,
   publishOpen: false,
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
@@ -88,6 +111,8 @@ export const useUI = create<UIStore>((set, get) => ({
     set({ surface: 'domains', domainScreen: screen, activeDomain: domain, publishOpen: false }),
   goDomains: (screen, domain) =>
     set({ domainScreen: screen, ...(domain !== undefined ? { activeDomain: domain } : {}) }),
+  openDomainModal: (kind, domain) => set({ domainModal: { kind, domain } }),
+  closeDomainModal: () => set({ domainModal: null }),
   closeSurface: () => set({ surface: 'preview' }),
   togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
   triggerReload: (ms = 3200) => {

@@ -427,7 +427,10 @@
     border-radius: inherit;
     padding: 1px;
     pointer-events: none;
-    background: linear-gradient(135deg, #be59ff, rgba(190, 89, 255, 0) 78%);
+    /* Same axis as the card's own wash (90°): violet where the tint is strongest,
+       through blue, gone by the right edge. A 135° rim ran the light diagonally
+       against the fill and lit the bottom-left corner the fill leaves dark. */
+    background: linear-gradient(90deg, #be59ff, rgba(77, 114, 255, 0.4) 62%, rgba(77, 114, 255, 0) 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);

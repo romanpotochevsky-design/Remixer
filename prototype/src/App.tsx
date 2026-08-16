@@ -18,6 +18,7 @@ import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
+import { DomainModal } from '@/modules/domains/DomainModal'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
@@ -301,6 +302,11 @@ export default function App() {
           {t({ en: 'Trial ended — your site is safe. Upgrade to keep editing with AI.', uk: 'Тріал завершився — сайт у безпеці. Оновіться, щоб редагувати з AI.' })}
         </div>
       )}
+
+      {/* The checkout sheet is an APP-modal: its scrim covers the chat column and
+          the right rail too, so it mounts at the very top of the tree, not inside
+          <main> where the domains surface lives. */}
+      <DomainModal />
 
       <FlowRunner />
       <ScenarioPanel />

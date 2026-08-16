@@ -274,6 +274,50 @@ export const IconClose = ({ size = 12, className }: IconProps) => (
   </svg>
 )
 
+/* ---- checkout sheet set (Figma 27254:11737 / 27275:33023) ---- */
+
+/**
+ * The 24px globe on the domain row's tile. Richer than the 20px top-bar one:
+ * the mockup draws a meridian ellipse AND two parallels, which is what stops it
+ * reading as a plain circle at this size.
+ */
+export const IconGlobeLarge = ({ size = 24, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+    <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.5" />
+    <ellipse cx="12" cy="12" rx="4.1" ry="9.25" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M4.1 8.6h15.8M4.1 15.4h15.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/** Chain link — "this connects to that". Two capsules on one diagonal axis. */
+export const IconLink = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path
+      d="M8.4 11.6a3 3 0 0 0 4.24 0l2.55-2.55a3 3 0 0 0-4.24-4.24l-1.1 1.1"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+    />
+    <path
+      d="M11.6 8.4a3 3 0 0 0-4.24 0L4.8 10.95a3 3 0 0 0 4.24 4.24l1.1-1.1"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+    />
+  </svg>
+)
+
+/**
+ * The AI mark on the results screen's "Name ideas" header (Figma 27729:15592):
+ * a violet rounded square carrying a white four-point sparkle. Not the same glyph
+ * as IconSparkleAI — that one is a bare gradient star with no tile behind it.
+ */
+export const IconAIMark = ({ size = 24, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+    <rect x="2" y="2" width="20" height="20" rx="7" fill="#7c5cff" />
+    <path
+      d="M12 5.6c.36 2.6 1.14 4 2.1 4.72.9.68 2.2 1.04 4.3 1.28-2.1.24-3.4.6-4.3 1.28-.96.72-1.74 2.12-2.1 4.72-.36-2.6-1.14-4-2.1-4.72-.9-.68-2.2-1.04-4.3-1.28 2.1-.24 3.4-.6 4.3-1.28.96-.72 1.74-2.12 2.1-4.72Z"
+      fill="#ffffff"
+    />
+  </svg>
+)
+
 /** The AI sparkle by the "AI suggestions" header — purple→blue, like the Best-match tag. */
 export const IconSparkleAI = ({ size = 20, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
