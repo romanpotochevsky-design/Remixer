@@ -18,8 +18,8 @@ import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { IconPlus, IconEdit, IconExternal } from '@/ui/icons'
+import { popover } from '@/ui/motion'
 
-const EASE = [0.2, 0, 0, 1] as const
 
 /** The inset URL field: value + muted suffix, one trailing icon button. */
 function UrlField({ value, suffix, live }: { value: string; suffix?: string; live?: boolean }) {
@@ -81,10 +81,12 @@ export function PublishPanel() {
           ref={panelRef}
           role="dialog"
           aria-label={t({ en: 'Publish', uk: 'Публікація' })}
-          initial={{ opacity: 0, y: -6, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -6, scale: 0.98 }}
-          transition={{ duration: 0.2, ease: EASE }}
+          /* iOS-26 motion: springs out of the Publish button's own corner, then
+             the contents arrive a beat later. See ui/motion.ts for the rules. */
+          variants={popover}
+          initial="initial"
+          animate="animate"
+          exit="exit"
           className="absolute top-[var(--topbar-h)] z-40 w-[548px] origin-top-right rounded-[20px] border border-[#ffffff0a] bg-[var(--gray-850)]"
           style={{ right: 'calc(var(--rail-w) + 8px)', boxShadow: '0px 24px 28px rgba(0,0,0,0.5)' }}
         >

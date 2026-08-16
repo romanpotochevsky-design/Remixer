@@ -19,18 +19,18 @@ import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import { AI_SUGGESTIONS, OWNED_DOMAINS, TLD_PRICES, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
+import { surface } from '@/ui/motion'
 
-const EASE = [0.2, 0, 0, 1] as const
 
 /* ------------------------------------------------------------------ shared bits */
 
 function Screen({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.24, ease: EASE }}
+      variants={surface}
+      initial="initial"
+      animate="animate"
+      exit="exit"
       className="mx-auto w-full max-w-[560px] px-6 py-10"
     >
       {children}

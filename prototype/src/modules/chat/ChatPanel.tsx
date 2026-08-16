@@ -11,9 +11,12 @@
  * from a canned set (modules/chat/thread.ts). See send.ts for what one message moves.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useWorld, canUseAI, hasPlan, trialDaysLeft } from '@/state/world'
+import { useWorld, canUseAI } from '@/state/world'
 import { useT } from '@/i18n'
-import { IconPlus, IconMic, IconArrowUp } from '@/ui/icons'
+import {
+  IconPlus, IconMic, IconArrowUp,
+  IconReplyArrow, IconThumbUp, IconThumbDown, IconCopy, IconMore,
+} from '@/ui/icons'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { baselineThread } from './thread'
 import { sendMessage } from './send'
@@ -28,11 +31,82 @@ function UserBubble({ children }: { children: React.ReactNode }) {
   )
 }
 
-function AiMessage({ children }: { children: React.ReactNode }) {
+/**
+ * Action row under a Remixer answer — Figma "Buttons" (25819:143308).
+ * Five 32px standard icon buttons on a 1px gap: the container is invisible until
+ * you touch it, which is what makes a row of five read as quiet rather than busy.
+ */
+function AiActions({ text }: { text: string }) {
+  const { t } = useT()
+  const [vote, setVote] = useState<'up' | 'down' | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      /* clipboard is walled off inside sandboxed embeds — the state still reads right */
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1400)
+  }
+
+  const btn =
+    'grid h-8 w-8 place-items-center rounded-[8px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]'
+
   return (
-    <div className="pr-8">
-      <p className="text-[15px] leading-[26px] text-[var(--white-700)]">{children}</p>
+    <div className="-ml-1.5 inline-flex w-fit items-center gap-px">
+      <button className={`${btn} text-[var(--white-500)] hover:text-white`} aria-label={t({ en: 'Try again', uk: 'Спробувати ще' })}>
+        <IconReplyArrow size={20} />
+      </button>
+      <button
+        onClick={() => setVote(vote === 'down' ? null : 'down')}
+        aria-pressed={vote === 'down'}
+        aria-label={t({ en: 'Bad answer', uk: 'Погана відповідь' })}
+        className={`${btn} ${vote === 'down' ? 'text-white' : 'text-[var(--white-500)] hover:text-white'}`}
+      >
+        <IconThumbDown size={16} />
+      </button>
+      <button
+        onClick={() => setVote(vote === 'up' ? null : 'up')}
+        aria-pressed={vote === 'up'}
+        aria-label={t({ en: 'Good answer', uk: 'Гарна відповідь' })}
+        className={`${btn} ${vote === 'up' ? 'text-white' : 'text-[var(--white-500)] hover:text-white'}`}
+      >
+        <IconThumbUp size={16} />
+      </button>
+      <button
+        onClick={copy}
+        aria-label={t({ en: 'Copy', uk: 'Копіювати' })}
+        className={`${btn} ${copied ? 'text-[var(--live)]' : 'text-[var(--white-500)] hover:text-white'}`}
+      >
+        <IconCopy size={16} />
+      </button>
+      <button className={`${btn} text-[var(--white-500)] hover:text-white`} aria-label={t({ en: 'More', uk: 'Ще' })}>
+        <IconMore size={20} />
+      </button>
     </div>
+  )
+}
+
+/** Figma: message column, 9px between the text and its action row. */
+function AiMessage({ text, actions }: { text: string; actions?: boolean }) {
+  return (
+    <div className="flex flex-col gap-[9px] pr-8">
+      <p className="whitespace-pre-wrap text-[15px] leading-[25px] text-[var(--gray-350,#c7c7cd)]">{text}</p>
+      {actions && <AiActions text={text} />}
+    </div>
+  )
+}
+
+/** The Gemini trick: the disclaimer rides under the LAST answer instead of living
+ *  below the composer, where it would cost every screen a permanent bottom margin. */
+function Disclaimer() {
+  const { t } = useT()
+  return (
+    <p className="text-[12px] leading-[26px] text-[var(--gray-500)]">
+      {t({ en: 'Recorded AI chats may contain errors.', uk: 'Записані чати з AI можуть містити помилки.' })}
+    </p>
   )
 }
 
@@ -79,46 +153,38 @@ export function ChatPanel() {
           aria-hidden
         />
 
-        {!hasPlan(world) && (
-          <div className="mb-4 flex justify-center">
-            <span className="rounded-full bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] px-3 py-1 text-[12px] font-medium text-white">
-              {world.account === 'trial'
-                ? t({ en: `Free trial · ${trialDaysLeft(world)} days left`, uk: `Тріал · ${trialDaysLeft(world)} дн.` })
-                : t({ en: 'Plan required', uk: 'Потрібен план' })}
-            </span>
-          </div>
-        )}
-
         <div className="space-y-5 pb-6">
           {thread.length === 0 && !working ? (
             <p className="pt-10 text-center text-[14px] text-[var(--white-400)]">
               {t({ en: 'Describe what you want to build.', uk: 'Опишіть, що збудувати.' })}
             </p>
           ) : (
-            thread.map((m) =>
-              m.who === 'user' ? (
-                <UserBubble key={m.id}>{typeof m.text === 'string' ? m.text : t(m.text)}</UserBubble>
+            thread.map((m) => {
+              const body = typeof m.text === 'string' ? m.text : t(m.text)
+              return m.who === 'user' ? (
+                <UserBubble key={m.id}>{body}</UserBubble>
               ) : (
-                <AiMessage key={m.id}>{typeof m.text === 'string' ? m.text : t(m.text)}</AiMessage>
-              ),
-            )
+                <AiMessage key={m.id} text={body} actions />
+              )
+            })
           )}
 
           {working && (
-            <AiMessage>
-              <span className="inline-flex items-center gap-2 text-[var(--white-400)]">
+            <div className="pr-8">
+              <p className="inline-flex items-center gap-2 text-[15px] leading-[25px] text-[var(--white-400)]">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" aria-hidden />
                 {t({ en: 'Working on it…', uk: 'Працюю над цим…' })}
-              </span>
-            </AiMessage>
+              </p>
+            </div>
           )}
           {world.chat === 'error' && (
-            <AiMessage>
-              <span className="text-[var(--danger)]">
+            <div className="pr-8">
+              <p className="text-[15px] leading-[25px] text-[var(--danger)]">
                 {t({ en: 'Something broke — retrying usually fixes it.', uk: 'Щось зламалось — зазвичай допомагає повтор.' })}
-              </span>
-            </AiMessage>
+              </p>
+            </div>
           )}
+          {thread.length > 0 && !working && <Disclaimer />}
           <div ref={bottom} />
         </div>
       </ScrollArea>

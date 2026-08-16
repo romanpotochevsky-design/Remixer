@@ -187,13 +187,36 @@
     background: var(--glass-bg);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
-    box-shadow: inset 0 0 0 1px var(--glass-border);
+  }
+  /*
+   * The rim is a DIAGONAL gradient, not a flat line — a real glass edge catches
+   * light unevenly, brightest where it faces the light and nearly gone on the
+   * opposite side. What made the earlier cut look like iOS was the amplitude:
+   * 32% white at the hot end. Here the gradient swings gently around Figma's
+   * 12% (20% → 7% → 16%), so the average matches the spec and only the
+   * distribution carries the glass. Painted through a border-box mask so it
+   * follows the radius and never affects layout.
+   */
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(150deg, #ffffff33 0%, #ffffff17 32%, #ffffff12 64%, #ffffff29 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
   }
   /* Quieter cut — chat bubbles, large panels. Figma gives the bubble a faint
-     6%→2% wash instead of a flat fill; the rim drops to 8%. */
+     6%→2% wash instead of a flat fill, and a dimmer rim. */
   .liquid-glass--subtle {
     background: linear-gradient(to bottom, #ffffff0f, #ffffff05);
-    box-shadow: inset 0 0 0 1px #ffffff14;
+  }
+  .liquid-glass--subtle::before {
+    background: linear-gradient(150deg, #ffffff26 0%, #ffffff12 34%, #ffffff0d 66%, #ffffff1f 100%);
   }
 
   /*

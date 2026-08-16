@@ -205,3 +205,43 @@ export const IconExternal = ({ size = 16, className }: IconProps) => (
     <path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" />
   </svg>
 )
+
+/* ------------------------------------------- AI message actions (Figma 25819:143308) */
+
+/** Curved arrow back into the thread — "reply to this / try again". */
+export const IconReplyArrow = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M8.5 7.5 4.5 11.5l4 4" />
+    <path d="M4.5 11.5h9.5a5.5 5.5 0 0 1 5.5 5.5v1.5" />
+  </svg>
+)
+
+export const IconThumbUp = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M7.5 21h8.6a2 2 0 0 0 2-1.7l1-6.3a1.6 1.6 0 0 0-1.6-1.9h-4.2l.7-3.6A2.2 2.2 0 0 0 11.8 5l-.4-.1L7.5 11.6" />
+    <rect x="3" y="11" width="4.5" height="10" rx="1.4" />
+  </svg>
+)
+
+export const IconThumbDown = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M7.5 3h8.6a2 2 0 0 1 2 1.7l1 6.3a1.6 1.6 0 0 1-1.6 1.9h-4.2l.7 3.6A2.2 2.2 0 0 1 11.8 19l-.4.1-3.9-6.7" />
+    <rect x="3" y="3" width="4.5" height="10" rx="1.4" />
+  </svg>
+)
+
+export const IconCopy = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="8.5" y="8.5" width="12" height="12" rx="2.6" />
+    <path d="M15.5 4.5a2 2 0 0 0-2-2H6a2.5 2.5 0 0 0-2.5 2.5v7.5a2 2 0 0 0 2 2" />
+  </svg>
+)
+
+/** Horizontal ellipsis — the overflow menu. */
+export const IconMore = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="0" fill="currentColor">
+    <circle cx="5.5" cy="12" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="18.5" cy="12" r="1.6" />
+  </svg>
+)
