@@ -205,7 +205,7 @@
       from 0deg,
       #ff9d5c, #38c6ff 18%, #1f7cff 36%, #2e6bff 52%, #be59ff 66%, #ff2f6d 80%, #ff705c 92%, #ff9d5c
     );
-    animation: siri-rot 16s linear infinite;
+    animation: siri-rot 9s linear infinite;
   }
   /* thickness waves: black lobes multiplied over the colour, on their own clock */
   .siri-spin--wave {
@@ -218,6 +218,7 @@
   }
 
   .siri-layer--core > i { padding: 7px; }
+  .siri-layer--core .siri-spin--color { animation-duration: 12s; }
   .siri-layer--core .siri-spin--wave { display: none; }
   .siri-layer--core { filter: blur(4px) saturate(160%) brightness(1.25); mix-blend-mode: screen; }
 
@@ -250,7 +251,7 @@
       from 140deg,
       #1f7cff00, #38c6ff, #1f7cff00 28%, #be59ff00 46%, #ff9d5c, #ff5f8f00 74%, #be59ff, #1f7cff00
     );
-    animation: siri-rot 23s linear infinite reverse;
+    animation: siri-rot 14s linear infinite reverse;
   }
   .siri-layer--alt .siri-spin--wave { display: none; }
 
