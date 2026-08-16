@@ -373,6 +373,27 @@
     .composer-glow { display: none; }
   }
 
+  /*
+   * The composer field — Figma "Input field" (28016:43528).
+   *
+   * ⚠️ Read the tokens in DARK mode. The MCP export resolves `Neutral Alpha`
+   * inconsistently: on the icon buttons it returns rgba(255,255,255,0.24), on
+   * this field the light-mode rgba(9,9,11,0.24) for the same token — and the
+   * fill likewise comes back as "8% black over #09090b", which would paint the
+   * field the exact colour of the chat behind it. In dark mode the wash is 8%
+   * WHITE, so the field lands near #1c1c1e: a surface you can see, with enough
+   * behind the "+" and mic circles for their own glass to register.
+   *
+   * Not `liquid-glass`: that rim averages 12% and this one is 24%, which is the
+   * point — the composer is meant to sit brighter than the rest of the chrome.
+   */
+  .composer-field {
+    background: linear-gradient(#ffffff14, #ffffff14), rgba(9, 9, 11, 0.8);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid #ffffff3d;
+  }
+
   .scroll-area { position: relative; }
   .scroll-thumb {
     position: absolute;

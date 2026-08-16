@@ -347,9 +347,7 @@ export function ChatPanel() {
               <i className="composer-glow-core"><b /></i>
             </span>
           )}
-        {/* Figma "Input field" (28016:43528): opaque #09090b with an 8%-white
-              wash and a Neutral Alpha/300 (24% white) hairline — not glass. */}
-        <div className="relative rounded-[24px] border border-[#ffffff3d] bg-[#09090b] pb-2 pr-2">
+        <div className="composer-field relative rounded-[24px] pb-2 pr-2">
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
             <textarea
               ref={field}
