@@ -347,6 +347,8 @@ export function ChatPanel() {
               <i className="composer-glow-core"><b /></i>
             </span>
           )}
+        {/* Figma "Input field" (28016:43528): opaque #09090b with an 8%-white
+              wash and a Neutral Alpha/300 (24% white) hairline — not glass. */}
         <div className="relative rounded-[24px] border border-[#ffffff3d] bg-[#09090b] pb-2 pr-2">
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
             <textarea
@@ -373,14 +375,14 @@ export function ChatPanel() {
           <div className="flex items-center justify-between pl-2">
             <button
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
-              className="liquid-glass grid h-8 w-8 place-items-center rounded-full text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+              className="grid h-8 w-8 place-items-center rounded-full border border-[#ffffff3d] bg-[#09090ba3] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
             >
               <IconPlus size={13} />
             </button>
             <div className="flex items-center gap-2">
               <button
                 aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-                className="liquid-glass grid h-8 w-8 place-items-center rounded-full text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+                className="grid h-8 w-8 place-items-center rounded-full border border-[#ffffff3d] bg-[#09090ba3] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
               >
                 <IconMic size={15} />
               </button>
