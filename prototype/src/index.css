@@ -309,7 +309,7 @@
     inset: 0;
     border-radius: 24px;
     pointer-events: none;
-    animation: composer-glow-life 0.65s var(--ease-out) both;
+    animation: composer-glow-life 0.5s var(--ease-out) both;
   }
   /* 2px past the field's edge: the plate hides everything inside the field, so
      without this overhang the visible light would be only the blur's outer
@@ -322,8 +322,8 @@
     overflow: hidden;
     container-type: size;
   }
-  .composer-glow .composer-glow-core { filter: blur(3px); opacity: 0.95; }
-  .composer-glow .composer-glow-bloom { filter: blur(8px); opacity: 0.5; }
+  .composer-glow .composer-glow-core { filter: blur(3px); opacity: 0.82; }
+  .composer-glow .composer-glow-bloom { filter: blur(8px); opacity: 0.38; }
   .composer-glow .composer-glow-plate {
     position: absolute;
     inset: 0;
@@ -343,36 +343,38 @@
        that six-colour rainbow is their brand, not ours. Rhythm stays Google's —
        a long cool stretch, warm hues packed tight at the head, most of the
        circle transparent so one stretch of the perimeter is lit at a time. */
+    /* Half the old arc length: a ~80° comet instead of a 200° train, so its
+       tail never drapes across the bottom edge of a box this wide. */
     background: conic-gradient(
       from 0deg,
       #1f7cff00 0deg,
-      #1f7cffd9 36deg, #38c6ffd9 74deg,
-      #8b5cff 110deg, #be59ff 134deg,
-      #ff2f6d 152deg, #ff705c 166deg,
-      #ff9d5c 178deg,
-      #ff9d5c00 198deg,
+      #1f7cffd9 20deg, #38c6ffd9 41deg,
+      #8b5cff 61deg, #be59ff 74deg,
+      #ff2f6d 84deg, #ff705c 92deg,
+      #ff9d5c 99deg,
+      #ff9d5c00 110deg,
       #1f7cff00 360deg
     );
-    animation: composer-glow-spin 0.65s var(--ease-out) both;
+    animation: composer-glow-spin 0.5s var(--ease-out) both;
     will-change: transform;
   }
-  .composer-glow .composer-glow-bloom b { animation-duration: 0.72s; }
+  .composer-glow .composer-glow-bloom b { animation-duration: 0.56s; }
   /*
    * Born AT the trigger: the arc starts pointed at the send button
    * (bottom-right ≈ 135° in conic terms) and sweeps ~150° away from it,
    * rather than lapping the field.
    */
   /*
-   * The run, as marked up on the designer's screenshot: the light is BORN at
-   * the "+" (bottom-left corner, screen 225°), travels up the left edge and
-   * across the top, and DIES on the send button (bottom-right, 135°+360°).
-   * The arc's warm head (gradient ≈178°) is the reference point: 225−178=47°
-   * at birth, 495−178=317° at death — a 270° sweep in the same 0.65s, so the
-   * light moves briskly and the fade-out catches it exactly on the button.
+   * The run, as marked up on the designer's screenshot: born at the "+", up
+   * and across the top, dying on the send button — and it stays OFF the
+   * bottom edge. The box is wide, so in conic terms its bottom-left corner
+   * sits at ≈257° and the bottom-right at ≈103°, not the square-box 225/135
+   * used before (which parked both ends of the run ON the bottom edge).
+   * Head (gradient ≈99°) goes 262° → 458°: corner to corner, never below.
    */
   @keyframes composer-glow-spin {
-    from { transform: translate(-50%, -50%) rotate(47deg); }
-    to   { transform: translate(-50%, -50%) rotate(317deg); }
+    from { transform: translate(-50%, -50%) rotate(163deg); }
+    to   { transform: translate(-50%, -50%) rotate(359deg); }
   }
   /* Holds until the arc has finished its run — fading from 42% meant the light
      died mid-journey and its arrival at the send button was invisible. */
