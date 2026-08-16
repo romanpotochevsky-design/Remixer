@@ -711,10 +711,23 @@
     -webkit-font-smoothing: antialiased;
   }
   /* Motion is feedback, not decoration — drop it when asked to. */
+  /*
+   * ⚠️ `transition: none`, NOT the widespread `transition-duration: .01ms`.
+   *
+   * The .01ms idiom leaves `transition-property: all` in force, so every element
+   * carries a live micro-transition and a style write followed by a synchronous
+   * layout read hands back the OLD value — a transition's value at t=0 is its
+   * from-value. Measured: writing the chat spacer 509px → 0 and reading it back
+   * in the same frame returned 509 under reduce and 0 without it. That fed a
+   * 509px error into the send scroll measurement, collapsing the scroll range
+   * so the whole thread teleported 234px at t≈50ms — right through the bubble's
+   * spring. The idiom only exists to keep `transitionend` firing; nothing here
+   * listens for it.
+   */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
+      animation: none !important;
+      transition: none !important;
     }
   }
 }

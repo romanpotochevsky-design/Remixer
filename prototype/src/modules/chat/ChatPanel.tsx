@@ -246,18 +246,16 @@ export function ChatPanel() {
     // below are the ones the user will actually see.
     let park = 0
     requestAnimationFrame(() => {
-      // Collapsing the spacer to measure shortens the scrollable range, and the
-      // browser clamps scrollTop to fit — which yanked the whole thread up and
-      // back (measured: 234 → 33 → 294). Save the position and put it back in
-      // the same frame, so the measurement is invisible.
-      const keep = vp.scrollTop
-      sp.style.height = '0px'
+      // Measure WITHOUT touching the spacer — subtract it instead of collapsing
+      // it. Collapsing shortened the scrollable range mid-measurement, so the
+      // browser clamped scrollTop and the thread jumped; worse, the write-then-
+      // read-back is only honest if no transition is in flight, which a single
+      // global CSS rule was able to break. Subtracting cannot be poisoned.
       // NOT vp.scrollHeight: it never reports less than the viewport, so on a
       // short thread it reads as "content already fills the panel" and no room
       // gets made. The list's own box is the honest measurement.
-      const below = ls.offsetTop + ls.offsetHeight - an.offsetTop
+      const below = ls.offsetTop + ls.offsetHeight - sp.offsetHeight - an.offsetTop
       sp.style.height = `${Math.max(0, vp.clientHeight - TOP_INSET - below)}px`
-      vp.scrollTop = keep
 
       /*
        * The scroll waits for the bubble to land. Run both at once and the send
