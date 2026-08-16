@@ -58,7 +58,7 @@ export default function App() {
       : { en: 'Publish', uk: 'Опублікувати' }
 
   return (
-    <div className="flex h-full bg-[var(--gray-950)] text-[var(--white-900)]">
+    <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]">
       {/* ================================================== chat column, 432px */}
       <aside className="flex flex-none flex-col" style={{ width: 'var(--chat-w)' }}>
         {/* chat top toolbar (Figma 25819:143769) */}
@@ -131,7 +131,7 @@ export default function App() {
           {/* center: project button, 280×40 — the live address in permanent chrome */}
           <button
             onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' ? 'status' : 'home')}
-            className="flex h-10 w-[280px] items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
+            className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
             <span className="flex min-w-0 items-center gap-2">
               <span className="grid h-6 w-6 flex-none place-items-center text-[var(--white-400)]">
@@ -177,7 +177,7 @@ export default function App() {
 
         {/* canvas — 8px gutter, the preview floats on the ground.
             While the agent works, the frame lights up with the Siri-style edge glow. */}
-        <main className="relative min-w-0 flex-1 pb-2 pl-2">
+        <main className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
           {(() => {
             const busy = world.project === 'generating' || world.chat === 'working' || reloading
             return surface === 'domains' ? (
@@ -203,7 +203,7 @@ export default function App() {
                   <>
                     {/* like iOS: the content recedes a step while the glow works */}
                     {world.project === 'built' && (
-                      <div className="absolute inset-0 z-10 bg-[#09090b47]" style={{ animation: 'siri-in 0.5s var(--ease-std) both' }} aria-hidden />
+                      <div className="absolute inset-0 z-10 bg-[#09090bcc]" style={{ animation: 'siri-in 0.5s var(--ease-std) both' }} aria-hidden />
                     )}
                     <div className="siri-glow" aria-hidden>
                       <i className="siri-glow__alt" />

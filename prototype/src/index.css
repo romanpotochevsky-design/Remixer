@@ -181,15 +181,15 @@
     /* union of four edge fades: full strength at the border, gone 90px in;
        overlaps make the corners brightest — exactly like the reference */
     mask-image:
-      linear-gradient(to bottom, #000, transparent 70px),
-      linear-gradient(to top, #000, transparent 70px),
-      linear-gradient(to right, #000, transparent 70px),
-      linear-gradient(to left, #000, transparent 70px);
+      linear-gradient(to bottom, #000, transparent 44px),
+      linear-gradient(to top, #000, transparent 44px),
+      linear-gradient(to right, #000, transparent 44px),
+      linear-gradient(to left, #000, transparent 44px);
     -webkit-mask-image:
-      linear-gradient(to bottom, #000, transparent 70px),
-      linear-gradient(to top, #000, transparent 70px),
-      linear-gradient(to right, #000, transparent 70px),
-      linear-gradient(to left, #000, transparent 70px);
+      linear-gradient(to bottom, #000, transparent 44px),
+      linear-gradient(to top, #000, transparent 44px),
+      linear-gradient(to right, #000, transparent 44px),
+      linear-gradient(to left, #000, transparent 44px);
     animation: siri-drift-a 16s linear infinite, siri-breathe 3.4s ease-in-out infinite;
   }
   /* counter-drifting second bloom: hues slide over each other, nothing reads as spinning */
@@ -198,19 +198,19 @@
       from var(--siri-b),
       #1f7cff00, #38c6ff, #1f7cff00 28%, #be59ff00 46%, #ff9d5c, #ff5f8f00 74%, #be59ff, #1f7cff00
     );
-    filter: blur(28px) saturate(125%);
+    filter: blur(24px) saturate(125%);
     mix-blend-mode: plus-lighter;
-    opacity: 0.6;
+    opacity: 0.5;
     mask-image:
-      linear-gradient(to bottom, #000, transparent 110px),
-      linear-gradient(to top, #000, transparent 110px),
-      linear-gradient(to right, #000, transparent 110px),
-      linear-gradient(to left, #000, transparent 110px);
+      linear-gradient(to bottom, #000, transparent 78px),
+      linear-gradient(to top, #000, transparent 78px),
+      linear-gradient(to right, #000, transparent 78px),
+      linear-gradient(to left, #000, transparent 78px);
     -webkit-mask-image:
-      linear-gradient(to bottom, #000, transparent 110px),
-      linear-gradient(to top, #000, transparent 110px),
-      linear-gradient(to right, #000, transparent 110px),
-      linear-gradient(to left, #000, transparent 110px);
+      linear-gradient(to bottom, #000, transparent 78px),
+      linear-gradient(to top, #000, transparent 78px),
+      linear-gradient(to right, #000, transparent 78px),
+      linear-gradient(to left, #000, transparent 78px);
     animation: siri-drift-b 23s linear infinite, siri-breathe 2.6s ease-in-out infinite reverse;
   }
   @keyframes siri-drift-a { to { --siri-a: 360deg; } }
