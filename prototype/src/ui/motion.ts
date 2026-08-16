@@ -56,15 +56,30 @@ export const popoverContent = {
  * little overshoot is what makes it feel like the message left your hand.
  */
 export const bubbleSend = {
-  initial: { opacity: 0, scale: 0.6, y: 26 },
+  /*
+   * Squashed, offset toward the send button, and low — so it arrives on a
+   * diagonal out of the composer instead of inflating where it will sit.
+   * scaleX ≠ scaleY is the whole trick: a bubble squeezed out of somewhere is
+   * wider than it is tall for an instant, and watching it round out is what
+   * reads as physical. Growing uniformly from a point reads as a zoom.
+   */
+  initial: { opacity: 0, scaleX: 0.78, scaleY: 0.6, x: 18, y: 34 },
   animate: {
     opacity: 1,
-    scale: 1,
+    scaleX: 1,
+    scaleY: 1,
+    x: 0,
     y: 0,
-    /* Duration-based spring rather than stiffness/damping/mass: `bounce` states
+    /* Duration-based spring rather than stiffness/damping/mass: `bounce` says
        how much pop there is and `duration` how long it takes, which is what a
-       designer actually wants to tune. 0.34 is one clear overshoot. */
-    transition: { type: 'spring', bounce: 0.34, duration: 0.5 },
+       designer actually wants to tune. Opacity is pulled forward on its own
+       curve — a bubble that fades in over the whole flight looks like a ghost. */
+    transition: {
+      type: 'spring',
+      bounce: 0.42,
+      duration: 0.62,
+      opacity: { duration: 0.16, ease: [0.2, 0, 0, 1] },
+    },
   },
 }
 

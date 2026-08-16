@@ -42,11 +42,14 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
   /** Classes for the scroller itself — background, padding, typography. */
   innerClassName?: string
   thumb?: Thumb
+  /** Hands the scrollport out, for callers that need to drive the scroll
+   *  themselves (the chat parks a new message at the top of the view). */
+  viewportRef?: React.MutableRefObject<HTMLDivElement | null>
   children: React.ReactNode
 }
 
-export function ScrollArea({ className = '', innerClassName = '', thumb = 'light', children, onScroll, ...rest }: Props) {
-  const scroller = useRef<HTMLDivElement>(null)
+export function ScrollArea({ className = '', innerClassName = '', thumb = 'light', viewportRef, children, onScroll, ...rest }: Props) {
+  const scroller = useRef<HTMLDivElement | null>(null)
   const bar = useRef<HTMLDivElement>(null)
   const hideTimer = useRef<number | undefined>(undefined)
   const lastHeight = useRef(-1)
@@ -97,7 +100,10 @@ export function ScrollArea({ className = '', innerClassName = '', thumb = 'light
   return (
     <div className={`scroll-area ${className}`}>
       <div
-        ref={scroller}
+        ref={(el) => {
+          scroller.current = el
+          if (viewportRef) viewportRef.current = el
+        }}
         onScroll={(e) => {
           sync(true)
           onScroll?.(e)

@@ -23,9 +23,20 @@ import { baselineThread } from './thread'
 import { sendMessage } from './send'
 import { bubbleSend, messageIn } from '@/ui/motion'
 
-function UserBubble({ children, animate }: { children: React.ReactNode; animate: boolean }) {
+/** Where a freshly sent message parks: just clear of the 48px top fade. */
+const TOP_INSET = 48
+
+function UserBubble({
+  children,
+  animate,
+  anchorRef,
+}: {
+  children: React.ReactNode
+  animate: boolean
+  anchorRef?: React.Ref<HTMLDivElement>
+}) {
   return (
-    <div className="flex justify-end">
+    <div ref={anchorRef} className="flex justify-end">
       <motion.div
         variants={bubbleSend}
         initial={animate ? 'initial' : false}
@@ -163,16 +174,28 @@ export function ChatPanel() {
   const { t } = useT()
   const [draft, setDraft] = useState('')
   const field = useRef<HTMLTextAreaElement>(null)
-  const bottom = useRef<HTMLDivElement>(null)
-  /* Messages present on the first paint are already there — only what arrives
-     afterwards gets the send/receive animation. Otherwise the whole transcript
-     would pop on every page load. */
-  const settled = useRef(false)
+  const viewport = useRef<HTMLDivElement | null>(null)
+  const anchor = useRef<HTMLDivElement>(null)
+  const spacer = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  const parked = useRef<number | null>(null)
+  /*
+   * Which messages have already been on screen. Animation is per message, not a
+   * global "have we mounted yet" flag: with a flag, every send re-rendered the
+   * older answers in their animated form, so the whole transcript re-typed
+   * itself — and the relayout that caused threw off the scroll measurement below.
+   */
+  const seen = useRef<Set<number> | null>(null)
 
   const live = world.sent.length > 0
   const thread = live ? world.sent : baselineThread(world.chat)
   const working = world.chat === 'working'
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
+  const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
+
+  // Whatever is on screen at the first paint counts as already seen.
+  if (seen.current === null) seen.current = new Set(thread.map((m) => m.id))
+  const isFresh = (id: number) => !seen.current!.has(id)
 
   // Grow the field with the text, up to five lines, then let it scroll.
   useLayoutEffect(() => {
@@ -183,13 +206,49 @@ export function ChatPanel() {
   }, [draft])
 
   useEffect(() => {
-    settled.current = true
+    const vp = viewport.current
+    if (vp) vp.scrollTop = vp.scrollHeight
   }, [])
 
-  // Follow the conversation down as it grows, the way every chat does.
+  // Everything rendered this pass has now been seen.
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [thread.length, working])
+    thread.forEach((m) => seen.current!.add(m.id))
+  })
+
+  /*
+   * Sending parks your message at the TOP of the view, the way Lovable does it
+   * (checked on a recording of their builder): the thread you already read
+   * scrolls away, your request sits under the header, and the whole panel below
+   * it is left empty for the answer to fill. A chat that instead sticks to the
+   * bottom makes the answer shove your own message off the screen as it writes.
+   *
+   * That needs room to scroll INTO, so a spacer is grown to exactly the gap —
+   * measured once per sent message, never during the answer, so nothing jumps
+   * while the reply streams in.
+   */
+  useEffect(() => {
+    const last = thread[thread.length - 1]
+    if (!last || last.who !== 'user' || last.id === parked.current) return
+    parked.current = last.id
+
+    const vp = viewport.current
+    const sp = spacer.current
+    const an = anchor.current
+    const ls = list.current
+    if (!vp || !sp || !an || !ls) return
+
+    // One frame later: the bubble is in the DOM and laid out, so the numbers
+    // below are the ones the user will actually see.
+    requestAnimationFrame(() => {
+      sp.style.height = '0px'
+      // NOT vp.scrollHeight: it never reports less than the viewport, so on a
+      // short thread it reads as "content already fills the panel" and no room
+      // gets made. The list's own box is the honest measurement.
+      const below = ls.offsetTop + ls.offsetHeight - an.offsetTop
+      sp.style.height = `${Math.max(0, vp.clientHeight - TOP_INSET - below)}px`
+      vp.scrollTo({ top: Math.max(0, an.offsetTop - TOP_INSET), behavior: 'smooth' })
+    })
+  }, [thread])
 
   function submit() {
     if (!armed) return
@@ -201,34 +260,44 @@ export function ChatPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
-      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2 pt-4">
+      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2" viewportRef={viewport}>
         {/*
-         * The fade under the chat toolbar. Figma stacks two rectangles here
-         * (28016:43308 "BG" 52px solid + 28016:43309 "BG Gradient" 48px), so a
-         * message scrolling up is fully gone before it reaches the logo rather
-         * than being clipped by a hard edge. One gradient with a solid head does
-         * the same job: opaque for the first stretch, then a long tail out.
+         * The fade under the chat toolbar — Figma "BG Gradient" (28016:43309):
+         * 48px, solid #09090b straight to transparent with NO flat head. The
+         * flat head is what made it read as a cut edge: content vanished
+         * instantly for the first stretch instead of thinning out the whole way.
+         *
+         * The scroller carries NO top padding on purpose: a sticky child sticks
+         * to the scrollport's padding edge, so any padding leaves a strip above
+         * the fade where messages scroll past in the clear. The fade sits in the
+         * flow instead, which doubles as the gap above the first message.
          */}
         <div
-          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-2 -mt-4 h-16 flex-none"
-          style={{ background: 'linear-gradient(to bottom, #09090b 0%, #09090b 42%, #09090b00 100%)' }}
+          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-2 h-12 flex-none"
+          style={{ background: 'linear-gradient(to bottom, #09090b, #09090b00)' }}
           aria-hidden
         />
 
         {/* pb clears exactly the height of the bottom fade, so at rest nothing
             sits under it — the fade only bites into content once you scroll. */}
-        <div className="space-y-5 pb-8">
+        <div ref={list} className="space-y-5 pb-8">
           {thread.length === 0 && !working ? (
             <p className="pt-10 text-center text-[14px] text-[var(--white-400)]">
               {t({ en: 'Describe what you want to build.', uk: 'Опишіть, що збудувати.' })}
             </p>
           ) : (
-            thread.map((m) => {
+            thread.map((m, i) => {
               const body = typeof m.text === 'string' ? m.text : t(m.text)
               return m.who === 'user' ? (
-                <UserBubble key={m.id} animate={settled.current}>{body}</UserBubble>
+                <UserBubble
+                  key={m.id}
+                  animate={isFresh(m.id)}
+                  anchorRef={i === lastUserIndex ? anchor : undefined}
+                >
+                  {body}
+                </UserBubble>
               ) : (
-                <AiMessage key={m.id} text={body} actions animate={settled.current} />
+                <AiMessage key={m.id} text={body} actions animate={isFresh(m.id)} />
               )
             })
           )}
@@ -249,7 +318,8 @@ export function ChatPanel() {
             </div>
           )}
           {thread.length > 0 && !working && <Disclaimer />}
-          <div ref={bottom} />
+          {/* grown on send so the newest message can reach the top of the view */}
+          <div ref={spacer} aria-hidden />
         </div>
 
         {/* …and above the composer. Figma pins a 32px "BG Gradient" (28016:46454)
