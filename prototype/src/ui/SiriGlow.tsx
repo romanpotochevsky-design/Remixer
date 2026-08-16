@@ -62,19 +62,41 @@ const LAYER_CLASS = {
 const LAYERS = ['soft', 'alt', 'dense', 'core'] as const
 const LITE_LAYERS = ['dense', 'core'] as const
 
-export function SiriGlow() {
+/**
+ * `active` starts the glow; when it drops, the light doesn't cut — it plays a
+ * 700ms dissolve (opacity out, a breath outward) and only then unmounts.
+ * `scrim` dims the content underneath and fades in sync with the glow.
+ */
+export function SiriGlow({ active, scrim = false }: { active: boolean; scrim?: boolean }) {
   const quality = useGlowQuality()
+  const [mounted, setMounted] = useState(active)
+  useEffect(() => {
+    if (active) { setMounted(true); return }
+    const t = setTimeout(() => setMounted(false), 750)
+    return () => clearTimeout(t)
+  }, [active])
+  if (!mounted) return null
+
+  const out = !active
   const layers = quality === 'lite' ? LITE_LAYERS : LAYERS
+  const glowClass = [
+    'siri-glow',
+    quality === 'lite' ? 'siri-glow--lite' : '',
+    out ? 'siri-glow--out' : '',
+  ].join(' ').trim()
+
   return (
-    <div className={quality === 'lite' ? 'siri-glow siri-glow--lite' : 'siri-glow'} aria-hidden>
-      {layers.map((k) => (
-        <b key={k} className={LAYER_CLASS[k]}>
-          <i>
-            <span className="siri-spin siri-spin--color" />
-            <span className="siri-spin siri-spin--wave" />
-          </i>
-        </b>
-      ))}
-    </div>
+    <>
+      {scrim && <div className={out ? 'siri-scrim siri-scrim--out' : 'siri-scrim'} aria-hidden />}
+      <div className={glowClass} aria-hidden>
+        {layers.map((k) => (
+          <b key={k} className={LAYER_CLASS[k]}>
+            <i>
+              <span className="siri-spin" />
+            </i>
+          </b>
+        ))}
+      </div>
+    </>
   )
 }
