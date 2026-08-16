@@ -62,7 +62,14 @@ export default function App() {
   return (
     <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]">
       {/* ================================================== chat column, 432px */}
-      <aside className="flex flex-none flex-col" style={{ width: 'var(--chat-w)' }}>
+      {/* The hairline between chat and canvas. In Figma the column is 432 wide while
+          everything inside it stops at 430–431 (28016:43362 toolbar, 43308/43309 the
+          fade rects) — that last pixel is the divider. Drawn as a right border so the
+          432 stays exact (border-box), on Neutral Alpha/100. */}
+      <aside
+        className="flex flex-none flex-col border-r border-[var(--white-100)]"
+        style={{ width: 'var(--chat-w)' }}
+      >
         {/* chat top toolbar (Figma 25819:143769) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           <div className="flex items-center">

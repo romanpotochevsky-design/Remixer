@@ -90,6 +90,8 @@ export function PublishPanel() {
           className="absolute top-[var(--topbar-h)] z-40 w-[548px] origin-top-right rounded-[20px] border border-[#ffffff0a] bg-[var(--gray-850)]"
           style={{ right: 'calc(var(--rail-w) + 8px)', boxShadow: '0px 24px 28px rgba(0,0,0,0.5)' }}
         >
+          {/* light runs the rim once as the glass forms */}
+          <b className="glass-sheen" aria-hidden><i /></b>
           {/* The glass inflates first, its contents arrive a beat later (motion.ts rule 3). */}
           <motion.div variants={popoverContent}>
           {/* -------------------------------------------------------- header, 64px */}

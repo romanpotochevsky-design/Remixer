@@ -210,6 +210,43 @@
     mask-composite: exclude;
     pointer-events: none;
   }
+  /*
+   * The specular sweep: one pass of light along the rim as a panel opens.
+   * This is the iOS 26 signature that separates "a card scaled up" from "a
+   * surface arriving" — and it is purely motion, so it works on the opaque
+   * Figma fill exactly as well as it would on glass.
+   *
+   * Contract-safe: the band is painted once and moved with `transform`; the
+   * ring mask and the gradient never change. Plays once, then the element is
+   * inert — it lives and dies with the popover, so idle cost is zero.
+   */
+  .glass-sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+  .glass-sheen > i {
+    position: absolute;
+    top: -60%;
+    left: -55%;
+    width: 45%;
+    height: 220%;
+    background: linear-gradient(90deg, #ffffff00, #ffffffb8 48%, #ffffff00);
+    animation: glass-sheen-run 0.78s var(--ease-out) 0.05s both;
+  }
+  @keyframes glass-sheen-run {
+    from { transform: translate3d(0, 0, 0) rotate(16deg); opacity: 0; }
+    22%  { opacity: 1; }
+    to   { transform: translate3d(330%, 0, 0) rotate(16deg); opacity: 0; }
+  }
+
   /* Quieter cut — chat bubbles, large panels. Figma gives the bubble a faint
      6%→2% wash instead of a flat fill, and a dimmer rim. */
   .liquid-glass--subtle {

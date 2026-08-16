@@ -145,11 +145,17 @@ export function ChatPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
-      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2 pt-4">
-        {/* scroll fade under the toolbar (Figma: BG + BG Gradient, 48px) */}
+      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2 pt-14">
+        {/*
+         * The fade under the chat toolbar. Figma stacks two rectangles here
+         * (28016:43308 "BG" 52px solid + 28016:43309 "BG Gradient" 48px), so a
+         * message scrolling up is fully gone before it reaches the logo rather
+         * than being clipped by a hard edge. One gradient with a solid head does
+         * the same job: opaque for the first stretch, then a long tail out.
+         */}
         <div
-          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-2 -mt-4 h-12 flex-none"
-          style={{ background: 'linear-gradient(to bottom, #09090b, #09090b00)' }}
+          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-2 -mb-[72px] -mt-14 h-[72px] flex-none"
+          style={{ background: 'linear-gradient(to bottom, #09090b 0%, #09090b 42%, #09090b00 100%)' }}
           aria-hidden
         />
 
@@ -187,6 +193,14 @@ export function ChatPanel() {
           {thread.length > 0 && !working && <Disclaimer />}
           <div ref={bottom} />
         </div>
+
+        {/* …and the mirror of it above the composer, so a message slides out of
+            sight instead of being cut off by the input field's top edge. */}
+        <div
+          className="pointer-events-none sticky bottom-0 z-10 -ml-4 -mr-2 -mt-[72px] h-[72px] flex-none"
+          style={{ background: 'linear-gradient(to top, #09090b 0%, #09090b 38%, #09090b00 100%)' }}
+          aria-hidden
+        />
       </ScrollArea>
 
       {/* ------------------------------------------------------------ composer */}
