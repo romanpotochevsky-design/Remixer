@@ -84,6 +84,30 @@
   html, body, #root { height: 100%; }
 
   /*
+   * Scrollbars, phone-style: a thin rounded pill, no track, fading into view.
+   * The builder chrome (dark) gets a white-alpha thumb; the generated site
+   * (light) re-colours it via .scroll-light on its scroll container.
+   */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #ffffff2e transparent;
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #ffffff2e;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #ffffff52; background-clip: padding-box; }
+
+  .scroll-light { scrollbar-color: #09090b2e transparent; }
+  .scroll-light::-webkit-scrollbar-thumb { background: #09090b2e; background-clip: padding-box; }
+  .scroll-light::-webkit-scrollbar-thumb:hover { background: #09090b52; background-clip: padding-box; }
+
+  /*
    * Liquid glass. The Figma kit's glass controls (and Apple's Liquid Glass they nod to)
    * are three layers, not a border: a translucent fill that is lighter at the top, a
    * backdrop blur with a saturation lift, and a 1px gradient RIM that catches light at

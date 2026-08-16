@@ -20,7 +20,7 @@ const MEALS = [
 export function SitePreview() {
   const { t } = useT()
   return (
-    <div className="h-full overflow-y-auto bg-[#fbfaf7] font-sans text-[#1d1f1a]" data-prototype-note="generated site, not builder chrome">
+    <div className="scroll-light h-full overflow-y-auto bg-[#fbfaf7] font-sans text-[#1d1f1a]" data-prototype-note="generated site, not builder chrome">
       {/* site nav */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#1d1f1a14] bg-[#fbfaf7f2] px-10 py-4 backdrop-blur-sm">
         <span className="text-[20px] font-bold tracking-[-0.02em]">fit<span className="text-[#2e7d4f]">.</span></span>
