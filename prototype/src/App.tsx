@@ -165,30 +165,43 @@ export default function App() {
           </div>
         </header>
 
-        {/* canvas — 8px gutter, the preview floats on the ground */}
+        {/* canvas — 8px gutter, the preview floats on the ground.
+            While the agent works, the frame lights up with the Siri-style edge glow. */}
         <main className="relative min-w-0 flex-1 pb-2 pl-2">
-          {surface === 'domains' ? (
-            <DomainsSurface />
-          ) : world.project === 'built' ? (
-            <div className="h-full overflow-hidden rounded-shell">
-              <SitePreview />
-            </div>
-          ) : (
-            <div className="grid h-full place-items-center rounded-shell bg-[var(--gray-900)]">
-              {world.project === 'generating' ? (
-                <div className="flex flex-col items-center gap-3">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--white-200)] border-t-[var(--white-700)]" aria-hidden />
-                  <p className="text-[14px] text-[var(--white-400)]">
-                    {t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-[14px] text-[var(--white-300)]">
-                  {t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })}
-                </p>
-              )}
-            </div>
-          )}
+          {(() => {
+            const busy = world.project === 'generating' || world.chat === 'working'
+            return surface === 'domains' ? (
+              <DomainsSurface />
+            ) : (
+              <div className="relative h-full overflow-hidden rounded-shell">
+                {world.project === 'built' ? (
+                  <SitePreview />
+                ) : (
+                  <div className="grid h-full place-items-center bg-[var(--gray-900)]">
+                    {world.project === 'generating' ? (
+                      <p className="text-[14px] text-[var(--white-400)]">
+                        {t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })}
+                      </p>
+                    ) : (
+                      <p className="text-[14px] text-[var(--white-300)]">
+                        {t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {busy && (
+                  <>
+                    {/* like iOS: the content recedes a step while the glow works */}
+                    {world.project === 'built' && (
+                      <div className="absolute inset-0 z-10 bg-[#09090b47]" style={{ animation: 'siri-in 0.5s var(--ease-std) both' }} aria-hidden />
+                    )}
+                    <div className="siri-glow" aria-hidden />
+                    <div className="siri-glow-bloom" aria-hidden />
+                  </>
+                )}
+              </div>
+            )
+          })()}
           <PublishPanel />
         </main>
       </div>
