@@ -134,6 +134,8 @@
    */
   @property --siri-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
   @property --siri-b { syntax: '<angle>'; inherits: false; initial-value: 140deg; }
+  @property --siri-c { syntax: '<angle>'; inherits: false; initial-value: 60deg; }
+  @property --siri-d { syntax: '<angle>'; inherits: false; initial-value: 290deg; }
 
   .siri-glow {
     position: absolute;
@@ -145,78 +147,83 @@
     isolation: isolate;
     animation: siri-in 0.6s var(--ease-std) both;
   }
-  .siri-glow::before,
-  .siri-glow::after {
-    content: '';
-  }
-  .siri-glow::before,
-  .siri-glow::after,
-  .siri-glow .siri-glow__alt {
+  /*
+   * Each layer is a ROUNDED ring (mask follows border-radius) inside a wrapper that
+   * carries the blur. Blurring the parent softens the already-masked ring, so the
+   * falloff hugs the rounded corners and never gets cropped to a hard inner edge.
+   * Intensity profile like the reference: white-hot at the very edge, a dense tight
+   * halo, then a fast fade.
+   */
+  .siri-layer {
     position: absolute;
     inset: 0;
     border-radius: inherit;
   }
-  /* the saturated core line on the very edge — the only hard-ring mask */
-  .siri-glow::before {
-    padding: 3px;
+  .siri-layer > i {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    display: block;
+    background: conic-gradient(
+      from var(--siri-a),
+      #ff9d5c, #38c6ff 18%, #1f7cff 36%, #2e6bff 52%, #be59ff 66%, #ff2f6d 80%, #ff705c 92%, #ff9d5c
+    );
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
-    background: conic-gradient(
-      from var(--siri-a),
-      #ff9d5c, #38c6ff 18%, #1f7cff 36%, #2e6bff 52%, #be59ff 66%, #ff2f6d 80%, #ff705c 92%, #ff9d5c
-    );
-    filter: blur(1.5px) saturate(140%);
     animation: siri-drift-a 16s linear infinite;
   }
-  /* the tight bloom fading inward — the whole perimeter, always lit */
-  .siri-glow::after {
-    background: conic-gradient(
-      from var(--siri-a),
-      #ff9d5c, #38c6ff 18%, #1f7cff 36%, #2e6bff 52%, #be59ff 66%, #ff2f6d 80%, #ff705c 92%, #ff9d5c
-    );
-    filter: blur(16px) saturate(130%);
-    opacity: 0.9;
-    /* union of four edge fades: full strength at the border, gone 90px in;
-       overlaps make the corners brightest — exactly like the reference */
-    mask-image:
-      linear-gradient(to bottom, #000, transparent 44px),
-      linear-gradient(to top, #000, transparent 44px),
-      linear-gradient(to right, #000, transparent 44px),
-      linear-gradient(to left, #000, transparent 44px);
-    -webkit-mask-image:
-      linear-gradient(to bottom, #000, transparent 44px),
-      linear-gradient(to top, #000, transparent 44px),
-      linear-gradient(to right, #000, transparent 44px),
-      linear-gradient(to left, #000, transparent 44px);
-    animation: siri-drift-a 16s linear infinite, siri-breathe 3.4s ease-in-out infinite;
+  /* the white-hot core line on the very edge */
+  .siri-layer--core > i {
+    padding: 4px;
+    filter: saturate(160%) brightness(1.3);
   }
-  /* counter-drifting second bloom: hues slide over each other, nothing reads as spinning */
-  .siri-glow .siri-glow__alt {
+  .siri-layer--core {
+    filter: blur(1.5px);
+    mask-image: conic-gradient(from var(--siri-c), #000, #000a 11%, #000 24%, #000c 37%, #000 52%, #0009 63%, #000 76%, #000b 88%, #000);
+    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #000a 11%, #000 24%, #000c 37%, #000 52%, #0009 63%, #000 76%, #000b 88%, #000);
+    animation: siri-wave-c 9s linear infinite;
+  }
+  /* the dense tight halo — most of the light lives here */
+  .siri-layer--dense > i { padding: 14px; }
+  .siri-layer--dense {
+    filter: blur(12px) saturate(140%);
+    mask-image: conic-gradient(from var(--siri-c), #000, #0006 9%, #000 22%, #0009 34%, #000 48%, #0005 59%, #000 72%, #0008 85%, #000);
+    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #0006 9%, #000 22%, #0009 34%, #000 48%, #0005 59%, #000 72%, #0008 85%, #000);
+    animation: siri-breathe 3.4s ease-in-out infinite, siri-wave-c 9s linear infinite;
+  }
+  /* the fast-fading outer wash */
+  .siri-layer--soft > i { padding: 16px; }
+  .siri-layer--soft {
+    filter: blur(34px) saturate(125%);
+    opacity: 0.55;
+    mask-image: conic-gradient(from var(--siri-d), #000, #0007 13%, #000 27%, #0005 42%, #000 55%, #0008 68%, #000 81%, #0006 92%, #000);
+    -webkit-mask-image: conic-gradient(from var(--siri-d), #000, #0007 13%, #000 27%, #0005 42%, #000 55%, #0008 68%, #000 81%, #0006 92%, #000);
+    animation: siri-breathe 3.4s ease-in-out infinite, siri-wave-d 13s linear infinite reverse;
+  }
+  /* counter-drifting accents so the colours recompose instead of rotating */
+  .siri-layer--alt > i {
+    padding: 16px;
     background: conic-gradient(
       from var(--siri-b),
       #1f7cff00, #38c6ff, #1f7cff00 28%, #be59ff00 46%, #ff9d5c, #ff5f8f00 74%, #be59ff, #1f7cff00
     );
-    filter: blur(24px) saturate(125%);
+    animation: siri-drift-b 23s linear infinite;
+  }
+  .siri-layer--alt {
+    filter: blur(26px) saturate(125%);
     mix-blend-mode: plus-lighter;
     opacity: 0.5;
-    mask-image:
-      linear-gradient(to bottom, #000, transparent 78px),
-      linear-gradient(to top, #000, transparent 78px),
-      linear-gradient(to right, #000, transparent 78px),
-      linear-gradient(to left, #000, transparent 78px);
-    -webkit-mask-image:
-      linear-gradient(to bottom, #000, transparent 78px),
-      linear-gradient(to top, #000, transparent 78px),
-      linear-gradient(to right, #000, transparent 78px),
-      linear-gradient(to left, #000, transparent 78px);
-    animation: siri-drift-b 23s linear infinite, siri-breathe 2.6s ease-in-out infinite reverse;
+    animation: siri-breathe 2.6s ease-in-out infinite reverse;
   }
   @keyframes siri-drift-a { to { --siri-a: 360deg; } }
+  @keyframes siri-wave-c { to { --siri-c: 420deg; } }
+  @keyframes siri-wave-d { to { --siri-d: 650deg; } }
   @keyframes siri-drift-b { from { --siri-b: 140deg; } to { --siri-b: -220deg; } }
   @keyframes siri-breathe {
-    0%, 100% { opacity: 0.5; }
+    0%, 100% { opacity: 0.6; }
     50%      { opacity: 1; }
   }
   /* the glow arrives like on iOS: swells from the edge, settles */
@@ -224,6 +231,7 @@
     from { opacity: 0; transform: scale(1.012); }
     to   { opacity: 1; transform: scale(1); }
   }
+
   body {
     background: var(--gray-900);
     color: var(--white-900);
