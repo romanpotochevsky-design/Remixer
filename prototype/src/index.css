@@ -692,7 +692,11 @@
 
   /* the exit: the light lets go of the frame — a soft breath outward, then gone */
   .siri-glow--out {
-    animation: siri-out 0.7s var(--ease-out) both;
+    /* Quick, not leisurely. The reply starts typing itself in the instant the
+       glow is dismissed, and every frame the blurred layers linger is a frame
+       the text does not get — which is exactly what an embedded preview panel,
+       with less budget than a browser tab, cannot spare. */
+    animation: siri-out 0.22s var(--ease-out) both;
   }
   @keyframes siri-out {
     from { opacity: 1; transform: none; }
