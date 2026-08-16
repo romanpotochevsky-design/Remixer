@@ -384,11 +384,13 @@
    * WHITE, so the field lands near #1c1c1e: a surface you can see, with enough
    * behind the "+" and mic circles for their own glass to register.
    *
-   * Not `liquid-glass`: that rim averages 12% and this one is 24%, which is the
-   * point — the composer is meant to sit brighter than the rest of the chrome.
+   * The field is the DARK surface here — darker than the chrome around it — and
+   * the "+" and mic circles sitting on it are the glass, with the house diagonal
+   * gradient rim. Its own rim is the brighter Neutral Alpha/300 (24%), not the
+   * 12% the generic glass carries.
    */
   .composer-field {
-    background: linear-gradient(#ffffff14, #ffffff14), var(--glass-bg);
+    background: linear-gradient(#ffffff14, #ffffff14), rgba(9, 9, 11, 0.8);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     border: 1px solid #ffffff3d;

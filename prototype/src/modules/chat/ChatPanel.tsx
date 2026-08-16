@@ -390,14 +390,14 @@ export function ChatPanel() {
           <div className="flex items-center justify-between pl-2">
             <button
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
-              className="grid h-8 w-8 place-items-center rounded-full border border-[#ffffff3d] bg-[#09090ba3] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+              className="liquid-glass grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
             >
               <IconPlus size={13} />
             </button>
             <div className="flex items-center gap-2">
               <button
                 aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-                className="grid h-8 w-8 place-items-center rounded-full border border-[#ffffff3d] bg-[#09090ba3] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+                className="liquid-glass grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
               >
                 <IconMic size={15} />
               </button>
