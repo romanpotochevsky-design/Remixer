@@ -87,6 +87,10 @@
   }
 
   html, body, #root { height: 100%; }
+  /* The page's own ground — Figma 28016:42812 paints the whole frame #09090B.
+     Without this, body is transparent and an embedding host (the claude.ai
+     preview panel) shows its own backdrop through any gap or overscroll. */
+  body { background: var(--gray-950); }
 
   /*
    * Scrollbars, phone-style. Native ones are off EVERYWHERE: a classic scrollbar
