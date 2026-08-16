@@ -18,6 +18,7 @@ import { useWorld, hasPlan } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import { AI_SUGGESTIONS, OWNED_DOMAINS, TLD_PRICES, CUSTOM_DOMAIN } from '@/data/domains'
+import { revealScrollbar } from '@/ui/scroll'
 
 const EASE = [0.2, 0, 0, 1] as const
 
@@ -480,7 +481,7 @@ export function DomainsSurface() {
   const gated = !hasPlan(world)
 
   return (
-    <div className="relative h-full overflow-y-auto rounded-shell bg-[var(--gray-950)]">
+    <div onScroll={revealScrollbar} className="relative h-full overflow-y-auto rounded-shell bg-[var(--gray-950)]">
       <button
         onClick={closeSurface}
         aria-label={t({ en: 'Close', uk: 'Закрити' })}

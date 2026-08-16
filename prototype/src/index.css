@@ -84,25 +84,41 @@
   html, body, #root { height: 100%; }
 
   /*
-   * Scrollbars, phone-style: a thin rounded pill, no track, fading into view.
-   * The builder chrome (dark) gets a white-alpha thumb; the generated site
-   * (light) re-colours it via .scroll-light on its scroll container.
+   * Scrollbars, phone-style: thin, invisible at rest, appearing while the surface
+   * is scrolled or hovered — and AWARE OF THEIR SURFACE: a white translucent thumb
+   * on the dark builder chrome, a black translucent one inside light surfaces
+   * (marked `.scroll-light`), so the thumb is always visible against its backdrop.
+   *
+   * Driven by the standard `scrollbar-color`, NOT `::-webkit-scrollbar`: once
+   * `scrollbar-color` is set, Chrome ignores every ::-webkit-scrollbar rule, so
+   * mixing the two silently drops the webkit half. The `data-scrolling` attribute
+   * is toggled by `ui/scroll.ts` on scroll and clears ~700ms after it stops.
    */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #ffffff2e transparent;
+    scrollbar-color: transparent transparent;
   }
+  /* dark chrome — light thumb */
+  *:hover,
+  [data-scrolling] {
+    scrollbar-color: #ffffff40 transparent;
+  }
+  /* light surfaces — dark thumb */
+  .scroll-light:hover,
+  .scroll-light[data-scrolling] {
+    scrollbar-color: #09090b40 transparent;
+  }
+
+  /* Fallback for engines that still honour the webkit pseudo-elements
+     (they are ignored wherever scrollbar-color above applies). */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-corner { background: transparent; }
-  /* hidden at rest like on a phone; appears when the scroll area is hovered */
   ::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
-  *:hover::-webkit-scrollbar-thumb { background: #ffffff2e; }
-  ::-webkit-scrollbar-thumb:hover { background: #ffffff52; }
-
-  .scroll-light { scrollbar-color: #09090b2e transparent; }
-  .scroll-light:hover::-webkit-scrollbar-thumb { background: #09090b2e; }
-  .scroll-light::-webkit-scrollbar-thumb:hover { background: #09090b52; }
+  *:hover::-webkit-scrollbar-thumb,
+  [data-scrolling]::-webkit-scrollbar-thumb { background: #ffffff40; }
+  .scroll-light:hover::-webkit-scrollbar-thumb,
+  .scroll-light[data-scrolling]::-webkit-scrollbar-thumb { background: #09090b40; }
 
   /*
    * Liquid glass. The Figma kit's glass controls (and Apple's Liquid Glass they nod to)
