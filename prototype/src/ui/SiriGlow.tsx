@@ -65,9 +65,11 @@ const LITE_LAYERS = ['dense', 'core'] as const
 /**
  * `active` starts the glow; when it drops, the light doesn't cut — it plays a
  * 700ms dissolve (opacity out, a breath outward) and only then unmounts.
- * `scrim` dims the content underneath and fades in sync with the glow.
+ * `surface` tells the glow what it shines over: on 'light' only the narrow
+ * saturated rim survives (like real light against white); 'dark' renders the
+ * full bloom. The real effect never dims the content — no scrim here.
  */
-export function SiriGlow({ active, scrim = false }: { active: boolean; scrim?: boolean }) {
+export function SiriGlow({ active, surface = 'dark' }: { active: boolean; surface?: 'light' | 'dark' }) {
   const quality = useGlowQuality()
   const [mounted, setMounted] = useState(active)
   useEffect(() => {
@@ -82,13 +84,14 @@ export function SiriGlow({ active, scrim = false }: { active: boolean; scrim?: b
   const glowClass = [
     'siri-glow',
     quality === 'lite' ? 'siri-glow--lite' : '',
+    surface === 'light' ? 'siri-glow--on-light' : '',
     out ? 'siri-glow--out' : '',
   ].join(' ').trim()
 
   return (
     <>
-      {scrim && <div className={out ? 'siri-scrim siri-scrim--out' : 'siri-scrim'} aria-hidden />}
       <div className={glowClass} aria-hidden>
+        <b className="siri-flash" />
         {layers.map((k) => (
           <b key={k} className={LAYER_CLASS[k]}>
             <i>

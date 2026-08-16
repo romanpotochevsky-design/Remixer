@@ -30,8 +30,9 @@ How that is achieved:
 - Colours live on oversized squares (side = the frame diagonal, so any
   rotation covers the frame) that ROTATE via `transform`. The conic gradient
   itself is never re-painted.
-- Thickness waves are a second square with black lobes, `mix-blend-mode:
-  multiply`, rotating on its own clock. Where it passes, the light thins.
+- Thickness waves are alpha holes baked into each layer's conic (flat 5-6%
+  arcs at near-zero alpha). NO blend modes anywhere: exotic blends over large
+  filtered surfaces triggered solid-green garbage frames on some GPU drivers.
 - Each layer is a rounded ring: the child is masked to the ring, the BLUR
   sits on the wrapper. Blurring the parent softens the already-masked ring, so
   the falloff follows the corner radius with no hard edges — and the blur is
@@ -45,11 +46,19 @@ full frame on the CPU every frame. That is the 9fps failure mode.
 ## Layer anatomy (full quality)
 
 1. `--core` — 7px ring, blur 4, saturation/brightness lift: the hot edge line.
-2. `--dense` — 12px ring, blur 12: carries most of the light. Waves at 9s.
-3. `--soft` — 16px ring, blur 44, opacity .6: the long falloff. Waves at 13s,
-   reverse.
-4. `--alt` — sparse counter-rotating colour accents, `plus-lighter`, 23s:
-   makes hues recompose instead of visibly spinning.
+2. `--dense` — 12px ring, blur 12: carries most of the light (6.5s clock).
+3. `--soft` — 16px ring, blur 44: the long falloff. Dark surfaces only.
+4. `--alt` — sparse counter-rotating colour accents (12s, reverse).
+
+Plus the ignition flash: a full-surface coloured bloom (opacity-only, plays
+once, ends invisible) that recedes into the ring — like the real effect
+lighting up.
+
+**Surface awareness** (matched against photos of the real effect over a white
+app and a black app): the content is NEVER dimmed; over a `light` surface only
+the narrow saturated rim renders (a faint wide tail is invisible against white
+anyway — `--soft` is dropped, saturation lifted), over `dark` the full bloom.
+The host passes `surface="light" | "dark"` — each screen knows its own theme.
 
 Wave gaps are alpha holes baked into each layer's conic (flat 5-6% arcs at
 near-zero alpha). Four clocks — core 10s, dense 6.5s, soft 9s, accents 12s

@@ -286,6 +286,15 @@
   }
   .siri-glow--lite .siri-layer--dense { opacity: 0.9; animation: none; }
 
+  /* Over a LIGHT surface real light shows only as a narrow saturated rim —
+     a faint wide tail is invisible against white, so we don't paint one.
+     Over dark surfaces the full bloom renders. Matched against photos of the
+     real effect over a white app and a black app. */
+  .siri-glow--on-light .siri-layer--soft { display: none; }
+  .siri-glow--on-light .siri-layer--alt { opacity: 0.3; }
+  .siri-glow--on-light .siri-layer--dense { filter: blur(10px) saturate(165%); }
+  .siri-glow--on-light .siri-layer--core { filter: blur(3px) saturate(175%) brightness(1.2); }
+
   /* a freshly (re)loaded site rises in like a real page paint */
   .site-enter { animation: site-enter 0.5s var(--ease-std) both; }
   @keyframes site-enter {
@@ -307,6 +316,29 @@
     from { opacity: 0; transform: scale(1.012); }
     to   { opacity: 1; transform: none; }
   }
+  /* the entrance flash: a soft coloured bloom sweeps the WHOLE surface once and
+     recedes into the edge ring — like the real effect igniting. Painted once,
+     animated by opacity only; it ends invisible and costs nothing afterwards. */
+  .siri-flash {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(90% 70% at 12% 8%, #ff5f8f3d, transparent 60%),
+      radial-gradient(80% 60% at 88% 10%, #ff9d5c38, transparent 60%),
+      radial-gradient(90% 70% at 10% 92%, #8b5cff38, transparent 60%),
+      radial-gradient(80% 65% at 90% 90%, #38c6ff3d, transparent 60%),
+      radial-gradient(120% 100% at 50% 50%, #ffffff14, transparent 70%);
+    opacity: 0;
+    animation: siri-flash 1.15s var(--ease-out) both;
+  }
+  @keyframes siri-flash {
+    0%   { opacity: 0; transform: scale(0.99); }
+    22%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.004); }
+  }
+
   /* the exit: the light lets go of the frame — a soft breath outward, then gone */
   .siri-glow--out {
     animation: siri-out 0.7s var(--ease-out) both;

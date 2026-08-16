@@ -206,7 +206,7 @@ export default function App() {
                     )}
                   </div>
                 )}
-                <SiriGlow active={busy} scrim={world.project === 'built'} />
+                <SiriGlow active={busy} surface={world.project === 'built' ? 'light' : 'dark'} />
               </div>
             )
           })()}
