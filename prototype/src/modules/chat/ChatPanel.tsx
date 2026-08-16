@@ -63,11 +63,11 @@ export function ChatPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* ------------------------------------------------------------ messages */}
-      <div className="relative min-h-0 flex-1 overflow-y-auto px-4 pt-4">
+      {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
+      <div className="relative min-h-0 flex-1 overflow-y-auto pl-4 pr-2 pt-4">
         {/* scroll fade under the toolbar (Figma: BG + BG Gradient, 48px) */}
         <div
-          className="pointer-events-none sticky top-0 -mx-4 -mt-4 h-12 flex-none"
+          className="pointer-events-none sticky top-0 -ml-4 -mr-2 -mt-4 h-12 flex-none"
           style={{ background: 'linear-gradient(to bottom, #09090b, #09090b00)' }}
           aria-hidden
         />
@@ -118,7 +118,8 @@ export function ChatPanel() {
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
-        <div className="rounded-[24px] border border-[var(--white-300)] bg-[var(--white-100)] pb-2 pr-2">
+        {/* Figma: Neutral Alpha/300 (#ffffff3d) hairline on a white-8% field */}
+        <div className="rounded-[24px] border border-[#ffffff3d] bg-[var(--white-100)] pb-2 pr-2">
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
             <p className="text-[16px] leading-[26px] text-[var(--gray-400,#a1a1aa)]">
               {canUseAI(world)
@@ -142,7 +143,7 @@ export function ChatPanel() {
               </button>
               <button
                 aria-label={t({ en: 'Send', uk: 'Надіслати' })}
-                className="grid h-8 w-8 place-items-center rounded-full border border-[var(--white-100)] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)] hover:text-[var(--white-700)]"
+                className="grid h-8 w-8 place-items-center rounded-full border border-[var(--white-100)] bg-[var(--white-100)] text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)] hover:text-white"
               >
                 <IconArrowUp size={17} />
               </button>

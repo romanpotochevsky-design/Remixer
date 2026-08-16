@@ -85,7 +85,7 @@ export function PublishPanel() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -6, scale: 0.98 }}
           transition={{ duration: 0.2, ease: EASE }}
-          className="absolute top-[var(--topbar-h)] z-40 w-[548px] origin-top-right rounded-[20px] border border-[var(--white-100)] bg-[var(--gray-850)]"
+          className="absolute top-[var(--topbar-h)] z-40 w-[548px] origin-top-right rounded-[20px] border border-[#ffffff0a] bg-[var(--gray-850)]"
           style={{ right: 'calc(var(--rail-w) + 8px)', boxShadow: '0px 24px 28px rgba(0,0,0,0.5)' }}
         >
           {/* -------------------------------------------------------- header, 64px */}
@@ -97,7 +97,8 @@ export function PublishPanel() {
 
           {/* ---------------------------------------------------------- body card */}
           <div className="px-1.5">
-            <div className="rounded-[16px] border border-[var(--white-100)] bg-[var(--white-100)]/[0.03] px-4 pb-4 pt-[19px]">
+            {/* Figma: Neutral Alpha/50 (#ffffff0a) for both the fill and the hairline */}
+            <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] px-4 pb-4 pt-[19px]">
               {/* website URL */}
               <div className="mb-[19px] flex flex-col gap-[7px]">
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">

@@ -23,6 +23,31 @@ const base = (size: number) => ({
   'aria-hidden': true,
 })
 
+/** The real Remixer mark — lifted from the maintenance page's static logo export. */
+export const LogoRemixer = ({ size = 32, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 120.012 120" fill="none" className={className} aria-label="Remixer" role="img">
+    <path d="M90.0026 60.0028C73.4385 60.0028 60.0061 73.4351 60.0061 89.9991V119.995H120.012V59.9902H90.0152L90.0026 60.0028Z" fill="url(#rxl-a)" />
+    <path d="M60.0058 29.9963V0H0.000244141V60.0051H29.9967C46.5608 60.0051 59.9932 46.5728 59.9932 30.0088L60.0058 29.9963Z" fill="url(#rxl-b)" />
+    <path d="M29.9971 60.0078C46.5635 60.008 59.9931 73.4376 59.9932 90.0039C59.9932 106.57 46.5635 120 29.9971 120C13.4305 120 0 106.57 0 90.0039C0.000106173 73.4375 13.4305 60.0078 29.9971 60.0078ZM90.0029 0C106.569 0.000219558 119.999 13.4298 119.999 29.9961C119.999 46.5624 106.569 59.992 90.0029 59.9922C73.4363 59.9922 60.0059 46.5626 60.0059 29.9961C60.0059 13.4297 73.4364 0 90.0029 0Z" fill="url(#rxl-c)" />
+    <path d="M60.0061 30H90.0026V59.9963C73.4385 59.9963 60.0061 46.5514 60.0061 30Z" fill="white" />
+    <path d="M29.9965 60.0078 29.9965 30.0116 59.993 30.0116C59.993 46.5756 46.548 60.0078 29.9965 60.0078Z" fill="white" />
+    <path d="M60.0061 89.998H30.0096L30.0096 60.0018C46.5737 60.0018 60.0061 73.4467 60.0061 89.998Z" fill="white" />
+    <path d="M90.0033 60.0078V90.0041H60.0068C60.0068 73.4401 73.4518 60.0078 90.0033 60.0078Z" fill="white" />
+    <defs>
+      <linearGradient id="rxl-a" x1="60.0118" y1="59.9902" x2="120.011" y2="119.99" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#3F3F46" /><stop offset="1" stopColor="#71717A" />
+      </linearGradient>
+      <linearGradient id="rxl-b" x1="0.00593913" y1="0" x2="60.0051" y2="59.9997" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#71717A" /><stop offset="1" stopColor="#3F3F46" />
+      </linearGradient>
+      <linearGradient id="rxl-c" x1="-42.6678" y1="168.529" x2="-31.5028" y2="-70.2933" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#BE59FF" /><stop offset="0.19" stopColor="#9D60FF" />
+        <stop offset="0.74" stopColor="#4274FF" /><stop offset="1" stopColor="#1F7CFF" />
+      </linearGradient>
+    </defs>
+  </svg>
+)
+
 /** Clock with a counter-clockwise arrow — version history. */
 export const IconHistory = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
@@ -78,11 +103,20 @@ export const IconChevronDown = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
-/** Credit coin. */
+/** Credit coin — filled gold, like the Figma pill. */
 export const IconCoin = ({ size = 22, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="M12 7.5v9M9 10.2c0-1.2 1.3-2 3-2s3 .7 3 1.9c0 2.6-6 1.5-6 4 0 1.2 1.3 1.9 3 1.9s3-.8 3-2" strokeWidth="1.5" />
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
+    <defs>
+      <linearGradient id="rxc-g" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#F5D778" /><stop offset="1" stopColor="#D9A63C" />
+      </linearGradient>
+    </defs>
+    <circle cx="12" cy="12" r="10" fill="url(#rxc-g)" />
+    <circle cx="12" cy="12" r="7.2" fill="none" stroke="#00000038" strokeWidth="1.2" />
+    <path
+      d="M12 8.2v7.6M9.6 10.4c0-1 1-1.6 2.4-1.6s2.4.6 2.4 1.5c0 2.2-4.8 1.3-4.8 3.4 0 1 1 1.6 2.4 1.6s2.4-.7 2.4-1.7"
+      fill="none" stroke="#7a5410" strokeWidth="1.4" strokeLinecap="round"
+    />
   </svg>
 )
 

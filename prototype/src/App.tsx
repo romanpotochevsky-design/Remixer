@@ -17,9 +17,10 @@ import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
+import { SitePreview } from '@/modules/preview/SitePreview'
 import { useT } from '@/i18n'
 import {
-  IconHistory, IconSidebar, IconVisualEditor, IconMonitor, IconPhone, IconGrid,
+  LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconMonitor, IconPhone, IconGrid,
   IconChevronDown, IconCoin, IconStyle, IconExtension, IconAnalytics, IconCloud,
   IconChatBubble,
 } from '@/ui/icons'
@@ -64,9 +65,7 @@ export default function App() {
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           <div className="flex items-center">
             <div className="grid w-14 place-items-center">
-              <div className="grid h-8 w-8 place-items-center rounded-[10px] bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] text-[14px] font-semibold text-white">
-                R
-              </div>
+              <LogoRemixer size={32} />
             </div>
             <span className="font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
           </div>
@@ -147,11 +146,9 @@ export default function App() {
               title={t({ en: 'Credits', uk: 'Кредити' })}
             >
               <span className="flex items-center gap-2">
-                <span className={world.credits === 0 ? 'text-[var(--danger)]' : 'text-[var(--attention)]'}>
-                  <IconCoin size={20} />
-                </span>
+                <IconCoin size={20} />
                 <span className="text-[15px] font-medium tabular-nums text-white">
-                  {world.credits.toLocaleString('en-US').replace(',', ' ')}
+                  {world.credits.toLocaleString('en-US').replace(/,/g, ' ')}
                 </span>
               </span>
               <span className="grid h-6 w-6 place-items-center text-[var(--white-400)]">
@@ -172,15 +169,24 @@ export default function App() {
         <main className="relative min-w-0 flex-1 pb-2 pl-2">
           {surface === 'domains' ? (
             <DomainsSurface />
+          ) : world.project === 'built' ? (
+            <div className="h-full overflow-hidden rounded-shell">
+              <SitePreview />
+            </div>
           ) : (
             <div className="grid h-full place-items-center rounded-shell bg-[var(--gray-900)]">
-              <p className="font-mono text-[12px] text-[var(--white-300)]">
-                {world.project === 'empty'
-                  ? t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })
-                  : world.project === 'generating'
-                    ? t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })
-                    : 'preview'}
-              </p>
+              {world.project === 'generating' ? (
+                <div className="flex flex-col items-center gap-3">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--white-200)] border-t-[var(--white-700)]" aria-hidden />
+                  <p className="text-[14px] text-[var(--white-400)]">
+                    {t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[14px] text-[var(--white-300)]">
+                  {t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })}
+                </p>
+              )}
             </div>
           )}
           <PublishPanel />
