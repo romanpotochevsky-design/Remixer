@@ -362,6 +362,9 @@ export function ChatPanel() {
             <span key={flash} className="composer-glow" aria-hidden>
               <i className="composer-glow-bloom"><b /></i>
               <i className="composer-glow-core"><b /></i>
+              {/* keeps the light outside: the field is 80% translucent, and
+                  without this plate the glow bleeds straight through it */}
+              <s className="composer-glow-plate" />
             </span>
           )}
         <div className="composer-field relative rounded-[24px] pb-2 pr-2">

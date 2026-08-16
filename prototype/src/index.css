@@ -290,44 +290,45 @@
   }
 
   /*
-   * The send flash, measured off a recording of Google's AI Mode button.
+   * The send flash, measured off a recording of Google's AI Mode button:
+   * a THIN, iridescent band of light hugging the box, peaking ~100ms after
+   * the click and gone by ~400ms, with the box interior perfectly clean.
    *
-   * What theirs actually is: a THIN band of colour hugging just outside the
-   * box — a dozen pixels, softly faded — with the box interior left completely
-   * clean, peaking ~100ms after the click and gone by ~400ms.
-   *
-   * Both of my earlier attempts missed in opposite directions: a crisp 2px
-   * stroke ON the border read as neon trim, and a 40px blurred blob behind the
-   * field flooded the field itself with colour (it is 80% translucent, so
-   * anything behind it bleeds straight through). Hence: a ring mask that starts
-   * exactly at the field's edge and reaches 16px out, blurred just enough to
-   * have no edge of its own.
-   *
-   * ⚠️ Mask and blur must sit on the SAME element — Chrome renders nothing for a
-   * masked or clipped element nested inside a filtered one.
+   * Construction — and why there is NO mask here. A mask is applied AFTER the
+   * element's filter, so a ring mask crops the blur's falloff into two hard
+   * edges: that was the "thick gradient contour". Instead each layer clips the
+   * spinning conic to the field's rounded rect (overflow on the SAME element as
+   * the blur — a clip nested INSIDE a filtered ancestor renders nothing in
+   * Chrome) and then blurs the whole clipped shape, which spreads it softly in
+   * every direction like actual light. The inward spill lands on an opaque
+   * plate the exact colour of what sits behind the translucent field anyway,
+   * so the interior stays dark and only the outer falloff survives.
    */
   .composer-glow {
     position: absolute;
-    inset: -16px;
-    border-radius: 40px;
+    inset: 0;
+    border-radius: 24px;
     pointer-events: none;
-    z-index: 1;
     animation: composer-glow-life 0.55s var(--ease-out) both;
   }
+  /* 3px past the field's edge: the plate hides everything inside the field, so
+     without this overhang the visible light would be only the blur's outer
+     tail — too faint to read. The overhang is the filament, the blur its halo. */
   .composer-glow > i {
+    position: absolute;
+    inset: -3px;
+    border-radius: 27px;
+    overflow: hidden;
+    container-type: size;
+  }
+  .composer-glow .composer-glow-core { filter: blur(7px); opacity: 1; }
+  .composer-glow .composer-glow-bloom { inset: -4px; filter: blur(20px); opacity: 0.7; }
+  .composer-glow .composer-glow-plate {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    overflow: hidden;
-    container-type: size;
-    padding: 16px;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
+    background: #09090b;
   }
-  .composer-glow .composer-glow-core { filter: blur(7px); opacity: 0.9; }
-  .composer-glow .composer-glow-bloom { filter: blur(15px); opacity: 0.5; }
 
   .composer-glow b {
     position: absolute;
@@ -335,14 +336,18 @@
     top: 50%;
     width: 132cqmax;
     height: 132cqmax;
-    /* A travelling ARC: most of the circle is transparent, so one stretch of the
-       perimeter is lit at a time and you can see where the light came from. */
+    /* A travelling ARC with Google's hue rhythm: a long blue stretch, then the
+       warm hues packed tight at the head — the end near the button reads as an
+       iridescent flick, not an even rainbow. Most of the circle is transparent
+       so one stretch of the perimeter is lit at a time. */
     background: conic-gradient(
       from 0deg,
       #1587ff00 0deg,
-      #1587ff 30deg, #4aa8ff 58deg, #8b5cff 100deg,
-      #e0559a 136deg, #ff7a45 166deg, #ffc857 190deg,
-      #ffc85700 220deg,
+      #1587ffd9 36deg, #4aa8ffd9 74deg,
+      #8b5cff 110deg, #e0559a 134deg,
+      #ff7a45 152deg, #ffc857 166deg,
+      #6fe3c4 178deg,
+      #6fe3c400 198deg,
       #1587ff00 360deg
     );
     animation: composer-glow-spin 0.55s var(--ease-out) both;
@@ -350,10 +355,9 @@
   }
   .composer-glow .composer-glow-bloom b { animation-duration: 0.62s; }
   /*
-   * It is born AT the trigger: at Google's peak the light is a bloom spreading
-   * away from the button, not a ring that has travelled. So the arc starts
-   * pointed at the send button (bottom-right ≈ 135° in conic terms) and sweeps
-   * ~150° away from it, rather than making a full lap.
+   * Born AT the trigger: the arc starts pointed at the send button
+   * (bottom-right ≈ 135° in conic terms) and sweeps ~150° away from it,
+   * rather than lapping the field.
    */
   @keyframes composer-glow-spin {
     from { transform: translate(-50%, -50%) rotate(105deg); }
