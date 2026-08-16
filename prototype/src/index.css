@@ -206,16 +206,16 @@
   }
   .siri-layer--core {
     filter: blur(4px);
-    mask-image: conic-gradient(from var(--siri-c), #000, #000a 11%, #000 24%, #000c 37%, #000 52%, #0009 63%, #000 76%, #000b 88%, #000);
-    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #000a 11%, #000 24%, #000c 37%, #000 52%, #0009 63%, #000 76%, #000b 88%, #000);
+    mask-image: conic-gradient(from var(--siri-c), #000, #0007 11%, #000 24%, #0009 37%, #000 52%, #0006 63%, #000 76%, #0008 88%, #000);
+    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #0007 11%, #000 24%, #0009 37%, #000 52%, #0006 63%, #000 76%, #0008 88%, #000);
     animation: siri-wave-c 9s linear infinite;
   }
   /* the dense tight halo — most of the light lives here */
   .siri-layer--dense > i { padding: 12px; }
   .siri-layer--dense {
     filter: blur(12px) saturate(140%);
-    mask-image: conic-gradient(from var(--siri-c), #000, #0006 9%, #000 22%, #0009 34%, #000 48%, #0005 59%, #000 72%, #0008 85%, #000);
-    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #0006 9%, #000 22%, #0009 34%, #000 48%, #0005 59%, #000 72%, #0008 85%, #000);
+    mask-image: conic-gradient(from var(--siri-c), #000, #0003 9%, #000 22%, #0005 34%, #000 48%, #0002 59%, #000 72%, #0004 85%, #000);
+    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #0003 9%, #000 22%, #0005 34%, #000 48%, #0002 59%, #000 72%, #0004 85%, #000);
     animation: siri-breathe 3.4s ease-in-out infinite, siri-wave-c 9s linear infinite;
   }
   /* the fast-fading outer wash */
@@ -223,8 +223,8 @@
   .siri-layer--soft {
     filter: blur(44px) saturate(125%);
     opacity: 0.6;
-    mask-image: conic-gradient(from var(--siri-d), #000, #0007 13%, #000 27%, #0005 42%, #000 55%, #0008 68%, #000 81%, #0006 92%, #000);
-    -webkit-mask-image: conic-gradient(from var(--siri-d), #000, #0007 13%, #000 27%, #0005 42%, #000 55%, #0008 68%, #000 81%, #0006 92%, #000);
+    mask-image: conic-gradient(from var(--siri-d), #000, #0004 13%, #000 27%, #0002 42%, #000 55%, #0004 68%, #000 81%, #0003 92%, #000);
+    -webkit-mask-image: conic-gradient(from var(--siri-d), #000, #0004 13%, #000 27%, #0002 42%, #000 55%, #0004 68%, #000 81%, #0003 92%, #000);
     animation: siri-breathe 3.4s ease-in-out infinite, siri-wave-d 13s linear infinite reverse;
   }
   /* counter-drifting accents so the colours recompose instead of rotating */
