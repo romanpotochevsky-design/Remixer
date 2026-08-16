@@ -337,19 +337,21 @@
     top: 50%;
     width: 132cqmax;
     height: 132cqmax;
-    /* A travelling ARC with Google's hue rhythm: a long blue stretch, then the
-       warm hues packed tight at the head — the end near the button reads as an
-       iridescent flick, not an even rainbow. Most of the circle is transparent
-       so one stretch of the perimeter is lit at a time. */
+    /* A travelling ARC in the SIRI palette — the same hues as the preview glow
+       (matched to real Siri stills), so both "AI light" effects in the product
+       speak one spectrum. Google's yellow and green are deliberately absent:
+       that six-colour rainbow is their brand, not ours. Rhythm stays Google's —
+       a long cool stretch, warm hues packed tight at the head, most of the
+       circle transparent so one stretch of the perimeter is lit at a time. */
     background: conic-gradient(
       from 0deg,
-      #1587ff00 0deg,
-      #1587ffd9 36deg, #4aa8ffd9 74deg,
-      #8b5cff 110deg, #e0559a 134deg,
-      #ff7a45 152deg, #ffc857 166deg,
-      #6fe3c4 178deg,
-      #6fe3c400 198deg,
-      #1587ff00 360deg
+      #1f7cff00 0deg,
+      #1f7cffd9 36deg, #38c6ffd9 74deg,
+      #8b5cff 110deg, #be59ff 134deg,
+      #ff2f6d 152deg, #ff705c 166deg,
+      #ff9d5c 178deg,
+      #ff9d5c00 198deg,
+      #1f7cff00 360deg
     );
     animation: composer-glow-spin 0.65s var(--ease-out) both;
     will-change: transform;
@@ -360,12 +362,17 @@
    * (bottom-right ≈ 135° in conic terms) and sweeps ~150° away from it,
    * rather than lapping the field.
    */
-  /* Ends at 300°, not 255: the arc's head (gradient ≈198°) then lands at
-     ≈138° on screen — the bottom-right corner, i.e. the send button. The
-     light finishes its run where the gesture began. */
+  /*
+   * The run, as marked up on the designer's screenshot: the light is BORN at
+   * the "+" (bottom-left corner, screen 225°), travels up the left edge and
+   * across the top, and DIES on the send button (bottom-right, 135°+360°).
+   * The arc's warm head (gradient ≈178°) is the reference point: 225−178=47°
+   * at birth, 495−178=317° at death — a 270° sweep in the same 0.65s, so the
+   * light moves briskly and the fade-out catches it exactly on the button.
+   */
   @keyframes composer-glow-spin {
-    from { transform: translate(-50%, -50%) rotate(105deg); }
-    to   { transform: translate(-50%, -50%) rotate(300deg); }
+    from { transform: translate(-50%, -50%) rotate(47deg); }
+    to   { transform: translate(-50%, -50%) rotate(317deg); }
   }
   /* Holds until the arc has finished its run — fading from 42% meant the light
      died mid-journey and its arrival at the send button was invisible. */
