@@ -3,9 +3,11 @@
  *
  * All motion is transform/opacity-only (see index.css for the performance
  * contract). Even so, machines without GPU compositing pay per composited
- * layer — so on first activation the component counts real frames for ~1.2s
- * and, below 30fps, drops to the lite cut: core line + dense halo, no waves.
- * The verdict is cached for the session, so the probe runs once.
+ * layer — enough that the glow can starve the chat's own animations. So the
+ * component opens on the lite cut (core line + dense halo, no waves), counts
+ * real frames for ~800ms while that is on screen, and only then upgrades to the
+ * full four layers if the page held above 50fps. The verdict is cached for the
+ * session, so the probe runs once.
  */
 import { useEffect, useState } from 'react'
 
@@ -19,12 +21,21 @@ if (typeof window !== 'undefined' && window.matchMedia('(max-width: 820px), (poi
   verdict = 'lite'
 }
 
-function useGlowQuality(): Quality {
-  const [q, setQ] = useState<Quality>(verdict ?? 'full')
+/**
+ * Start cheap, earn expensive.
+ *
+ * The old probe measured the page BEFORE the glow was on screen: it saw an idle
+ * shell, concluded "fast machine", cached 'full' and never looked again — five
+ * consecutive loads all landed on the four-layer cut, so the governor protected
+ * nobody. It now starts on the lite cut and measures WHILE the glow is running,
+ * which is the only moment that says anything about what the glow costs here.
+ * Full is granted only to a machine that stays comfortably above 50fps carrying
+ * the lite cut; anything less keeps it, and the chat keeps its frames.
+ */
+function useGlowQuality(active: boolean): Quality {
+  const [q, setQ] = useState<Quality>(verdict ?? 'lite')
   useEffect(() => {
-    // 'full' is final; 'lite' from a probe re-checks on the next activation, so one
-    // noisy first-load window (fonts, layout, artifact iframe warmup) can't stick.
-    if (verdict === 'full') return
+    if (verdict || !active) return
     let alive = true
     let frames = 0
     let t0 = 0
@@ -32,20 +43,19 @@ function useGlowQuality(): Quality {
     const tick = () => {
       if (!alive) return
       const now = performance.now()
-      if (now - start < 400) { requestAnimationFrame(tick); return } // warmup: skip the mount storm
+      if (now - start < 250) { requestAnimationFrame(tick); return } // let the glow's own mount settle
       if (!t0) t0 = now
       frames++
       const dt = now - t0
-      if (dt < 1200) requestAnimationFrame(tick)
+      if (dt < 800) requestAnimationFrame(tick)
       else {
-        const decided: Quality = frames / (dt / 1000) < 30 ? 'lite' : 'full'
-        if (decided === 'full') verdict = 'full'
-        setQ(decided)
+        verdict = frames / (dt / 1000) >= 50 ? 'full' : 'lite'
+        setQ(verdict)
       }
     }
     requestAnimationFrame(tick)
     return () => { alive = false }
-  }, [])
+  }, [active])
   return q
 }
 
@@ -70,7 +80,7 @@ const LITE_LAYERS = ['dense', 'core'] as const
  * full bloom. The real effect never dims the content — no scrim here.
  */
 export function SiriGlow({ active, surface = 'dark' }: { active: boolean; surface?: 'light' | 'dark' | 'split' }) {
-  const quality = useGlowQuality()
+  const quality = useGlowQuality(active)
   const [mounted, setMounted] = useState(active)
   useEffect(() => {
     if (active) { setMounted(true); return }
