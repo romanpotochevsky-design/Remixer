@@ -18,6 +18,7 @@ import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview, SiteSkeleton } from '@/modules/preview/SitePreview'
+import { SiriGlow } from '@/ui/SiriGlow'
 import { useT } from '@/i18n'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
@@ -211,12 +212,7 @@ export default function App() {
                     {world.project === 'built' && !reloading && (
                       <div className="absolute inset-0 z-10 bg-[#09090b73]" style={{ animation: 'siri-in 0.5s var(--ease-std) both' }} aria-hidden />
                     )}
-                    <div className="siri-glow" aria-hidden>
-                      <b className="siri-layer siri-layer--soft"><i /></b>
-                      <b className="siri-layer siri-layer--alt"><i /></b>
-                      <b className="siri-layer siri-layer--dense"><i /></b>
-                      <b className="siri-layer siri-layer--core"><i /></b>
-                    </div>
+                    <SiriGlow />
                   </>
                 )}
               </div>

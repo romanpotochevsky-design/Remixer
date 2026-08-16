@@ -153,11 +153,15 @@
    * plus a second bloom drifting the OTHER way in plus-lighter, so hues mix and
    * shift organically instead of reading as one rigid rotating frame.
    */
-  @property --siri-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-  @property --siri-b { syntax: '<angle>'; inherits: false; initial-value: 140deg; }
-  @property --siri-c { syntax: '<angle>'; inherits: false; initial-value: 60deg; }
-  @property --siri-d { syntax: '<angle>'; inherits: false; initial-value: 290deg; }
-
+  /*
+   * PERFORMANCE CONTRACT: nothing in this effect may invalidate paint per frame.
+   * Rotating a conic-gradient's angle repaints four blurred layers on the CPU —
+   * measured 9fps. Instead each ring holds two oversized SQUARES (side 175% of
+   * the width, so any rotation covers the frame): one painted with the colour
+   * conic, one with black "wave" lobes multiplied on top. The squares rotate
+   * with `transform` — compositor-only. Masks, blurs and gradients are painted
+   * once; the only per-frame work is GPU compositing.
+   */
   .siri-glow {
     position: absolute;
     inset: 0;
@@ -168,81 +172,92 @@
     isolation: isolate;
     animation: siri-in 0.6s var(--ease-std) both;
   }
-  /*
-   * Each layer is a ROUNDED ring (mask follows border-radius) inside a wrapper that
-   * carries the blur. Blurring the parent softens the already-masked ring, so the
-   * falloff hugs the rounded corners and never gets cropped to a hard inner edge.
-   * Intensity profile like the reference: white-hot at the very edge, a dense tight
-   * halo, then a fast fade.
-   */
   .siri-layer {
     position: absolute;
     inset: 0;
     border-radius: inherit;
   }
+  /* the ring: mask follows the corner radius; contents are the rotating squares */
   .siri-layer > i {
-    content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     display: block;
-    background: conic-gradient(
-      from var(--siri-a),
-      #ff9d5c, #38c6ff 18%, #1f7cff 36%, #2e6bff 52%, #be59ff 66%, #ff2f6d 80%, #ff705c 92%, #ff9d5c
-    );
+    overflow: hidden;
+    isolation: isolate;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
-    animation: siri-drift-a 16s linear infinite;
   }
-  /* the white-hot core line on the very edge */
-  .siri-layer--core > i {
-    padding: 7px;
-    filter: saturate(160%) brightness(1.4);
+  .siri-spin {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    /* smallest square that covers the frame at every angle: side = the diagonal */
+    width: 132%;
+    aspect-ratio: 1;
+    will-change: transform;
   }
-  .siri-layer--core {
-    filter: blur(4px);
-    mask-image: conic-gradient(from var(--siri-c), #000, #0007 11%, #000 24%, #0009 37%, #000 52%, #0006 63%, #000 76%, #0008 88%, #000);
-    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #0007 11%, #000 24%, #0009 37%, #000 52%, #0006 63%, #000 76%, #0008 88%, #000);
-    animation: siri-wave-c 9s linear infinite;
+  .siri-spin--color {
+    background: conic-gradient(
+      from 0deg,
+      #ff9d5c, #38c6ff 18%, #1f7cff 36%, #2e6bff 52%, #be59ff 66%, #ff2f6d 80%, #ff705c 92%, #ff9d5c
+    );
+    animation: siri-rot 16s linear infinite;
   }
-  /* the dense tight halo — most of the light lives here */
+  /* thickness waves: black lobes multiplied over the colour, on their own clock */
+  .siri-spin--wave {
+    background: conic-gradient(
+      from 0deg,
+      #0000, #000000c4 9%, #0000 22%, #00000080 34%, #0000 48%, #000000d6 59%, #0000 72%, #000000a3 85%, #0000
+    );
+    mix-blend-mode: multiply;
+    animation: siri-rot 9s linear infinite;
+  }
+
+  .siri-layer--core > i { padding: 7px; }
+  .siri-layer--core .siri-spin--wave { display: none; }
+  .siri-layer--core { filter: blur(4px) saturate(160%) brightness(1.25); }
+
   .siri-layer--dense > i { padding: 12px; }
   .siri-layer--dense {
     filter: blur(12px) saturate(140%);
-    mask-image: conic-gradient(from var(--siri-c), #000, #0003 9%, #000 22%, #0005 34%, #000 48%, #0002 59%, #000 72%, #0004 85%, #000);
-    -webkit-mask-image: conic-gradient(from var(--siri-c), #000, #0003 9%, #000 22%, #0005 34%, #000 48%, #0002 59%, #000 72%, #0004 85%, #000);
-    animation: siri-breathe 3.4s ease-in-out infinite, siri-wave-c 9s linear infinite;
+    animation: siri-breathe 3.4s ease-in-out infinite;
   }
-  /* the fast-fading outer wash */
+
   .siri-layer--soft > i { padding: 16px; }
   .siri-layer--soft {
     filter: blur(44px) saturate(125%);
     opacity: 0.6;
-    mask-image: conic-gradient(from var(--siri-d), #000, #0004 13%, #000 27%, #0002 42%, #000 55%, #0004 68%, #000 81%, #0003 92%, #000);
-    -webkit-mask-image: conic-gradient(from var(--siri-d), #000, #0004 13%, #000 27%, #0002 42%, #000 55%, #0004 68%, #000 81%, #0003 92%, #000);
-    animation: siri-breathe 3.4s ease-in-out infinite, siri-wave-d 13s linear infinite reverse;
+    animation: siri-breathe 3.4s ease-in-out infinite;
   }
-  /* counter-drifting accents so the colours recompose instead of rotating */
-  .siri-layer--alt > i {
-    padding: 16px;
-    background: conic-gradient(
-      from var(--siri-b),
-      #1f7cff00, #38c6ff, #1f7cff00 28%, #be59ff00 46%, #ff9d5c, #ff5f8f00 74%, #be59ff, #1f7cff00
-    );
-    animation: siri-drift-b 23s linear infinite;
-  }
+  .siri-layer--soft .siri-spin--wave { animation-duration: 13s; animation-direction: reverse; }
+
+  /* counter-drifting accents: sparse colour, reverse rotation, additive blend */
+  .siri-layer--alt > i { padding: 16px; }
   .siri-layer--alt {
     filter: blur(26px) saturate(125%);
     mix-blend-mode: plus-lighter;
     opacity: 0.5;
     animation: siri-breathe 2.6s ease-in-out infinite reverse;
   }
-  @keyframes siri-drift-a { to { --siri-a: 360deg; } }
-  @keyframes siri-wave-c { to { --siri-c: 420deg; } }
-  @keyframes siri-wave-d { to { --siri-d: 650deg; } }
-  @keyframes siri-drift-b { from { --siri-b: 140deg; } to { --siri-b: -220deg; } }
+  .siri-layer--alt .siri-spin--color {
+    background: conic-gradient(
+      from 140deg,
+      #1f7cff00, #38c6ff, #1f7cff00 28%, #be59ff00 46%, #ff9d5c, #ff5f8f00 74%, #be59ff, #1f7cff00
+    );
+    animation: siri-rot 23s linear infinite reverse;
+  }
+  .siri-layer--alt .siri-spin--wave { display: none; }
+
+  .siri-glow--lite .siri-spin--wave { display: none; }
+  .siri-glow--lite .siri-layer--dense { opacity: 0.9; animation: none; }
+
+  @keyframes siri-rot {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to   { transform: translate(-50%, -50%) rotate(360deg); }
+  }
   @keyframes siri-breathe {
     0%, 100% { opacity: 0.6; }
     50%      { opacity: 1; }
@@ -264,6 +279,11 @@
     from { background-position: 150% 0; }
     to   { background-position: -150% 0; }
   }
+  @keyframes siri-in {
+    from { opacity: 0; transform: scale(1.012); }
+    to   { opacity: 1; transform: none; }
+  }
+
 
   /* the glow arrives like on iOS: swells from the edge, settles */
   @keyframes siri-in {
