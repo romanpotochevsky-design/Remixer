@@ -263,11 +263,13 @@ export function ChatPanel() {
        * The scroll waits for the bubble to land. Run both at once and the send
        * animation is simply not visible: the bubble springs while the entire
        * thread slides underneath it, and the eye follows the bigger motion.
-       * Bubble first, then the thread carries it up to the top.
+       * Bubble first, then the thread carries it up to the top. The wait matches
+       * the spring's own length — cut it shorter and the scroll starts while the
+       * bubble is still growing, which is what hid it in the first place.
        */
       park = window.setTimeout(() => {
         vp.scrollTo({ top: Math.max(0, an.offsetTop - TOP_INSET), behavior: 'smooth' })
-      }, 320)
+      }, 620)
     })
     return () => window.clearTimeout(park)
   }, [thread])

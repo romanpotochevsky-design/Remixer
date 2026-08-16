@@ -63,7 +63,7 @@ export const bubbleSend = {
    * wider than it is tall for an instant, and watching it round out is what
    * reads as physical. Growing uniformly from a point reads as a zoom.
    */
-  initial: { opacity: 0, scaleX: 0.78, scaleY: 0.6, x: 18, y: 34 },
+  initial: { opacity: 0, scaleX: 0.72, scaleY: 0.48, x: 26, y: 52 },
   animate: {
     opacity: 1,
     scaleX: 1,
@@ -74,11 +74,15 @@ export const bubbleSend = {
        how much pop there is and `duration` how long it takes, which is what a
        designer actually wants to tune. Opacity is pulled forward on its own
        curve — a bubble that fades in over the whole flight looks like a ghost. */
+    /* Longer and further than feels right on paper. Measured frame by frame the
+       shorter version did render — it was simply over before the eye caught it,
+       which reads as "there is no animation". Legibility beats restraint here:
+       this is the one gesture the user performs. */
     transition: {
       type: 'spring',
-      bounce: 0.42,
-      duration: 0.62,
-      opacity: { duration: 0.16, ease: [0.2, 0, 0, 1] },
+      bounce: 0.45,
+      duration: 0.9,
+      opacity: { duration: 0.2, ease: [0.2, 0, 0, 1] },
     },
   },
 }
