@@ -313,7 +313,7 @@
     inset: 0;
     border-radius: 24px;
     pointer-events: none;
-    animation: composer-glow-life 0.5s var(--ease-out) both;
+    animation: composer-glow-life 0.72s var(--ease-out) both;
   }
   /* 2px past the field's edge: the plate hides everything inside the field, so
      without this overhang the visible light would be only the blur's outer
@@ -359,7 +359,7 @@
       #ff9d5c00 110deg,
       #1f7cff00 360deg
     );
-    animation: composer-glow-spin 0.5s var(--ease-out) both;
+    animation: composer-glow-spin 0.72s var(--ease-out) both;
     will-change: transform;
   }
   /* Same clock as the core — the bloom's span is nested inside the core's, and
