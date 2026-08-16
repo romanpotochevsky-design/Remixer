@@ -290,53 +290,44 @@
   }
 
   /*
-   * The send flash: coloured light runs once around the composer, the way
-   * Google lights its search field when you hit AI Mode.
+   * The send flash, measured off a recording of Google's AI Mode button.
    *
-   * Same engine as the preview glow, scaled down: the hues live on an oversized
-   * square that is painted ONCE and rotated, and a ring mask cuts it to the
-   * border. Nothing repaints per frame — animating a gradient's angle would,
-   * and that is the 9fps mistake this project already made once.
-   */
-  /*
-   * It sits BEHIND the field, not on it. Google never draws a coloured stroke:
-   * the field's own edge stays dark and the colour is light escaping from
-   * behind it. A crisp ring on the border reads as neon trim instead.
-   */
-  /*
-   * The send flash — Google's AI Mode light, which is a HALO, not a stroke.
+   * What theirs actually is: a THIN band of colour hugging just outside the
+   * box — a dozen pixels, softly faded — with the box interior left completely
+   * clean, peaking ~100ms after the click and gone by ~400ms.
    *
-   * Two things make theirs read as light and mine read as a coloured border:
-   * the colour lives OUTSIDE the box and spreads far, and the box's own edge
-   * stays dark. So the light sits BEHIND the field (the field covers the middle,
-   * and what bleeds through its glass is the faint wash Google has too), it is
-   * blurred hard, and it reaches well past the edges.
+   * Both of my earlier attempts missed in opposite directions: a crisp 2px
+   * stroke ON the border read as neon trim, and a 40px blurred blob behind the
+   * field flooded the field itself with colour (it is 80% translucent, so
+   * anything behind it bleeds straight through). Hence: a ring mask that starts
+   * exactly at the field's edge and reaches 16px out, blurred just enough to
+   * have no edge of its own.
    *
-   * ⚠️ The radial mask and the blur must share one element. Chrome renders
-   * nothing when a masked or clipped element is nested inside a filtered one —
-   * verified by toggling each alone. The mask fades out gradually, so unlike a
-   * hard ring it never shows the crop.
+   * ⚠️ Mask and blur must sit on the SAME element — Chrome renders nothing for a
+   * masked or clipped element nested inside a filtered one.
    */
   .composer-glow {
     position: absolute;
-    inset: -42px;
+    inset: -16px;
+    border-radius: 40px;
     pointer-events: none;
-    animation: composer-glow-life 1.7s var(--ease-out) both;
+    z-index: 1;
+    animation: composer-glow-life 0.55s var(--ease-out) both;
   }
   .composer-glow > i {
     position: absolute;
     inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
     container-type: size;
-    filter: blur(26px) saturate(135%);
-    /* One soft blob, not a ring: the mask is an ellipse, and a ring cut from it
-       misses the ends of a box this wide — tried it, the light all but vanished.
-       Opaque through the middle and fading out at the edge is what gives an even
-       halo; the field covers the centre anyway, and the little that bleeds
-       through its glass is the same wash Google's box shows. */
-    -webkit-mask: radial-gradient(closest-side, #000 0%, #000 46%, #0000 100%);
-    mask: radial-gradient(closest-side, #000 0%, #000 46%, #0000 100%);
+    padding: 16px;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
   }
-  .composer-glow .composer-glow-bloom { filter: blur(44px) saturate(120%); opacity: 0.8; }
+  .composer-glow .composer-glow-core { filter: blur(7px); opacity: 0.9; }
+  .composer-glow .composer-glow-bloom { filter: blur(15px); opacity: 0.5; }
 
   .composer-glow b {
     position: absolute;
@@ -344,10 +335,8 @@
     top: 50%;
     width: 132cqmax;
     height: 132cqmax;
-    /*
-     * A travelling ARC, not a full ring: most of the circle is transparent, so
-     * one stretch of the perimeter is lit at a time and you can see it move.
-     */
+    /* A travelling ARC: most of the circle is transparent, so one stretch of the
+       perimeter is lit at a time and you can see where the light came from. */
     background: conic-gradient(
       from 0deg,
       #1587ff00 0deg,
@@ -356,18 +345,24 @@
       #ffc85700 220deg,
       #1587ff00 360deg
     );
-    animation: composer-glow-spin 1.7s linear both;
+    animation: composer-glow-spin 0.55s var(--ease-out) both;
     will-change: transform;
   }
-  .composer-glow .composer-glow-bloom b { animation-duration: 1.95s; }
+  .composer-glow .composer-glow-bloom b { animation-duration: 0.62s; }
+  /*
+   * It is born AT the trigger: at Google's peak the light is a bloom spreading
+   * away from the button, not a ring that has travelled. So the arc starts
+   * pointed at the send button (bottom-right ≈ 135° in conic terms) and sweeps
+   * ~150° away from it, rather than making a full lap.
+   */
   @keyframes composer-glow-spin {
-    from { transform: translate(-50%, -50%) rotate(-70deg); }
-    to   { transform: translate(-50%, -50%) rotate(400deg); }
+    from { transform: translate(-50%, -50%) rotate(105deg); }
+    to   { transform: translate(-50%, -50%) rotate(255deg); }
   }
   @keyframes composer-glow-life {
     0%   { opacity: 0; }
-    10%  { opacity: 1; }
-    68%  { opacity: 1; }
+    14%  { opacity: 1; }
+    42%  { opacity: 0.92; }
     100% { opacity: 0; }
   }
   @media (prefers-reduced-motion: reduce) {
