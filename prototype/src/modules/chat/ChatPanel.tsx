@@ -145,7 +145,7 @@ export function ChatPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
-      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2 pt-14">
+      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2 pt-4">
         {/*
          * The fade under the chat toolbar. Figma stacks two rectangles here
          * (28016:43308 "BG" 52px solid + 28016:43309 "BG Gradient" 48px), so a
@@ -154,12 +154,14 @@ export function ChatPanel() {
          * the same job: opaque for the first stretch, then a long tail out.
          */}
         <div
-          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-2 -mb-[72px] -mt-14 h-[72px] flex-none"
+          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-2 -mt-4 h-16 flex-none"
           style={{ background: 'linear-gradient(to bottom, #09090b 0%, #09090b 42%, #09090b00 100%)' }}
           aria-hidden
         />
 
-        <div className="space-y-5 pb-6">
+        {/* pb clears exactly the height of the bottom fade, so at rest nothing
+            sits under it — the fade only bites into content once you scroll. */}
+        <div className="space-y-5 pb-16">
           {thread.length === 0 && !working ? (
             <p className="pt-10 text-center text-[14px] text-[var(--white-400)]">
               {t({ en: 'Describe what you want to build.', uk: 'Опишіть, що збудувати.' })}
@@ -197,7 +199,7 @@ export function ChatPanel() {
         {/* …and the mirror of it above the composer, so a message slides out of
             sight instead of being cut off by the input field's top edge. */}
         <div
-          className="pointer-events-none sticky bottom-0 z-10 -ml-4 -mr-2 -mt-[72px] h-[72px] flex-none"
+          className="pointer-events-none sticky bottom-0 z-10 -ml-4 -mr-2 -mt-16 h-16 flex-none"
           style={{ background: 'linear-gradient(to top, #09090b 0%, #09090b 38%, #09090b00 100%)' }}
           aria-hidden
         />

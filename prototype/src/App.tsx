@@ -10,6 +10,7 @@
  * Everything still renders from the world store — the scenario console and flows
  * drive this shell exactly as they drove the old one.
  */
+import { useEffect } from 'react'
 import { motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
@@ -20,6 +21,7 @@ import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
+import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
@@ -46,7 +48,13 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth } = useUI()
+
+  // The resizer writes --chat-w straight to <html> during a drag; this keeps the
+  // stored value authoritative everywhere else (reset, reload, another session).
+  useEffect(() => {
+    document.documentElement.style.setProperty('--chat-w', `${chatWidth}px`)
+  }, [chatWidth])
   const { t } = useT()
 
   const address =
@@ -62,14 +70,7 @@ export default function App() {
   return (
     <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]">
       {/* ================================================== chat column, 432px */}
-      {/* The hairline between chat and canvas. In Figma the column is 432 wide while
-          everything inside it stops at 430–431 (28016:43362 toolbar, 43308/43309 the
-          fade rects) — that last pixel is the divider. Drawn as a right border so the
-          432 stays exact (border-box), on Neutral Alpha/100. */}
-      <aside
-        className="flex flex-none flex-col border-r border-[var(--white-100)]"
-        style={{ width: 'var(--chat-w)' }}
-      >
+      <aside className="flex flex-none flex-col" style={{ width: 'calc(var(--chat-w) - 1px)' }}>
         {/* chat top toolbar (Figma 25819:143769) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           <div className="flex items-center">
@@ -97,6 +98,11 @@ export default function App() {
 
         <ChatPanel />
       </aside>
+
+      {/* The hairline between chat and canvas — and the handle you resize by. In
+          Figma the column is 432 while everything inside stops at 430–431; that
+          last pixel is the divider, so it lives here and the aside gives it back. */}
+      <ChatResizer />
 
       {/* ================================================== center column */}
       <div className="flex min-w-0 flex-1 flex-col">

@@ -33,6 +33,12 @@ export type DomainScreen =
  * phone-width frame floating on the ground. 390px is the iPhone 14/15 logical
  * width — the modal phone on the US market this product sells to.
  */
+/** Chat column bounds. Below ~340 the bubbles stop reading; the upper stop and
+ *  the live window check keep the canvas usable at any window size. */
+export const CHAT_DEFAULT = 432
+export const CHAT_MIN = 340
+export const CHAT_MAX = 760
+
 export type Device = 'desktop' | 'mobile'
 /** iPhone 14/15 logical size. A fixed device, not a full-height column —
  *  measured off a Lovable screen recording: their phone frame keeps a wide
@@ -48,10 +54,13 @@ interface UIStore {
   publishOpen: boolean
   /** Which device the canvas is emulating. Navigation, not product truth. */
   device: Device
+  /** Chat column width in px — the user can drag the divider. */
+  chatWidth: number
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
 
   setDevice: (d: Device) => void
+  setChatWidth: (px: number) => void
   openSurface: (s: Surface) => void
   openDomains: (screen?: DomainScreen, domain?: string | null) => void
   goDomains: (screen: DomainScreen, domain?: string | null) => void
@@ -69,9 +78,11 @@ export const useUI = create<UIStore>((set, get) => ({
   activeDomain: null,
   publishOpen: false,
   device: 'desktop',
+  chatWidth: CHAT_DEFAULT,
   reloading: false,
 
   setDevice: (device) => set({ device }),
+  setChatWidth: (chatWidth) => set({ chatWidth }),
   openSurface: (surface) => set({ surface, publishOpen: false }),
   openDomains: (screen = 'home', domain = null) =>
     set({ surface: 'domains', domainScreen: screen, activeDomain: domain, publishOpen: false }),
