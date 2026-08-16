@@ -98,6 +98,39 @@
   * { scrollbar-width: none; }
   ::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
+  /*
+   * The canvas stage and the generated site inside it.
+   *
+   * The site answers CONTAINER queries, never the browser width. That is what
+   * makes the device switch honest: shrink the stage to a 390px phone frame and
+   * the page re-lays-out exactly as it would on a phone — the same result a real
+   * builder gets from its preview iframe, with no iframe and no viewport lies.
+   * Sizes that must respond live here rather than in Tailwind utilities, so the
+   * container query has nothing to fight over specificity.
+   */
+  .site-stage { container-type: inline-size; }
+
+  .site-pad { padding-left: 40px; padding-right: 40px; }
+  .site-hero { padding-top: 64px; padding-bottom: 56px; }
+  .site-hero-title { font-size: 42px; }
+  .site-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .site-nav-links { display: flex; align-items: center; }
+  .site-cta { display: flex; align-items: center; }
+  .site-stats { display: flex; align-items: center; gap: 40px; }
+
+  @container (max-width: 900px) {
+    .site-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @container (max-width: 640px) {
+    .site-pad { padding-left: 22px; padding-right: 22px; }
+    .site-nav-links { display: none; }
+    .site-hero { padding-top: 44px; padding-bottom: 40px; }
+    .site-hero-title { font-size: 30px; }
+    .site-cta { flex-direction: column; align-items: stretch; }
+    .site-stats { flex-wrap: wrap; gap: 20px 28px; }
+    .site-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+
   .scroll-area { position: relative; }
   .scroll-thumb {
     position: absolute;

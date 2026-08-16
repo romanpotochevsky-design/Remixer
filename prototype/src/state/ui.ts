@@ -27,15 +27,27 @@ export type DomainScreen =
   | 'external'  // external domain: registrar detected, guided manual records
   | 'status'    // connecting / verifying / live status page
 
+/**
+ * Canvas device emulation. Same two stops every builder in the category ships
+ * (Lovable, Bolt, v0): the desktop view fills the canvas, the mobile view is a
+ * phone-width frame floating on the ground. 390px is the iPhone 14/15 logical
+ * width — the modal phone on the US market this product sells to.
+ */
+export type Device = 'desktop' | 'mobile'
+export const MOBILE_WIDTH = 390
+
 interface UIStore {
   surface: Surface
   domainScreen: DomainScreen
   /** The domain the user is acting on inside the domains surface. */
   activeDomain: string | null
   publishOpen: boolean
+  /** Which device the canvas is emulating. Navigation, not product truth. */
+  device: Device
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
 
+  setDevice: (d: Device) => void
   openSurface: (s: Surface) => void
   openDomains: (screen?: DomainScreen, domain?: string | null) => void
   goDomains: (screen: DomainScreen, domain?: string | null) => void
@@ -52,8 +64,10 @@ export const useUI = create<UIStore>((set, get) => ({
   domainScreen: 'home',
   activeDomain: null,
   publishOpen: false,
+  device: 'desktop',
   reloading: false,
 
+  setDevice: (device) => set({ device }),
   openSurface: (surface) => set({ surface, publishOpen: false }),
   openDomains: (screen = 'home', domain = null) =>
     set({ surface: 'domains', domainScreen: screen, activeDomain: domain, publishOpen: false }),

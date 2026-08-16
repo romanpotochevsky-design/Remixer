@@ -28,31 +28,31 @@ export function SitePreview() {
       data-prototype-note="generated site, not builder chrome"
     >
       {/* site nav */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#1d1f1a14] bg-[#fbfaf7f2] px-10 py-4 backdrop-blur-sm">
+      <div className="site-pad sticky top-0 z-10 flex items-center justify-between border-b border-[#1d1f1a14] bg-[#fbfaf7f2] py-4 backdrop-blur-sm">
         <span className="text-[20px] font-bold tracking-[-0.02em]">fit<span className="text-[#2e7d4f]">.</span></span>
-        <nav className="hidden items-center gap-7 text-[13.5px] text-[#1d1f1aa6] md:flex" aria-hidden>
+        <nav className="site-nav-links gap-7 text-[13.5px] text-[#1d1f1aa6]" aria-hidden>
           <span>Menu</span><span>How it works</span><span>Pricing</span><span>FAQ</span>
         </nav>
         <span className="rounded-full bg-[#2e7d4f] px-4 py-2 text-[13px] font-semibold text-white">Order now</span>
       </div>
 
       {/* hero */}
-      <div className="mx-auto max-w-[880px] px-10 pb-14 pt-16 text-center">
+      <div className="site-pad site-hero mx-auto max-w-[880px] text-center">
         <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]">
           Meal prep · Odesa delivery
         </p>
-        <h1 className="mx-auto max-w-[16ch] text-[42px] font-bold leading-[1.08] tracking-[-0.03em]" style={{ textWrap: 'balance' }}>
+        <h1 className="site-hero-title mx-auto max-w-[16ch] font-bold leading-[1.08] tracking-[-0.03em]" style={{ textWrap: 'balance' }}>
           Chef-made meals with exact macros
         </h1>
         <p className="mx-auto mt-4 max-w-[46ch] text-[16px] leading-[1.6] text-[#1d1f1a99]">
           Weekly menus cooked fresh every morning. Calories, protein, fat and carbs counted
           to the gram — so you don’t have to.
         </p>
-        <div className="mt-7 flex items-center justify-center gap-3">
+        <div className="site-cta mt-7 justify-center gap-3">
           <span className="rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white">Build my plan</span>
           <span className="rounded-full border border-[#1d1f1a26] px-6 py-3 text-[14.5px] font-medium text-[#1d1f1a]">See the menu</span>
         </div>
-        <div className="mt-10 flex items-center justify-center gap-10 text-[13px] text-[#1d1f1a80]">
+        <div className="site-stats mt-10 justify-center text-[13px] text-[#1d1f1a80]">
           <span><b className="text-[16px] font-bold text-[#1d1f1a]">4 000+</b><br />meals delivered</span>
           <span><b className="text-[16px] font-bold text-[#1d1f1a]">±2 g</b><br />macro accuracy</span>
           <span><b className="text-[16px] font-bold text-[#1d1f1a]">07:30</b><br />at your door</span>
@@ -62,12 +62,12 @@ export function SitePreview() {
       {/* menu grid — the DARK half of the page, so the glow can be judged on both
           grounds at once (narrow rim over the white hero, full bloom over this) */}
       <div className="bg-[#101210] pb-16 pt-12 text-[#f4f4f0]">
-        <div className="mx-auto max-w-[980px] px-10">
+        <div className="site-pad mx-auto max-w-[980px]">
           <div className="mb-5 flex items-end justify-between">
             <h2 className="text-[24px] font-bold tracking-[-0.02em]">This week’s menu</h2>
             <span className="text-[13px] font-medium text-[#7ac996]">Full menu →</span>
           </div>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="site-grid grid gap-4">
             {MEALS.map((m) => (
               <div key={m.name} className="overflow-hidden rounded-[14px] border border-[#ffffff14] bg-[#191b17]">
                 <div className="grid h-28 place-items-center text-[40px]" style={{ background: m.tint }} aria-hidden>
@@ -86,7 +86,7 @@ export function SitePreview() {
       </div>
 
       {/* footer strip */}
-      <div className="bg-[#0b0d0a] px-10 py-10 text-center">
+      <div className="site-pad bg-[#0b0d0a] py-10 text-center">
         <p className="text-[18px] font-bold text-white">
           {t({ en: 'Ready when you are.', uk: 'Готові, коли готові ви.' })}
         </p>

@@ -10,8 +10,9 @@
  * Everything still renders from the world store — the scenario console and flows
  * drive this shell exactly as they drove the old one.
  */
+import { motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
-import { useUI } from '@/state/ui'
+import { useUI, MOBILE_WIDTH } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
@@ -45,7 +46,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice } = useUI()
   const { t } = useT()
 
   const address =
@@ -114,15 +115,27 @@ export default function App() {
               </button>
               <span className="h-8 w-px bg-[var(--white-100)]" aria-hidden />
               <button
+                onClick={() => setDevice('desktop')}
+                aria-pressed={device === 'desktop'}
                 aria-label={t({ en: 'Desktop preview', uk: 'Прев’ю для десктопа' })}
-                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+                className={`grid h-8 w-8 place-items-center rounded-[10px] transition-colors duration-[var(--dur-fast)] ease-std ${
+                  device === 'desktop'
+                    ? 'bg-[var(--white-100)] text-[var(--white-900)]'
+                    : 'text-[var(--white-400)] hover:bg-[var(--white-100)] hover:text-[var(--white-700)]'
+                }`}
               >
                 <IconMonitor size={17} />
               </button>
               <span className="h-8 w-px bg-[var(--white-100)]" aria-hidden />
               <button
+                onClick={() => setDevice('mobile')}
+                aria-pressed={device === 'mobile'}
                 aria-label={t({ en: 'Mobile preview', uk: 'Прев’ю для мобільного' })}
-                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-[var(--white-700)]"
+                className={`grid h-8 w-8 place-items-center rounded-[10px] transition-colors duration-[var(--dur-fast)] ease-std ${
+                  device === 'mobile'
+                    ? 'bg-[var(--white-100)] text-[var(--white-900)]'
+                    : 'text-[var(--white-400)] hover:bg-[var(--white-100)] hover:text-[var(--white-700)]'
+                }`}
               >
                 <IconPhone size={17} />
               </button>
@@ -177,32 +190,49 @@ export default function App() {
         </header>
 
         {/* canvas — 8px gutter, the preview floats on the ground.
-            While the agent works, the frame lights up with the Siri-style edge glow. */}
+            While the agent works, the frame lights up with the Siri-style edge glow.
+
+            The device switch resizes the STAGE, and the site inside re-lays-out
+            because it answers container queries, not the browser width — the same
+            thing Lovable gets for free from its preview iframe. Mobile is a real
+            390px frame centred on the ground, not a scaled-down desktop. */}
         <main className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
           {(() => {
             const busy = world.project === 'generating' || world.chat === 'working' || reloading
             return surface === 'domains' ? (
               <DomainsSurface />
             ) : (
-              <div className="relative h-full overflow-hidden rounded-shell">
-                {world.project === 'built' ? (
-                  /* During a reload the page itself stays put — the edge glow alone
-                     carries the "working" signal (no skeleton, no remount flicker). */
-                  <SitePreview />
-                ) : (
-                  <div className="grid h-full place-items-center bg-[var(--gray-900)]">
-                    {world.project === 'generating' ? (
-                      <p className="text-[14px] text-[var(--white-400)]">
-                        {t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })}
-                      </p>
-                    ) : (
-                      <p className="text-[14px] text-[var(--white-300)]">
-                        {t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <SiriGlow active={busy} surface={world.project === 'built' ? 'split' : 'dark'} />
+              <div className="flex h-full justify-center">
+                <motion.div
+                  /* the phone frame gets a hairline: floating on the ground, the site's
+                     own dark sections would otherwise bleed into the shell. Lovable
+                     outlines its preview the same way (measured border #41413D). */
+                  className={`site-stage relative h-full overflow-hidden rounded-shell ${
+                    device === 'mobile' ? 'ring-1 ring-[#ffffff14]' : ''
+                  }`}
+                  initial={false}
+                  animate={{ width: device === 'mobile' ? MOBILE_WIDTH : '100%' }}
+                  transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
+                >
+                  {world.project === 'built' ? (
+                    /* During a reload the page itself stays put — the edge glow alone
+                       carries the "working" signal (no skeleton, no remount flicker). */
+                    <SitePreview />
+                  ) : (
+                    <div className="grid h-full place-items-center bg-[var(--gray-900)] px-6 text-center">
+                      {world.project === 'generating' ? (
+                        <p className="text-[14px] text-[var(--white-400)]">
+                          {t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })}
+                        </p>
+                      ) : (
+                        <p className="text-[14px] text-[var(--white-300)]">
+                          {t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <SiriGlow active={busy} surface={world.project === 'built' ? 'split' : 'dark'} />
+                </motion.div>
               </div>
             )
           })()}
