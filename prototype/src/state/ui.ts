@@ -33,19 +33,26 @@ interface UIStore {
   /** The domain the user is acting on inside the domains surface. */
   activeDomain: string | null
   publishOpen: boolean
+  /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
+  reloading: boolean
 
   openSurface: (s: Surface) => void
   openDomains: (screen?: DomainScreen, domain?: string | null) => void
   goDomains: (screen: DomainScreen, domain?: string | null) => void
   closeSurface: () => void
   togglePublish: (open?: boolean) => void
+  triggerReload: (ms?: number) => void
 }
+
+/** One timer at a time: mashing reload extends the pulse instead of stacking timers. */
+let reloadTimer: ReturnType<typeof setTimeout> | null = null
 
 export const useUI = create<UIStore>((set, get) => ({
   surface: 'preview',
   domainScreen: 'home',
   activeDomain: null,
   publishOpen: false,
+  reloading: false,
 
   openSurface: (surface) => set({ surface, publishOpen: false }),
   openDomains: (screen = 'home', domain = null) =>
@@ -54,4 +61,9 @@ export const useUI = create<UIStore>((set, get) => ({
     set({ domainScreen: screen, ...(domain !== undefined ? { activeDomain: domain } : {}) }),
   closeSurface: () => set({ surface: 'preview' }),
   togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
+  triggerReload: (ms = 3200) => {
+    if (reloadTimer) clearTimeout(reloadTimer)
+    set({ reloading: true })
+    reloadTimer = setTimeout(() => set({ reloading: false }), ms)
+  },
 }))

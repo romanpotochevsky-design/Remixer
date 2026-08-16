@@ -74,6 +74,14 @@ export const IconVisualEditor = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/** Circular arrow — reload the preview. */
+export const IconReload = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+    <path d="M19.7 3.5v3.4h-3.4" />
+  </svg>
+)
+
 export const IconMonitor = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <rect x="3" y="4.5" width="18" height="12.5" rx="2.5" />

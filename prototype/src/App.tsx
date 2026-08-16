@@ -20,7 +20,7 @@ import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { useT } from '@/i18n'
 import {
-  LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconMonitor, IconPhone, IconGrid,
+  LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
   IconChevronDown, IconCoin, IconStyle, IconExtension, IconAnalytics, IconCloud,
   IconChatBubble,
 } from '@/ui/icons'
@@ -44,7 +44,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload } = useUI()
   const { t } = useT()
 
   const address =
@@ -102,6 +102,16 @@ export default function App() {
               <span className="text-[14px] leading-none text-[var(--white-900)]">Visual Editor</span>
             </Glass>
             <Glass className="h-9 gap-0.5 p-0.5">
+              <button
+                onClick={() => triggerReload()}
+                aria-label={t({ en: 'Reload preview', uk: 'Перезавантажити прев’ю' })}
+                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+              >
+                <span className={reloading ? 'animate-spin' : undefined} style={reloading ? { animationDuration: '1.1s' } : undefined}>
+                  <IconReload size={17} />
+                </span>
+              </button>
+              <span className="h-8 w-px bg-[var(--white-100)]" aria-hidden />
               <button
                 aria-label={t({ en: 'Desktop preview', uk: 'Прев’ю для десктопа' })}
                 className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
@@ -169,7 +179,7 @@ export default function App() {
             While the agent works, the frame lights up with the Siri-style edge glow. */}
         <main className="relative min-w-0 flex-1 pb-2 pl-2">
           {(() => {
-            const busy = world.project === 'generating' || world.chat === 'working'
+            const busy = world.project === 'generating' || world.chat === 'working' || reloading
             return surface === 'domains' ? (
               <DomainsSurface />
             ) : (
