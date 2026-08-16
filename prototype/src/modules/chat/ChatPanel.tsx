@@ -358,7 +358,7 @@ export function ChatPanel() {
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
-        <div className="relative">
+        <div className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}
           {flash > 0 && (
             <span key={flash} className="composer-glow" aria-hidden>

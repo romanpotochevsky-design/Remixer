@@ -303,62 +303,63 @@
    * the field's own edge stays dark and the colour is light escaping from
    * behind it. A crisp ring on the border reads as neon trim instead.
    */
+  /*
+   * The send flash — Google's AI Mode light, which is a HALO, not a stroke.
+   *
+   * Two things make theirs read as light and mine read as a coloured border:
+   * the colour lives OUTSIDE the box and spreads far, and the box's own edge
+   * stays dark. So the light sits BEHIND the field (the field covers the middle,
+   * and what bleeds through its glass is the faint wash Google has too), it is
+   * blurred hard, and it reaches well past the edges.
+   *
+   * ⚠️ The radial mask and the blur must share one element. Chrome renders
+   * nothing when a masked or clipped element is nested inside a filtered one —
+   * verified by toggling each alone. The mask fades out gradually, so unlike a
+   * hard ring it never shows the crop.
+   */
   .composer-glow {
     position: absolute;
-    inset: -7px;
-    border-radius: 31px;
-    z-index: 20;
+    inset: -42px;
     pointer-events: none;
     animation: composer-glow-life 1.7s var(--ease-out) both;
   }
-  /*
-   * ⚠️ The ring mask and the blur MUST sit on the same element. Chrome renders
-   * nothing when a masked (or overflow-clipped) element is nested inside one
-   * carrying a `filter` — verified by toggling each on its own: either alone
-   * paints, nested they vanish. The cost of putting them together is that the
-   * mask crops the blur's spill, so the ring is made generous relative to the
-   * blur and pushed OUT from the border, where the crop lands in light that is
-   * already faint. Google's glow is off the box, not on it, so that suits.
-   */
   .composer-glow > i {
     position: absolute;
     inset: 0;
-    border-radius: inherit;
-    overflow: hidden;
     container-type: size;
-    padding: 9px;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
+    filter: blur(26px) saturate(135%);
+    /* One soft blob, not a ring: the mask is an ellipse, and a ring cut from it
+       misses the ends of a box this wide — tried it, the light all but vanished.
+       Opaque through the middle and fading out at the edge is what gives an even
+       halo; the field covers the centre anyway, and the little that bleeds
+       through its glass is the same wash Google's box shows. */
+    -webkit-mask: radial-gradient(closest-side, #000 0%, #000 46%, #0000 100%);
+    mask: radial-gradient(closest-side, #000 0%, #000 46%, #0000 100%);
   }
-  .composer-glow .composer-glow-core { padding: 4px; filter: blur(3.5px); opacity: 0.85; }
-  .composer-glow .composer-glow-bloom { filter: blur(13px); opacity: 0.5; }
+  .composer-glow .composer-glow-bloom { filter: blur(44px) saturate(120%); opacity: 0.8; }
 
   .composer-glow b {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 142cqmax;
-    height: 142cqmax;
+    width: 132cqmax;
+    height: 132cqmax;
     /*
-     * A travelling ARC, not a full ring. Most of the circle is transparent, so
-     * at any moment one stretch of the perimeter is lit and the rest is dark —
-     * which is what makes the light look like it is moving around the field
-     * rather than the field being outlined.
+     * A travelling ARC, not a full ring: most of the circle is transparent, so
+     * one stretch of the perimeter is lit at a time and you can see it move.
      */
     background: conic-gradient(
       from 0deg,
       #1587ff00 0deg,
-      #1587ffcc 26deg, #4aa8ff 52deg, #8b5cff 96deg,
-      #e0559a 132deg, #ff7a45 162deg, #ffc857 186deg,
-      #ffc85700 214deg,
+      #1587ff 30deg, #4aa8ff 58deg, #8b5cff 100deg,
+      #e0559a 136deg, #ff7a45 166deg, #ffc857 190deg,
+      #ffc85700 220deg,
       #1587ff00 360deg
     );
     animation: composer-glow-spin 1.7s linear both;
     will-change: transform;
   }
-  .composer-glow .composer-glow-bloom b { animation-duration: 1.9s; }
+  .composer-glow .composer-glow-bloom b { animation-duration: 1.95s; }
   @keyframes composer-glow-spin {
     from { transform: translate(-50%, -50%) rotate(-70deg); }
     to   { transform: translate(-50%, -50%) rotate(400deg); }
