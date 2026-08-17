@@ -413,7 +413,7 @@
     inset: 0;
     border-radius: 24px;
     pointer-events: none;
-    animation: composer-glow-life 0.85s linear both;
+    animation: composer-glow-life 0.7s linear both;
   }
   /* 2px past the field's edge: the plate hides everything inside the field, so
      without this overhang the visible light would be only the blur's outer
@@ -489,7 +489,7 @@
       #38c6ff 200deg, #8b5cff 225deg,
       #8b5cff00 225.3deg
     );
-    animation: cg-sweep-left 0.85s both;
+    animation: cg-sweep-left 0.7s both;
   }
   .composer-glow .cg-arc-top {
     background: conic-gradient(
@@ -498,7 +498,7 @@
       #be59ff 180deg, #ff2f6d 225deg,
       #ff2f6d00 225.3deg
     );
-    animation: cg-sweep-top 0.85s both;
+    animation: cg-sweep-top 0.7s both;
   }
   .composer-glow .cg-arc-right {
     background: conic-gradient(
@@ -507,29 +507,29 @@
       #ff705c 190deg, #ff9d5c 225deg,
       #ff9d5c00 225.3deg
     );
-    animation: cg-sweep-right 0.85s both;
+    animation: cg-sweep-right 0.7s both;
   }
-  /* 0–45%: pour out (decelerating into the pose). 45–49%: the pose holds —
-     a ~34ms beat, twice trimmed on the designer's ask; the pose should flash,
-     not sit on the eye. 49–100%: drain (accelerating
+  /* 0–45%: pour out (decelerating into the pose). 45–49.3%: the pose holds —
+     ~30ms on a 0.7s clock, the designer's final numbers; the pose should
+     flash, not sit on the eye. 49.3–100%: drain (accelerating
      away; leaving never bounces). Segments carry their own easing; the three
      keyframe sets MUST keep identical timing functions per segment. */
   @keyframes cg-sweep-left {
     0%   { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(0deg); animation-timing-function: cubic-bezier(0.32, 0, 0.34, 1); }
     45%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(90deg); animation-timing-function: linear; }
-    49%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(90deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
+    49.3% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(90deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
     100% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(360deg); }
   }
   @keyframes cg-sweep-top {
     0%   { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(0deg); animation-timing-function: cubic-bezier(0.32, 0, 0.34, 1); }
     45%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(180deg); animation-timing-function: linear; }
-    49%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(180deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
+    49.3% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(180deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
     100% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(360deg); }
   }
   @keyframes cg-sweep-right {
     0%   { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(0deg); animation-timing-function: cubic-bezier(0.32, 0, 0.34, 1); }
     45%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(270deg); animation-timing-function: linear; }
-    49%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(270deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
+    49.3% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(270deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
     100% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(360deg); }
   }
   /* The parking garage's roof: an opaque strip the colour of the ground below
