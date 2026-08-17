@@ -26,7 +26,7 @@ import {
   IconSearch, IconArrowRight, IconGlobe, IconClose, IconSparkleAI,
   IconAIMark, IconChevronDown,
 } from '@/ui/icons'
-import { surface } from '@/ui/motion'
+import { surface, listSwap, listSwapItem } from '@/ui/motion'
 
 
 /* ------------------------------------------------------------------ shared bits */
@@ -84,31 +84,38 @@ function PriceStack({ register, renew, strike }: { register: number; renew: numb
 /**
  * The header both dashboard states share: a centred title over the search pill.
  *
- * Two knobs, and both exist because the mockups genuinely disagree — the empty
- * state (27085:107047) draws a 40px title with a white 32px submit, the results
- * screen (27729:15315) a 32px title with a dark-glass 40px one. Built as drawn
- * and raised with the designer rather than quietly unified: a control that
- * morphs the moment you press it is the kind of thing only a mockup can afford.
+ * It is mounted ONCE, by DomainsSurface, and lives OUTSIDE the screen swap: the
+ * field is a persistent object, so searching never remounts it — the caret, the
+ * focus and the typed text all survive. Rebuilding the header on submit is what
+ * made a search feel like a page reload.
+ *
+ * `compact` is the only knob, and it exists because the mockups disagree: the
+ * empty state (27085:107047) draws a 40px title over a white 32px submit, the
+ * results screen (27729:15315) a 32px title over a dark-glass 40px one. Since
+ * the header now persists, that difference has to be a TRANSITION rather than
+ * two components — the hero shrinks as results appear, the way a search engine's
+ * home page settles into its results page. Still flagged to the designer: if he
+ * wants the header frozen instead, freeze `compact`.
  */
 function SearchHeader({
-  title, big, query, setQuery, onSubmit, submit, placeholder,
+  title, compact, query, setQuery, onSubmit, placeholder,
 }: {
   title: Text
-  /** 40px title (empty state) vs 32px (results). */
-  big: boolean
+  /** true on the results screen: 32px title, larger glass submit. */
+  compact: boolean
   query: string
   setQuery: (v: string) => void
   onSubmit: () => void
-  submit: 'plain' | 'glass'
   placeholder?: Text
 }) {
   const { t } = useT()
   return (
     <div className="flex-none rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)] pt-2">
       <h2
-        className={`pb-[30px] pt-[29px] text-center font-display font-semibold leading-[1.2] text-white ${
-          big ? 'text-[40px]' : 'text-[32px]'
-        }`}
+        /* one-off type-size transition on a single short line — the same
+           exception the "Thinking" shimmer gets, and for the same reason */
+        className="pb-[30px] pt-[29px] text-center font-display font-semibold leading-[1.2] text-white transition-[font-size] duration-[var(--dur-slow)] ease-std"
+        style={{ fontSize: compact ? 32 : 40 }}
       >
         {t(title)}
       </h2>
@@ -123,23 +130,19 @@ function SearchHeader({
             placeholder={placeholder ? t(placeholder) : undefined}
             className="ml-4 h-full min-w-0 flex-1 bg-transparent text-[17px] text-white outline-none placeholder:text-[#ffffff7a]"
           />
-          {submit === 'plain' ? (
-            <button
-              onClick={onSubmit}
-              aria-label={t({ en: 'Search', uk: 'Шукати' })}
-              className="grid h-8 w-8 flex-none place-items-center rounded-full bg-white text-[#09090b] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#e4e4e7]"
-            >
-              <IconArrowRight size={18} />
-            </button>
-          ) : (
-            <button
-              onClick={onSubmit}
-              aria-label={t({ en: 'Search', uk: 'Шукати' })}
-              className="grid h-10 w-10 flex-none place-items-center rounded-full border border-[#ffffff3d] bg-[#09090bcc] text-white backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090b]"
-            >
-              <IconArrowRight size={24} />
-            </button>
-          )}
+          {/* ONE button in both states, never two — swapping elements here would
+              re-mount the control the user just pressed. */}
+          <button
+            onClick={onSubmit}
+            aria-label={t({ en: 'Search', uk: 'Шукати' })}
+            className={`grid flex-none place-items-center rounded-full transition-all duration-[var(--dur-slow)] ease-std ${
+              compact
+                ? 'h-10 w-10 border border-[#ffffff3d] bg-[#09090bcc] text-white backdrop-blur-[16px] hover:bg-[#09090b]'
+                : 'h-8 w-8 border border-transparent bg-white text-[#09090b] hover:bg-[#e4e4e7]'
+            }`}
+          >
+            <IconArrowRight size={compact ? 24 : 18} />
+          </button>
         </div>
       </div>
     </div>
@@ -176,52 +179,27 @@ function PrimaryButton({ label, onClick }: { label: Text; onClick?: () => void }
  */
 function HomeScreen() {
   const { world } = useWorld()
-  const { goDomains, openDomainModal } = useUI()
+  const { openDomainModal } = useUI()
   const { t } = useT()
-  const [query, setQuery] = useState('')
 
   const owned = OWNED_DOMAINS[world.inventory] ?? []
   const [best, ...rest] = AI_SUGGESTIONS
   const bestPrice = priceFor(best.tld)!
 
-  const submit = () => {
-    const q = query.trim().toLowerCase()
-    if (!q) return
-    // Intent detection, prototype-grade: an owned domain resolves to the confirm
-    // screen, anything with a dot reads as external, a bare name is a search.
-    if (owned.some((o) => o.domain === q)) goDomains('own', q)
-    else if (q.includes('.') && !q.endsWith('.')) goDomains('external', q)
-    else goDomains('results', q)
-  }
-
   return (
     <motion.div
-      variants={surface}
+      variants={listSwap}
       initial="initial"
       animate="animate"
       exit="exit"
       className="flex min-h-0 flex-1 flex-col"
     >
-      {/* ------------------------------- header: title + search (Figma 27085:107047) */}
-      <SearchHeader
-        title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
-        big
-        query={query}
-        setQuery={setQuery}
-        onSubmit={submit}
-        submit="plain"
-        placeholder={{
-          en: 'Search a name to buy, or enter one you already own',
-          uk: 'Шукайте назву для купівлі або введіть свою',
-        }}
-      />
-
       {/* ------------------------------------ page sheet: the lists (27085:107102) */}
       <div className="flex min-h-0 flex-1 justify-center gap-8 rounded-t-[8px] border-t border-[#ffffff0a] bg-[var(--gray-900)] px-8 pb-2 pt-2">
         {/* Existing domains — only when the account holds any (26181:34790).
             Name + outlined Connect, nothing else: owned domains have no price. */}
         {owned.length > 0 && (
-          <div className="flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col">
+          <motion.div variants={listSwapItem} className="flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col">
             <div className="flex h-16 flex-none items-center px-4">
               <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
                 {t({ en: 'Existing domains', uk: 'Наявні домени' })}
@@ -243,11 +221,11 @@ function HomeScreen() {
                 ))}
               </ScrollArea>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* AI suggestions (27085:107262) */}
-        <div className="flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col">
+        <motion.div variants={listSwapItem} className="flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col">
           <div className="flex h-16 flex-none items-center gap-2.5 px-2">
             <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
               {t({ en: 'AI suggestions', uk: 'AI-пропозиції' })}
@@ -315,7 +293,7 @@ function HomeScreen() {
               })}
             </ScrollArea>
           </div>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   )
@@ -377,39 +355,23 @@ function RowList({ rows, onBuy, border }: { rows: ResultRow[]; onBuy: (d: string
  * designer rather than invented here.
  */
 function ResultsScreen() {
-  const { activeDomain, goDomains, openDomainModal } = useUI()
+  const { activeDomain, openDomainModal } = useUI()
   const { t } = useT()
   const term = activeDomain ?? 'fit-ration'
-  const [query, setQuery] = useState(term)
 
   const hero = exactMatch(term)
   const heroPrice = priceFor(hero.tld)!
   const endings = otherEndings(term)
   const ideas = nameIdeas(term)
 
-  const research = () => {
-    const q = query.trim()
-    if (q) goDomains('results', q)
-  }
-
   return (
     <motion.div
-      variants={surface}
+      variants={listSwap}
       initial="initial"
       animate="animate"
       exit="exit"
       className="flex min-h-0 flex-1 flex-col"
     >
-      {/* 32px title and the dark-glass submit — the results header, not the empty one */}
-      <SearchHeader
-        title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
-        big={false}
-        query={query}
-        setQuery={setQuery}
-        onSubmit={research}
-        submit="glass"
-      />
-
       <div className="min-h-0 flex-1 rounded-t-[8px] border-r border-t border-[#ffffff0a] bg-[var(--gray-900)]">
         <ScrollArea className="h-full">
           {/* Page pads 32 all round; the lists column inside it is a flat 1200
@@ -420,7 +382,8 @@ function ResultsScreen() {
             {/* ------------------------------------- classic results (27729:15438) */}
             <div className="flex flex-col gap-4">
               {/* exact-match hero: gradient wash under a ring-masked gradient rim */}
-              <div
+              <motion.div
+                variants={listSwapItem}
                 className="relative rounded-[16px] px-1 pb-1"
                 style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
               >
@@ -454,10 +417,10 @@ function ResultsScreen() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* the same name in other endings, plus the "there are more" footer */}
-              <div className="rounded-[16px] border border-[#ffffff14]">
+              <motion.div variants={listSwapItem} className="rounded-[16px] border border-[#ffffff14]">
                 <RowList rows={endings} border="border-[#2a2a2d]" onBuy={(d) => openDomainModal('buy', d)} />
                 <div className="flex h-16 items-center justify-between pb-2 pl-2 pr-5 pt-4">
                   <button className="flex h-10 items-center gap-2 rounded-[10px] py-2.5 pl-3 pr-2 text-[15px] font-semibold text-[#ffffff7a] opacity-80 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:opacity-100">
@@ -468,13 +431,13 @@ function ResultsScreen() {
                     {t({ en: '400+ more available', uk: 'Ще 400+ вільних' })}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* ---------------------------------- AI name ideas (27729:15591).
                 Butts straight against the block above — the air comes from this
                 header's own 31px top padding, exactly as drawn. */}
-            <div className="flex items-center justify-between px-2 pb-[22px] pt-[31px]">
+            <motion.div variants={listSwapItem} className="flex items-center justify-between px-2 pb-[22px] pt-[31px]">
               <div className="flex items-center gap-2.5">
                 <IconAIMark size={24} />
                 <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
@@ -487,8 +450,10 @@ function ResultsScreen() {
                   uk: `Згенеровано з «${term}» та опису вашого сайту.`,
                 })}
               </p>
-            </div>
-            <RowList rows={ideas} border="border-[#ffffff0a]" onBuy={(d) => openDomainModal('buy', d)} />
+            </motion.div>
+            <motion.div variants={listSwapItem}>
+              <RowList rows={ideas} border="border-[#ffffff0a]" onBuy={(d) => openDomainModal('buy', d)} />
+            </motion.div>
           </div>
           </div>
         </ScrollArea>
@@ -747,9 +712,31 @@ const SCREENS: Record<DomainScreen, () => JSX.Element> = {
 }
 
 export function DomainsSurface() {
-  const { domainScreen, closeSurface } = useUI()
+  const { domainScreen, closeSurface, goDomains } = useUI()
+  const { world } = useWorld()
   const { t } = useT()
   const Current = SCREENS[domainScreen]
+
+  /*
+   * The search field's state lives HERE, above the screen swap, for the same
+   * reason the header itself does: the field is one persistent object across
+   * home and results. Held per screen it was re-created on every search — the
+   * caret jumped out, focus was lost and the whole header re-animated, which
+   * read as the page reloading rather than as an answer arriving.
+   */
+  const [query, setQuery] = useState('')
+  const searching = domainScreen === 'home' || domainScreen === 'results'
+  const owned = OWNED_DOMAINS[world.inventory] ?? []
+
+  const submit = () => {
+    const q = query.trim().toLowerCase()
+    if (!q) return
+    // Intent detection, prototype-grade: an owned domain resolves to the confirm
+    // screen, anything with a dot reads as external, a bare name is a search.
+    if (owned.some((o) => o.domain === q)) goDomains('own', q)
+    else if (q.includes('.') && !q.endsWith('.')) goDomains('external', q)
+    else goDomains('results', q)
+  }
 
   /*
    * No plan gate in front of this surface any more.
@@ -793,6 +780,24 @@ export function DomainsSurface() {
         </button>
       </div>
 
+      {/* The header is mounted ONCE, outside the swap below: searching must not
+          rebuild the field the user is typing into. */}
+      {searching && (
+        <SearchHeader
+          title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
+          compact={domainScreen === 'results'}
+          query={query}
+          setQuery={setQuery}
+          onSubmit={submit}
+          placeholder={{
+            en: 'Search a name to buy, or enter one you already own',
+            uk: 'Шукайте назву для купівлі або введіть свою',
+          }}
+        />
+      )}
+
+      {/* Only the lists change hands. mode="wait" keeps the two sets from
+          overlapping mid-flight, so the conveyor reads cleanly. */}
       <AnimatePresence mode="wait">
         <Current key={domainScreen} />
       </AnimatePresence>

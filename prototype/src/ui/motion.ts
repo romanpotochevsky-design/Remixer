@@ -112,6 +112,27 @@ export const modalSheet = {
   exit: { opacity: 0, scale: 0.985, y: 6, transition: EXIT },
 }
 
+/**
+ * Content swapping UNDER something that stays — the domain lists changing while
+ * the search header holds its place.
+ *
+ * A conveyor, not a cross-fade: the answered-with content leaves upward and the
+ * new content rises from just below, so the eye reads "this was replaced by
+ * that" rather than "the picture changed". Leaving is quick and flat (rule 4);
+ * arriving is a spring, because arriving is the part with meaning.
+ */
+export const listSwap = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0, transition: { ...SPRING_SOFT, staggerChildren: 0.055 } },
+  exit: { opacity: 0, y: -12, transition: EXIT },
+}
+
+/** A block inside a swapped list — sections land in reading order. */
+export const listSwapItem = {
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
+}
+
 /** Full-surface swaps — a screen replacing another inside the same shell. */
 export const surface = {
   initial: { opacity: 0, scale: 0.985, y: 8 },
