@@ -56,6 +56,41 @@ function useGlowQuality(active: boolean): Quality {
     requestAnimationFrame(tick)
     return () => { alive = false }
   }, [active])
+
+  /*
+   * Full is provisional, not a life sentence. The upgrade probe necessarily ran
+   * on the LITE cut, in the quietest stretch of the send choreography — it
+   * proved the machine carries two layers, not four. A borderline machine
+   * (embedded preview panel, laptop on battery) passes the probe, gets 'full',
+   * and then every LATER send stutters — "works right after a reload, degrades
+   * afterwards". So while the full cut is actually on screen, keep counting:
+   * two consecutive bad windows (<30fps) demote back to lite for the session.
+   * Two, not one — a single window can be eaten by an unrelated GC pause.
+   */
+  useEffect(() => {
+    if (!active || verdict !== 'full' || q !== 'full') return
+    let alive = true
+    let frames = 0
+    let t0 = 0
+    let strikes = 0
+    const tick = () => {
+      if (!alive) return
+      const now = performance.now()
+      if (!t0) t0 = now
+      frames++
+      const dt = now - t0
+      if (dt >= 800) {
+        if (frames / (dt / 1000) < 30) {
+          if (++strikes >= 2) { verdict = 'lite'; setQ('lite'); return }
+        } else strikes = 0
+        frames = 0
+        t0 = now
+      }
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    return () => { alive = false }
+  }, [active, q])
   return q
 }
 

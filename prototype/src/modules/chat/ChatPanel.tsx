@@ -198,7 +198,14 @@ export function ChatPanel() {
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
   // Whatever is on screen at the first paint counts as already seen.
-  if (seen.current === null) seen.current = new Set(thread.map((m) => m.id))
+  if (seen.current === null) {
+    seen.current = new Set(thread.map((m) => m.id))
+    // …and already parked. The demo threads (and a restored transcript) can END
+    // on a user message; without this the parking effect treated it as a fresh
+    // send and the whole thread visibly scrolled itself ~0.7s after first paint.
+    const last = thread[thread.length - 1]
+    parked.current = last && last.who === 'user' ? last.id : -1
+  }
   for (const m of thread) if (!seen.current.has(m.id)) fresh.current.add(m.id)
   const isFresh = (id: number) => fresh.current.has(id)
 
@@ -247,7 +254,7 @@ export function ChatPanel() {
     // One frame later: the bubble is in the DOM and laid out, so the numbers
     // below are the ones the user will actually see.
     let park = 0
-    requestAnimationFrame(() => {
+    const raf = requestAnimationFrame(() => {
       // Measure WITHOUT touching the spacer — subtract it instead of collapsing
       // it. Collapsing shortened the scrollable range mid-measurement, so the
       // browser clamped scrollTop and the thread jumped; worse, the write-then-
@@ -271,7 +278,12 @@ export function ChatPanel() {
         vp.scrollTo({ top: Math.max(0, an.offsetTop - TOP_INSET), behavior: 'smooth' })
       }, 620)
     })
-    return () => window.clearTimeout(park)
+    /* Cancel the rAF too, not only the timer. In a hidden tab rAF callbacks
+       freeze in the queue: send, tab away, and the answer commits while hidden —
+       the cleanup used to run with `park` still 0, leaving the frozen callback
+       to fire on return and scroll the thread against layout that no longer
+       exists. */
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(park) }
   }, [thread])
 
   const composerBox = useRef<HTMLDivElement>(null)

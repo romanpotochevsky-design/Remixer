@@ -10,7 +10,7 @@
  * Everything still renders from the world store — the scenario console and flows
  * drive this shell exactly as they drove the old one.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
@@ -63,12 +63,30 @@ export default function App() {
    * started — and gives the chat its frames back.
    */
   const busy = world.project === 'generating' || world.chat === 'working' || reloading
+  const working = world.chat === 'working'
   const [glow, setGlow] = useState(false)
+  /*
+   * `working` is a dependency ON PURPOSE, not just `busy`. busy is a union of
+   * three sources, and unions hide transitions: send during a reload pulse and
+   * busy never flips, so the old [busy]-only effect kept the glow burning at
+   * full strength straight through the bubble spring — no grace at all. Same
+   * on the way out: the answer landing mid-reload never flipped busy false, so
+   * the glow never dropped and the whole typing reveal ran under it at ~4fps.
+   * Re-running on `working` restarts the quiet window in both directions: a
+   * send always gets its 700ms, and an answer always gets the reveal clear
+   * (~1.2s covers the capped ~1.1s word stagger) before the glow returns.
+   */
+  const wasWorking = useRef(false)
   useEffect(() => {
+    // 1200 only when an answer JUST landed (working → not) while something else
+    // keeps busy true; a plain reload/generating start keeps the tuned 700.
+    const revealNeedsRoom = wasWorking.current && !working
+    wasWorking.current = working
     if (!busy) { setGlow(false); return }
-    const t = window.setTimeout(() => setGlow(true), 700)
+    setGlow(false)
+    const t = window.setTimeout(() => setGlow(true), revealNeedsRoom ? 1200 : 700)
     return () => window.clearTimeout(t)
-  }, [busy])
+  }, [busy, working])
 
   // The resizer writes --chat-w straight to <html> during a drag; this keeps the
   // stored value authoritative everywhere else (reset, reload, another session).
