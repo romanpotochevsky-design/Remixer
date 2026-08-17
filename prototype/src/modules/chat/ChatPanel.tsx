@@ -383,11 +383,23 @@ export function ChatPanel() {
           {/* light runs the rim once on send — Google's AI Mode flash */}
           {flash > 0 && (
             <span key={flash} className="composer-glow" aria-hidden>
-              <i className="composer-glow-bloom"><u><b /></u></i>
-              <i className="composer-glow-core"><u><b /></u></i>
+              {/* Paint order right → top → left is load-bearing: each arc's hard
+                  tail edge hides under the arc above it (see index.css). */}
+              {/* Arcs are DIRECT children of the filtered <i> — a transformed
+                  wrapper in between trips Chromium's overflow-inside-filter bug
+                  and the clip stops holding. The aspect stretch lives inside
+                  each arc's own keyframed transform instead. */}
+              <i className="composer-glow-bloom">
+                <b className="cg-arc-right" /><b className="cg-arc-top" /><b className="cg-arc-left" />
+              </i>
+              <i className="composer-glow-core">
+                <b className="cg-arc-right" /><b className="cg-arc-top" /><b className="cg-arc-left" />
+              </i>
               {/* keeps the light outside: the field is 80% translucent, and
                   without this plate the glow bleeds straight through it */}
               <s className="composer-glow-plate" />
+              {/* hides the parked arcs along the bottom edge; corners stay open */}
+              <s className="composer-glow-floor" />
             </span>
           )}
         <div className="composer-field relative rounded-[24px] pb-2 pr-2">

@@ -392,9 +392,11 @@
   }
 
   /*
-   * The send flash, measured off a recording of Google's AI Mode button:
-   * a THIN, iridescent band of light hugging the box, peaking ~100ms after
-   * the click and gone by ~400ms, with the box interior perfectly clean.
+   * The send flash. Material and thinness are still measured off Google's AI
+   * Mode recording — a THIN iridescent band hugging the box, the interior
+   * perfectly clean — but the choreography was redesigned to the designer's
+   * sketch: not a comet lapping the box, a light that POURS and DRAINS (the
+   * three-arc scheme documented below).
    *
    * Construction — and why there is NO mask here. A mask is applied AFTER the
    * element's filter, so a ring mask crops the blur's falloff into two hard
@@ -411,7 +413,7 @@
     inset: 0;
     border-radius: 24px;
     pointer-events: none;
-    animation: composer-glow-life 0.72s var(--ease-out) both;
+    animation: composer-glow-life 1.15s linear both;
   }
   /* 2px past the field's edge: the plate hides everything inside the field, so
      without this overhang the visible light would be only the blur's outer
@@ -433,57 +435,120 @@
     background: #09090b;
   }
 
+  /*
+   * The choreography, per the designer's sketch: light is BORN at the
+   * bottom-left corner, pours up the left edge, across the top and down the
+   * right edge until the whole horseshoe burns at once — that pose holds for a
+   * beat — then the tail lets go and the light drains along the same path,
+   * dying at the bottom-right corner. Not a comet lapping the box ("летающая
+   * колбаска"): the light stretches, holds, and drains.
+   *
+   * A conic gradient cannot grow an arc (animating its angles is the 9fps
+   * trap), so the growing horseshoe is THREE 90° arcs — left, top, right —
+   * all parked along the bottom edge (135°–225° in square space) and rotated
+   * out at 1×, 2× and 3× speed: they emerge from the bottom-left corner one
+   * after another and land exactly end to end. The drain mirrors it at 3×,
+   * 2×, 1×, everything parking back under the bottom edge (+360° total, so
+   * the end state IS the start state). The parking garage is hidden by the
+   * opaque floor strip below the box; the corners stay exposed, which is what
+   * makes birth and death read as corner events.
+   *
+   * Invariants that keep the union seamless — break one and holes appear:
+   *  - all three arcs share the SAME timing function per keyframe segment
+   *    (positions stay proportional, so no arc ever outruns its cover);
+   *  - arc bodies are OPAQUE and paint order is right → top → left: each
+   *    arc's hard tail edge is always covered by the arc above it, and at
+   *    the full pose the butt joints land on matched colours (violet meets
+   *    violet, red meets red);
+   *  - only the LEFT arc's tail carries an alpha ramp — it is the one edge
+   *    ever visible, first as the birth, then as the retreating tail.
+   */
+  /* Gradients are authored in SQUARE space (corners at honest 45°/135°/225°/
+     315°); the scaleX in each keyframe maps them onto the real box — ChatPanel
+     writes the true aspect into --flash-sx on every send. The stretch sits
+     INSIDE the b's own transform (applied after the rotate), NOT on a wrapper:
+     a transformed wrapper between the filtered+clipped <i> and its children is
+     exactly the nesting Chromium's overflow-inside-filter bug eats — the clip
+     let the stretched square leak far outside the field. Direct children of
+     the filtered element are the structure that is known to render. */
   .composer-glow b {
     position: absolute;
     left: 50%;
     top: 50%;
     width: 132cqmax;
     height: 132cqmax;
-    /* A travelling ARC in the SIRI palette — the same hues as the preview glow
-       (matched to real Siri stills), so both "AI light" effects in the product
-       speak one spectrum. Google's yellow and green are deliberately absent:
-       that six-colour rainbow is their brand, not ours. Rhythm stays Google's —
-       a long cool stretch, warm hues packed tight at the head, most of the
-       circle transparent so one stretch of the perimeter is lit at a time. */
-    /* Half the old arc length: a ~80° comet instead of a 200° train, so its
-       tail never drapes across the bottom edge of a box this wide. */
-    background: conic-gradient(
-      from 0deg,
-      #1f7cff00 0deg,
-      #1f7cffd9 20deg, #38c6ffd9 41deg,
-      #8b5cff 61deg, #be59ff 74deg,
-      #ff2f6d 84deg, #ff705c 92deg,
-      #ff9d5c 99deg,
-      #ff9d5c00 110deg,
-      #1f7cff00 360deg
-    );
-    animation: composer-glow-spin 0.72s var(--ease-out) both;
     will-change: transform;
   }
-  /* Same clock as the core — the bloom's span is nested inside the core's, and
-     a lagging clock would push the thick middle out past the thin tail. */
-  /*
-   * Born AT the trigger: the arc starts pointed at the send button
-   * (bottom-right ≈ 135° in conic terms) and sweeps ~150° away from it,
-   * rather than lapping the field.
-   */
-  /*
-   * The run, as marked up on the designer's screenshot: born at the "+", up
-   * and across the top, dying on the send button — never along the bottom.
-   * Angles are in SQUARE space now (the <u> stretch maps them to the box),
-   * so the corners are the honest 225°/135°: head (gradient ≈99°) goes from
-   * just above bottom-left (232°) to just above bottom-right (488°).
-   */
-  @keyframes composer-glow-spin {
-    from { transform: translate(-50%, -50%) rotate(133deg); }
-    to   { transform: translate(-50%, -50%) rotate(389deg); }
+  /* SIRI palette, one spectrum along the path: blue at the birth corner,
+     violet up the left, pink/red across the top, orange at the death corner.
+     Google's yellow and green stay absent — that rainbow is their brand. */
+  .composer-glow .cg-arc-left {
+    background: conic-gradient(
+      from 0deg,
+      #1f7cff00 135deg, #1f7cff 158deg,
+      #38c6ff 200deg, #8b5cff 225deg,
+      #8b5cff00 225.3deg
+    );
+    animation: cg-sweep-left 1.15s both;
   }
-  /* Holds until the arc has finished its run — fading from 42% meant the light
-     died mid-journey and its arrival at the send button was invisible. */
+  .composer-glow .cg-arc-top {
+    background: conic-gradient(
+      from 0deg,
+      #8b5cff00 134.7deg, #8b5cff 135deg,
+      #be59ff 180deg, #ff2f6d 225deg,
+      #ff2f6d00 225.3deg
+    );
+    animation: cg-sweep-top 1.15s both;
+  }
+  .composer-glow .cg-arc-right {
+    background: conic-gradient(
+      from 0deg,
+      #ff2f6d00 134.7deg, #ff2f6d 135deg,
+      #ff705c 190deg, #ff9d5c 225deg,
+      #ff9d5c00 225.3deg
+    );
+    animation: cg-sweep-right 1.15s both;
+  }
+  /* 0–40%: pour out (decelerating into the pose). 40–58%: the pose holds —
+     this is the designer's screenshot moment. 58–100%: drain (accelerating
+     away; leaving never bounces). Segments carry their own easing; the three
+     keyframe sets MUST keep identical timing functions per segment. */
+  @keyframes cg-sweep-left {
+    0%   { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(0deg); animation-timing-function: cubic-bezier(0.32, 0, 0.34, 1); }
+    40%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(90deg); animation-timing-function: linear; }
+    58%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(90deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
+    100% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(360deg); }
+  }
+  @keyframes cg-sweep-top {
+    0%   { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(0deg); animation-timing-function: cubic-bezier(0.32, 0, 0.34, 1); }
+    40%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(180deg); animation-timing-function: linear; }
+    58%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(180deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
+    100% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(360deg); }
+  }
+  @keyframes cg-sweep-right {
+    0%   { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(0deg); animation-timing-function: cubic-bezier(0.32, 0, 0.34, 1); }
+    40%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(270deg); animation-timing-function: linear; }
+    58%  { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(270deg); animation-timing-function: cubic-bezier(0.6, 0.05, 0.75, 0.5); }
+    100% { transform: translate(-50%, -50%) scaleX(var(--flash-sx, 3.4)) rotate(360deg); }
+  }
+  /* The parking garage's roof: an opaque strip the colour of the ground below
+     the field, hiding any light on the bottom edge. Its ends are GRADED, not
+     cut — the arcs slide under it fading, and the corners stay exposed so the
+     birth spark and the dying ember belong to the corners. */
+  .composer-glow .composer-glow-floor {
+    position: absolute;
+    top: calc(100% - 2px);
+    left: 18px;
+    right: 18px;
+    height: 18px;
+    background: linear-gradient(90deg, #09090b00, #09090b 28px, #09090b calc(100% - 28px), #09090b00);
+  }
+  /* The envelope only softens entry and the last ember — the drain itself is
+     geometric (the arcs park), not an opacity fade. */
   @keyframes composer-glow-life {
     0%   { opacity: 0; }
-    12%  { opacity: 1; }
-    72%  { opacity: 0.95; }
+    7%   { opacity: 1; }
+    88%  { opacity: 1; }
     100% { opacity: 0; }
   }
   @media (prefers-reduced-motion: reduce) {
