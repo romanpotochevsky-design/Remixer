@@ -94,9 +94,7 @@ export function PublishPanel() {
           className="fixed right-[51px] top-12 z-40 w-[548px] origin-top-right rounded-[20px] border border-[#ffffff0a] bg-[var(--gray-850)]"
           style={{ boxShadow: '0px 24px 28px rgba(0,0,0,0.5)' }}
         >
-          {/* light runs the rim once as the glass forms */}
-          <b className="glass-sheen" aria-hidden><i /></b>
-          {/* The glass inflates first, its contents arrive a beat later (motion.ts rule 3). */}
+          {/* The panel inflates first, its contents arrive a beat later (motion.ts rule 3). */}
           <motion.div variants={popoverContent}>
           {/* -------------------------------------------------------- header, 64px */}
           <div className="flex h-16 items-center pl-6">
@@ -156,7 +154,7 @@ export function PublishPanel() {
                     </span>
                     <span className="mt-1 block text-[13px] leading-normal text-[var(--white-500)]">
                       {paid
-                        ? t({ en: '✓ Included in your Remixer Build plan', uk: '✓ Входить у ваш план Remixer Build' })
+                        ? t({ en: 'Included in your Remixer Build plan', uk: 'Входить у ваш план Remixer Build' })
                         : t({ en: 'Requires the Remixer Build plan — $9.99/mo', uk: 'Потрібен план Remixer Build — $9.99/міс' })}
                     </span>
                   </span>

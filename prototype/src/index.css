@@ -689,32 +689,15 @@
    * ring mask and the gradient never change. Plays once, then the element is
    * inert — it lives and dies with the popover, so idle cost is zero.
    */
-  .glass-sheen {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    overflow: hidden;
-    pointer-events: none;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-  }
-  .glass-sheen > i {
-    position: absolute;
-    top: -60%;
-    left: -55%;
-    width: 45%;
-    height: 220%;
-    background: linear-gradient(90deg, #ffffff00, #ffffffb8 48%, #ffffff00);
-    animation: glass-sheen-run 0.78s var(--ease-out) 0.05s both;
-  }
-  @keyframes glass-sheen-run {
-    from { transform: translate3d(0, 0, 0) rotate(16deg); opacity: 0; }
-    22%  { opacity: 1; }
-    to   { transform: translate3d(330%, 0, 0) rotate(16deg); opacity: 0; }
-  }
+  /*
+   * There used to be a `.glass-sheen` here: a highlight that swept the Publish
+   * panel's rim as it opened. It is gone deliberately. A travelling sheen is a
+   * GLASS cue — light raking across a transparent surface — and this panel is
+   * opaque gray-850 in Figma. So it decorated a material the panel does not
+   * have, on the one surface where glass had already been tried and rolled
+   * back. The iOS-26 lesson the panel keeps is the MOTION (spring out of the
+   * trigger's corner, contents a beat behind); the material is Figma's.
+   */
 
   /* Quieter cut — chat bubbles, large panels. Figma gives the bubble a faint
      6%→2% wash instead of a flat fill, and a dimmer rim. */
