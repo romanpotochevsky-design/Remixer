@@ -20,6 +20,22 @@ const COST = 10
 let seq = 1000
 let pending: ReturnType<typeof setTimeout> | null = null
 
+/**
+ * The next message id — always past everything already in the transcript.
+ *
+ * `seq` is a module variable and dies with the page, but `world.sent` persists
+ * (localStorage) and comes back with ids 1001+. A bare `++seq` therefore reused
+ * ids after a reopen, and ChatPanel keys its animations on ids: the "new"
+ * message was already in its seen-set, so the send bubble and the typing reveal
+ * silently didn't play. That was the "animations sometimes just don't happen"
+ * bug — deterministic after any reopen that restores the transcript (clean-URL
+ * open, or a reload mid-send), self-healing once new ids outran the old ones.
+ */
+function nextId(over: Message[]): number {
+  for (const m of over) if (m.id > seq) seq = m.id
+  return ++seq
+}
+
 export function sendMessage(raw: string) {
   const text = raw.trim()
   if (!text) return
@@ -30,7 +46,7 @@ export function sendMessage(raw: string) {
   // The first typed message freezes the scenario's demo transcript into `sent`
   // and takes over from there; `chat` is only a status flag afterwards.
   const base = world.sent.length ? world.sent : baselineThread(world.chat)
-  const mine: Message = { id: ++seq, who: 'user', text }
+  const mine: Message = { id: nextId(base), who: 'user', text }
 
   set(
     {
@@ -48,7 +64,7 @@ export function sendMessage(raw: string) {
 
 function deliverAnswer(prompt: string) {
   const now = useWorld.getState()
-  const answer: Message = { id: ++seq, who: 'ai', text: replyTo(prompt) }
+  const answer: Message = { id: nextId(now.world.sent), who: 'ai', text: replyTo(prompt) }
   now.set(
     {
       sent: [...now.world.sent, answer],
