@@ -201,14 +201,13 @@ export function DomainModal() {
             animate="animate"
             exit="exit"
             /* Centred, nudged 4px up — the mockup pins it there on both boards. */
-            /* 600 whenever the row carries a price or a plan, 560 for the bare
-               connect. Both widths are drawn — the lean sheet is 560 on boards
-               27254/27275 and 600 on 27058. The buy case takes 600 because its
-               row runs a price AND a renewal note beside the sub-label, and at
-               560 that line clips: Gilroy and Proxima Nova are not bundled with
-               the prototype, so every string renders in a wider fallback face. */
+            /* 600 with the plan chooser, 560 without — as drawn on 27254/27275.
+               The buy sheet was widened to 600 for a while because its row runs
+               a price AND a renewal note beside the sub-label and the line
+               clipped; that was the system fallback face being ~10% wider than
+               Proxima Nova, and it went away once real webfonts shipped. */
             className={`relative -translate-y-1 rounded-[24px] border border-[#ffffff0a] bg-[var(--gray-850)] ${
-              showPlans || buying ? 'w-[600px]' : 'w-[560px]'
+              showPlans ? 'w-[600px]' : 'w-[560px]'
             }`}
             style={{ boxShadow: '0px 24px 28px rgba(0,0,0,0.33)' }}
           >

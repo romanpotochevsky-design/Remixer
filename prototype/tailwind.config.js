@@ -19,9 +19,14 @@ export default {
         attention: '#e5c359',
         danger: '#ef4444',
       },
+      // Brand face first, then the OFL stand-in that ships in the repo, then the
+      // system. See the TYPEFACES block at the top of index.css: the licensed
+      // Gilroy / Proxima Nova files are not committed, so today the stand-in is
+      // what actually renders — the point of naming it here is that every
+      // machine renders the SAME thing instead of its own system font.
       fontFamily: {
-        sans: ['"Proxima Nova"', 'system-ui', 'sans-serif'],
-        display: ['Gilroy', '"Proxima Nova"', 'system-ui', 'sans-serif'],
+        sans: ['"Proxima Nova"', 'Figtree', 'system-ui', 'sans-serif'],
+        display: ['Gilroy', 'Outfit', '"Proxima Nova"', 'Figtree', 'system-ui', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       borderRadius: { shell: '16px', control: '10px', chip: '8px' },

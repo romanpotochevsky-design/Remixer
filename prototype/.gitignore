@@ -2,3 +2,16 @@ node_modules
 dist
 .DS_Store
 *.tsbuildinfo
+
+# Licensed brand fonts (Gilroy, Proxima Nova) — see public/fonts/README.md.
+#
+# This repository is PUBLIC. Committing a commercial webfont to it would be
+# redistribution, which no standard webfont licence covers, so the files stay
+# local: drop them in, they work on this machine, git never sees them.
+#
+# The cost is that they do not survive a fresh clone or a new Claude session.
+# If the repository is made private, delete these two lines and commit the
+# fonts — then the prototype renders in the real brand faces everywhere,
+# permanently, and the OFL stand-ins can go.
+public/fonts/*.woff2
+public/fonts/*.woff
