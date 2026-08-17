@@ -277,9 +277,14 @@
     transition: background 0.18s var(--ease-std);
   }
   .chat-resizer:hover .chat-resizer-line { background: var(--white-300); }
-  .chat-resizer[data-drag] .chat-resizer-line { background: #1587ff3d; }
+  .chat-resizer[data-drag] .chat-resizer-line { background: #8b5cff3d; }
 
-  /* the halo — soft blue light spilling sideways, centred on the pointer */
+  /* The halo — light spilling sideways, centred on the pointer. Iridescent,
+     not flat blue: the same SIRI spectrum as the send flash and the preview
+     glow, so every "AI light" in the product speaks one palette. Three
+     stacked radials (cyan above, violet at the pointer, pink below) give the
+     vertical spectrum while keeping the soft sideways falloff — no mask, so
+     nothing fights the blur. */
   .chat-resizer-bloom {
     position: absolute;
     left: 50%;
@@ -287,7 +292,10 @@
     width: 64px;
     height: 460px;
     margin-left: -32px;
-    background: radial-gradient(50% 50% at 50% 50%, #1587ffbf 0%, #1587ff59 34%, #1587ff00 70%);
+    background:
+      radial-gradient(50% 30% at 50% 24%, #38c6ffb8 0%, #38c6ff00 72%),
+      radial-gradient(52% 36% at 50% 50%, #8b5cffcc 0%, #8b5cff00 72%),
+      radial-gradient(50% 30% at 50% 76%, #ff2f6d9e 0%, #ff2f6d00 72%);
     filter: blur(12px);
     opacity: 0;
     transform: translate3d(0, calc(var(--glow-y) - 230px), 0);
@@ -303,7 +311,14 @@
     height: 300px;
     margin-left: -1px;
     border-radius: 999px;
-    background: linear-gradient(to bottom, #4aa8ff00 0%, #4aa8ff 34%, #cfe6ff 50%, #4aa8ff 66%, #4aa8ff00 100%);
+    /* cyan in from above, a near-white violet-tinted hot point at the pointer,
+       pink out below — the filament under the iridescent halo */
+    background: linear-gradient(
+      to bottom,
+      #38c6ff00 0%, #38c6ff 28%,
+      #b9a6ff 44%, #f1eaff 50%, #d9a0ff 56%,
+      #ff5f8f 72%, #ff5f8f00 100%
+    );
     filter: blur(0.6px);
     opacity: 0;
     transform: translate3d(0, calc(var(--glow-y) - 150px), 0);
