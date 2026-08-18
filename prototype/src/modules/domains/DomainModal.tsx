@@ -171,6 +171,29 @@ export function DomainModal() {
   const showPlans = !paid
 
   /*
+   * The guards that used to live on a separate "You own this" screen.
+   *
+   * Both ways of reaching a domain the customer already owns now open this sheet:
+   * the dashboard's Connect button always did, and typing the name into the search
+   * field used to land on a standalone screen drawn in the pre-redesign geometry.
+   * One intent must not render as two different products, so that screen is gone
+   * and its two protections moved here — they are the whole reason a confirm step
+   * exists at all, because connecting can take down something that is serving now.
+   *
+   *  in-use      : the domain already shows a website, so the button's verb becomes
+   *                "Replace site". The word IS the guard.
+   *  external-ns : we register it, but its nameservers point at Cloudflare, so the
+   *                records we write server-side will not take effect. Saying
+   *                "connects in a few seconds" here would be a plain lie, so that
+   *                promise is replaced rather than merely annotated.
+   */
+  const guard: 'in-use' | 'external-ns' | null =
+    domainModal?.kind !== 'connect-existing' ? null
+      : world.inventory === 'dh-in-use' ? 'in-use'
+      : world.inventory === 'dh-external-ns' ? 'external-ns'
+      : null
+
+  /*
    * What actually happens when this button is pressed.
    *
    * Anything with a price on it leaves Remixer: the panel's cart owns checkout
@@ -250,8 +273,8 @@ export function DomainModal() {
                 {/* -------------------------------------------- domain row */}
                 <div
                   className={`flex py-6 pl-4 pr-6 ${
-                    showPlans ? 'items-start gap-3 border-b border-[#ffffff0a]' : 'items-center gap-4'
-                  }`}
+                    showPlans ? 'items-start gap-3' : 'items-center gap-4'
+                  } ${showPlans || guard ? 'border-b border-[#ffffff0a]' : ''}`}
                 >
                   {/* top-aligned rows drop the tile 8px so it lines up with the 24px name */}
                   <span className={showPlans ? 'pt-2' : undefined}>
@@ -276,6 +299,17 @@ export function DomainModal() {
                       {buying ? (
                         <p className="truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
                           {t({ en: 'Connects automatically after checkout', uk: 'Підключиться автоматично після оплати' })}
+                        </p>
+                      ) : guard === 'external-ns' ? (
+                        /* Ranked above the plan line on purpose: a plan does not
+                           make this one connect either, so promising that it will
+                           would be the more misleading of the two. */
+                        <p className="flex items-center gap-0.5 truncate text-[14px] leading-[1.4]">
+                          <span className="text-[#ffffffa3]">{t({ en: 'Managed at Cloudflare', uk: 'Керується на Cloudflare' })}</span>
+                          <span className="mx-0.5 flex-none text-[rgba(255,240,186,0.9)]"><IconLink size={20} /></span>
+                          <span className="text-[rgba(255,240,186,0.9)]">
+                            {t({ en: 'about 5 minutes', uk: 'приблизно 5 хвилин' })}
+                          </span>
                         </p>
                       ) : showPlans ? (
                         /* cream = "waiting on you". Neutral grey would read as
@@ -317,6 +351,31 @@ export function DomainModal() {
                     </div>
                   )}
                 </div>
+
+                {/* --------------------------------------------- the guard */}
+                {guard && (
+                  <div className={`px-4 py-4 ${showPlans ? 'border-b border-[#ffffff0a]' : ''}`}>
+                    <p className="text-[14px] font-semibold leading-[1.4] text-[rgba(255,240,186,0.9)]">
+                      {guard === 'in-use'
+                        ? t({ en: 'This domain already shows a website', uk: 'На цьому домені вже є сайт' })
+                        : t({ en: 'This domain is managed at Cloudflare', uk: 'Цим доменом керує Cloudflare' })}
+                    </p>
+                    {/* The reassurance is not decoration: without "you can switch
+                        back" the warning only frightens, and a frightened customer
+                        abandons the connect instead of completing it. */}
+                    <p className="mt-1 text-[13px] leading-[1.45] text-[#ffffff8f]">
+                      {guard === 'in-use'
+                        ? t({
+                            en: `Connecting replaces what visitors see at ${domain}. Your files stay safe and you can switch back.`,
+                            uk: `Підключення замінить те, що бачать відвідувачі на ${domain}. Файли збережуться, і можна повернути як було.`,
+                          })
+                        : t({
+                            en: 'Its settings live there, so we’ll show you the two lines to paste at Cloudflare. About 5 minutes.',
+                            uk: 'Його налаштування живуть там, тож ми покажемо два рядки, які треба вставити на Cloudflare. Приблизно 5 хвилин.',
+                          })}
+                    </p>
+                  </div>
+                )}
 
                 {/* ------------------------------------------- plan chooser */}
                 {showPlans && (
@@ -368,7 +427,9 @@ export function DomainModal() {
               >
                 {showPlans || buying
                   ? t({ en: 'Continue to checkout', uk: 'Перейти до оплати' })
-                  : t({ en: 'Connect domain', uk: 'Підключити домен' })}
+                  : guard === 'in-use'
+                    ? t({ en: 'Replace site', uk: 'Замінити сайт' })
+                    : t({ en: 'Connect domain', uk: 'Підключити домен' })}
               </button>
             </div>
           </motion.div>

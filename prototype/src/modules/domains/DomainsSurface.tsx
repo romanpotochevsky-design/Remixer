@@ -463,81 +463,6 @@ function ResultsScreen() {
 }
 
 /** "You own this" — the confirm for a domain already in the DreamHost account. */
-function OwnScreen() {
-  const { world, set } = useWorld()
-  const { activeDomain, goDomains } = useUI()
-  const { t } = useT()
-  const domain = activeDomain ?? CUSTOM_DOMAIN
-  const inUse = world.inventory === 'dh-in-use'
-  const externalNs = world.inventory === 'dh-external-ns'
-
-  const connect = () => {
-    set({ domain: 'connecting' })
-    goDomains('status', domain)
-  }
-
-  return (
-    <Screen>
-      <button onClick={() => goDomains('home')} className="mb-4 text-[13px] text-[var(--white-400)] hover:text-[var(--white-700)]">
-        ← {t({ en: 'Back', uk: 'Назад' })}
-      </button>
-
-      <Eyebrow>{t({ en: 'You own this', uk: 'Це ваш домен' })}</Eyebrow>
-      <h2 className="font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">{domain}</h2>
-      <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
-        {t({
-          en: 'It’s already in your DreamHost account — nothing to change anywhere else.',
-          uk: 'Він уже у вашому акаунті DreamHost — нічого не треба змінювати деінде.',
-        })}
-      </p>
-
-      {/* Guards. A stray click must never take down a live site or working email. */}
-      {inUse && (
-        <div className="mt-4 rounded-control border border-[#e5c35940] bg-[#e5c35914] p-3.5">
-          <p className="text-[13px] font-semibold text-[var(--attention)]">
-            {t({ en: 'This domain already shows a website', uk: 'На цьому домені вже є сайт' })}
-          </p>
-          <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-400)]">
-            {t({
-              en: `Connecting will replace what visitors see at ${domain}. Your files stay safe and you can switch back.`,
-              uk: `Підключення замінить те, що бачать відвідувачі на ${domain}. Файли збережуться, і можна повернути як було.`,
-            })}
-          </p>
-        </div>
-      )}
-      {externalNs && (
-        <div className="mt-4 rounded-control border border-[#e5c35940] bg-[#e5c35914] p-3.5">
-          <p className="text-[13px] font-semibold text-[var(--attention)]">
-            {t({ en: 'This domain is managed at Cloudflare', uk: 'Цим доменом керує Cloudflare' })}
-          </p>
-          <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-400)]">
-            {t({
-              en: 'Its settings live there, so we’ll show you the two lines to paste at Cloudflare. About 5 minutes.',
-              uk: 'Його налаштування живуть там, тож ми покажемо два рядки, які треба вставити на Cloudflare. Приблизно 5 хвилин.',
-            })}
-          </p>
-        </div>
-      )}
-
-      <div className="mt-5">
-        <PrimaryButton
-          label={
-            inUse
-              ? { en: `Replace site at ${domain}`, uk: `Замінити сайт на ${domain}` }
-              : { en: 'Connect', uk: 'Підключити' }
-          }
-          onClick={connect}
-        />
-      </div>
-      {!inUse && !externalNs && (
-        <p className="mt-2 text-center text-[12.5px] text-[var(--white-300)]">
-          {t({ en: 'Under a minute · nothing to configure', uk: 'Менше хвилини · нічого не треба налаштовувати' })}
-        </p>
-      )}
-    </Screen>
-  )
-}
-
 /** External domain: registrar detected, guided manual path. No Domain Connect promises. */
 function ExternalScreen() {
   const { set } = useWorld()
@@ -706,13 +631,12 @@ function StatusScreen() {
 const SCREENS: Record<DomainScreen, () => JSX.Element> = {
   home: HomeScreen,
   results: ResultsScreen,
-  own: OwnScreen,
   external: ExternalScreen,
   status: StatusScreen,
 }
 
 export function DomainsSurface() {
-  const { domainScreen, closeSurface, goDomains } = useUI()
+  const { domainScreen, closeSurface, goDomains, openDomainModal } = useUI()
   const { world } = useWorld()
   const { t } = useT()
   const Current = SCREENS[domainScreen]
@@ -731,9 +655,16 @@ export function DomainsSurface() {
   const submit = () => {
     const q = query.trim().toLowerCase()
     if (!q) return
-    // Intent detection, prototype-grade: an owned domain resolves to the confirm
-    // screen, anything with a dot reads as external, a bare name is a search.
-    if (owned.some((o) => o.domain === q)) goDomains('own', q)
+    /* Intent detection, prototype-grade: a domain already in the account opens the
+       checkout sheet, anything else with a dot reads as external, a bare name is a
+       search.
+
+       Typing an owned name and clicking its Connect button in the list are the same
+       intent, so they must land in the same place. They used not to: the button
+       opened the sheet while the field routed to a standalone screen drawn before
+       the redesign, and which of the two you got depended on whether you reached for
+       the mouse or the keyboard. */
+    if (owned.some((o) => o.domain === q)) openDomainModal('connect-existing', q)
     else if (q.includes('.') && !q.endsWith('.')) goDomains('external', q)
     else goDomains('results', q)
   }

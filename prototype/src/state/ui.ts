@@ -23,7 +23,8 @@ export type Surface =
 export type DomainScreen =
   | 'home'      // universal field + AI suggestions (the default empty state)
   | 'results'   // search results: exact-match hero + alternatives
-  | 'own'       // "You own this" confirm for a domain already in the account
+  /* No 'own' step: a domain already in the account is confirmed in the checkout
+     sheet, the same surface the dashboard's Connect button opens. */
   | 'external'  // external domain: registrar detected, guided manual records
   | 'status'    // connecting / verifying / live status page
 
