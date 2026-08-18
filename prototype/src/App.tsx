@@ -19,6 +19,7 @@ import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
+import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
@@ -325,6 +326,11 @@ export default function App() {
           the right rail too, so it mounts at the very top of the tree, not inside
           <main> where the domains surface lives. */}
       <DomainModal />
+
+      {/* The hosting panel's cart — outside Remixer, so it covers the whole window
+          rather than a surface inside the shell. Mounted last and above everything:
+          when it is open, none of our chrome should show through the seam. */}
+      <PanelCart />
 
       <FlowRunner />
       <ScenarioPanel />

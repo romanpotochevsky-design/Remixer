@@ -35,6 +35,7 @@ import { useWorld, hasPlan } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import { priceFor } from '@/data/domains'
+import type { CartLine } from '@/data/cart'
 import { LogoRemixer, IconClose, IconGlobeLarge, IconLink } from '@/ui/icons'
 import { modalScrim, modalSheet } from '@/ui/motion'
 
@@ -147,7 +148,7 @@ function PlanCard({
 
 export function DomainModal() {
   const { world, set } = useWorld()
-  const { domainModal, closeDomainModal, goDomains } = useUI()
+  const { domainModal, closeDomainModal, goDomains, openPanel } = useUI()
   const { t } = useT()
   const [term, setTerm] = useState<Term>('yearly')
 
@@ -169,16 +170,40 @@ export function DomainModal() {
      the account cannot go live yet. Everything else keys off these two booleans. */
   const showPlans = !paid
 
+  /*
+   * What actually happens when this button is pressed.
+   *
+   * Anything with a price on it leaves Remixer: the panel's cart owns checkout
+   * (panel.dreamhost.com/?tree=checkout.dashboard), so we fill that cart and hand the
+   * user over — see modules/panel/PanelCart.tsx. This used to flip the account to
+   * paid on the spot, which made the demo shorter than the product and hid the one
+   * seam most worth arguing about.
+   *
+   * Connecting a domain the customer already owns on a plan they already have is the
+   * one case with nothing to buy; that still completes in place, as before.
+   */
   const confirm = () => {
-    if (showPlans) {
-      // Checkout hands back a paid account; the connect then completes on its own,
-      // which is the promise the cream sub-label makes.
-      set({ account: 'paid', billing: term, domain: 'connecting' })
-    } else {
+    const lines: CartLine[] = []
+    if (buying) lines.push({ kind: 'domreg', domain, years: 1 })
+    if (showPlans) lines.push({ kind: 'remixer', term })
+
+    if (lines.length === 0) {
       set({ domain: 'connecting' })
+      closeDomainModal()
+      goDomains('status', domain)
+      return
     }
+
+    /* `checkout` is the world's word for "standing at the till" — the state the domain
+       axis has carried since the beginning and nothing rendered until now.
+
+       The domains screen underneath is left exactly as it was: walking out of the
+       cart without paying has to land the customer back on the list they were
+       browsing, not on a status page for a domain they did not buy. The status
+       screen comes later, from the panel, once the order is actually placed. */
+    set({ cart: lines, domain: 'checkout' })
     closeDomainModal()
-    goDomains('status', domain)
+    openPanel('cart')
   }
 
   return (

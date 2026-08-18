@@ -14,7 +14,12 @@ const DIST = `${ROOT}/dist`
 const OUT = process.argv[2] ?? `${ROOT}/dist/remixer-prototype.html`
 
 const assets = readdirSync(`${DIST}/assets`)
-let css = readFileSync(`${DIST}/assets/${assets.find((f) => f.endsWith('.css'))}`, 'utf8')
+// EVERY stylesheet, not just the first one Vite happened to emit: the panel cart
+// ships its own file, and a silently dropped chunk would be a page with no styles.
+let css = assets
+  .filter((f) => f.endsWith('.css'))
+  .map((f) => readFileSync(`${DIST}/assets/${f}`, 'utf8'))
+  .join('\n')
 const js = readFileSync(`${DIST}/assets/${assets.find((f) => f.endsWith('.js'))}`, 'utf8')
 
 const dataUri = (path) =>

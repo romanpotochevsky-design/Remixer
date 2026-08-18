@@ -133,6 +133,19 @@ export const listSwapItem = {
   animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
 }
 
+/**
+ * A page from OUTSIDE the product taking the whole window — the hosting panel's
+ * cart. It has to read as a NAVIGATION, not as a dialog: no scale (a sheet grows,
+ * a page does not) and a short rise, so the eye reads "another page loaded" and
+ * the seam between Remixer and the panel stays legible. Transform and opacity
+ * only, like everything else here.
+ */
+export const foreignPage = {
+  initial: { opacity: 0, y: 26 },
+  animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
+  exit: { opacity: 0, y: 18, transition: EXIT },
+}
+
 /** Full-surface swaps — a screen replacing another inside the same shell. */
 export const surface = {
   initial: { opacity: 0, scale: 0.985, y: 8 },

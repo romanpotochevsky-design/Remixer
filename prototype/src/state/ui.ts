@@ -40,6 +40,17 @@ export type DomainScreen =
  */
 export type DomainModalKind = 'connect-existing' | 'buy' | 'connect-external'
 
+/**
+ * Pages that are NOT Remixer.
+ *
+ * Buying anything today leaves the builder for the hosting panel, and the prototype
+ * shows that rather than papering over it: `panel: 'cart'` is a full-window takeover
+ * with the panel's own chrome, its own light theme and its own typography. It is
+ * navigation, not product truth, so it belongs in this store — and it sits apart from
+ * `Surface` because a surface renders INSIDE our shell, while this one replaces it.
+ */
+export type PanelPage = 'cart'
+
 export interface DomainModal {
   kind: DomainModalKind
   domain: string
@@ -78,6 +89,8 @@ interface UIStore {
   chatWidth: number
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
+  /** A page outside Remixer covering the whole window, or null when we are home. */
+  panel: PanelPage | null
 
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
@@ -87,6 +100,8 @@ interface UIStore {
   openDomainModal: (kind: DomainModalKind, domain: string) => void
   closeDomainModal: () => void
   closeSurface: () => void
+  openPanel: (page: PanelPage) => void
+  closePanel: () => void
   togglePublish: (open?: boolean) => void
   triggerReload: (ms?: number) => void
 }
@@ -103,6 +118,7 @@ export const useUI = create<UIStore>((set, get) => ({
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
   reloading: false,
+  panel: null,
 
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
@@ -114,6 +130,10 @@ export const useUI = create<UIStore>((set, get) => ({
   openDomainModal: (kind, domain) => set({ domainModal: { kind, domain } }),
   closeDomainModal: () => set({ domainModal: null }),
   closeSurface: () => set({ surface: 'preview' }),
+  // Anything floating in our own chrome would show through the seam, so the
+  // handoff closes the publish popover on the way out.
+  openPanel: (panel) => set({ panel, publishOpen: false, domainModal: null }),
+  closePanel: () => set({ panel: null }),
   togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)
