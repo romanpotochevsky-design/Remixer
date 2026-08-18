@@ -72,11 +72,13 @@ leave the file outside the repo.
 
 Still outstanding, and worth one more capture (details in the measured notes §6):
 
-1. the **receipt page after Submit Order** — the return leg is currently compressed;
-2. a **domain sitting in the cart** (the capture holds a DreamShield add-on, so the
+1. a **domain sitting in the cart** (the capture holds a DreamShield add-on, so the
    domain line's option row is partly inferred);
-3. the **mobile cart's** expanded bottom sheet;
-4. the panel's **error copy** (outstanding balance, declined card).
+2. the **mobile cart's** expanded bottom sheet;
+3. the panel's **error copy** (outstanding balance, declined card).
+
+Answered since: there is **no receipt page** — Submit Order charges and returns the
+customer to Remixer (designer, 18 Aug 2026).
 
 ## 4. Where it plugged into the prototype
 

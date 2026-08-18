@@ -17,8 +17,12 @@
  *  - Icons are traced (see icons.tsx). The exceptions, all cosmetic and all listed in
  *    the handoff: the four Add Product glyphs in the sidebar, the SEO Toolkit glyph
  *    and the avatar, whose art the capture did not carry.
- *  - The receipt page after Submit Order was not captured, so the prototype returns
- *    to the builder once the order is placed. That gap is flagged, not invented.
+ *  - There is no receipt page: Submit Order charges and drops the customer straight
+ *    back into Remixer (confirmed with the designer). The wait is compressed to a
+ *    short "Placing your order…" rather than removed — the panel does charge a card
+ *    before it hands anything back. Where the return lands inside Remixer is OUR
+ *    decision, and this file makes it: the domain status screen, because that is what
+ *    the checkout sheet promised ("Connects automatically after checkout").
  *
  * The panel is English-only here. Its own localisation exists but was not captured,
  * and the value of this screen is that it is quotable evidence — a translation we

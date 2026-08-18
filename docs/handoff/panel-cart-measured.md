@@ -147,18 +147,31 @@ Ours, and labelled as such: the four Add Product glyphs in the sidebar (their ar
 ships in a chunk the capture did not include — drawn as coloured tiles), the SEO
 Toolkit mark, and the avatar (the real one is the customer's photograph).
 
-## 6. Still missing — the next capture
+## 6. What happens after Submit Order — confirmed
 
-1. **The receipt / confirmation page after Submit Order.** Not captured, so the
-   prototype returns straight to the builder after a 1.5s "Placing your order…". In
-   reality the customer lands on a panel page and has to find their way back — the
-   most consequential unknown left in this flow, and precisely the seam worth arguing
-   about.
-2. **A domain actually in the cart.** The capture holds DreamShield, whose tile has
+**There is no receipt page.** [verified with the designer, 18 Aug 2026] Pressing Submit
+Order charges immediately and returns the customer to Remixer; the panel shows no
+confirmation or invoice screen on the way. So the prototype's behaviour is the real
+one: a short "Placing your order…" on the button, then the builder again, plan active
+and the domain connecting.
+
+Two consequences worth keeping in mind:
+
+- the seam costs *less* than assumed — the customer is not stranded in the panel
+  hunting for a way back, which weakens the "buried in hPanel" objection to this flow;
+- but the **return landing is ours to design and currently unconfirmed**. The
+  prototype comes back to the domain status screen ("Connecting · fit-ration.com"),
+  because that is what the sheet promised ("Connects automatically after checkout").
+  If the real product returns somewhere else — the builder canvas, the Remixer
+  dashboard in the panel — this is the line to change.
+
+## 7. Still missing — the next capture
+
+1. **A domain actually in the cart.** The capture holds DreamShield, whose tile has
    two selects (domain + plan). A `domreg` line's option row is inferred: one term
    select ("1 Year") plus the trash. The panel's own class map has no rule for the
    domain subtitle, so it is rendered with the description style.
-3. **The mobile cart** (≤1023): the summary becomes a collapsed bottom sheet that
+2. **The mobile cart** (≤1023): the summary becomes a collapsed bottom sheet that
    expands. Its expanded design was not captured; the prototype shows a plain sheet.
-4. **Error states**: outstanding balance, declined card. The panel's own copy for
+3. **Error states**: outstanding balance, declined card. The panel's own copy for
    these would be worth having verbatim.
