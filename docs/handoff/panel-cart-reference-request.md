@@ -1,9 +1,14 @@
 # Panel cart (`?tree=checkout.dashboard`) — reference request + insertion plan
 
-> **Status: BLOCKED on source material, not on work.** 18 Aug 2026.
-> The task is to reproduce the DreamHost panel's cart pixel-for-pixel and splice it into
-> the prototype's buy-a-domain flow. Everything below is what is already known, what is
-> missing, and exactly where the screen plugs in — so the next session is pure drawing.
+> **Status: RESOLVED, same day.** The designer captured the page ("save page → Webpage,
+> Complete") and the cart is now reproduced in the prototype:
+> `prototype/src/modules/panel/`, measurements in
+> [`panel-cart-measured.md`](./panel-cart-measured.md).
+>
+> This file is kept as the record of *why* the first attempt stalled and what the ask
+> looked like — the same wall will come up again the next time a screen has to be
+> copied from behind a login. Sections 1–2 still hold; the shot list in §3 has been
+> replaced by what actually arrived and what is still outstanding.
 
 ## 1. Why the cart is not in the prototype yet
 
@@ -50,31 +55,33 @@ earlier domain research (`docs/research/domain-search-research.md`):
   and summary layout, empty state, error states, and whether `checkout.dashboard` is the
   same cart as the *Find New Domains* sidebar or a separate full page. **This is the gap.**
 
-## 3. What is needed from the designer (shot list)
+## 3. What arrived, and what it was worth
 
-Plain screenshots are enough; anything technical is optional. Please redact card digits,
-account IDs and any personal billing lines before sharing — a crop or a blur is fine.
+The designer sent a **complete saved page**, which was the best possible outcome: the
+checkout's own stylesheet (a 230-token light theme plus every hashed class), the
+rendered DOM including states that are in the markup but hidden (the empty cart), the
+inline SVG for every glyph, and the JS bundle carrying the product catalogue and the
+verbatim price/renewal strings. Values were read off the CSS rather than estimated
+from pixels, and the result was checked by rendering the saved page offline with
+JavaScript blocked and diffing element boxes against the prototype at the same
+viewport — see [`panel-cart-measured.md`](./panel-cart-measured.md) §1.
 
-1. **Cart with one domain in it** — the whole browser window, and say roughly how wide it was.
-2. **Cart with two or more domains** — shows how rows stack and how totals recalculate.
-3. **Empty cart.**
-4. **The years / term control**, open if it opens.
-5. **Everything after `Proceed to Checkout`** — the payment step(s) and the confirmation
-   or receipt screen. That last screen is where the user comes *back* to the builder,
-   so it decides how the return leg is designed.
-6. **Any error state** that can be triggered (outstanding balance, declined card) — the
-   panel's own error copy matters more than its looks.
-7. **Close-ups** of the price block, the buttons, the table header and the summary column,
-   so type sizes and weights can be read off rather than approximated.
-8. If easy: the same page narrow (phone width) — the prototype has a mobile mode.
+**Never commit the capture.** It carries session cookies, account identifiers and the
+customer's avatar, and this repository is public. Read it, write down the numbers,
+leave the file outside the repo.
 
-*Optional, for genuinely exact numbers:* with the cart open, ⌘S → "Webpage, Complete", and
-share the saved file. That carries the real fonts, colours and spacing, which turns
-"looks identical" into "is identical".
+Still outstanding, and worth one more capture (details in the measured notes §6):
 
-## 4. Where it plugs into the prototype
+1. the **receipt page after Submit Order** — the return leg is currently compressed;
+2. a **domain sitting in the cart** (the capture holds a DreamShield add-on, so the
+   domain line's option row is partly inferred);
+3. the **mobile cart's** expanded bottom sheet;
+4. the panel's **error copy** (outstanding balance, declined card).
 
-The seam already exists in the state model — nothing needs restructuring:
+## 4. Where it plugged into the prototype
+
+The seam was already in the state model, so nothing had to be restructured — this is
+what was wired:
 
 - `prototype/src/modules/domains/DomainModal.tsx` → `confirm()` is the exact insertion
   point. Today it elides payment: it flips `account: 'paid'`, sets `domain: 'connecting'`

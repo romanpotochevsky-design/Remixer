@@ -6,6 +6,7 @@
  * the truth. Add a new dimension here first, then read it in the screens.
  */
 import { create } from 'zustand'
+import type { CartLine } from '@/data/cart'
 
 /* ------------------------------------------------------------------ axes */
 
@@ -80,6 +81,16 @@ export interface World {
   unpublished: number
   chat: Chat
   /**
+   * What is sitting in the hosting panel's cart.
+   *
+   * The cart is genuinely outside Remixer — panel.dreamhost.com owns that page — but
+   * the prototype has to carry its contents to render it, and two surfaces read them
+   * (the cart itself and, later, any "you have items waiting" hint we decide to show
+   * in the builder). So it lives here, like every other piece of truth. Not in the
+   * URL keys: a shared link carries the situation, not somebody's shopping.
+   */
+  cart: CartLine[]
+  /**
    * The live transcript, once the user has actually typed something.
    *
    * Empty means "render the scenario's demo thread" (see modules/chat/thread.ts);
@@ -102,6 +113,7 @@ export const DEFAULT_WORLD: World = {
   project: 'built',
   unpublished: 0,
   chat: 'long',
+  cart: [],
   sent: [],
 }
 
@@ -254,6 +266,11 @@ export const useWorld = create<Store>((set, get) => ({
     // transcript typed under the old one is stale — unless the caller is the
     // composer, which always hands over both at once.
     if (patch.chat !== undefined && patch.sent === undefined) patch = { ...patch, sent: [] }
+    // A named preset means somebody deliberately staged a different world, and a
+    // cart filled under the previous one has nothing to do with it. Keyed on the
+    // preset rather than on any field, because the composer patches the world on
+    // every send and must never wipe the cart.
+    if (preset !== null && patch.cart === undefined) patch = { ...patch, cart: [] }
     const world = { ...get().world, ...patch }
     syncUrl(world)
     set({ world, preset })

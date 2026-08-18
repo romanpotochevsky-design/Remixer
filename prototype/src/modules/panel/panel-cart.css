@@ -1,0 +1,1031 @@
+/*
+ * ==========================================================================
+ * The DreamHost panel cart — reproduced from the real page, not designed here
+ * ==========================================================================
+ *
+ * Every number and colour below was read out of a "save page complete" capture of
+ * panel.dreamhost.com/?tree=checkout.dashboard (captured by the designer, 18 Aug
+ * 2026). The checkout is a React micro-frontend whose CSS ships as `app(3).css`
+ * with a 230-token light theme; the panel chrome around it comes from `app.css`.
+ * Where a value came from a class, the comment names that class so a developer can
+ * diff this file against the panel's own stylesheet.
+ *
+ * WHY IT LIVES IN ITS OWN FILE AND ITS OWN NAMESPACE
+ * This is a foreign design system: light surfaces, DreamHost blue #003cd7, radii up
+ * to 20px, Gilroy at 800. Remixer's shell is the opposite of all of that. Everything
+ * is scoped under `.dh-panel` so the two can never bleed into each other, and so
+ * the seam stays visible — the whole point of this screen is that the user has LEFT
+ * the builder and is standing in the hosting panel.
+ *
+ * DO NOT tidy these values toward Remixer's scale. A mismatch here is a bug.
+ * Known quirks of the real page, reproduced deliberately:
+ *   - the option selects are 52px tall while the trash button beside them is 64px
+ *     (`.optionItem button` height:52px under 1950px, `.removeProduct` height:64px
+ *     with no matching override — later rule wins over `.remove`'s 48px);
+ *   - the cart's own responsive bands are NOT a clean ladder: 1280–1512 is a
+ *     narrower override layered on top of 1280–1949, so it wins inside its range.
+ *
+ * The two brand faces are the same pair Remixer uses (Gilroy + Proxima Nova), so
+ * this surface inherits the prototype's Tailwind families — including the OFL
+ * stand-ins when the licensed files are absent.
+ */
+
+.dh-panel {
+  /* ------------------------------------------------------ theme tokens
+     Names mirror the panel's own custom properties, shortened. Light theme
+     (`.universalCheckoutLight`) — the only theme the cart ships. */
+  --dh-page: #f4f6f9;               /* .tab_checkout-dashboard .content-wrapper */
+  --dh-surface: #fff;
+  --dh-hairline: #e9ebec;           /* header + summary + tile borders */
+  --dh-ink: #071c27;                /* cart title, product name, select text */
+  --dh-body: #434f58;               /* panel body colour */
+  --dh-strong: #000;                /* summary titles and prices */
+  --dh-muted: #3f3f46;              /* gray.650 — section labels */
+  --dh-action: #003cd7;             /* --templates-buttonSimple-bg */
+  --dh-action-hover: #254ef8;
+  --dh-blue: #0073ec;
+  --dh-select-border: #ccc;         /* productItem option select border */
+  --dh-select-hover: #80b9f5;
+  --dh-select-active-bg: #e5f1fd;
+  --dh-warn-bg: #fff3e0;
+  --dh-warn-border: rgba(244, 81, 30, 0.1);
+  --dh-card-shadow: 0 5px 37px rgba(31, 35, 62, 0.03);
+  --dh-nav-ink: #18181b;
+
+  --dh-gilroy: theme(fontFamily.display);
+  --dh-proxima: theme(fontFamily.sans);
+
+  /* Chrome geometry, from app.css */
+  --dh-topbar-h: 64px;              /* .master .header height */
+  --dh-sidebar-w: 259px;            /* .logo-burger-container width */
+
+  /* Cart bands — overridden in the media queries at the end of this file.
+     Base values are the ≥1950px layout, exactly as the panel authors them. */
+  --dh-cart-pad: 64px;              /* .header-YCEX5 / .products-PSBY4 inline */
+  --dh-cart-pad-y: 33px;
+  --dh-cart-title: 37px;
+  --dh-tile-pad: 40px;
+  --dh-group-pad-top: 48px;
+  --dh-summary-w: 648px;
+  --dh-summary-pad: 32px;
+  --dh-summary-head-pad-x: 24px;
+  --dh-summary-head-mb: 40px;
+  --dh-submit-h: 64px;
+  --dh-submit-font: 18px;
+  --dh-submit-mb: 48px;
+  --dh-disclaimer-pad: 40px 32px;
+  --dh-info-mb: 40px;
+  --dh-name-mb: 5px;
+
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--dh-page);
+  color: var(--dh-body);
+  /* .master-YATFW: Proxima Nova at 500 for the whole checkout */
+  font-family: var(--dh-proxima);
+  font-weight: 500;
+  text-align: left;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dh-panel *,
+.dh-panel *::before,
+.dh-panel *::after { box-sizing: border-box; }
+
+/* :where() keeps these at zero specificity. Written as `.dh-panel button` they
+   outrank every single-class rule below, which is how "Submit Order" ended up
+   painted in body grey on a blue button. */
+.dh-panel :where(button) { font: inherit; color: inherit; cursor: pointer; }
+
+/* =============================================================== top bar
+   .master .header — fixed, white, 64px, with a soft downward shadow. */
+.dh-topbar {
+  display: flex;
+  align-items: center;
+  flex: none;
+  height: var(--dh-topbar-h);
+  background: var(--dh-surface);
+  box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.16);
+  position: relative;
+  z-index: 2;
+}
+
+/* .backlink-logo-container / .logo-burger-container { width: 259px } */
+.dh-topbar__left {
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: var(--dh-sidebar-w);
+  height: 100%;
+}
+
+/* CenterBox width 72px height 64px around the burger */
+.dh-burger {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 100%;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: var(--dh-nav-ink);
+}
+
+.dh-logo { display: flex; align-items: center; height: 100%; }
+
+/* .back-Z5z8R — a white pill, not the blue buttonSimple it inherits from */
+.dh-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 20px;
+  margin-left: 8px;
+  border: 0;
+  border-radius: 77px;
+  background: #fff;
+  color: #17181a;
+  font-family: var(--dh-proxima);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.2s ease-out;
+}
+.dh-back:hover { background: #f2f3f5; }
+.dh-back:active { background: #c9d5f0; }
+.dh-back svg { margin-right: 12px; }
+
+.dh-userbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding-right: 12px;
+}
+
+/* .search-bar — 48px pill, max 420, sitting in the middle of the bar */
+.dh-search {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 420px;
+  height: 48px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 100px;
+  background: #f0f0f0;
+  padding: 0 8px 0 16px;
+  gap: 12px;
+  transition: background 0.2s ease-out;
+}
+.dh-search:hover { background: #f1f3f4; }
+.dh-search__icon { display: flex; align-items: center; }
+/* .btn-text { color:#52525b; font-size:1rem; font-weight:500 } */
+.dh-search__text { flex: 1; color: #52525b; font-size: 16px; font-weight: 500; }
+
+/* The Assistant pill rides inside the search bar's right end. */
+.dh-assistant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 100px;
+  background: #fff;
+  color: #17181a;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.dh-assistant__spark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(from 210deg, #7c5cff, #2a8bff, #a644e5, #7c5cff);
+}
+
+.dh-actions { display: flex; align-items: center; flex: none; gap: 4px; }
+
+/* .support-icon-container: 14px label + a 1.3rem icon, hover fills a pill */
+.dh-support {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  color: #000;
+  font-size: 14px;
+  transition: background 0.2s ease-in-out;
+}
+.dh-support:hover { background: #edf1fc; }
+
+/* .bell-container__content — 40px hit area, 20px glyph, #ef5350 count badge */
+.dh-bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 4px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--dh-nav-ink);
+}
+.dh-bell:hover { background: #f7f9fa; }
+.dh-bell__count {
+  position: absolute;
+  top: 2px;
+  left: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ef5350;
+  color: #fff;
+  font-family: var(--dh-proxima);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* .user-avatar — 40px ring, 32px image inside */
+.dh-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 12px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+}
+.dh-avatar__inner {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e7ecf7;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.1);
+  color: #3f3f46;
+  font-family: var(--dh-proxima);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ================================================================== body */
+.dh-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ============================================================== sidebar
+   A MUI Drawer whose emotion styles are generated at runtime and therefore
+   absent from a saved page. The width (259px) is real — app.css sets it on the
+   header's matching block. Item metrics are measured off the capture. */
+.dh-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: var(--dh-sidebar-w);
+  padding: 16px 10px 24px;
+  background: var(--dh-surface);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.dh-sidebar::-webkit-scrollbar { width: 5px; }
+.dh-sidebar::-webkit-scrollbar-track { background: none; }
+.dh-sidebar::-webkit-scrollbar-thumb { background: #cfd1d2; border-radius: 20px; }
+
+/* 36px rows with a 1px gap: the capture puts ~37px between label baselines. */
+.dh-nav { display: flex; flex-direction: column; gap: 1px; }
+.dh-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--dh-nav-ink);
+  font-family: var(--dh-proxima);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.15s ease-out;
+}
+.dh-nav__item:hover { background: #f4f6f9; }
+.dh-nav__item > svg { flex: none; }
+.dh-nav__label { flex: 1; white-space: nowrap; }
+.dh-nav__chev { flex: none; color: #808080; }
+
+.dh-addproduct { margin-top: 22px; padding: 0 4px; }
+.dh-addproduct__title {
+  margin: 0 0 10px 10px;
+  color: var(--dh-nav-ink);
+  font-family: var(--dh-proxima);
+  font-size: 15px;
+  font-weight: 600;
+}
+/* The Add-ons / Hosting switch: a dark pill riding in a hairline track. */
+.dh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--dh-hairline);
+  border-radius: 100px;
+}
+.dh-toggle__btn {
+  flex: 1;
+  height: 30px;
+  border: 0;
+  border-radius: 100px;
+  background: none;
+  color: #52525b;
+  font-family: var(--dh-proxima);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.dh-toggle__btn[data-on='true'] { background: #18181b; color: #fff; }
+
+.dh-products-list { display: flex; flex-direction: column; margin-top: 14px; }
+.dh-products-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  text-align: left;
+}
+.dh-products-list__row:hover { background: #f4f6f9; }
+/* The four sidebar product glyphs are drawn by a chunk the capture did not
+   include — these are stand-ins in each product's own colour, and the one
+   place on this page that is not traced from the original. */
+.dh-products-list__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.dh-products-list__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dh-nav-ink);
+  font-family: var(--dh-proxima);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.dh-products-list__note {
+  color: #71717a;
+  font-family: var(--dh-proxima);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.dh-badge-new {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #a644e5;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================ cart column */
+.dh-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.dh-cart {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.dh-cart::-webkit-scrollbar { width: 4px; }
+.dh-cart::-webkit-scrollbar-thumb { background: #cfd1d2; border-radius: 32px; }
+
+/* .header-YCEX5 — white band carrying the title and the filter row */
+.dh-cart__header {
+  width: 100%;
+  padding: 0 var(--dh-cart-pad);
+  background: var(--dh-surface);
+}
+/* .headerLeft-SOZmq — the hairline under the title */
+.dh-cart__titlerow {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--dh-hairline);
+}
+.dh-cart__title {
+  width: 100%;
+  padding: 28px 0;
+  color: var(--dh-ink);
+  font-family: var(--dh-gilroy);
+  font-size: var(--dh-cart-title);
+  font-weight: 600;
+}
+/* .filters-TQqwt */
+.dh-cart__filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 0;
+}
+/* .productSorting .button — 13px, underline grows on hover */
+.dh-sort {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  color: #081e2b;
+  font-family: var(--dh-proxima);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.dh-sort__value { font-weight: 600; position: relative; top: 1px; }
+.dh-sort svg { margin-left: 8px; position: relative; top: 1px; }
+.dh-sort::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: 6px;
+  height: 1px;
+  background: #081e2b;
+  opacity: 0;
+  transition: right 0.3s, opacity 0.2s;
+}
+.dh-sort:hover::after { right: 16px; opacity: 1; }
+
+/* .removeAll-yWSzv — 40px white pill, radius 77 */
+.dh-removeall {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 15px 0 20px;
+  border: 0;
+  border-radius: 77px;
+  background: #fff;
+  color: #000;
+  font-family: var(--dh-proxima);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.2s ease-out;
+}
+.dh-removeall:hover { background: #f1f2f9; }
+.dh-removeall:active { background: #bcc0e3; }
+.dh-removeall svg { margin-left: 12px; }
+
+/* .products-PSBY4 */
+.dh-cart__products {
+  width: 100%;
+  padding: var(--dh-cart-pad-y) var(--dh-cart-pad);
+}
+/* Box mt:1 + Typography(Gilroy 600, gray.650) mb:2 */
+.dh-section { margin-top: 8px; }
+.dh-section__label {
+  margin: 0 0 16px;
+  color: var(--dh-muted);
+  font-family: var(--dh-gilroy);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* .productGroup-B7W88 — the white card the line items live on */
+.dh-group {
+  width: 100%;
+  padding: var(--dh-group-pad-top) 0 24px;
+  border-radius: 20px;
+  background: var(--dh-surface);
+  box-shadow: var(--dh-card-shadow);
+}
+
+/* .productTile-oQaoZ */
+.dh-tile {
+  width: 100%;
+  padding: 24px var(--dh-tile-pad) 0;
+  margin-bottom: 24px;
+  border-top: 1px solid var(--dh-hairline);
+}
+.dh-tile:first-child { border-top: 0; padding-top: 0; }
+.dh-tile:last-child { margin-bottom: 0; }
+
+/* .productInfo-C8jqe */
+.dh-tile__info {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: var(--dh-info-mb);
+}
+/* .title-cwIHy */
+/* Hugs its content, like the original: the price column is pushed right by
+   .dh-tile__info's space-between, not by this one growing. */
+.dh-tile__title { display: flex; min-width: 0; }
+/* .icon-GdJFT — 64px tile; the background changes per product */
+.dh-tile__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  margin-right: 24px;
+  border-radius: 20px;
+  background: rgba(51, 64, 169, 0.15);
+  box-shadow: 0 3px 27px rgba(0, 0, 0, 0.03);
+}
+.dh-tile__icon[data-product='domreg'] { background: rgba(0, 115, 236, 0.102); }
+.dh-tile__icon[data-product='remixer'] { background: rgba(51, 64, 169, 0.15); }
+.dh-tile__meta { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+/* .name-y8Dfk */
+.dh-tile__name {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--dh-name-mb);
+  color: var(--dh-ink);
+  font-family: var(--dh-proxima);
+  font-size: 24px;
+  font-weight: 700;
+  word-break: break-word;
+}
+/* .additionalText-tcQze */
+.dh-tile__extra { margin-left: 8px; color: #3f3f46; font-size: 16px; font-weight: 600; }
+/* .description-i2sd_ */
+.dh-tile__sub {
+  color: #000;
+  font-family: var(--dh-proxima);
+  font-size: 14px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+.dh-tile__sub b { font-weight: 700; }
+
+/* .productPrice-ElisT + .promoCodePrice — price above, renewal beneath */
+.dh-tile__price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+  min-width: 222px;
+  padding-left: 24px;
+}
+.dh-tile__amount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: #000;
+  font-family: var(--dh-gilroy);
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* .term-eGIiB — the "First year at" / "Yearly at" label beside the figure */
+.dh-tile__term {
+  color: #000;
+  font-family: var(--dh-proxima);
+  font-size: 14px;
+  font-weight: 500;
+}
+.dh-tile__renew {
+  color: #000;
+  font-family: var(--dh-proxima);
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.dh-tile__renew span { font-family: var(--dh-gilroy); font-weight: 600; }
+
+/* .options-b3OXm — the joined select pair plus the trash button */
+.dh-tile__options { display: flex; margin-bottom: 24px; }
+.dh-selects { display: flex; width: 100%; }
+.dh-select {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.dh-select > button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 52px;
+  padding: 0 40px 0 20px;
+  /* The panel kills the focus ring on these (`.buttonSelect { outline: none }`), so
+     keyboard focus borrows its own open-dropdown look instead of losing the cue:
+     2px of --templates-buttonSelect-border-color-active. */
+  outline: none;
+  border: 1px solid var(--dh-select-border);
+  background: #fff;
+  color: var(--dh-ink);
+  font-family: var(--dh-proxima);
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease-out;
+}
+.dh-select:first-child > button { border-radius: 12px 0 0 12px; border-right: 0; }
+.dh-select:last-child > button { border-radius: 0 12px 12px 0; }
+.dh-select:only-child > button { border-radius: 12px; border-right: 1px solid var(--dh-select-border); }
+.dh-select:hover > button { border-color: var(--dh-select-hover); }
+.dh-select:active > button { background: var(--dh-select-active-bg); border-color: var(--dh-blue); }
+.dh-select > button:focus-visible { border: 2px solid #3a27af; }
+.dh-select__value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dh-select__chev { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+
+/* .removeProduct-zZWOQ — 64px square beside 52px selects, as the panel ships it */
+.dh-remove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  margin-left: 16px;
+  border: 1px solid var(--dh-select-border);
+  border-radius: 12px;
+  background: transparent;
+  transition: all 0.3s ease-out;
+}
+.dh-remove:hover { border: 2px solid var(--dh-select-hover); }
+.dh-remove:active { background: var(--dh-select-active-bg); border: 2px solid var(--dh-blue); }
+
+/* .warningSimple + .automaticRenewal — amber strip under a line item */
+.dh-renewal {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 15px;
+  border: 1px solid var(--dh-warn-border);
+  border-radius: 12px;
+  background: var(--dh-warn-bg);
+  color: #000;
+  font-family: var(--dh-proxima);
+  font-size: 14px;
+  font-weight: 600;
+}
+.dh-renewal svg { flex: none; margin-right: 12px; }
+
+/* ===================================================== recommendations */
+.dh-recos { margin-top: 32px; }
+.dh-recos__card {
+  padding: 32px;
+  margin-bottom: 32px;
+  border-radius: 16px;
+  background: var(--dh-surface);
+  box-shadow: var(--dh-card-shadow);
+}
+.dh-reco { display: flex; justify-content: space-between; width: 100%; }
+.dh-reco__left { display: flex; align-items: flex-start; padding-right: 20px; }
+.dh-reco__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  margin-right: 16px;
+  border-radius: 16px;
+  background: rgba(51, 64, 169, 0.15);
+}
+.dh-reco__icon[data-product='marketgoo_seo'] { background: #ecf6ed; }
+.dh-reco__icon[data-product='domreg'] { background: rgba(166, 68, 229, 0.1); }
+.dh-reco__meta { display: flex; flex-direction: column; justify-content: center; }
+.dh-reco__head { display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 8px; line-height: normal; }
+.dh-reco__title {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+  color: #27272a;
+  font-family: var(--dh-gilroy);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 100%;
+}
+.dh-reco__offer {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 56px;
+  background: rgba(0, 115, 236, 0.15);
+  color: var(--dh-blue);
+  font-family: var(--dh-gilroy);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 100%;
+}
+.dh-reco__text {
+  color: #3f3f46;
+  font-family: var(--dh-proxima);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+.dh-reco__features { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 10px; }
+.dh-reco__feature {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #3f3f46;
+  font-family: var(--dh-proxima);
+  font-size: 14px;
+  font-weight: 400;
+}
+.dh-reco__feature svg { color: var(--dh-blue); }
+.dh-reco__right { display: flex; align-items: center; flex: none; gap: 16px; }
+.dh-reco__price { color: #3f3f46; font-family: var(--dh-proxima); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.dh-reco__price b { font-family: var(--dh-gilroy); font-size: 16px; font-weight: 700; color: #000; }
+.dh-reco__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid #afbfc9;
+  border-radius: 12px;
+  background: #fff;
+  color: #000;
+  font-family: var(--dh-proxima);
+  font-size: 15px;
+  font-weight: 600;
+}
+.dh-reco__add:hover { background: #f4f6f9; }
+
+/* ======================================================= order summary
+   .orderSummary-gg0Ae — its own scrolling column with a hairline on the left.
+   The real page pins the inner block with position:fixed under the 65px header;
+   an independently scrolling flex column is the same thing without betting on
+   the absence of a transformed ancestor. */
+.dh-summary {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: var(--dh-summary-w);
+  padding: 0 var(--dh-summary-pad);
+  border-left: 1px solid var(--dh-hairline);
+  background: var(--dh-surface);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+.dh-summary::-webkit-scrollbar { width: 4px; }
+.dh-summary::-webkit-scrollbar-thumb { background: #cfd1d2; border-radius: 32px; }
+
+/* .header-sdIuS — 70px of air above the title, hairline under it */
+.dh-summary__header {
+  width: 100%;
+  padding: 70px var(--dh-summary-head-pad-x) 24px;
+  margin-bottom: var(--dh-summary-head-mb);
+  border-bottom: 1px solid var(--dh-hairline);
+}
+.dh-summary__title {
+  margin-bottom: 10px;
+  color: var(--dh-strong);
+  font-family: var(--dh-gilroy);
+  font-size: 27px;
+  font-weight: 700;
+}
+.dh-summary__count {
+  color: var(--dh-strong);
+  font-family: var(--dh-proxima);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* .subtotalPrice / .taxEstimate / .totalPrice share this row shape */
+.dh-summary__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 8px;
+}
+.dh-summary__row--sub { margin-bottom: 18px; }
+.dh-summary__row--sub .dh-summary__rowtitle { font-size: 17px; font-weight: 600; }
+.dh-summary__row--sub .dh-summary__rowprice { font-size: 23px; font-weight: 800; }
+.dh-summary__row--tax {
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--dh-hairline);
+  color: #979797;
+}
+.dh-summary__row--tax .dh-summary__rowtitle { color: #979797; font-size: 15px; font-weight: 500; }
+.dh-summary__row--tax .dh-summary__rowprice { color: #979797; font-size: 18px; font-weight: 500; }
+.dh-summary__row--total { margin-bottom: 50px; }
+.dh-summary__rowtitle {
+  color: var(--dh-strong);
+  font-family: var(--dh-proxima);
+  font-size: 24px;
+  font-weight: 600;
+}
+.dh-summary__rowprice {
+  color: var(--dh-strong);
+  font-family: var(--dh-gilroy);
+  font-size: 27px;
+  font-weight: 800;
+}
+
+/* .submitOrder — buttonSimple in DreamHost blue, taller and rounder */
+.dh-summary__submitwrap { padding: 0 8px; }
+.dh-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--dh-submit-h);
+  margin-bottom: var(--dh-submit-mb);
+  border: 0;
+  border-radius: 15px;
+  background: var(--dh-action);
+  color: #fff;
+  font-family: var(--dh-proxima);
+  font-size: var(--dh-submit-font);
+  font-weight: 600;
+  line-height: 16px;
+  transition: background 0.2s ease-out;
+}
+.dh-submit:hover { background: var(--dh-action-hover); }
+.dh-submit:disabled { background: #fff; border: 1px solid rgba(0, 0, 0, 0.25); color: rgba(0, 0, 0, 0.5); pointer-events: none; }
+
+/* .defaultDisclaimer-UYhXW — the blue-tinted legal block */
+.dh-disclaimer {
+  width: 100%;
+  padding: var(--dh-disclaimer-pad);
+  margin-bottom: 20px;
+  border: 1px solid rgba(0, 60, 215, 0.07);
+  border-radius: 20px;
+  background: rgba(0, 60, 215, 0.05);
+  text-align: center;
+}
+.dh-disclaimer p {
+  margin: 0;
+  color: var(--dh-ink);
+  font-family: var(--dh-proxima);
+  font-size: 13px;
+  font-weight: 700;
+}
+.dh-disclaimer p:not(:last-child) { margin-bottom: 12px; }
+.dh-disclaimer a { color: var(--dh-ink); text-decoration: underline; }
+
+/* ============================================================ empty cart
+   .emptyProducts / .emptyProductsPage — 660px white card, illustration above
+   two centred lines. Kept because it is a state of this screen, even though
+   the prototype's flow never arrives with an empty cart. */
+.dh-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 660px;
+  border-radius: 20px;
+  background: var(--dh-surface);
+  box-shadow: var(--dh-card-shadow);
+}
+.dh-empty__text { margin-top: 40px; text-align: center; }
+.dh-empty__title {
+  margin: 0 0 18px;
+  color: var(--dh-ink);
+  font-family: var(--dh-gilroy);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+}
+.dh-empty__title span { color: var(--dh-blue); }
+.dh-empty__desc {
+  margin: 0;
+  color: #515f67;
+  font-family: var(--dh-proxima);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 21px;
+}
+
+/* ==========================================================================
+ * The cart's own responsive bands, in the panel's order. 1280–1512 comes AFTER
+ * 1280–1949 in the original stylesheet and therefore wins inside its range —
+ * that ordering is reproduced here rather than rationalised.
+ * ========================================================================== */
+
+@media (min-width: 1024px) and (max-width: 1949px) {
+  .dh-panel {
+    --dh-summary-head-pad-x: 8px;
+    --dh-summary-head-mb: 35px;
+    --dh-info-mb: 32px;
+    --dh-name-mb: 9px;
+    --dh-submit-h: 56px;
+    --dh-submit-font: 17px;
+  }
+  .dh-tile__name { line-height: 1em; }
+  .dh-tile__sub { line-height: 1em; }
+  /* The summary's own type comes down a step in this band. */
+  .dh-summary__title { font-size: 24px; }
+  .dh-summary__row--total { margin-bottom: 30px; }
+  .dh-summary__row--total .dh-summary__rowtitle { font-size: 17px; }
+  .dh-summary__row--total .dh-summary__rowprice { font-size: 24px; }
+  .dh-summary__row--sub .dh-summary__rowtitle { font-size: 14px; }
+  .dh-summary__row--sub .dh-summary__rowprice { font-size: 16px; }
+  .dh-summary__row--tax .dh-summary__rowtitle { font-size: 14px; }
+  .dh-summary__row--tax .dh-summary__rowprice { font-size: 16px; }
+}
+
+@media (min-width: 1280px) and (max-width: 1949px) {
+  .dh-panel {
+    --dh-cart-pad: 56px;
+    --dh-cart-title: 32px;
+    --dh-summary-w: 472px;
+    --dh-tile-pad: 32px;
+    --dh-group-pad-top: 40px;
+    --dh-submit-mb: 40px;
+    --dh-disclaimer-pad: 32px 24px;
+  }
+  .dh-cart__products { padding: 24px 48px; }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .dh-panel {
+    --dh-cart-pad: 32px;
+    --dh-summary-w: 360px;
+    --dh-summary-pad: 24px;
+    --dh-tile-pad: 32px;
+  }
+  .dh-cart__products { padding: 24px 32px; }
+}
+
+@media (min-width: 1280px) and (max-width: 1512px) {
+  .dh-panel {
+    --dh-cart-pad: 30px;
+    --dh-summary-w: 376px;
+    --dh-summary-pad: 30px;
+  }
+  .dh-cart__products { padding: 24px 30px; }
+}
+
+/* Below 1024 the panel turns the summary into a fixed bottom sheet and drops
+   the sidebar. The prototype is demoed on a desktop; this band exists so a
+   narrow window degrades the way the real page does rather than breaking. */
+@media (max-width: 1023px) {
+  .dh-panel { --dh-cart-pad: 24px; --dh-tile-pad: 16px; }
+  .dh-sidebar { display: none; }
+  .dh-main { flex-direction: column; overflow-y: auto; }
+  /* The panel indents these labels by 16px once the card goes edge to edge
+     (`pl:{xs:2}` on the Typography), and the fixed summary sheet needs room
+     under the last card. */
+  .dh-cart__products { padding: 10px 0 340px; }
+  .dh-section__label, .dh-recos .dh-section__label { padding-left: 16px; }
+  .dh-summary { max-height: 46vh; }
+  .dh-group { border-radius: 0; box-shadow: none; }
+  .dh-summary {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    min-height: 84px;
+    padding: 24px;
+    border-left: 0;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 0 57px rgba(0, 0, 0, 0.16);
+    z-index: 101;
+  }
+  .dh-summary__header { padding: 0 0 24px; margin-bottom: 24px; }
+  .dh-summary__title { font-size: 16px; margin-bottom: 8px; }
+  .dh-summary__count { font-size: 13px; }
+  .dh-summary__row--total { margin-bottom: 24px; }
+  .dh-submit { margin-bottom: 0; }
+  .dh-disclaimer { display: none; }
+  .dh-tile__info { flex-direction: column; gap: 16px; }
+  .dh-tile__price { min-width: 0; padding-left: 0; flex-direction: row-reverse; align-items: center; justify-content: space-between; width: 100%; }
+  .dh-tile__amount { margin-bottom: 0; }
+  .dh-remove { width: 48px; height: 48px; margin-left: 7px; border-color: transparent; }
+}
