@@ -54,13 +54,29 @@ export interface LineCopy {
   /** The second line. `bold` is rendered in 700, as the panel renders "Build:". */
   sub: { bold?: string; text: string }
   amount: number
-  /** e.g. "First year at" — sits to the left of the figure. */
+  /**
+   * The promo label to the LEFT of the figure — "First year", "First month" — or ''
+   * when the line carries no promotion. Taken from a live two-product capture
+   * (19 Aug 2026): a discounted line reads "First 3 months $29.50/mo." with
+   * "then $59.00/mo." beneath, and an undiscounted one is just "$3.00/mo.".
+   */
   termLabel: string
-  /** e.g. "Renews at $19.99 yearly" — the honest number, never hidden. */
-  renewal: { prefix: string; amount: string; suffix: string }
+  /** "/mo." or "/yr." — the panel prints the cycle right after the figure. */
+  cycle: string
+  /** The "then $X/mo." line, or null when the price does not step up. */
+  then: { amount: string; cycle: string } | null
   /** The label inside the line's select control. */
   option: string
+  /** What that select offers. Value is years for a domain, a term for the plan. */
+  options: { value: string; label: string }[]
 }
+
+/** Registration terms offered on a domain line. The panel's real list is unknown —
+ *  this is a sensible 1–5, labelled the way its code pluralises ("{{count}} Year(s)"). */
+const YEAR_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  value: String(n),
+  label: n === 1 ? '1 Year' : `${n} Years`,
+}))
 
 export function lineCopy(line: CartLine): LineCopy {
   if (line.kind === 'domreg') {
@@ -68,33 +84,42 @@ export function lineCopy(line: CartLine): LineCopy {
     const tld = tldOf(domain)
     const years = line.years ?? 1
     const price = priceFor(tld) ?? priceFor('.com')!
+    const promo = price.register !== price.renew
     return {
       product: 'domreg',
       name: domain,
       // `.{{tld}} domain registration` — the panel's own title for a domreg line.
       sub: { text: `${tld} domain registration` },
       amount: domainAmount(tld, years),
-      termLabel: years === 1 ? 'First year at' : `First ${years} years at`,
-      renewal: {
-        prefix: 'Renews at ',
-        amount: money(price.renew),
-        suffix: years === 1 ? ' yearly' : ` ${years} years`,
-      },
+      // A .com is $9.99 the first year and $19.99 after, so the line is a promo and
+      // carries the step-up. A TLD that renews at its registration price shows a
+      // bare figure, like DreamShield's $3.00/mo. in the capture.
+      termLabel: promo ? (years === 1 ? 'First year' : `First ${years} years`) : '',
+      cycle: '/yr.',
+      then: promo ? { amount: money(price.renew), cycle: '/yr.' } : null,
       option: years === 1 ? '1 Year' : `${years} Years`,
+      options: YEAR_OPTIONS,
     }
   }
 
   const term = line.term ?? 'yearly'
   const plan = PLAN[term]
+  const promo = plan.first !== plan.renew
   return {
     product: 'remixer',
     name: 'Remixer',
     // The panel prints the plan as "Build:" + the credit grant.
     sub: { bold: 'Build:', text: `${PLAN_CREDITS.toLocaleString('en-US')} Credits/mo` },
     amount: plan.first,
-    termLabel: `${plan.label} at`,
-    renewal: { prefix: 'Renews at ', amount: money(plan.renew), suffix: ` ${plan.cycle}` },
+    // Monthly is $9.99 then $14.99, so it reads as a promo; yearly is flat.
+    termLabel: promo ? 'First month' : '',
+    cycle: term === 'yearly' ? '/yr.' : '/mo.',
+    then: promo ? { amount: money(plan.renew), cycle: '/mo.' } : null,
     option: `${plan.label} Plan`,
+    options: [
+      { value: 'monthly', label: 'Monthly Plan' },
+      { value: 'yearly', label: 'Yearly Plan' },
+    ],
   }
 }
 

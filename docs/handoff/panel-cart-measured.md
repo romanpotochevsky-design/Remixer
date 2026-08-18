@@ -106,6 +106,43 @@ prototype keeps the desktop chrome at every width; the cart column, which is wha
 asked for, honours all five bands. Worth knowing before anyone reviews the prototype
 in a narrow window.
 
+## 3a. The card model, the price block and the dropdowns
+
+A second and third capture (**19 Aug 2026**: two products in the cart, and a dropdown
+open) settled three things that one screenshot could not.
+
+**One card per product, not per cart.** DreamCare and DreamShield sit in two separate
+white cards 24px apart (`.productGroup:not(:first-child) { margin-top: 24px }`).
+Several items of the *same* product share a card and are divided by the tile's own
+`border-top`. So a domain plus the plan is two cards.
+
+**The price block has two shapes.** A discounted line reads the promo period to the
+left of the figure and the step-up beneath it — `First 3 months $29.50/mo.` over
+`then $59.00/mo.` — while an undiscounted one is just `$3.00/mo.` with nothing under
+it. The figure is Gilroy 20/600 and its cycle rides tight against it in the body face;
+`then …` is 14px at 70% with the amount in Gilroy. A discounted *product* also carries
+an amber pill, `ⓘ Total savings $29.50` (`#ffecb3`, radius 17, padding 4 8, 14/500,
+amount in Gilroy 600).
+⚠️ **A domain line never shows that pill** — the checkout registers `domreg` with
+`DiscountComponent: () => null`. Confirmed in code, so its absence here is correct.
+
+**Dropdowns** (`.selectPlanDropdown` / `.selectDomainDropdown`, identical recipe):
+white sheet, radius 15, shadow `1px 16px 72px rgba(0,0,0,.2)`, padding `8px 5px 8px 0`,
+the list `max-height: 296px` with `padding: 8px 2px 0` and a 4px thin scrollbar. Rows
+are 56px, Proxima 16/600, `padding: 0 20px`, `margin-top: 2px` (first row 0), colour
+`#071c27`; hover or selected fills `#f2f3f5` at radius 12, pressing fills `#c9d5f0`,
+transition `background-color .2s ease-out`. The sheet is the trigger's width, drops
+~8px below it and hangs over whatever follows.
+⚠️ The trigger's documented open state is a 2px `#3a27af` border
+(`.buttonSelect.active`), but the capture of an open dropdown shows **a plain grey
+fill** instead — the capture wins here.
+⚠️ The domain-picker variant also carries a 64px search bar (magnifier at left 18px,
+input padded 35px, bottom border `#e1e3e1`). Not needed for a term or plan select.
+
+In the prototype the selects work: a domain line offers 1–5 years, the plan line
+Monthly/Yearly, and both feed the totals through the panel's own multi-year formula.
+The 1–5 list is ours — the panel's real range was not captured.
+
 ## 4. Copy — verbatim, do not paraphrase
 
 ```
@@ -122,8 +159,11 @@ cart. Cancel anytime via your account.
 Line-item strings, from the checkout bundle:
 
 - domain title = the domain itself; second line = `.{tld} domain registration`
-- price label = `First year at` / `First {n} years at` / `Yearly at` / `Monthly at`
-- renewal = `Renews at {amount} yearly|monthly|{n} years`
+- price label = `First year` / `First {n} years` / `First {n} months` (observed), and
+  a second family in code that appends "at" (`{{planTermLabel}} at`) belonging to the
+  promo-code component — the observed form is what ships here
+- step-up = `then {amount}/mo.` (observed) — `Renews at {amount} yearly|monthly` also
+  exists in the bundle for the promo-code component
 - plan select = `Monthly Plan` · `Yearly Plan` · `2 Year Plan` · `3 Year Plan` · `4 Year Plan`
 - the Remixer line prints **`Build:` + the credit grant** ("Build: 1,000 Credits/mo")
 - catalogue: `Domain Registration` — "Find the perfect domain name for your website.";
@@ -167,10 +207,10 @@ Two consequences worth keeping in mind:
 
 ## 7. Still missing — the next capture
 
-1. **A domain actually in the cart.** The capture holds DreamShield, whose tile has
-   two selects (domain + plan). A `domreg` line's option row is inferred: one term
-   select ("1 Year") plus the trash. The panel's own class map has no rule for the
-   domain subtitle, so it is rendered with the description style.
+1. **A domain actually in the cart.** The captures hold add-ons, whose tiles carry two
+   or three selects (domain + product + plan). A `domreg` line's option row is
+   inferred: one term select ("1 Year") plus the trash. The panel's own class map has
+   no rule for the domain subtitle, so it is rendered with the description style.
 2. **The mobile cart** (≤1023): the summary becomes a collapsed bottom sheet that
    expands. Its expanded design was not captured; the prototype shows a plain sheet.
 3. **Error states**: outstanding balance, declined card. The panel's own copy for

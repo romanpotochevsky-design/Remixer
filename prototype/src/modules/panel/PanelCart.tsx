@@ -160,8 +160,36 @@ function Sidebar() {
 
 /* -------------------------------------------------------------- line items */
 
-function Tile({ line, onRemove }: { line: CartLine; onRemove: () => void }) {
+/**
+ * One card per product type, in the order the customer added them.
+ *
+ * The panel groups the cart by product: a second capture (two products) shows
+ * DreamCare and DreamShield as two separate white cards 24px apart, while several
+ * items of the SAME product share one card and are divided by a hairline. Buying a
+ * domain and the plan together therefore yields two cards, not one.
+ */
+function groupByKind(lines: CartLine[]) {
+  const groups: { line: CartLine; index: number }[][] = []
+  lines.forEach((line, index) => {
+    const existing = groups.find((g) => g[0].line.kind === line.kind)
+    if (existing) existing.push({ line, index })
+    else groups.push([{ line, index }])
+  })
+  return groups
+}
+
+function Tile({
+  line, onRemove, onChange, openSelect, setOpenSelect, id,
+}: {
+  line: CartLine
+  onRemove: () => void
+  onChange: (value: string) => void
+  openSelect: string | null
+  setOpenSelect: (id: string | null) => void
+  id: string
+}) {
   const copy = lineCopy(line)
+  const open = openSelect === id
   return (
     <div className="dh-tile">
       <div className="dh-tile__info">
@@ -179,28 +207,53 @@ function Tile({ line, onRemove }: { line: CartLine; onRemove: () => void }) {
           </span>
         </div>
 
+        {/* "First year $9.99/yr." over "then $19.99/yr." — the shape a discounted
+            line takes in the panel. An undiscounted line drops both extras. */}
         <div className="dh-tile__price">
           <span className="dh-tile__amount">
-            <span className="dh-tile__term">{copy.termLabel}</span>
-            {money(copy.amount)}
+            {copy.termLabel && <span className="dh-tile__term">{copy.termLabel}</span>}
+            <span className="dh-tile__figure">
+              {money(copy.amount)}
+              <span className="dh-tile__cycle">{copy.cycle}</span>
+            </span>
           </span>
-          <span className="dh-tile__renew">
-            {copy.renewal.prefix}
-            <span>{copy.renewal.amount}</span>
-            {copy.renewal.suffix}
-          </span>
+          {copy.then && (
+            <span className="dh-tile__renew">
+              then <span>{copy.then.amount}</span>{copy.then.cycle}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* The joined select pair plus the trash button. Only the trash does anything
-          here: the dropdowns exist in the capture, their menus do not. */}
       <div className="dh-tile__options">
         <div className="dh-selects">
           <div className="dh-select">
-            <button>
+            <button
+              data-open={open}
+              aria-expanded={open}
+              onClick={() => setOpenSelect(open ? null : id)}
+            >
               <span className="dh-select__value">{copy.option}</span>
               <span className="dh-select__chev"><DhChevron /></span>
             </button>
+            {open && (
+              <div className="dh-select__menu" role="listbox">
+                <div className="dh-select__list">
+                  {copy.options.map((o) => (
+                    <button
+                      key={o.value}
+                      className="dh-select__option"
+                      role="option"
+                      aria-selected={o.label === copy.option}
+                      data-selected={o.label === copy.option}
+                      onClick={() => { onChange(o.value); setOpenSelect(null) }}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <button className="dh-remove" onClick={onRemove} aria-label={`Remove ${copy.name}`}>
@@ -294,6 +347,8 @@ export function PanelCart() {
   const { world, set } = useWorld()
   const { panel, closePanel, goDomains } = useUI()
   const [submitting, setSubmitting] = useState(false)
+  /** Which line's select is open, by tile id — one at a time, as in the panel. */
+  const [openSelect, setOpenSelect] = useState<string | null>(null)
 
   const open = panel === 'cart'
   const lines = world.cart
@@ -306,13 +361,30 @@ export function PanelCart() {
     set({ domain: 'searching' })
   }
 
+  /* Escape closes an open dropdown first and the page only when nothing is open —
+     otherwise one keystroke would throw the customer out of checkout. */
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') back() }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (openSelect) setOpenSelect(null)
+      else back()
+    }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open, openSelect])
+
+  /* A click anywhere else dismisses the menu. Captured on the panel's own root, so
+     it cannot fire for clicks outside this surface. */
+  useEffect(() => {
+    if (!openSelect) return
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement)?.closest('.dh-select')) setOpenSelect(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [openSelect])
 
   /* Submitting is the one step with a real wait in it: the panel charges the card and
      provisions before it hands anything back. Compressed, but not to zero — the flow
@@ -337,6 +409,17 @@ export function PanelCart() {
 
   const removeLine = (i: number) =>
     set({ cart: lines.filter((_, n) => n !== i) })
+
+  /** Applying a choice: years on a domain line, billing term on the plan line.
+   *  Both feed straight back into the totals. */
+  const changeLine = (i: number, value: string) =>
+    set({
+      cart: lines.map((line, n) =>
+        n !== i ? line
+          : line.kind === 'domreg' ? { ...line, years: Number(value) }
+          : { ...line, term: value as 'monthly' | 'yearly' },
+      ),
+    })
 
   return (
     <AnimatePresence>
@@ -378,16 +461,24 @@ export function PanelCart() {
                   {lines.length > 0 ? (
                     <>
                       <div className="dh-section">
+                        {/* The count is items, not cards — two products in two cards
+                            still read "Your order (2)" in the capture. */}
                         <p className="dh-section__label">Your order ({lines.length})</p>
-                        <div className="dh-group">
-                          {lines.map((line, i) => (
-                            <Tile
-                              key={`${line.kind}-${line.domain ?? i}`}
-                              line={line}
-                              onRemove={() => removeLine(i)}
-                            />
-                          ))}
-                        </div>
+                        {groupByKind(lines).map((group) => (
+                          <div className="dh-group" key={group[0].line.kind}>
+                            {group.map(({ line, index }) => (
+                              <Tile
+                                key={`${line.kind}-${line.domain ?? index}`}
+                                id={`${line.kind}-${index}`}
+                                line={line}
+                                onRemove={() => removeLine(index)}
+                                onChange={(value) => changeLine(index, value)}
+                                openSelect={openSelect}
+                                setOpenSelect={setOpenSelect}
+                              />
+                            ))}
+                          </div>
+                        ))}
                       </div>
                       <Recommendation />
                     </>

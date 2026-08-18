@@ -523,7 +523,11 @@
   font-weight: 600;
 }
 
-/* .productGroup-B7W88 — the white card the line items live on */
+/* .productGroup-B7W88 — the white card line items live on.
+   One card per product GROUP, not per cart: a second capture (two products, 19 Aug
+   2026) shows DreamCare and DreamShield in two separate cards 24px apart, so items
+   of the same type share a card and different types get their own. Several tiles
+   inside one card are separated by the tile's own border-top. */
 .dh-group {
   width: 100%;
   padding: var(--dh-group-pad-top) 0 24px;
@@ -531,6 +535,7 @@
   background: var(--dh-surface);
   box-shadow: var(--dh-card-shadow);
 }
+.dh-group:not(:first-child) { margin-top: 24px; }
 
 /* .productTile-oQaoZ */
 .dh-tile {
@@ -612,6 +617,10 @@
   font-weight: 600;
   white-space: nowrap;
 }
+/* "$29.50/mo." is set tight — the 6px gap above separates the promo label from the
+   figure, never the figure from its cycle. */
+.dh-tile__figure { display: inline-flex; align-items: baseline; }
+.dh-tile__cycle { font-family: var(--dh-proxima); font-size: 16px; font-weight: 500; }
 /* .term-eGIiB — the "First year at" / "Yearly at" label beside the figure */
 .dh-tile__term {
   color: #000;
@@ -619,6 +628,8 @@
   font-size: 14px;
   font-weight: 500;
 }
+/* The step-up line: "then $59.00/mo." in the capture — quieter than the figure,
+   with the amount in Gilroy. */
 .dh-tile__renew {
   color: #000;
   font-family: var(--dh-proxima);
@@ -629,7 +640,66 @@
 }
 .dh-tile__renew span { font-family: var(--dh-gilroy); font-weight: 600; }
 
+/* ===================================================== select dropdowns
+   .selectPlanDropdown-NiX6P / .selectDomainDropdown-jjUHX — same recipe for both:
+   a white sheet under the trigger, 56px rows that round to 12px when highlighted.
+   ⚠️ The trigger's documented open state is a 2px #3a27af border
+   (`.buttonSelect.active`), but the capture of an OPEN dropdown shows a plain grey
+   fill instead, so that is what ships here. */
+.dh-select > button[data-open='true'] { background: #f2f3f5; }
+
+.dh-select__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 8px 5px 8px 0;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 1px 16px 72px rgba(0, 0, 0, 0.2);
+}
+.dh-select__list {
+  width: 100%;
+  max-height: 296px;
+  padding: 8px 2px 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+.dh-select__list::-webkit-scrollbar { width: 4px; }
+.dh-select__list::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.01); border-radius: 32px; }
+.dh-select__list::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 32px; }
+.dh-select__option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 56px;
+  margin-top: 2px;
+  padding: 0 20px;
+  border: 0;
+  background: transparent;
+  color: var(--dh-ink);
+  font-family: var(--dh-proxima);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: left;
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color 0.2s ease-out;
+}
+.dh-select__option:first-child { margin-top: 0; }
+.dh-select__option:hover,
+.dh-select__option[data-selected='true'] { background: #f2f3f5; border-radius: 12px; }
+.dh-select__option:active { background: #c9d5f0; border-radius: 12px; }
+
 /* .options-b3OXm — the joined select pair plus the trash button */
+/* No overflow clipping here: an open dropdown hangs over the card below, as it
+   does in the panel. */
 .dh-tile__options { display: flex; margin-bottom: 24px; }
 .dh-selects { display: flex; width: 100%; }
 .dh-select {
@@ -660,7 +730,9 @@
 .dh-select:only-child > button { border-radius: 12px; border-right: 1px solid var(--dh-select-border); }
 .dh-select:hover > button { border-color: var(--dh-select-hover); }
 .dh-select:active > button { background: var(--dh-select-active-bg); border-color: var(--dh-blue); }
-.dh-select > button:focus-visible { border: 2px solid #3a27af; }
+/* Only while closed: once the menu is down, the menu itself is the cue, and the
+   capture shows the open trigger with a plain border. */
+.dh-select > button:not([data-open='true']):focus-visible { border: 2px solid #3a27af; }
 .dh-select__value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dh-select__chev { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 
