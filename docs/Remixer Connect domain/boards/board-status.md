@@ -5,7 +5,7 @@
 > sections ①–㉘ plus mobile and a few non-domain frames.
 >
 > Audited **19 Aug 2026** against the verified research in
-> `docs/research/domain-search-research.md` and the product facts in `CLAUDE.md`.
+> `docs/Remixer Connect domain/research/domain-search-research.md` and the product facts in `CLAUDE.md`.
 > The designer's instruction was to work out which boards the DreamHost research
 > has since invalidated, and put those aside without touching what still holds.
 >

@@ -45,6 +45,21 @@ AI-билдера сайтов от DreamHost. **Он не программис�
 Cloudflare, Squarespace, Webflow, Canva, Wix Studio, 10Web, Durable,
 WordPress-когорта (главная слепая зона — база DreamHost это WordPress).
 
+## Где что лежит
+
+⚠️ **Две тематические папки — точка входа для новой сессии.** В каждой `README.md`
+написан как брифинг «поднять работу с нуля»: что построено, где код, какие решения
+закрыты, какие вопросы открыты, какие факты проверены. Правило деления: **папку
+определяет поверхность** — как выглядит и ведёт себя панель Publish лежит в одной,
+как человек получает/подключает/переносит домен — в другой; на стыке обе ссылаются
+друг на друга.
+
+- `docs/Remixer Connect domain/` — домены целиком: поиск, покупка, подключение своего,
+  трансфер, состояния до момента «сайт отвечает». Внутри `boards/`, `research/`,
+  `panel-cart/`, `frames/`.
+- `docs/Remixer Publish/` — панель Publish: хром, счётчик изменений, поле адреса,
+  строка домена. Внутри `panel-v2.md` — собранная спека с замерами.
+
 ## База знаний — что где лежит
 
 - `docs/audits/synthesis.md` — полный конкурентный аудит Q3 2026 (~97 тыс. знаков, 10 разделов):
@@ -62,7 +77,7 @@ WordPress-когорта (главная слепая зона — база Drea
 - `docs/research/recon_dossiers.json` — сырьё: 6 досье по конкурентам.
 - `docs/research/lenses.json` — 6 UX-линз.
 - `docs/research/factcheck_corrections.json` — поправки фактчека.
-- `docs/research/domain-search-research.md` — глубокий ресёрч умного поиска доменов
+- `docs/Remixer Connect domain/research/domain-search-research.md` — глубокий ресёрч умного поиска доменов
   (5 агентов, 433 запроса): факты DreamHost, UX поиска у 10 конкурентов, AI-подсказки,
   «свой домен», техническая детекция (RDAP, PSL, Domain Connect-проба).
 - **Фигма-страница «🧭 Domain flows · 2 цепочки целиком»** (`28247:3810`, создана 19.08.2026):
@@ -83,10 +98,10 @@ WordPress-когорта (главная слепая зона — база Drea
 - `.claude/settings.local.json` (в .gitignore, репозиторий публичный) — локальное
   разрешение `mcp__Figma`: инструменты Figma работают без permission-промптов.
   Дизайнер устал от «Allow once» 19.08.2026 — не удалять.
-- `docs/handoff/domain-connection-design-handoff.md` — хендофф домен-флоу и publish-панели.
+- `docs/Remixer Connect domain/boards/design-handoff.md` — хендофф домен-флоу и publish-панели.
   Figma: https://www.figma.com/design/GP4jNXtc37VTFVZDc9JF0a/AI-Website-Builder,
   страница «Domain Connection Flow». Выбранное направление publish-панели — «Launchpad» (⑥-A).
-- `docs/handoff/panel-cart-measured.md` — **замеры корзины панели хостинга** по
+- `docs/Remixer Connect domain/panel-cart/measured.md` — **замеры корзины панели хостинга** по
   сохранённой странице (`?tree=checkout.dashboard`, снято дизайнером 18.08.2026):
   токены светлой темы, геометрия по всем пяти брейкпоинт-бэндам, дословный копирайт,
   что обведено с оригинала и что нарисовано нами, и что ещё нужно снять (домен в корзине,
@@ -98,7 +113,7 @@ WordPress-когорта (главная слепая зона — база Drea
   ровно то, что обещал шит («Connects automatically after checkout»).
   ⚠️ Сама сохранённая страница в репозиторий НЕ кладётся: в ней куки сессии,
   идентификаторы аккаунта и аватар пользователя, а репозиторий публичный.
-- `docs/handoff/panel-cart-reference-request.md` — история того же вопроса: почему
+- `docs/Remixer Connect domain/panel-cart/reference-request.md` — история того же вопроса: почему
   первая попытка встала (корзина за логином, сеть сессии её не пускает) и как это
   разрулилось. Читать, когда снова надо будет скопировать экран из-под логина.
 - `maintenance-page/` — готовая maintenance-страница (актуальная версия: кнопка 56px pill
@@ -493,7 +508,7 @@ Segoe на винде, DejaVu в Linux-браузере — три разных 
   `App.tsx` поверх всего). Submit Order → 1.5 с «Placing your order…» → возврат в
   билдер с `account: 'paid'`, кредитами и `domain: 'connecting'`; Back → возврат без
   оплаты, корзина сохраняется (как в реальной панели), экран доменов остаётся тем же.
-  Замеры и копирайт — `docs/handoff/panel-cart-measured.md`; каждое значение в
+  Замеры и копирайт — `docs/Remixer Connect domain/panel-cart/measured.md`; каждое значение в
   `panel-cart.css` подписано исходным классом панели.
   ⚠️ **Это чужая дизайн-система, и она живёт в своём неймспейсе `.dh-panel`.** Светлые
   поверхности, синий #003cd7, радиусы до 20, Gilroy 800 — ничего из этого не подгонять

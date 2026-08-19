@@ -39,7 +39,7 @@ shown to product owners as if it were the real one.
 ## 2. What IS verified about the panel purchase flow
 
 Copy and behaviour from DreamHost's own KB (via search snippets, 18 Aug 2026) plus the
-earlier domain research (`docs/research/domain-search-research.md`):
+earlier domain research (`docs/Remixer Connect domain/research/domain-search-research.md`):
 
 - **[verified]** Panel path: *Find New Domains* → type the name → **Search** → **`Add For $`**
   → "to the right you'll see it's been added to your cart" → **choose how many years** →

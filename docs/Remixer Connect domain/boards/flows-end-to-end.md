@@ -15,7 +15,7 @@
 ## 1. The DreamHost mechanics that decide the shape of both flows
 
 Everything here is `[verified]` from DreamHost's own help centre via
-`docs/research/domain-search-research.md`, except where marked otherwise.
+`docs/Remixer Connect domain/research/domain-search-research.md`, except where marked otherwise.
 
 | fact | value | source status |
 |---|---|---|
