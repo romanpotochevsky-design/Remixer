@@ -243,10 +243,21 @@ export function PublishPanel() {
           {/* The panel inflates first, its contents arrive a beat later (motion.ts rule 3). */}
           <motion.div variants={popoverContent}>
           {/* -------------------------------------------------------- header, 64px */}
-          <div className="flex h-16 items-center pl-6">
+          <div className="flex h-16 items-center justify-between pl-6 pr-5">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">
               {t({ en: 'Publish', uk: 'Публікація' })}
             </h3>
+            {/* Visitors sit in the header, opposite the title: it is a fact about the
+                site as a whole, not about the address or the domain, so it belongs
+                above the card rather than inside one of its sections. */}
+            <span
+              className="flex items-center gap-1.5 text-[13px] font-medium text-[#ffffffb8]"
+              title={t({ en: 'Visitors', uk: 'Відвідувачі' })}
+            >
+              <IconVisitors size={20} />
+              {/* A new site with no traffic reads 0, and that is the truth. */}
+              <span className="font-display tabular-nums">0</span>
+            </span>
           </div>
 
           {/* ---------------------------------------------------------- body card */}
@@ -271,11 +282,6 @@ export function PublishPanel() {
                   <UrlField value={customDomain} live />
                 ) : (
                   <UrlField value={staging} suffix=".remixer.site" />
-                )}
-                {live && (
-                  <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
-                    {t({ en: 'Secure padlock on · anyone can visit.', uk: 'Захисний замочок увімкнено · сайт доступний усім.' })}
-                  </p>
                 )}
               </div>
               </div>
@@ -370,19 +376,18 @@ export function PublishPanel() {
                   the dashed invitation above can stay an invitation rather than doubling
                   as navigation. */}
               <div className="border-t border-[#ffffff0a] px-2 py-4">
-                <div className="flex items-center justify-between px-2">
-                  <button
-                    className="flex h-8 items-center gap-0.5 rounded-[8px] py-2.5 pl-1 pr-4 text-[13px] font-medium text-[#ffffffb8] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
-                    aria-label={t({ en: 'Visitors', uk: 'Відвідувачі' })}
-                    title={t({ en: 'Visitors', uk: 'Відвідувачі' })}
-                  >
-                    <span className="grid h-6 w-6 flex-none place-items-center">
-                      <IconVisitors size={20} />
-                    </span>
-                    {/* A real site with no traffic yet reads 0, and that is the truth.
-                        Wire this to analytics the day the panel has any. */}
-                    <span className="font-display tabular-nums">0</span>
-                  </button>
+                <div className="flex items-center justify-between gap-4 px-2">
+                  {/* How the site is doing, in words, facing the way to change it.
+                      This is where the padlock line lives now: beside "Manage domains"
+                      it reads as the site's standing, whereas under the field it read
+                      as a footnote to the address. */}
+                  <p className="min-w-0 truncate pl-2 text-[13px] leading-[1.4] text-[#ffffff8f]">
+                    {live
+                      ? t({ en: 'Secure padlock on · anyone can visit.', uk: 'Захисний замочок увімкнено · сайт доступний усім.' })
+                      : resolves
+                        ? t({ en: 'Live · secure padlock switching on.', uk: 'Онлайн · замочок вмикається.' })
+                        : t({ en: 'Preview address · hidden from search engines.', uk: 'Адреса попереднього перегляду · закрита від пошукових систем.' })}
+                  </p>
 
                   <button
                     onClick={() => openDomains('home')}
