@@ -12,31 +12,48 @@
  * that changes with entitlement: trial sells the plan, paid says it's included.
  */
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useWorld, hasPlan, domainResolves, isCustomDomainActive } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
 import { openExternalSetup } from '@/state/externalSetup'
-import { IconPlus, IconEdit, IconExternal } from '@/ui/icons'
+import { IconPlus, IconExternal, IconCopy, IconCheck, IconVisitors, IconSettings } from '@/ui/icons'
 import { popover, popoverContent } from '@/ui/motion'
 
 
 /** The inset URL field: value + muted suffix, one trailing icon button. */
+/**
+ * The address, and the one thing anybody actually wants to do with it (28071:53189).
+ *
+ * The trailing control is COPY, not edit. An address here is something you send to
+ * someone — editing it is a rare, deliberate act that belongs on the domains surface,
+ * while copying it is what happens every single time the panel opens.
+ */
 function UrlField({ value, suffix, live }: { value: string; suffix?: string; live?: boolean }) {
+  const { t } = useT()
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    /* Sandboxed embeds (the published artifact is one) reject clipboard writes, and a
+       rejected promise must not take the button down with it. */
+    try { await navigator.clipboard.writeText(value + (suffix ?? '')) } catch { /* ignore */ }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1400)
+  }
   return (
     <div className="w-full rounded-[12px] border border-[var(--white-200)]">
-      <div className="flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 pr-2">
+      <div className="flex h-12 items-center justify-between rounded-[8px] py-1 pl-4 pr-2">
         <p className="min-w-0 truncate text-[15px]">
           {live && <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--live)]" aria-hidden />}
           <span className="text-[var(--white-900)]">{value}</span>
           {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
         </p>
         <button
+          onClick={copy}
           className="grid h-8 w-8 flex-none place-items-center rounded-[8px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-[var(--white-700)]"
-          aria-label={live ? 'Open site' : 'Edit address'}
+          aria-label={t({ en: 'Copy address', uk: 'Скопіювати адресу' })}
         >
-          {live ? <IconExternal size={16} /> : <IconEdit size={18} />}
+          {copied ? <IconCheck size={14} /> : <IconCopy size={18} />}
         </button>
       </div>
     </div>
@@ -198,11 +215,10 @@ export function PublishPanel() {
    */
   const pending = world.unpublished > 0
   const n = world.unpublished
-  const primary = !pending
-    ? { en: 'Publish', uk: 'Опублікувати' }
-    : live
-      ? { en: `Update · ${n} ${n === 1 ? 'change' : 'changes'} · Free`, uk: `Оновити · змін: ${n} · Безкоштовно` }
-      : { en: `Publish · ${n} ${n === 1 ? 'change' : 'changes'} · Free`, uk: `Опублікувати · змін: ${n} · Безкоштовно` }
+  /* One verb, always. The count lives beside the button now (28071:53189), so the label
+     no longer reflows as edits land — and "changes" keeps it honest about what is being
+     published, which a bare "Publish" left ambiguous once a site was already live. */
+  const primary = { en: 'Publish changes', uk: 'Опублікувати зміни' }
 
   return (
     <AnimatePresence>
@@ -235,19 +251,21 @@ export function PublishPanel() {
 
           {/* ---------------------------------------------------------- body card */}
           <div className="px-1.5">
-            {/* Figma: Neutral Alpha/50 (#ffffff0a) for both the fill and the hairline */}
-            <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a] px-4 pb-4 pt-[19px]">
+            {/* Figma: Neutral Alpha/50 (#ffffff0a) for both the fill and the hairline.
+                The card is SECTIONED — address, then whatever the domain is doing, then
+                the stats row — each divided by the same hairline rather than by gaps.
+                Sections keep the panel one object however many states it is carrying. */}
+            <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a]">
+              <div className="px-4 pb-4 pt-[19px]">
               {/* -------------------------------------------------- website URL
                   The field shows the custom domain ONLY once it actually answers
                   (`domainResolves`). Before that it shows the staging address,
                   because a field displaying an address that does not resolve is the
                   most misleading thing this panel could do — the customer copies it,
                   sends it to someone, and it fails. */}
-              <div className="mb-[19px] flex flex-col gap-[7px]">
-                <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
-                  {resolves
-                    ? t({ en: 'Your domain', uk: 'Ваш домен' })
-                    : t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
+              <div className="flex flex-col gap-[7px]">
+                <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[#ffffff8f]">
+                  {t({ en: 'Website URL', uk: 'Адреса сайту' })}
                 </p>
                 {resolves ? (
                   <UrlField value={customDomain} live />
@@ -260,6 +278,7 @@ export function PublishPanel() {
                   </p>
                 )}
               </div>
+              </div>
 
               {/* ------------------------------------------------- the domain row
                   Its own row, never the panel's primary button: the primary belongs
@@ -268,7 +287,7 @@ export function PublishPanel() {
                   hurry. So the domain's action is a ghost, on its own line. */}
               {row && (
                 <div
-                  className={`mb-4 flex items-center gap-3 rounded-[16px] border px-4 py-3.5 ${
+                  className={`mx-4 mb-4 flex items-center gap-3 rounded-[16px] border px-4 py-3.5 ${
                     row.tone === 'error'
                       ? 'border-[#e5595940] bg-[#e559590f]'
                       : 'border-[#e5c35940] bg-[#e5c3590f]'
@@ -307,7 +326,7 @@ export function PublishPanel() {
                      NA/300) and the "+" disc fills WHITE with a dark plus — the
                      row itself keeps its fill. Colours ease over the base duration
                      so the state melts in rather than snapping. */
-                  className="group flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std hover:border-[var(--white-300)]"
+                  className="group mx-4 mb-4 flex w-[calc(100%-32px)] items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std hover:border-[var(--white-300)]"
                 >
                   {/* Figma 26125:3802: NA/100 fill + 15%-white rim, not the shell glass */}
                   <span className="grid h-8 w-8 flex-none place-items-center rounded-[12px] border border-[#ffffff26] bg-[#ffffff14] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std group-hover:border-[#ffffff40] group-hover:bg-white group-hover:text-[#09090b]">
@@ -333,7 +352,7 @@ export function PublishPanel() {
                   whatever the domain is doing, this link keeps working. Flip the flag to
                   bring it back; where it finally lives is an open design question. */}
               {SHOW_STAGING_LINE && hasDomain && (
-                <div className="px-1">
+                <div className="px-5 pb-4">
                   <p className="text-[12.5px] leading-[1.4] text-[var(--white-300)]">
                     {t({ en: 'Staging address', uk: 'Адреса стейджингу' })}
                   </p>
@@ -343,24 +362,76 @@ export function PublishPanel() {
                   </p>
                 </div>
               )}
+
+              {/* ------------------------------------------------- stats section.
+                  Two low-emphasis controls facing each other across a hairline: how many
+                  people came, and the way to the domains. "Manage domains" is the panel's
+                  permanent door to that surface — it is here in every state, which is why
+                  the dashed invitation above can stay an invitation rather than doubling
+                  as navigation. */}
+              <div className="border-t border-[#ffffff0a] px-2 py-4">
+                <div className="flex items-center justify-between px-2">
+                  <button
+                    className="flex h-8 items-center gap-0.5 rounded-[8px] py-2.5 pl-1 pr-4 text-[13px] font-medium text-[#ffffffb8] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                    aria-label={t({ en: 'Visitors', uk: 'Відвідувачі' })}
+                    title={t({ en: 'Visitors', uk: 'Відвідувачі' })}
+                  >
+                    <span className="grid h-6 w-6 flex-none place-items-center">
+                      <IconVisitors size={20} />
+                    </span>
+                    {/* A real site with no traffic yet reads 0, and that is the truth.
+                        Wire this to analytics the day the panel has any. */}
+                    <span className="font-display tabular-nums">0</span>
+                  </button>
+
+                  <button
+                    onClick={() => openDomains('home')}
+                    className="flex h-8 items-center gap-1.5 rounded-[8px] py-2.5 pl-4 pr-1 text-[13px] font-semibold text-[#ffffffb8] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                  >
+                    {t({ en: 'Manage domains', uk: 'Керувати доменами' })}
+                    <span className="grid h-6 w-6 flex-none place-items-center">
+                      <IconSettings size={20} />
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ---------------------------------------------------------- button bar */}
-          <div className="flex items-center justify-end gap-2 px-4 py-4">
+          {/* ---------------------------------------------------------- button bar.
+              The count sits on the LEFT, beside a blue dot, and the button keeps one
+              constant verb. Putting the number inside the button made the label change
+              shape every time an edit landed; out here it can change freely while the
+              thing you press stays still. Blue is the action colour, and this dot is the
+              only place it appears in the panel — it says "there is something to do". */}
+          <div className="flex items-center py-4 pl-6 pr-4">
+            {pending ? (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 flex-none rounded-[4px] bg-[var(--action)]" aria-hidden />
+                <span className="text-[12px] leading-none text-[#c7ccd6]">
+                  {t({
+                    en: `${n} unpublished ${n === 1 ? 'change' : 'changes'}`,
+                    uk: `Неопублікованих змін: ${n}`,
+                  })}
+                </span>
+              </span>
+            ) : (
+              <span className="text-[12px] leading-none text-[var(--white-400)]">
+                {t({ en: 'Everything is published', uk: 'Усе опубліковано' })}
+              </span>
+            )}
+
+            <span className="flex-1" />
+
             <button
               onClick={() => set({ unpublished: 0 })}
               disabled={!pending}
-              className={`flex h-10 items-center gap-2 rounded-[10px] px-5 text-[14px] font-semibold transition-colors duration-[var(--dur-fast)] ease-std ${
+              className={`h-10 flex-none rounded-[10px] px-5 text-[14px] font-semibold leading-none transition-colors duration-[var(--dur-fast)] ease-std ${
                 pending
                   ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
                   : 'cursor-not-allowed bg-[var(--white-100)] text-[var(--white-400)]'
               }`}
             >
-              {/* The pending-changes dot. Asked for as blue; rendered WHITE because the
-                  button it sits on IS the blue — a blue dot on --action is invisible.
-                  Same signal, the only fill that reads against it. */}
-              {pending && <span className="h-1.5 w-1.5 flex-none rounded-full bg-white/90" aria-hidden />}
               {t(primary)}
             </button>
           </div>

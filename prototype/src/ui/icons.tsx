@@ -333,3 +333,52 @@ export const IconSparkleAI = ({ size = 20, className }: IconProps) => (
     />
   </svg>
 )
+
+/* ---- Publish panel V2 (Figma 28071:53189) ---- */
+
+/**
+ * Visitors — one figure in front, a second half-hidden behind it.
+ *
+ * The second figure is deliberately clipped by the first rather than drawn whole:
+ * at 20px two complete people turn into a grey smudge, while an overlap still
+ * reads as "more than one" at a glance.
+ */
+export const IconVisitors = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="9.6" cy="8.2" r="3.4" />
+    <path d="M3.4 19.2c0-3.2 2.8-5.4 6.2-5.4s6.2 2.2 6.2 5.4" strokeLinecap="round" />
+    <path d="M16.1 5.3a3.2 3.2 0 0 1 .6 6.3" strokeLinecap="round" />
+    <path d="M18 13.6c1.7.8 2.8 2.4 2.8 4.4" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * Settings — an eight-toothed gear.
+ *
+ * Solid body with a punched centre rather than an outline: at 20px an outlined gear
+ * collapses into a fuzzy ring, while a filled one keeps its teeth. The hole is a mask
+ * so the icon sits on any background — painting a "hole" in the panel's colour would
+ * break the moment the surface under it changed.
+ */
+export const IconSettings = ({ size = 24, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+    <mask id="gear-hole">
+      <rect width="24" height="24" fill="white" />
+      <circle cx="12" cy="12" r="3.4" fill="black" />
+    </mask>
+    <g mask="url(#gear-hole)" fill="currentColor">
+      <circle cx="12" cy="12" r="6.6" />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+        <rect
+          key={deg}
+          x="10.4"
+          y="2.6"
+          width="3.2"
+          height="5"
+          rx="1.1"
+          transform={`rotate(${deg} 12 12)`}
+        />
+      ))}
+    </g>
+  </svg>
+)
