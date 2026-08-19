@@ -62,21 +62,21 @@ WordPress-когорта (главная слепая зона — база Drea
 
 ## База знаний — что где лежит
 
-- `docs/audits/synthesis.md` — полный конкурентный аудит Q3 2026 (~97 тыс. знаков, 10 разделов):
+- `docs/Remixer Competitive audit/synthesis.md` — полный конкурентный аудит Q3 2026 (~97 тыс. знаков, 10 разделов):
   executive summary, разбор Lovable, per-competitor teardowns, table stakes,
   catch-up list (3 тира), overtake list (§8), design-craft правила (§9), риски.
-- `docs/audits/critique.md` — адверсариальный разбор аудита: чего не хватает, какие
+- `docs/Remixer Competitive audit/critique.md` — адверсариальный разбор аудита: чего не хватает, какие
   утверждения нельзя цитировать, где советы вредны для новичков. **Читать в паре с synthesis** —
   он исправляет перегибы аудита.
-- `docs/audits/measured-design-tokens.md` — замеры с живых сайтов: шрифты, OKLCH-палитры,
+- `docs/Remixer Competitive audit/measured-design-tokens.md` — замеры с живых сайтов: шрифты, OKLCH-палитры,
   тени, моушен Lovable/Bolt/v0/Base44/Airo (13.08.2026).
-- `docs/audits/lovable-builder-teardown.md` — живой билдер Lovable изнутри, publish-флоу по 5 состояниям.
-- `docs/audits/bolt-in-app.md` — живой Bolt изнутри.
-- `docs/audits/remixer-competitive-audit.html` — итоговый HTML-документ аудита.
+- `docs/Remixer Competitive audit/teardowns/lovable.md` — живой билдер Lovable изнутри, publish-флоу по 5 состояниям.
+- `docs/Remixer Competitive audit/teardowns/bolt.md` — живой Bolt изнутри.
+- `docs/Remixer Competitive audit/remixer-competitive-audit.html` — итоговый HTML-документ аудита.
   Опубликован как артефакт: https://claude.ai/code/artifact/df670799-1873-4556-a689-584d0f11f9f1
-- `docs/research/recon_dossiers.json` — сырьё: 6 досье по конкурентам.
-- `docs/research/lenses.json` — 6 UX-линз.
-- `docs/research/factcheck_corrections.json` — поправки фактчека.
+- `docs/Remixer Competitive audit/raw/recon_dossiers.json` — сырьё: 6 досье по конкурентам.
+- `docs/Remixer Competitive audit/raw/lenses.json` — 6 UX-линз.
+- `docs/Remixer Competitive audit/raw/factcheck_corrections.json` — поправки фактчека.
 - `docs/Remixer Connect domain/research/domain-search-research.md` — глубокий ресёрч умного поиска доменов
   (5 агентов, 433 запроса): факты DreamHost, UX поиска у 10 конкурентов, AI-подсказки,
   «свой домен», техническая детекция (RDAP, PSL, Domain Connect-проба).
@@ -169,7 +169,7 @@ Segoe на винде, DejaVu в Linux-браузере — три разных 
   ни одно свойство не инвалидирует paint покадрово** — только transform/opacity
   (наивная версия давала 9 FPS). Встроенный «губернатор качества»: телефоны и слабые
   машины автоматически получают лёгкий срез. Спецификация для девелоперов:
-  `docs/handoff/siri-glow-spec.md`.
+  `docs/Remixer Shell/siri-glow-spec.md`.
   ⚠️ Урок: Tailwind вычищает классы, собранные динамически (`siri-layer--${k}`) —
   имена классов в tsx всегда писать полными литералами.
   ⚠️ **Губернатор качества меряет ВО ВРЕМЯ работы свечения и стартует с лёгкого среза.**

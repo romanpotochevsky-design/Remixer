@@ -34,7 +34,10 @@ re-litigating settled arguments.
   before trusting any board.
 - `boards/flows-end-to-end.md` — both flows link by link, each marked drawn / missing /
   wrong, plus the DreamHost mechanics table that decides their shape.
-- `boards/design-handoff.md` — the original handoff for the domain flow and publish panel.
+- `boards/design-handoff.md` — the original handoff. Titled "Domain Connection **& Publish**
+  Flow": it covers both surfaces, so its ⑥ / ⑥-A Launchpad sections belong to
+  `docs/Remixer Publish/` as much as to this folder. Kept here because it describes this
+  Figma page.
 - `research/domain-search-research.md` — the deep research (5 agents, 433 queries): DreamHost
   facts, how search works at 10 competitors, AI suggestions, "my own domain", technical
   detection (RDAP, PSL, Domain Connect probing).

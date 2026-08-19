@@ -23,6 +23,11 @@ progress.
 | Code | `prototype/src/modules/publish/PublishPanel.tsx` |
 | Files in this folder | `panel-v2.md` — the built spec, measurement by measurement |
 
+⚠️ The original design handoff is titled **"Domain Connection *& Publish* Flow"** and covers
+both surfaces — its sections ⑥ Publish panel and ⑥-A Launchpad (the chosen direction) are
+the panel's own history. It lives with the domain work because that is the Figma page it
+describes: `docs/Remixer Connect domain/boards/design-handoff.md`.
+
 ---
 
 ## 2. What the panel is, as built
