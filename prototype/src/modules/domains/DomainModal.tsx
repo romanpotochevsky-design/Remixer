@@ -38,44 +38,17 @@ import { useEffect, useState } from 'react'
 import { useWorld, hasPlan, runDomainTimeline, CONNECT_OWN_TIMELINE } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
-import { priceFor, registrarFor } from '@/data/domains'
+import { priceFor } from '@/data/domains'
 import type { CartLine } from '@/data/cart'
-import { LogoRemixer, IconClose, IconGlobeLarge, IconLink } from '@/ui/icons'
+import { LogoRemixer, IconLink } from '@/ui/icons'
 import { modalScrim, modalSheet } from '@/ui/motion'
+import { CloseButton, GlobeTile } from './sheet-parts'
+import { openExternalSetup, setupHost } from '@/state/externalSetup'
 
 /** The two ways to pay for the plan, priced off the verified product facts. */
 type Term = 'yearly' | 'monthly'
 
 /* ------------------------------------------------------------------ pieces */
-
-/**
- * The 32px close disc (Figma 27328:11613). Black 48% + an 8%-white rim + blur —
- * the same glass recipe as the shell's controls, at the smaller radius.
- */
-function CloseButton({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      className="grid h-8 w-8 place-items-center rounded-[10px] border border-[#ffffff14] bg-[#09090b7a] text-white backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
-    >
-      <IconClose size={9} />
-    </button>
-  )
-}
-
-/**
- * The 48px globe tile the domain row hangs off. Black 64% under a 24%-white rim —
- * markedly brighter than the shell's 12% hairline, which is what makes it read as
- * a raised tile rather than an inset well.
- */
-function GlobeTile() {
-  return (
-    <span className="grid h-12 w-12 flex-none place-items-center rounded-[16px] border border-[#ffffff3d] bg-[#09090ba3] text-white backdrop-blur-[16px]">
-      <IconGlobeLarge size={24} />
-    </span>
-  )
-}
 
 /** 20px radio. Selected = white ring + a 12px white core, 4px of dark between them. */
 function Radio({ on }: { on: boolean }) {
@@ -152,7 +125,7 @@ function PlanCard({
 
 export function DomainModal() {
   const { world, set } = useWorld()
-  const { domainModal, closeDomainModal, closeSurface, openDomains, openPanel, showToast, setPendingSetup } = useUI()
+  const { domainModal, closeDomainModal, closeSurface, openPanel, showToast, setPendingSetup } = useUI()
   const { t } = useT()
   const [term, setTerm] = useState<Term>('yearly')
 
@@ -224,13 +197,18 @@ export function DomainModal() {
      *    and `pendingSetup` remembers the domain so the way back lands ON the setup
      *    screen rather than on a dashboard that has forgotten the conversation.
      */
-    if (external) {
-      closeDomainModal()
+    if (external || guard === 'external-ns') {
+      /* `external-ns` lands here too, and that closes a hole this sheet has carried
+         since it was written: its guard promised "we'll show you the two lines to
+         paste at Cloudflare" and then routed to a connecting status that showed no
+         lines at all. Same promise, now kept by the same screen. */
+      const kind = guard === 'external-ns' ? 'dh-external-ns' as const : 'external' as const
       if (paid) {
-        openDomains('external', domain)
+        openExternalSetup(domain, kind)
         return
       }
-      setPendingSetup({ kind: 'external', domain })
+      closeDomainModal()
+      setPendingSetup({ kind: guard === 'external-ns' ? 'external-ns' : 'external', domain })
       set({ cart: [{ kind: 'remixer', term }], domain: 'checkout' })
       openPanel('cart')
       return
@@ -254,6 +232,7 @@ export function DomainModal() {
        */
       closeDomainModal()
       closeSurface()
+      set({ customDomain: domain })
       showToast({ en: `Connecting ${domain}`, uk: `Підключаємо ${domain}` }, 'progress')
       runDomainTimeline(CONNECT_OWN_TIMELINE)
       return
@@ -271,7 +250,7 @@ export function DomainModal() {
        already asked for, not a second round of asking. */
     if (!buying && showPlans) setPendingSetup({ kind: 'own', domain })
 
-    set({ cart: lines, domain: 'checkout' })
+    set({ cart: lines, domain: 'checkout', customDomain: domain })
     closeDomainModal()
     openPanel('cart')
   }
@@ -352,7 +331,7 @@ export function DomainModal() {
                            purchase connects this one either — two lines pasted at the
                            registrar do. The registrar is RDAP fact, not a guess. */
                         <p className="flex items-center gap-0.5 truncate text-[14px] leading-[1.4]">
-                          <span className="text-[#ffffffa3]">{t({ en: `Registered at ${registrarFor(domain)}`, uk: `Зареєстровано на ${registrarFor(domain)}` })}</span>
+                          <span className="text-[#ffffffa3]">{t({ en: `Registered at ${setupHost(domain, 'external')}`, uk: `Зареєстровано на ${setupHost(domain, 'external')}` })}</span>
                           <span className="mx-0.5 flex-none text-[rgba(255,240,186,0.9)]"><IconLink size={20} /></span>
                           <span className="text-[rgba(255,240,186,0.9)]">
                             {t({ en: 'about 5 minutes of setup', uk: 'приблизно 5 хвилин налаштування' })}
@@ -417,7 +396,7 @@ export function DomainModal() {
                       {guard === 'in-use'
                         ? t({ en: 'This domain already shows a website', uk: 'На цьому домені вже є сайт' })
                         : guard === 'external'
-                          ? t({ en: `It stays at ${registrarFor(domain)} — no transfer needed`, uk: `Він залишиться на ${registrarFor(domain)} — переносити не треба` })
+                          ? t({ en: `It stays at ${setupHost(domain, 'external')} — no transfer needed`, uk: `Він залишиться на ${setupHost(domain, 'external')} — переносити не треба` })
                           : t({ en: 'This domain is managed at Cloudflare', uk: 'Цим доменом керує Cloudflare' })}
                     </p>
                     {/* The reassurance is not decoration: without "you can switch
@@ -511,7 +490,7 @@ export function DomainModal() {
               >
                 {showPlans || buying
                   ? t({ en: 'Continue to checkout', uk: 'Перейти до оплати' })
-                  : external
+                  : external || guard === 'external-ns'
                     ? t({ en: 'Show me what to change', uk: 'Показати, що змінити' })
                     : guard === 'in-use'
                       ? t({ en: 'Replace site', uk: 'Замінити сайт' })

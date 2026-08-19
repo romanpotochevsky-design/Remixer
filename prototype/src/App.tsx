@@ -18,6 +18,8 @@ import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
+import { STAGING_HOST } from '@/data/domains'
+import { DomainSetupModal } from '@/modules/domains/DomainSetupModal'
 import { DomainModal } from '@/modules/domains/DomainModal'
 import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
@@ -101,7 +103,7 @@ export default function App() {
      once it actually answers. Until then it shows staging, because this address is
      the one people copy out of the chrome. `domainResolves` is the single predicate
      both surfaces read, so they can never disagree. */
-  const address = domainResolves(world.domain) ? 'fit-ration.com' : 'fit-ration.remixer.site'
+  const address = domainResolves(world.domain) ? world.customDomain : STAGING_HOST
 
   const publishLabel =
     world.unpublished > 0
@@ -187,7 +189,10 @@ export default function App() {
 
           {/* center: project button, 280×40 — the live address in permanent chrome */}
           <button
-            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' ? 'status' : 'home')}
+            /* Always the dashboard. There is no status page to route to any more:
+               a domain in flight reports itself in the Publish panel's row, which is
+               where the customer is already looking (㉘ A3). */
+            onClick={() => openDomains('home')}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -342,6 +347,7 @@ export default function App() {
           rather than a surface inside the shell. Mounted last and above everything:
           when it is open, none of our chrome should show through the seam. */}
       <PanelCart />
+      <DomainSetupModal />
 
       {/* Above the shell, below the cart: a confirmation should still be readable
           over the domains surface or the Publish panel, but the panel's own page

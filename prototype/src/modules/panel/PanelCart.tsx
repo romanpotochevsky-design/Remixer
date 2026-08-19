@@ -31,6 +31,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useWorld, runDomainTimeline, BUY_TIMELINE, CONNECT_OWN_TIMELINE } from '@/state/world'
+import { openExternalSetup } from '@/state/externalSetup'
 import { useUI } from '@/state/ui'
 import { cartTotal, lineCopy, money, type CartLine } from '@/data/cart'
 import { foreignPage } from '@/ui/motion'
@@ -345,7 +346,7 @@ function Summary({
 
 export function PanelCart() {
   const { world, set } = useWorld()
-  const { panel, closePanel, togglePublish, showToast, pendingSetup, setPendingSetup, openDomains } = useUI()
+  const { panel, closePanel, togglePublish, showToast, pendingSetup, setPendingSetup } = useUI()
   const [submitting, setSubmitting] = useState(false)
   /** Which line's select is open, by tile id — one at a time, as in the panel. */
   const [openSelect, setOpenSelect] = useState<string | null>(null)
@@ -444,7 +445,7 @@ export function PanelCart() {
       if (resume) {
         setPendingSetup(null)
         if (resume.kind === 'own') runDomainTimeline(CONNECT_OWN_TIMELINE)
-        else openDomains('external', resume.domain)
+        else openExternalSetup(resume.domain, resume.kind === 'external-ns' ? 'dh-external-ns' : 'external')
       }
 
       if (bought) {

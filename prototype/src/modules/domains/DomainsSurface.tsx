@@ -18,7 +18,7 @@ import { useWorld, isCustomDomainActive } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
-  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, DH_WEB_IP, priceFor,
+  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, priceFor,
   exactMatch, otherEndings, nameIdeas, type ResultRow,
   isPhrase, looksLikeDomain, registrarFor, closeAlternatives, phraseIdeas,
 } from '@/data/domains'
@@ -27,27 +27,11 @@ import {
   IconSearch, IconArrowRight, IconGlobe, IconClose, IconSparkleAI,
   IconAIMark, IconChevronDown,
 } from '@/ui/icons'
-import { surface, listSwap, listSwapItem } from '@/ui/motion'
+import { listSwap, listSwapItem } from '@/ui/motion'
 
 
 /* ------------------------------------------------------------------ shared bits */
 
-/** The content sheet under the top bar — every screen renders inside one. */
-function Screen({ children }: { children: React.ReactNode }) {
-  return (
-    <motion.div
-      variants={surface}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      className="min-h-0 flex-1 rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)]"
-    >
-      <ScrollArea className="h-full">
-        <div className="mx-auto w-full max-w-[560px] px-6 py-10">{children}</div>
-      </ScrollArea>
-    </motion.div>
-  )
-}
 
 /* --------------------------------------------------- dashboard building blocks */
 
@@ -150,25 +134,7 @@ function SearchHeader({
   )
 }
 
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--white-400)]">
-      {children}
-    </p>
-  )
-}
 
-function PrimaryButton({ label, onClick }: { label: Text; onClick?: () => void }) {
-  const { t } = useT()
-  return (
-    <button
-      onClick={onClick}
-      className="h-11 w-full rounded-control bg-[var(--action)] text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-    >
-      {t(label)}
-    </button>
-  )
-}
 
 /* ------------------------------------------------------------------ screens */
 
@@ -687,183 +653,11 @@ function TakenResults({
   )
 }
 
-/** "You own this" — the confirm for a domain already in the DreamHost account. */
-/** External domain: registrar detected, guided manual path. No Domain Connect promises. */
-function ExternalScreen() {
-  const { set } = useWorld()
-  const { activeDomain, goDomains } = useUI()
-  const { t } = useT()
-  const domain = activeDomain ?? 'emberandoak.com'
-  const registrar = registrarFor(domain)
-
-  const start = () => {
-    set({ domain: 'connecting', inventory: 'external-manual' })
-    goDomains('status', domain)
-  }
-
-  return (
-    <Screen>
-      {/* Back retraces the actual path: this screen is only ever reached through the
-          taken result ("This is my domain" → sheet), so back means the results list,
-          not the empty dashboard. The query re-derives its taken face on the way. */}
-      <button onClick={() => goDomains('results')} className="mb-4 text-[13px] text-[var(--white-400)] hover:text-[var(--white-700)]">
-        ← {t({ en: 'Back', uk: 'Назад' })}
-      </button>
-
-      <Eyebrow>{t({ en: 'Connect your domain', uk: 'Підключення вашого домену' })}</Eyebrow>
-      <h2 className="font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">{domain}</h2>
-      {/* The detection bar: registrar identity is registry-level data (RDAP) — reliable.
-          Same deterministic source as the taken hero and the sheet, so one domain
-          never names two different registrars on its way through the flow. */}
-      <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
-        {t({
-          en: `Registered at ${registrar}. It stays there — no transfer needed.`,
-          uk: `Зареєстровано на ${registrar}. Він там і залишиться — переносити не треба.`,
-        })}
-      </p>
-
-      {/* De-jargoned records card: two named values, copy buttons, inline guide. */}
-      <div className="mt-5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
-        <p className="text-[13px] font-semibold text-[var(--white-700)]">
-          {t({ en: `Point your domain to us — 2 lines to paste at ${registrar}`, uk: `Спрямуйте домен до нас — 2 рядки вставити на ${registrar}` })}
-        </p>
-        {[
-          { label: 'Website address', value: DH_WEB_IP },
-          { label: 'Proof it’s yours', value: `remixer-verify=${domain.split('.')[0]}` },
-        ].map((r) => (
-          <div key={r.label} className="mt-2.5 flex items-center justify-between gap-3 rounded-chip bg-[var(--gray-900)] px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-[11.5px] uppercase tracking-[0.08em] text-[var(--white-300)]">{r.label}</p>
-              <p className="truncate font-mono text-[13px] text-[var(--white-700)]">{r.value}</p>
-            </div>
-            <button className="flex-none text-[12.5px] font-medium text-[var(--action)] hover:text-[var(--action-hover)]">
-              {t({ en: 'Copy', uk: 'Копіювати' })}
-            </button>
-          </div>
-        ))}
-        <p className="mt-3 text-[12.5px] leading-[1.5] text-[var(--white-400)]">
-          {t({
-            en: `In ${registrar}: your domains → ${domain} → DNS settings. Paste both lines, save, come back here.`,
-            uk: `На ${registrar}: ваші домени → ${domain} → налаштування DNS. Вставте обидва рядки, збережіть і поверніться сюди.`,
-          })}
-        </p>
-      </div>
-
-      <div className="mt-5">
-        <PrimaryButton label={{ en: 'I’ve added them — check now', uk: 'Я додав(-ла) — перевірити' }} onClick={start} />
-      </div>
-      <p className="mt-2 text-center text-[12.5px] text-[var(--white-300)]">
-        {t({
-          en: 'We keep checking in the background either way — you can leave.',
-          uk: 'Ми однаково перевірятимемо у фоні — можна йти.',
-        })}
-      </p>
-    </Screen>
-  )
-}
-
-/** Status: the named state machine — connecting → verifying → live, one verb per stop. */
-function StatusScreen() {
-  const { world, set } = useWorld()
-  const { activeDomain, closeSurface } = useUI()
-  const { t } = useT()
-  const domain = activeDomain ?? CUSTOM_DOMAIN
-
-  const stage = world.domain === 'live' || world.domain === 'multiple' ? 2
-    : world.domain === 'verifying' ? 1
-    : 0
-
-  // The canonical success checklist — one fixed order on every success screen.
-  const checklist = [
-    { label: { en: 'Domain settings updated', uk: 'Налаштування домену оновлено' }, done: stage >= 1 },
-    { label: { en: 'Connected to your site', uk: 'Під’єднано до вашого сайту' }, done: stage >= 2 },
-    { label: { en: 'Security (SSL) on', uk: 'Захист (SSL) увімкнено' }, done: stage >= 2 },
-  ]
-
-  return (
-    <Screen>
-      <Eyebrow>
-        {stage === 2
-          ? t({ en: 'Live', uk: 'Працює' })
-          : t({ en: 'Connecting', uk: 'Підключення' })}
-      </Eyebrow>
-      <h2 className="flex items-center gap-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">
-        {stage === 2 ? (
-          <span className="h-2.5 w-2.5 flex-none rounded-full bg-[var(--live)]" aria-hidden />
-        ) : (
-          <span className="relative flex h-2.5 w-2.5 flex-none" aria-hidden>
-            <span className="absolute h-full w-full animate-ping rounded-full bg-[var(--attention)] opacity-60" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--attention)]" />
-          </span>
-        )}
-        {domain}
-      </h2>
-      <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
-        {stage === 2
-          ? t({ en: 'Secure padlock on · anyone can visit.', uk: 'Захисний замочок увімкнено · сайт доступний усім.' })
-          : t({
-              en: 'Usually a few minutes — keep editing, it goes live on its own.',
-              uk: 'Зазвичай кілька хвилин — редагуйте далі, сайт запуститься сам.',
-            })}
-      </p>
-
-      <div className="mt-5 space-y-2.5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
-        {checklist.map((c) => (
-          <div key={c.label.en} className="flex items-center gap-2.5 text-[14px]">
-            <span
-              className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[11px] ${
-                c.done ? 'bg-[#48ba7933] text-[var(--live)]' : 'border border-[var(--gray-700)] text-transparent'
-              }`}
-              aria-hidden
-            >
-              ✓
-            </span>
-            <span className={c.done ? 'text-[var(--white-700)]' : 'text-[var(--white-400)]'}>{t(c.label)}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 flex gap-2">
-        {stage === 2 ? (
-          <>
-            <button
-              onClick={closeSurface}
-              className="h-11 flex-1 rounded-control bg-[var(--action)] text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-            >
-              {t({ en: 'Back to editing', uk: 'Назад до редагування' })}
-            </button>
-            <button className="h-11 flex-1 rounded-control border border-[var(--white-200)] text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]">
-              {t({ en: 'Visit site ↗', uk: 'Відкрити сайт ↗' })}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => set({ domain: world.domain === 'connecting' ? 'verifying' : 'live' })}
-              className="h-11 flex-1 rounded-control border border-[var(--white-200)] text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
-            >
-              {t({ en: 'Refresh status', uk: 'Оновити статус' })}
-            </button>
-            <button
-              onClick={closeSurface}
-              className="h-11 flex-1 rounded-control text-[14px] font-medium text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)] hover:text-[var(--white-700)]"
-            >
-              {t({ en: 'Keep editing', uk: 'Редагувати далі' })}
-            </button>
-          </>
-        )}
-      </div>
-    </Screen>
-  )
-}
-
 /* ------------------------------------------------------------------ surface */
 
 const SCREENS: Record<DomainScreen, () => JSX.Element> = {
   home: HomeScreen,
   results: ResultsScreen,
-  external: ExternalScreen,
-  status: StatusScreen,
 }
 
 export function DomainsSurface() {
@@ -880,7 +674,6 @@ export function DomainsSurface() {
    * read as the page reloading rather than as an answer arriving.
    */
   const [query, setQuery] = useState('')
-  const searching = domainScreen === 'home' || domainScreen === 'results'
   const owned = OWNED_DOMAINS[world.inventory] ?? []
 
   const submit = () => {
@@ -950,19 +743,17 @@ export function DomainsSurface() {
 
       {/* The header is mounted ONCE, outside the swap below: searching must not
           rebuild the field the user is typing into. */}
-      {searching && (
-        <SearchHeader
-          title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
-          compact={domainScreen === 'results'}
-          query={query}
-          setQuery={setQuery}
-          onSubmit={submit}
-          placeholder={{
-            en: 'Search a name to buy, or enter one you already own',
-            uk: 'Шукайте назву для купівлі або введіть свою',
-          }}
-        />
-      )}
+      <SearchHeader
+        title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
+        compact={domainScreen === 'results'}
+        query={query}
+        setQuery={setQuery}
+        onSubmit={submit}
+        placeholder={{
+          en: 'Search a name to buy, or enter one you already own',
+          uk: 'Шукайте назву для купівлі або введіть свою',
+        }}
+      />
 
       {/* Only the lists change hands. mode="wait" keeps the two sets from
           overlapping mid-flight, so the conveyor reads cleanly. */}

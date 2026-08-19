@@ -16,7 +16,8 @@ import { useEffect, useRef } from 'react'
 import { useWorld, hasPlan, domainResolves, isCustomDomainActive } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
-import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
+import { STAGING_HOST } from '@/data/domains'
+import { openExternalSetup } from '@/state/externalSetup'
 import { IconPlus, IconEdit, IconExternal } from '@/ui/icons'
 import { popover, popoverContent } from '@/ui/motion'
 
@@ -92,6 +93,25 @@ export function PublishPanel() {
     sub: Text
     action?: { label: Text; onClick: () => void }
   } | null = (() => {
+    /* An unfinished manual setup outranks everything below, because it is the only
+       state on this list where the ball is in the CUSTOMER'S court. `world.domain` is
+       still 'staging' throughout (nothing resolves yet), so the switch beneath would
+       return null and the panel would show no sign of a job in progress at all.
+       This is ㉘ A3's ghost "Finish setup": a way back into the sheet, in a row, while
+       the panel's primary button stays the panel's own. */
+    const setup = world.externalSetup
+    if (setup && setup.found.length < 2) {
+      return {
+        tone: 'progress' as const,
+        sub: setup.found.length === 0
+          ? { en: `Two lines to paste at ${setup.host} — we keep checking`, uk: `Два рядки вставити на ${setup.host} — ми перевіряємо` }
+          : { en: `One line to go at ${setup.host} — we keep checking`, uk: `Залишився один рядок на ${setup.host} — ми перевіряємо` },
+        action: {
+          label: { en: 'Finish setup', uk: 'Завершити' },
+          onClick: () => openExternalSetup(setup.domain, setup.kind),
+        },
+      }
+    }
     switch (world.domain) {
       case 'registering':
         return {
@@ -153,6 +173,11 @@ export function PublishPanel() {
 
   const resolves = domainResolves(world.domain)
   const hasDomain = isCustomDomainActive(world)
+  /* One value, read by both surfaces. It used to be a module constant here and a live
+     string in the sheet, so the panel could name fit-ration.com while the customer had
+     just connected emberandoak.com. */
+  const customDomain = world.customDomain
+  const setupPending = !!world.externalSetup && world.externalSetup.found.length < 2
   const staging = STAGING_HOST.replace('.remixer.site', '')
 
   const live = world.domain === 'live' || world.domain === 'multiple'
@@ -225,7 +250,7 @@ export function PublishPanel() {
                     : t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
                 </p>
                 {resolves ? (
-                  <UrlField value={CUSTOM_DOMAIN} live />
+                  <UrlField value={customDomain} live />
                 ) : (
                   <UrlField value={staging} suffix=".remixer.site" />
                 )}
@@ -260,7 +285,7 @@ export function PublishPanel() {
                     />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-semibold leading-[1.3] text-white">{CUSTOM_DOMAIN}</p>
+                    <p className="truncate text-[15px] font-semibold leading-[1.3] text-white">{world.externalSetup?.domain ?? customDomain}</p>
                     <p className="mt-0.5 text-[13px] leading-[1.45] text-[var(--white-500)]">{t(row.sub)}</p>
                   </div>
                   {row.action && (
@@ -275,7 +300,7 @@ export function PublishPanel() {
               )}
 
               {/* connect your own domain — dashed card, only when there is no domain */}
-              {!hasDomain && (
+              {!hasDomain && !setupPending && (
                 <button
                   onClick={() => openDomains('home')}
                   /* Hover per Figma 26125:3832: the dashed rim brightens (NA/200 →

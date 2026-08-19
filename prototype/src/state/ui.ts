@@ -24,10 +24,13 @@ export type Surface =
 export type DomainScreen =
   | 'home'      // universal field + AI suggestions (the default empty state)
   | 'results'   // search results: exact-match hero + alternatives
-  /* No 'own' step: a domain already in the account is confirmed in the checkout
-     sheet, the same surface the dashboard's Connect button opens. */
-  | 'external'  // external domain: registrar detected, guided manual records
-  | 'status'    // connecting / verifying / live status page
+  /* Two screens used to live here and no longer do, for the same reason.
+     'own'      — a domain already in the account is confirmed in the checkout sheet.
+     'external' — the two lines to paste are a SHEET now, so the work floats over the
+                  canvas you are working on instead of replacing it.
+     'status'   — dissolved into the Publish panel's domain row (㉘ A3): a domain's
+                  state belongs where the customer already looks for it, not on a page
+                  they have to navigate to and then leave. */
 
 /**
  * The checkout sheet that sits on top of everything (Figma 27275:33023 and siblings).
@@ -76,7 +79,7 @@ export interface DomainModal {
 
 /** What to resume once the till hands the customer back. See `pendingSetup`. */
 export interface PendingConnect {
-  kind: 'own' | 'external'
+  kind: 'own' | 'external' | 'external-ns'
   domain: string
 }
 
@@ -133,6 +136,14 @@ interface UIStore {
    *                 purchase can do it for them.
    */
   pendingSetup: PendingConnect | null
+  /**
+   * The domain whose two-lines setup sheet is open, or null.
+   *
+   * A sheet, not a screen: the work is a short errand at somebody else's website, and it
+   * should sit ON the thing you are building rather than replacing it. It is also why
+   * this can be reopened at any time from the panel's "Finish setup" without losing place.
+   */
+  setupModal: string | null
 
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
@@ -147,6 +158,8 @@ interface UIStore {
   showToast: (text: Text, tone?: Toast['tone']) => void
   hideToast: () => void
   setPendingSetup: (p: PendingConnect | null) => void
+  openSetupModal: (domain: string) => void
+  closeSetupModal: () => void
   togglePublish: (open?: boolean) => void
   triggerReload: (ms?: number) => void
 }
@@ -169,6 +182,7 @@ export const useUI = create<UIStore>((set, get) => ({
   panel: null,
   toast: null,
   pendingSetup: null,
+  setupModal: null,
 
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
@@ -182,7 +196,7 @@ export const useUI = create<UIStore>((set, get) => ({
   closeSurface: () => set({ surface: 'preview' }),
   // Anything floating in our own chrome would show through the seam, so the
   // handoff closes the publish popover on the way out.
-  openPanel: (panel) => set({ panel, publishOpen: false, domainModal: null }),
+  openPanel: (panel) => set({ panel, publishOpen: false, domainModal: null, setupModal: null }),
   closePanel: () => set({ panel: null }),
   showToast: (text, tone = 'ok') => {
     if (toastTimer) clearTimeout(toastTimer)
@@ -194,6 +208,8 @@ export const useUI = create<UIStore>((set, get) => ({
     set({ toast: null })
   },
   setPendingSetup: (pendingSetup) => set({ pendingSetup }),
+  openSetupModal: (domain) => set({ setupModal: domain, publishOpen: false, domainModal: null }),
+  closeSetupModal: () => set({ setupModal: null }),
   togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)
