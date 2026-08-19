@@ -30,7 +30,7 @@
  */
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
-import { useWorld } from '@/state/world'
+import { useWorld, runDomainTimeline, BUY_TIMELINE, CONNECT_OWN_TIMELINE } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { cartTotal, lineCopy, money, type CartLine } from '@/data/cart'
 import { foreignPage } from '@/ui/motion'
@@ -345,7 +345,7 @@ function Summary({
 
 export function PanelCart() {
   const { world, set } = useWorld()
-  const { panel, closePanel, goDomains } = useUI()
+  const { panel, closePanel, togglePublish, showToast, pendingSetup, setPendingSetup, openDomains } = useUI()
   const [submitting, setSubmitting] = useState(false)
   /** Which line's select is open, by tile id — one at a time, as in the panel. */
   const [openSelect, setOpenSelect] = useState<string | null>(null)
@@ -393,15 +393,64 @@ export function PanelCart() {
     if (!submitting) return
     const t = window.setTimeout(() => {
       const plan = lines.find((l) => l.kind === 'remixer')
-      const domain = lines.find((l) => l.kind === 'domreg')?.domain
+      const bought = lines.find((l) => l.kind === 'domreg')?.domain
+
+      /*
+       * Coming back from the till, and what happens next depends on what was bought.
+       *
+       * A NEW registration does not connect in seconds, whatever the old boards said:
+       * registration finishes inside 15 minutes, but a new registration's nameservers
+       * take 24-72 hours to fully update — both DreamHost's own numbers. So the domain
+       * enters `registering` and walks its real timeline from there.
+       *
+       * The Publish panel DOES open here, unlike the connect-what-you-own path,
+       * because this wait is long and there is something to report. That is the rule:
+       * the panel opens when there is a state worth carrying, and stays shut when the
+       * work finishes before the customer could read about it.
+       */
+      /* A connect the plan gate interrupted resumes HERE, not on a dashboard: the
+         customer already said which domain and what for, and the till was the last
+         question. `own` finishes by itself; `external` still owes the customer their
+         half of the work, so the two-lines setup screen opens (㉘ run B). */
+      const resume = plan ? pendingSetup : null
+
       set({
         ...(plan ? { account: 'paid' as const, billing: plan.term ?? 'yearly', credits: 1000 } : null),
-        domain: 'connecting',
+        ...(bought ? { domain: 'registering' as const } : null),
+        /* Walking out with only a plan must not leave the domain axis parked at
+           `checkout` — nothing was bought for it. Back to truth: staging. */
+        ...(!bought && world.domain === 'checkout' ? { domain: 'staging' as const } : null),
         cart: [],
       })
       setSubmitting(false)
       closePanel()
-      goDomains('status', domain ?? null)
+
+      /* One line, and it names what was actually charged — the panel gave no receipt
+         (confirmed against the live product), so this is the only acknowledgement.
+         The toast is single-slot, so a resuming own-connect rides in the same line
+         rather than fighting the receipt for it. */
+      if (resume?.kind === 'own') {
+        showToast({
+          en: `Remixer Build added · connecting ${resume.domain}`,
+          uk: `Remixer Build додано · підключаємо ${resume.domain}`,
+        }, 'progress')
+      } else {
+        const what = plan && bought ? `${bought} and Remixer Build added`
+          : bought ? `${bought} added`
+          : 'Remixer Build added'
+        showToast({ en: what, uk: what })
+      }
+
+      if (resume) {
+        setPendingSetup(null)
+        if (resume.kind === 'own') runDomainTimeline(CONNECT_OWN_TIMELINE)
+        else openDomains('external', resume.domain)
+      }
+
+      if (bought) {
+        togglePublish(true)
+        runDomainTimeline(BUY_TIMELINE)
+      }
     }, 1500)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -13,9 +13,9 @@
  */
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
-import { useWorld, hasPlan } from '@/state/world'
+import { useWorld, hasPlan, domainResolves, isCustomDomainActive } from '@/state/world'
 import { useUI } from '@/state/ui'
-import { useT } from '@/i18n'
+import { useT, type Text } from '@/i18n'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { IconPlus, IconEdit, IconExternal } from '@/ui/icons'
 import { popover, popoverContent } from '@/ui/motion'
@@ -44,7 +44,7 @@ function UrlField({ value, suffix, live }: { value: string; suffix?: string; liv
 
 export function PublishPanel() {
   const { world, set } = useWorld()
-  const { publishOpen, togglePublish, openDomains } = useUI()
+  const { publishOpen, togglePublish, openDomains, showToast } = useUI()
   const { t } = useT()
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -63,10 +63,93 @@ export function PublishPanel() {
   }, [publishOpen, togglePublish])
 
   const paid = hasPlan(world)
-  const connecting = world.domain === 'connecting' || world.domain === 'verifying'
-  const live = world.domain === 'live' || world.domain === 'multiple'
+  /*
+   * What the domain row says, per world state.
+   *
+   * Two rules run this table, both from the flow map
+   * (docs/handoff/domain-flows-end-to-end.md):
+   *
+   *  1. **The row exists only while something is in flight or wrong.** Once the
+   *     domain is live and secure there is nothing to report, so the row is gone
+   *     and the address field carries the whole story.
+   *  2. **A ghost action appears only when there IS an action.** Amber with a
+   *     button reads as "your move"; amber without one reads as "we are working".
+   *     Putting a button on `propagating` would invite the customer to fix DNS
+   *     propagation, which nobody can.
+   *
+   * The durations are DreamHost's own, verified: registration completes inside
+   * 15 minutes, a NEW registration's nameservers take 24-72 h, and Let's Encrypt
+   * issues in roughly 10-30 min once the domain answers.
+   */
+  const row: {
+    tone: 'progress' | 'error'
+    sub: Text
+    action?: { label: Text; onClick: () => void }
+  } | null = (() => {
+    switch (world.domain) {
+      case 'registering':
+        return {
+          tone: 'progress',
+          sub: { en: 'Registering — usually under 15 minutes', uk: 'Реєструємо — зазвичай менше 15 хвилин' },
+        }
+      case 'propagating':
+        return {
+          tone: 'progress',
+          sub: {
+            en: 'On its way — most visitors within a few hours, up to 72 hours worldwide',
+            uk: 'У дорозі — більшість відвідувачів за кілька годин, до 72 годин по всьому світу',
+          },
+        }
+      case 'connecting':
+        return {
+          tone: 'progress',
+          sub: { en: 'Connecting — nothing for you to do', uk: 'Підключаємо — від вас нічого не потрібно' },
+        }
+      case 'verifying':
+        return {
+          tone: 'progress',
+          sub: {
+            en: 'Secure padlock is switching on — usually within 30 minutes. The site already works.',
+            uk: 'Увімкнеться захисний замочок — зазвичай до 30 хвилин. Сайт уже працює.',
+          },
+        }
+      case 'icann-hold':
+        /* The one state where inaction destroys something that works: an
+           unverified registrant email gets the domain suspended, taking the site
+           AND the mail down. No countdown is printed — the "15 days" figure on the
+           board traces to Squarespace in our own research, not to DreamHost or
+           ICANN, so the deadline lives in the email until someone verifies it.
+           See docs/handoff/domain-flows-end-to-end.md §4. */
+        return {
+          tone: 'progress',
+          sub: {
+            en: 'Confirm your email to keep this domain — check the link we sent you',
+            uk: 'Підтвердьте email, щоб зберегти домен — перевірте надісланий лист',
+          },
+          action: {
+            label: { en: 'Resend', uk: 'Надіслати ще раз' },
+            onClick: () => showToast({ en: 'Confirmation email sent again', uk: 'Лист надіслано ще раз' }),
+          },
+        }
+      case 'unreachable':
+        return {
+          tone: 'error',
+          sub: { en: 'We can’t reach this domain yet · your plan is active', uk: 'Ми ще не бачимо цей домен · ваш план активний' },
+          action: {
+            label: { en: 'Check again', uk: 'Перевірити ще раз' },
+            onClick: () => set({ domain: 'verifying' }),
+          },
+        }
+      default:
+        return null
+    }
+  })()
+
+  const resolves = domainResolves(world.domain)
+  const hasDomain = isCustomDomainActive(world)
   const staging = STAGING_HOST.replace('.remixer.site', '')
 
+  const live = world.domain === 'live' || world.domain === 'multiple'
   const primary =
     world.unpublished > 0
       ? live
@@ -107,25 +190,22 @@ export function PublishPanel() {
           <div className="px-1.5">
             {/* Figma: Neutral Alpha/50 (#ffffff0a) for both the fill and the hairline */}
             <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a] px-4 pb-4 pt-[19px]">
-              {/* website URL */}
+              {/* -------------------------------------------------- website URL
+                  The field shows the custom domain ONLY once it actually answers
+                  (`domainResolves`). Before that it shows the staging address,
+                  because a field displaying an address that does not resolve is the
+                  most misleading thing this panel could do — the customer copies it,
+                  sends it to someone, and it fails. */}
               <div className="mb-[19px] flex flex-col gap-[7px]">
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
-                  {live || connecting
+                  {resolves
                     ? t({ en: 'Your domain', uk: 'Ваш домен' })
                     : t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
                 </p>
-                {live || connecting ? (
-                  <UrlField value={CUSTOM_DOMAIN} live={live} />
+                {resolves ? (
+                  <UrlField value={CUSTOM_DOMAIN} live />
                 ) : (
                   <UrlField value={staging} suffix=".remixer.site" />
-                )}
-                {connecting && (
-                  <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--attention)]">
-                    {t({
-                      en: 'Connecting — usually a few minutes. Keep editing, it goes live on its own.',
-                      uk: 'Підключається — зазвичай кілька хвилин. Редагуйте далі, сайт запуститься сам.',
-                    })}
-                  </p>
                 )}
                 {live && (
                   <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
@@ -134,8 +214,46 @@ export function PublishPanel() {
                 )}
               </div>
 
-              {/* connect your own domain — dashed card (hidden once a domain is on) */}
-              {!live && !connecting && (
+              {/* ------------------------------------------------- the domain row
+                  Its own row, never the panel's primary button: the primary belongs
+                  to the panel's own job (Update), and handing it to the domain would
+                  make publishing look blocked by something the customer cannot
+                  hurry. So the domain's action is a ghost, on its own line. */}
+              {row && (
+                <div
+                  className={`mb-4 flex items-center gap-3 rounded-[16px] border px-4 py-3.5 ${
+                    row.tone === 'error'
+                      ? 'border-[#e5595940] bg-[#e559590f]'
+                      : 'border-[#e5c35940] bg-[#e5c3590f]'
+                  }`}
+                >
+                  <span className="relative grid h-3 w-3 flex-none place-items-center" aria-hidden>
+                    {row.tone === 'progress' && (
+                      <span className="absolute h-3 w-3 animate-ping rounded-full bg-[var(--attention)] opacity-50" />
+                    )}
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        row.tone === 'error' ? 'bg-[#e55959]' : 'bg-[var(--attention)]'
+                      }`}
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-semibold leading-[1.3] text-white">{CUSTOM_DOMAIN}</p>
+                    <p className="mt-0.5 text-[13px] leading-[1.45] text-[var(--white-500)]">{t(row.sub)}</p>
+                  </div>
+                  {row.action && (
+                    <button
+                      onClick={row.action.onClick}
+                      className="h-9 flex-none rounded-[10px] border border-[var(--white-200)] px-3.5 text-[13px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+                    >
+                      {t(row.action.label)}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* connect your own domain — dashed card, only when there is no domain */}
+              {!hasDomain && (
                 <button
                   onClick={() => openDomains('home')}
                   /* Hover per Figma 26125:3832: the dashed rim brightens (NA/200 →
@@ -161,15 +279,17 @@ export function PublishPanel() {
                 </button>
               )}
 
-              {/* private preview line under a live/connecting domain */}
-              {(live || connecting) && (
-                <div className="flex items-center justify-between gap-3 rounded-[16px] border border-dashed border-[var(--white-200)] px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] text-[var(--white-500)]">{STAGING_HOST}</p>
-                    <p className="mt-0.5 text-[12.5px] text-[var(--white-300)]">
-                      {t({ en: 'Private preview · always free · hidden from Google', uk: 'Приватне прев’ю · завжди безкоштовно · приховано від Google' })}
-                    </p>
-                  </div>
+              {/* Staging address — the reassurance that makes a 72-hour wait
+                  tolerable: whatever the domain is doing, this link keeps working. */}
+              {hasDomain && (
+                <div className="px-1">
+                  <p className="text-[12.5px] leading-[1.4] text-[var(--white-300)]">
+                    {t({ en: 'Staging address', uk: 'Адреса стейджингу' })}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-[var(--white-500)]">
+                    {STAGING_HOST}
+                    <IconExternal size={12} />
+                  </p>
                 </div>
               )}
             </div>
@@ -177,14 +297,6 @@ export function PublishPanel() {
 
           {/* ---------------------------------------------------------- button bar */}
           <div className="flex items-center justify-end gap-2 px-4 py-4">
-            {connecting && (
-              <button
-                onClick={() => set({ domain: world.domain === 'connecting' ? 'verifying' : 'live' })}
-                className="h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
-              >
-                {t({ en: 'Refresh status', uk: 'Оновити статус' })}
-              </button>
-            )}
             <button
               onClick={() => (world.unpublished > 0 ? set({ unpublished: 0 }) : togglePublish(false))}
               className="h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"

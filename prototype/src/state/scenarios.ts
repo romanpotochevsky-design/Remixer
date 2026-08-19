@@ -91,6 +91,33 @@ export const PRESETS: Preset[] = [
     patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', unpublished: 0 },
   },
   {
+    id: 'just-registered',
+    label: { en: 'Just bought a domain', uk: 'Щойно купив домен' },
+    note: {
+      en: 'Paid; the registry is still creating it. Under 15 minutes (verified)',
+      uk: 'Оплачено; реєстратура ще створює домен. Менше 15 хвилин (verified)',
+    },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'registering', unpublished: 0 },
+  },
+  {
+    id: 'propagating',
+    label: { en: 'New domain spreading', uk: 'Новий домен розходиться' },
+    note: {
+      en: 'The long one: 24-72 h for a new registration (verified). Nothing to click',
+      uk: 'Найдовше: 24-72 год для нової реєстрації (verified). Натискати нічого',
+    },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'propagating', unpublished: 0 },
+  },
+  {
+    id: 'icann-hold',
+    label: { en: 'Email unconfirmed (ICANN)', uk: 'Email не підтверджено (ICANN)' },
+    note: {
+      en: 'Site works, but the domain gets suspended if nobody acts — worst state',
+      uk: 'Сайт працює, але домен підвісять, якщо ніхто не відреагує — найгірший стан',
+    },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'icann-hold', unpublished: 0 },
+  },
+  {
     id: 'external-manual',
     label: { en: 'Domain at another registrar', uk: 'Домен в іншого реєстратора' },
     note: { en: 'Namecheap / Cloudflare — manual records only', uk: 'Namecheap / Cloudflare — лише ручні записи' },
@@ -238,9 +265,12 @@ export function describe(w: World): Text {
     staging: { en: 'no custom domain', uk: 'домен не підключено' },
     searching: { en: 'choosing a domain', uk: 'обирає домен' },
     checkout: { en: 'at checkout', uk: 'оформлює покупку' },
+    registering: { en: 'domain registering', uk: 'домен реєструється' },
+    propagating: { en: 'domain spreading (up to 72 h)', uk: 'домен розходиться (до 72 год)' },
     connecting: { en: 'domain connecting', uk: 'домен підключається' },
     verifying: { en: 'domain verifying', uk: 'домен перевіряється' },
     live: { en: 'domain live', uk: 'домен живий' },
+    'icann-hold': { en: 'email unconfirmed — domain at risk', uk: 'email не підтверджено — домен під загрозою' },
     unreachable: { en: 'domain not reachable', uk: 'домен не відповідає' },
     multiple: { en: 'several domains', uk: 'кілька доменів' },
   }

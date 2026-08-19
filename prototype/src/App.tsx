@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { useWorld, canUseAI, hasPlan } from '@/state/world'
+import { useWorld, canUseAI, hasPlan, domainResolves } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
@@ -24,6 +24,7 @@ import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
 import { ChatResizer } from '@/ui/ChatResizer'
+import { Toast } from '@/ui/Toast'
 import { useT } from '@/i18n'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
@@ -96,10 +97,11 @@ export default function App() {
   }, [chatWidth])
   const { t } = useT()
 
-  const address =
-    world.domain === 'live' || world.domain === 'multiple'
-      ? 'fit-ration.com'
-      : 'fit-ration.remixer.site'
+  /* Same truth rule as the Publish panel: the topbar shows the custom domain only
+     once it actually answers. Until then it shows staging, because this address is
+     the one people copy out of the chrome. `domainResolves` is the single predicate
+     both surfaces read, so they can never disagree. */
+  const address = domainResolves(world.domain) ? 'fit-ration.com' : 'fit-ration.remixer.site'
 
   const publishLabel =
     world.unpublished > 0
@@ -192,8 +194,17 @@ export default function App() {
               <span className="grid h-6 w-6 flex-none place-items-center text-[var(--white-400)]">
                 <IconGrid size={22} />
               </span>
-              {world.domain === 'live' && <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--live)]" aria-hidden />}
-              {(world.domain === 'connecting' || world.domain === 'verifying') && (
+              {/* One dot at a time (⑲ "правило одной точки"): green = working,
+                  amber = in flight, red = unreachable. The amber→green flip in this
+                  spot is the entire story of connecting a domain we already host —
+                  which is exactly why that case needs no panel and no status page. */}
+              {(world.domain === 'live' || world.domain === 'multiple') && (
+                <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--live)]" aria-hidden />
+              )}
+              {world.domain === 'unreachable' && (
+                <span className="h-1.5 w-1.5 flex-none rounded-full bg-[#e55959]" aria-hidden />
+              )}
+              {['registering', 'propagating', 'connecting', 'verifying', 'icann-hold'].includes(world.domain) && (
                 <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--attention)]" aria-hidden />
               )}
               <span className="truncate text-[15px] font-semibold leading-[1.4]">{address}</span>
@@ -331,6 +342,11 @@ export default function App() {
           rather than a surface inside the shell. Mounted last and above everything:
           when it is open, none of our chrome should show through the seam. */}
       <PanelCart />
+
+      {/* Above the shell, below the cart: a confirmation should still be readable
+          over the domains surface or the Publish panel, but the panel's own page
+          takes the whole window and nothing of ours belongs on top of it. */}
+      <Toast />
 
       <FlowRunner />
       <ScenarioPanel />

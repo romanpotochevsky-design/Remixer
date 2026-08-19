@@ -13,6 +13,7 @@
  * more entry in `Surface`, not a new layout.
  */
 import { create } from 'zustand'
+import type { Text } from '@/i18n'
 
 export type Surface =
   | 'preview'
@@ -52,8 +53,30 @@ export type DomainModalKind = 'connect-existing' | 'buy' | 'connect-external'
  */
 export type PanelPage = 'cart'
 
+/**
+ * A one-line confirmation of something that already happened.
+ *
+ * Deliberately not a status surface. It says "this is done" and leaves; anything
+ * with an unfinished action in it belongs in the Publish panel's domain row, which
+ * persists. Used where the flow has nothing left for the customer to do — the
+ * clearest case being a domain we already host, which connects in seconds and so
+ * must not be dignified with a panel (see docs/handoff/domain-flows-end-to-end.md §2).
+ */
+export interface Toast {
+  /** Fresh id per toast so a repeat message still re-animates. */
+  id: number
+  text: Text
+  tone: 'ok' | 'progress'
+}
+
 export interface DomainModal {
   kind: DomainModalKind
+  domain: string
+}
+
+/** What to resume once the till hands the customer back. See `pendingSetup`. */
+export interface PendingConnect {
+  kind: 'own' | 'external'
   domain: string
 }
 
@@ -92,6 +115,24 @@ interface UIStore {
   reloading: boolean
   /** A page outside Remixer covering the whole window, or null when we are home. */
   panel: PanelPage | null
+  /** The transient confirmation line, or null when nothing is being confirmed. */
+  toast: Toast | null
+  /**
+   * A connect that was interrupted by the till, waiting to resume.
+   *
+   * ㉘ run **B** ("no plan") is the reason this exists: the customer asked to connect
+   * a domain, hit the plan gate inside the sheet, and left for the hosting panel.
+   * Coming back, the intent must still be theirs — landing on a generic dashboard
+   * would make them re-find their own domain and re-state what they already said.
+   * Set when the sheet hands off to checkout, consumed by the cart on the way back:
+   *
+   *  - `own`      — a domain in this account. Nothing left to ask, so it simply
+   *                 connects (toast + amber→green), same as if the plan had existed.
+   *  - `external` — registered elsewhere. The two-lines setup screen opens, because
+   *                 the records are the customer's half of the work and no plan
+   *                 purchase can do it for them.
+   */
+  pendingSetup: PendingConnect | null
 
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
@@ -103,12 +144,18 @@ interface UIStore {
   closeSurface: () => void
   openPanel: (page: PanelPage) => void
   closePanel: () => void
+  showToast: (text: Text, tone?: Toast['tone']) => void
+  hideToast: () => void
+  setPendingSetup: (p: PendingConnect | null) => void
   togglePublish: (open?: boolean) => void
   triggerReload: (ms?: number) => void
 }
 
 /** One timer at a time: mashing reload extends the pulse instead of stacking timers. */
 let reloadTimer: ReturnType<typeof setTimeout> | null = null
+/** Same rule for the toast: a second message replaces the first, it never queues. */
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+let toastSeq = 0
 
 export const useUI = create<UIStore>((set, get) => ({
   surface: 'preview',
@@ -120,6 +167,8 @@ export const useUI = create<UIStore>((set, get) => ({
   chatWidth: CHAT_DEFAULT,
   reloading: false,
   panel: null,
+  toast: null,
+  pendingSetup: null,
 
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
@@ -135,6 +184,16 @@ export const useUI = create<UIStore>((set, get) => ({
   // handoff closes the publish popover on the way out.
   openPanel: (panel) => set({ panel, publishOpen: false, domainModal: null }),
   closePanel: () => set({ panel: null }),
+  showToast: (text, tone = 'ok') => {
+    if (toastTimer) clearTimeout(toastTimer)
+    set({ toast: { id: ++toastSeq, text, tone } })
+    toastTimer = setTimeout(() => set({ toast: null }), 4200)
+  },
+  hideToast: () => {
+    if (toastTimer) clearTimeout(toastTimer)
+    set({ toast: null })
+  },
+  setPendingSetup: (pendingSetup) => set({ pendingSetup }),
   togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)

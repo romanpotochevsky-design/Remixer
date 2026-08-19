@@ -9,6 +9,10 @@
  *                        No price anywhere: owned domains cost nothing to attach.
  *     buy              : a name from search or the AI suggestions. Carries the
  *                        first-year figure and the honest renewal line.
+ *     connect-external : a taken name the customer claimed ("This is my domain",
+ *                        ㉗→㉘). No price either — connecting costs nothing; what it
+ *                        needs is two lines pasted at the registrar, so with a plan
+ *                        the CTA is "Show me what to change" and never "checkout".
  *
  *   axis 2 — DOES THE ACCOUNT HAVE A PLAN (read from the world, never passed in)
  *     yes : the lean sheet, 560×232 — one row, one button.
@@ -31,10 +35,10 @@
  */
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
-import { useWorld, hasPlan } from '@/state/world'
+import { useWorld, hasPlan, runDomainTimeline, CONNECT_OWN_TIMELINE } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
-import { priceFor } from '@/data/domains'
+import { priceFor, registrarFor } from '@/data/domains'
 import type { CartLine } from '@/data/cart'
 import { LogoRemixer, IconClose, IconGlobeLarge, IconLink } from '@/ui/icons'
 import { modalScrim, modalSheet } from '@/ui/motion'
@@ -148,7 +152,7 @@ function PlanCard({
 
 export function DomainModal() {
   const { world, set } = useWorld()
-  const { domainModal, closeDomainModal, goDomains, openPanel } = useUI()
+  const { domainModal, closeDomainModal, closeSurface, openDomains, openPanel, showToast, setPendingSetup } = useUI()
   const { t } = useT()
   const [term, setTerm] = useState<Term>('yearly')
 
@@ -162,6 +166,7 @@ export function DomainModal() {
 
   const paid = hasPlan(world)
   const buying = domainModal?.kind === 'buy'
+  const external = domainModal?.kind === 'connect-external'
   const domain = domainModal?.domain ?? ''
   const tld = domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '.com'
   const price = priceFor(tld) ?? priceFor('.com')!
@@ -187,8 +192,9 @@ export function DomainModal() {
    *                "connects in a few seconds" here would be a plain lie, so that
    *                promise is replaced rather than merely annotated.
    */
-  const guard: 'in-use' | 'external-ns' | null =
-    domainModal?.kind !== 'connect-existing' ? null
+  const guard: 'in-use' | 'external-ns' | 'external' | null =
+    external ? 'external'
+      : domainModal?.kind !== 'connect-existing' ? null
       : world.inventory === 'dh-in-use' ? 'in-use'
       : world.inventory === 'dh-external-ns' ? 'external-ns'
       : null
@@ -206,14 +212,50 @@ export function DomainModal() {
    * one case with nothing to buy; that still completes in place, as before.
    */
   const confirm = () => {
+    /*
+     * A domain registered somewhere else — ㉘, the continuation of "This is my
+     * domain". The sheet only CONFIRMS the intent; the actual work is two lines
+     * pasted at the registrar, which no purchase can do for the customer.
+     *
+     *  - plan in hand (run A): straight to the setup screen. The author's rule on
+     *    that board — "оплаты нет — CTA не смеет говорить «checkout»" — is why this
+     *    path never touches the cart.
+     *  - no plan (run B): the plan gate folds in as usual, the till comes first,
+     *    and `pendingSetup` remembers the domain so the way back lands ON the setup
+     *    screen rather than on a dashboard that has forgotten the conversation.
+     */
+    if (external) {
+      closeDomainModal()
+      if (paid) {
+        openDomains('external', domain)
+        return
+      }
+      setPendingSetup({ kind: 'external', domain })
+      set({ cart: [{ kind: 'remixer', term }], domain: 'checkout' })
+      openPanel('cart')
+      return
+    }
+
     const lines: CartLine[] = []
     if (buying) lines.push({ kind: 'domreg', domain, years: 1 })
     if (showPlans) lines.push({ kind: 'remixer', term })
 
     if (lines.length === 0) {
-      set({ domain: 'connecting' })
+      /*
+       * Nothing to pay and nothing to configure — this is a domain we already host,
+       * whose nameservers have been ours for months. Pointing it at this site changes
+       * records on our own DNS, so it is genuinely a matter of seconds.
+       *
+       * Which is why this path gets **no panel and no status page.** Opening a
+       * surface to report a wait that does not exist is an interruption dressed as
+       * progress. Instead: the sheet closes, the canvas comes back, a toast says
+       * what is happening, and the dot beside the address in the topbar goes amber
+       * then green. That flip is the entire story.
+       */
       closeDomainModal()
-      goDomains('status', domain)
+      closeSurface()
+      showToast({ en: `Connecting ${domain}`, uk: `Підключаємо ${domain}` }, 'progress')
+      runDomainTimeline(CONNECT_OWN_TIMELINE)
       return
     }
 
@@ -224,6 +266,11 @@ export function DomainModal() {
        cart without paying has to land the customer back on the list they were
        browsing, not on a status page for a domain they did not buy. The status
        screen comes later, from the panel, once the order is actually placed. */
+    /* An owned domain blocked only by the plan gate resumes by itself: the till
+       is the last question, so the way back owes the customer the connect they
+       already asked for, not a second round of asking. */
+    if (!buying && showPlans) setPendingSetup({ kind: 'own', domain })
+
     set({ cart: lines, domain: 'checkout' })
     closeDomainModal()
     openPanel('cart')
@@ -300,6 +347,17 @@ export function DomainModal() {
                         <p className="truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
                           {t({ en: 'Connects automatically after checkout', uk: 'Підключиться автоматично після оплати' })}
                         </p>
+                      ) : external ? (
+                        /* Same rank as external-ns and for the same reason: no plan
+                           purchase connects this one either — two lines pasted at the
+                           registrar do. The registrar is RDAP fact, not a guess. */
+                        <p className="flex items-center gap-0.5 truncate text-[14px] leading-[1.4]">
+                          <span className="text-[#ffffffa3]">{t({ en: `Registered at ${registrarFor(domain)}`, uk: `Зареєстровано на ${registrarFor(domain)}` })}</span>
+                          <span className="mx-0.5 flex-none text-[rgba(255,240,186,0.9)]"><IconLink size={20} /></span>
+                          <span className="text-[rgba(255,240,186,0.9)]">
+                            {t({ en: 'about 5 minutes of setup', uk: 'приблизно 5 хвилин налаштування' })}
+                          </span>
+                        </p>
                       ) : guard === 'external-ns' ? (
                         /* Ranked above the plan line on purpose: a plan does not
                            make this one connect either, so promising that it will
@@ -358,7 +416,9 @@ export function DomainModal() {
                     <p className="text-[14px] font-semibold leading-[1.4] text-[rgba(255,240,186,0.9)]">
                       {guard === 'in-use'
                         ? t({ en: 'This domain already shows a website', uk: 'На цьому домені вже є сайт' })
-                        : t({ en: 'This domain is managed at Cloudflare', uk: 'Цим доменом керує Cloudflare' })}
+                        : guard === 'external'
+                          ? t({ en: `It stays at ${registrarFor(domain)} — no transfer needed`, uk: `Він залишиться на ${registrarFor(domain)} — переносити не треба` })
+                          : t({ en: 'This domain is managed at Cloudflare', uk: 'Цим доменом керує Cloudflare' })}
                     </p>
                     {/* The reassurance is not decoration: without "you can switch
                         back" the warning only frightens, and a frightened customer
@@ -369,10 +429,34 @@ export function DomainModal() {
                             en: `Connecting replaces what visitors see at ${domain}. Your files stay safe and you can switch back.`,
                             uk: `Підключення замінить те, що бачать відвідувачі на ${domain}. Файли збережуться, і можна повернути як було.`,
                           })
-                        : t({
+                        : guard === 'external'
+                          ? t({
+                              /* ㉘ A2's promise, kept word for word: the customer's
+                                 first fear here is breaking their email. */
+                              en: 'We’ll show you two lines to paste there. Everything else — email included — stays untouched.',
+                              uk: 'Ми покажемо два рядки, які треба вставити там. Усе інше — разом із поштою — залишиться як було.',
+                            })
+                          : t({
                             en: 'Its settings live there, so we’ll show you the two lines to paste at Cloudflare. About 5 minutes.',
                             uk: 'Його налаштування живуть там, тож ми покажемо два рядки, які треба вставити на Cloudflare. Приблизно 5 хвилин.',
                           })}
+                    </p>
+                  </div>
+                )}
+
+                {/* ------------------------------------ the spelling guard
+                    From ㉓ 26990:20573, and it maps to a hard policy rather than a
+                    scare: DreamHost registrations are non-refundable, with a
+                    deletion grace of at most ~5 days on some TLDs and none on
+                    others, support only. A typo bought is a typo owned, so the one
+                    moment to say it is the last screen before the till. */}
+                {buying && (
+                  <div className={`px-4 pb-4 ${showPlans ? '' : 'pt-0'}`}>
+                    <p className="text-[12.5px] leading-[1.45] text-[#ffffff7a]">
+                      {t({
+                        en: 'Check the spelling — registrations are final and non-refundable.',
+                        uk: 'Перевірте написання — реєстрація остаточна, без повернення коштів.',
+                      })}
                     </p>
                   </div>
                 )}
@@ -427,9 +511,11 @@ export function DomainModal() {
               >
                 {showPlans || buying
                   ? t({ en: 'Continue to checkout', uk: 'Перейти до оплати' })
-                  : guard === 'in-use'
-                    ? t({ en: 'Replace site', uk: 'Замінити сайт' })
-                    : t({ en: 'Connect domain', uk: 'Підключити домен' })}
+                  : external
+                    ? t({ en: 'Show me what to change', uk: 'Показати, що змінити' })
+                    : guard === 'in-use'
+                      ? t({ en: 'Replace site', uk: 'Замінити сайт' })
+                      : t({ en: 'Connect domain', uk: 'Підключити домен' })}
               </button>
             </div>
           </motion.div>

@@ -14,12 +14,13 @@
  */
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
-import { useWorld } from '@/state/world'
+import { useWorld, isCustomDomainActive } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
-  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, priceFor,
+  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, DH_WEB_IP, priceFor,
   exactMatch, otherEndings, nameIdeas, type ResultRow,
+  isPhrase, looksLikeDomain, registrarFor, closeAlternatives, phraseIdeas,
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
@@ -183,8 +184,24 @@ function HomeScreen() {
   const { t } = useT()
 
   const owned = OWNED_DOMAINS[world.inventory] ?? []
-  const [best, ...rest] = AI_SUGGESTIONS
+  /* The verb dictionary is Add = buy · Connect = yours, and a list must never
+     cross it: offering to BUY a name that is sitting in "Existing domains" one
+     column over would be the product contradicting itself. Owned names drop out
+     of the AI pool; the hero is simply the best remaining. */
+  const ownedNames = new Set(owned.map((o) => o.domain))
+  const [best, ...rest] = AI_SUGGESTIONS.filter((sg) => !ownedNames.has(sg.domain))
   const bestPrice = priceFor(best.tld)!
+
+  /* The one custom domain this world models. While it is anywhere on its way to
+     (or at) live, its row stops being an invitation: the state replaces the
+     button, in the same colours the topbar dot uses. */
+  const rowState = (d: string): { label: Text; tone: 'live' | 'progress' } | null => {
+    if (d !== CUSTOM_DOMAIN || !isCustomDomainActive(world)) return null
+    if (world.domain === 'live' || world.domain === 'multiple' || world.domain === 'icann-hold')
+      return { label: { en: 'Connected', uk: 'Підключено' }, tone: 'live' }
+    if (world.domain === 'unreachable') return null // failed = free to try again
+    return { label: { en: 'Connecting…', uk: 'Підключається…' }, tone: 'progress' }
+  }
 
   return (
     <motion.div
@@ -212,10 +229,23 @@ function HomeScreen() {
                     {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
                     <div className="flex h-[72px] items-center justify-between rounded-[16px] px-5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
                       <p className="min-w-0 truncate text-[17px] font-medium text-white">{o.domain}</p>
-                      <RowButton
-                        label={{ en: 'Connect', uk: 'Підключити' }}
-                        onClick={() => openDomainModal('connect-existing', o.domain)}
-                      />
+                      {(() => {
+                        const st = rowState(o.domain)
+                        if (!st) return (
+                          <RowButton
+                            label={{ en: 'Connect', uk: 'Підключити' }}
+                            onClick={() => openDomainModal('connect-existing', o.domain)}
+                          />
+                        )
+                        return (
+                          <span className="flex flex-none items-center gap-2 pr-1 text-[13px] font-medium"
+                            style={{ color: st.tone === 'live' ? 'var(--live)' : 'var(--attention)' }}>
+                            <span className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: st.tone === 'live' ? 'var(--live)' : 'var(--attention)' }} aria-hidden />
+                            {t(st.label)}
+                          </span>
+                        )
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -341,28 +371,151 @@ function RowList({ rows, onBuy, border }: { rows: ResultRow[]; onBuy: (d: string
   )
 }
 
+/* ------------------------------------------------------------- result heroes */
+
 /**
- * Search results — Figma 27729:14650.
+ * The exact-match hero — gradient wash under a ring-masked gradient rim.
  *
- * Two blocks, and the order is the point. First the CLASSIC registrar answer: the
- * exact name as a hero, then the same name in other endings — that is what a
- * person who typed a name is actually asking for, and burying it under AI output
- * would be a category error. Only then the AI block, which offers other NAMES,
- * each carrying the reason it was picked.
- *
- * Every row is available in the mockup — there is no taken state drawn anywhere
- * in the file, which is the biggest gap in this screen and is raised with the
- * designer rather than invented here.
+ * ⚠️ The rim is a ring MASK, not a second background layer under the fill: the fill
+ * is 10% alpha, so an opaque gradient behind it shows through whole and the card
+ * came out a solid violet bar.
  */
+function BestMatchHero({ row, eyebrow, onBuy }: { row: ResultRow; eyebrow: Text; onBuy: () => void }) {
+  const { t } = useT()
+  const price = priceFor(row.tld) ?? priceFor('.com')!
+  return (
+    <motion.div
+      variants={listSwapItem}
+      className="relative rounded-[16px] px-1 pb-1"
+      style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
+    >
+      <i className="bestmatch-rim" aria-hidden />
+      <div className="flex h-10 items-center pl-6 pr-4">
+        <span
+          className="font-display text-[14px] font-semibold"
+          style={{
+            backgroundImage: 'linear-gradient(81deg, #cb79ff 31%, #66a6ff 118%)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+          }}
+        >
+          {t(eyebrow)}
+        </span>
+      </div>
+      <div className="flex h-[94px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[#1f1f22] px-6">
+        <div className="min-w-0 flex-1 pb-1">
+          <p className="truncate text-[22px] font-medium leading-none text-white">{row.domain}</p>
+          <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">{t(row.reason)}</p>
+        </div>
+        <div className="flex h-10 flex-none items-center gap-8">
+          {/* the promo says itself: list price struck, first year large */}
+          <PriceStack register={price.register} renew={price.renew} strike />
+          <button
+            onClick={onBuy}
+            className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+          >
+            {t({ en: 'Buy', uk: 'Купити' })}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+/**
+ * The taken hero — ㉗ `3 занят`.
+ *
+ * Deliberately NOT the gradient card: this is not a match, it is a wall, and dressing
+ * a refusal in the brand's celebratory chrome would be a lie told in colour. Flat
+ * surface, a `Taken` chip, and the registrar named.
+ *
+ * Three decisions here are load-bearing and traceable:
+ *  - **"This is my domain", never "You own this."** Nothing in a registry lookup says
+ *    the searcher is the registrant. The conditional verb is the honest one, and it
+ *    matches every platform in the research set.
+ *  - **The registrar is named.** RDAP returns the sponsoring registrar as registry-level
+ *    data that WHOIS privacy does not hide, so this is a fact, not a guess. (The real
+ *    product needs a silent fallback for the ~40% of ccTLDs that are WHOIS-text only —
+ *    say nothing rather than invent.)
+ *  - **No price and no "Make an offer".** DreamHost has no brokerage and sells no
+ *    premium names, so there is nothing to quote. The pivot is alternatives.
+ */
+function TakenHero({ domain, onClaim }: { domain: string; onClaim: () => void }) {
+  const { t } = useT()
+  const registrar = registrarFor(domain)
+  return (
+    <motion.div
+      variants={listSwapItem}
+      className="flex min-h-[94px] items-center justify-between gap-6 rounded-[16px] border border-[#ffffff14] bg-[#ffffff08] px-6 py-5"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-3">
+          <p className="truncate text-[22px] font-medium leading-none text-[#ffffffa3]">{domain}</p>
+          <span className="grid h-[22px] flex-none place-items-center rounded-[6px] bg-[#ffffff14] px-2 text-[12px] font-medium leading-none text-[#ffffffa3]">
+            {t({ en: 'Taken', uk: 'Зайнято' })}
+          </span>
+        </div>
+        <p className="mt-[9px] truncate text-[13px] leading-none text-[#ffffff7a]">
+          {t({
+            en: `Registered at ${registrar} · if it’s yours, it stays there — no transfer needed`,
+            uk: `Зареєстровано на ${registrar} · якщо він ваш, там і залишиться — переносити не треба`,
+          })}
+        </p>
+      </div>
+      <RowButton label={{ en: 'This is my domain', uk: 'Це мій домен' }} onClick={onClaim} />
+    </motion.div>
+  )
+}
+
+/** A list section header — the AI mark, a title, and the line that says where it came from. */
+function ListHeading({ title, note }: { title: Text; note: Text }) {
+  const { t } = useT()
+  return (
+    <motion.div variants={listSwapItem} className="flex items-center justify-between px-2 pb-[22px] pt-[31px]">
+      <div className="flex items-center gap-2.5">
+        <IconAIMark size={24} />
+        <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">{t(title)}</h3>
+      </div>
+      <p className="text-[13px] text-[#ffffff7a]">{t(note)}</p>
+    </motion.div>
+  )
+}
+
+/**
+ * Search results — Figma 27729:14650, with the two states from ㉗ that the hi-fi
+ * board never got: `2 фраза` and `3 занят`.
+ *
+ * One screen, three modes, because what the person typed is a different QUESTION
+ * each time and the answer has to be ordered to match:
+ *
+ *  - **word** — a bare name. First the CLASSIC registrar answer: the exact name as a
+ *    hero, then the same name in other endings. That is what someone who typed a name
+ *    is asking for, and burying it under AI output would be a category error. The AI
+ *    block comes second, offering other NAMES.
+ *  - **phrase** — a description, not a name. The naming stage is not over, so this is
+ *    the one case where inventing names is the whole point and the AI block LEADS.
+ *    There is no exact match to show: `odesa coffee roasters` is not an address.
+ *  - **taken** — a specific address that is already registered. The classic answer is
+ *    "no", said plainly, and then the two real exits: claim it if it is theirs, or
+ *    take a near neighbour.
+ *
+ * The mode is derived from the query, never stored: the header field is the only
+ * input, and a mode kept in state would drift out of step with what is in it.
+ *
+ * ⚠️ Availability is faked deterministically — a full address typed with its ending
+ * reads as taken, a bare word reads as available. The real product asks RDAP. The
+ * rule is at least stable, which is what a demo needs: the same query always answers
+ * the same way in front of an audience.
+ */
+type ResultsMode = 'word' | 'phrase' | 'taken'
+
 function ResultsScreen() {
   const { activeDomain, openDomainModal } = useUI()
-  const { t } = useT()
   const term = activeDomain ?? 'fit-ration'
 
-  const hero = exactMatch(term)
-  const heroPrice = priceFor(hero.tld)!
-  const endings = otherEndings(term)
-  const ideas = nameIdeas(term)
+  const mode: ResultsMode = isPhrase(term) ? 'phrase' : looksLikeDomain(term) ? 'taken' : 'word'
+  const buy = (d: string) => openDomainModal('buy', d)
 
   return (
     <motion.div
@@ -379,86 +532,158 @@ function ResultsScreen() {
               the column comes out 64px narrow. */}
           <div className="px-8 pb-2 pt-8">
           <div className="mx-auto w-full max-w-[1200px]">
-            {/* ------------------------------------- classic results (27729:15438) */}
-            <div className="flex flex-col gap-4">
-              {/* exact-match hero: gradient wash under a ring-masked gradient rim */}
-              <motion.div
-                variants={listSwapItem}
-                className="relative rounded-[16px] px-1 pb-1"
-                style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
-              >
-                <i className="bestmatch-rim" aria-hidden />
-                <div className="flex h-10 items-center pl-6 pr-4">
-                  <span
-                    className="font-display text-[14px] font-semibold"
-                    style={{
-                      backgroundImage: 'linear-gradient(81deg, #cb79ff 31%, #66a6ff 118%)',
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      color: 'transparent',
-                    }}
-                  >
-                    {t({ en: 'Best match', uk: 'Найкращий збіг' })}
-                  </span>
-                </div>
-                <div className="flex h-[94px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[#1f1f22] px-6">
-                  <div className="min-w-0 flex-1 pb-1">
-                    <p className="truncate text-[22px] font-medium leading-none text-white">{hero.domain}</p>
-                    <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">{t(hero.reason)}</p>
-                  </div>
-                  <div className="flex h-10 flex-none items-center gap-8">
-                    {/* the promo says itself: list price struck, first year large */}
-                    <PriceStack register={heroPrice.register} renew={heroPrice.renew} strike />
-                    <button
-                      onClick={() => openDomainModal('buy', hero.domain)}
-                      className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-                    >
-                      {t({ en: 'Buy', uk: 'Купити' })}
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* the same name in other endings, plus the "there are more" footer */}
-              <motion.div variants={listSwapItem} className="rounded-[16px] border border-[#ffffff14]">
-                <RowList rows={endings} border="border-[#2a2a2d]" onBuy={(d) => openDomainModal('buy', d)} />
-                <div className="flex h-16 items-center justify-between pb-2 pl-2 pr-5 pt-4">
-                  <button className="flex h-10 items-center gap-2 rounded-[10px] py-2.5 pl-3 pr-2 text-[15px] font-semibold text-[#ffffff7a] opacity-80 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:opacity-100">
-                    {t({ en: 'Show more endings', uk: 'Більше закінчень' })}
-                    <IconChevronDown size={20} />
-                  </button>
-                  <p className="text-[15px] text-[#ffffff52]">
-                    {t({ en: '400+ more available', uk: 'Ще 400+ вільних' })}
-                  </p>
-                </div>
-              </motion.div>
-            </div>
-
-            {/* ---------------------------------- AI name ideas (27729:15591).
-                Butts straight against the block above — the air comes from this
-                header's own 31px top padding, exactly as drawn. */}
-            <motion.div variants={listSwapItem} className="flex items-center justify-between px-2 pb-[22px] pt-[31px]">
-              <div className="flex items-center gap-2.5">
-                <IconAIMark size={24} />
-                <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
-                  {t({ en: 'Name ideas for your site', uk: 'Ідеї назв для вашого сайту' })}
-                </h3>
-              </div>
-              <p className="text-[13px] text-[#ffffff7a]">
-                {t({
-                  en: `Generated from “${term}” and your site description.`,
-                  uk: `Згенеровано з «${term}» та опису вашого сайту.`,
-                })}
-              </p>
-            </motion.div>
-            <motion.div variants={listSwapItem}>
-              <RowList rows={ideas} border="border-[#ffffff0a]" onBuy={(d) => openDomainModal('buy', d)} />
-            </motion.div>
+            {mode === 'word' && <WordResults term={term} onBuy={buy} />}
+            {mode === 'phrase' && <PhraseResults term={term} onBuy={buy} />}
+            {mode === 'taken' && (
+              <TakenResults
+                term={term}
+                onBuy={buy}
+                onClaim={() => openDomainModal('connect-external', term)}
+              />
+            )}
           </div>
           </div>
         </ScrollArea>
       </div>
     </motion.div>
+  )
+}
+
+/** `1 слово` — the classic answer first, AI names second. */
+function WordResults({ term, onBuy }: { term: string; onBuy: (d: string) => void }) {
+  const { t } = useT()
+  const hero = exactMatch(term)
+  return (
+    <>
+      {/* ------------------------------------- classic results (27729:15438) */}
+      <div className="flex flex-col gap-4">
+        <BestMatchHero
+          row={hero}
+          eyebrow={{ en: 'Best match', uk: 'Найкращий збіг' }}
+          onBuy={() => onBuy(hero.domain)}
+        />
+
+        {/* the same name in other endings, plus the "there are more" footer */}
+        <motion.div variants={listSwapItem} className="rounded-[16px] border border-[#ffffff14]">
+          <RowList rows={otherEndings(term)} border="border-[#2a2a2d]" onBuy={onBuy} />
+          <div className="flex h-16 items-center justify-between pb-2 pl-2 pr-5 pt-4">
+            <button className="flex h-10 items-center gap-2 rounded-[10px] py-2.5 pl-3 pr-2 text-[15px] font-semibold text-[#ffffff7a] opacity-80 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:opacity-100">
+              {t({ en: 'Show more endings', uk: 'Більше закінчень' })}
+              <IconChevronDown size={20} />
+            </button>
+            <p className="text-[15px] text-[#ffffff52]">
+              {t({ en: '400+ more available', uk: 'Ще 400+ вільних' })}
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ---------------------------------- AI name ideas (27729:15591).
+          Butts straight against the block above — the air comes from this
+          header's own 31px top padding, exactly as drawn. */}
+      <ListHeading
+        title={{ en: 'Name ideas for your site', uk: 'Ідеї назв для вашого сайту' }}
+        note={{
+          en: `Generated from “${term}” and your site description.`,
+          uk: `Згенеровано з «${term}» та опису вашого сайту.`,
+        }}
+      />
+      <motion.div variants={listSwapItem}>
+        <RowList rows={nameIdeas(term)} border="border-[#ffffff0a]" onBuy={onBuy} />
+      </motion.div>
+    </>
+  )
+}
+
+/**
+ * `2 фраза` — they described the site instead of naming it.
+ *
+ * The AI block leads and there is no exact-match row, because there is nothing to
+ * match: a sentence is not an address. Every row leads with the domain and explains
+ * itself by spelling out how it READS as a brand — "«Roasters Coffee» — closest to
+ * what you typed" — which is the per-name rationale the research found nobody in the
+ * field bothers with.
+ */
+function PhraseResults({ term, onBuy }: { term: string; onBuy: (d: string) => void }) {
+  const { t } = useT()
+  const ideas = phraseIdeas(term)
+  const [lead, ...rest] = ideas
+  return (
+    <>
+      <ListHeading
+        title={{ en: 'Names for your site', uk: 'Назви для вашого сайту' }}
+        note={{
+          en: `You described your site, so these are new names — all available.`,
+          uk: 'Ви описали сайт, тож це нові назви — усі вільні.',
+        }}
+      />
+      <div className="flex flex-col gap-4">
+        <BestMatchHero
+          row={lead}
+          eyebrow={{ en: 'Closest to your idea', uk: 'Найближче до вашої ідеї' }}
+          onBuy={() => onBuy(lead.domain)}
+        />
+        <motion.div variants={listSwapItem}>
+          <RowList rows={rest} border="border-[#ffffff0a]" onBuy={onBuy} />
+        </motion.div>
+      </div>
+
+      {/* The way back to the classic answer. Someone who lands here and then thinks of
+          a name must not have to guess that the same field takes one. */}
+      <motion.p variants={listSwapItem} className="px-2 pt-6 text-[13px] leading-[1.5] text-[#ffffff52]">
+        {t({
+          en: 'Already have a name in mind? Type it above and we’ll check every ending.',
+          uk: 'Уже маєте назву? Введіть її вище — перевіримо всі закінчення.',
+        })}
+      </motion.p>
+    </>
+  )
+}
+
+/**
+ * `3 занят` — the address exists and belongs to someone.
+ *
+ * Order matters as much as it does in `word` mode: the answer to the question asked
+ * comes first, even when the answer is no. Then the two exits, in the order a real
+ * person needs them — "it's mine" before "give me another", because the customer who
+ * owns it is the one who will otherwise abandon.
+ */
+function TakenResults({
+  term, onBuy, onClaim,
+}: { term: string; onBuy: (d: string) => void; onClaim: () => void }) {
+  const { t } = useT()
+  const stemmed = term.split('.')[0]
+  const alts = closeAlternatives(term)
+  /* Both lists derive from the same stem, so their generators can collide
+     (get<name>.com lives in each). One name offered twice reads as a glitch —
+     the ideas list yields to the alternatives above it. */
+  const ideas = nameIdeas(term).filter((r) => !alts.some((a) => a.domain === r.domain))
+  return (
+    <>
+      <div className="flex flex-col gap-4">
+        <TakenHero domain={term} onClaim={onClaim} />
+
+        <motion.div variants={listSwapItem} className="rounded-[16px] border border-[#ffffff14]">
+          <div className="flex h-12 items-center px-6">
+            <p className="text-[14px] font-semibold text-[#f5f5fa]">
+              {t({ en: 'Close alternatives', uk: 'Близькі варіанти' })}
+            </p>
+          </div>
+          <RowList rows={alts} border="border-[#2a2a2d]" onBuy={onBuy} />
+        </motion.div>
+      </div>
+
+      <ListHeading
+        title={{ en: `More ideas for “${stemmed}”`, uk: `Більше ідей для «${stemmed}»` }}
+        note={{
+          en: 'Different names, same site — each with why it works.',
+          uk: 'Інші назви для того самого сайту — і чому кожна працює.',
+        }}
+      />
+      <motion.div variants={listSwapItem}>
+        <RowList rows={ideas} border="border-[#ffffff0a]" onBuy={onBuy} />
+      </motion.div>
+    </>
   )
 }
 
@@ -469,6 +694,7 @@ function ExternalScreen() {
   const { activeDomain, goDomains } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? 'emberandoak.com'
+  const registrar = registrarFor(domain)
 
   const start = () => {
     set({ domain: 'connecting', inventory: 'external-manual' })
@@ -477,27 +703,32 @@ function ExternalScreen() {
 
   return (
     <Screen>
-      <button onClick={() => goDomains('home')} className="mb-4 text-[13px] text-[var(--white-400)] hover:text-[var(--white-700)]">
+      {/* Back retraces the actual path: this screen is only ever reached through the
+          taken result ("This is my domain" → sheet), so back means the results list,
+          not the empty dashboard. The query re-derives its taken face on the way. */}
+      <button onClick={() => goDomains('results')} className="mb-4 text-[13px] text-[var(--white-400)] hover:text-[var(--white-700)]">
         ← {t({ en: 'Back', uk: 'Назад' })}
       </button>
 
       <Eyebrow>{t({ en: 'Connect your domain', uk: 'Підключення вашого домену' })}</Eyebrow>
       <h2 className="font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">{domain}</h2>
-      {/* The detection bar: registrar identity is registry-level data (RDAP) — reliable. */}
+      {/* The detection bar: registrar identity is registry-level data (RDAP) — reliable.
+          Same deterministic source as the taken hero and the sheet, so one domain
+          never names two different registrars on its way through the flow. */}
       <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
         {t({
-          en: 'Registered at GoDaddy. It stays there — no transfer needed.',
-          uk: 'Зареєстровано на GoDaddy. Він там і залишиться — переносити не треба.',
+          en: `Registered at ${registrar}. It stays there — no transfer needed.`,
+          uk: `Зареєстровано на ${registrar}. Він там і залишиться — переносити не треба.`,
         })}
       </p>
 
       {/* De-jargoned records card: two named values, copy buttons, inline guide. */}
       <div className="mt-5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
         <p className="text-[13px] font-semibold text-[var(--white-700)]">
-          {t({ en: 'Point your domain to us — 2 lines to paste at GoDaddy', uk: 'Спрямуйте домен до нас — 2 рядки вставити на GoDaddy' })}
+          {t({ en: `Point your domain to us — 2 lines to paste at ${registrar}`, uk: `Спрямуйте домен до нас — 2 рядки вставити на ${registrar}` })}
         </p>
         {[
-          { label: 'Website address', value: '64.90.62.162' },
+          { label: 'Website address', value: DH_WEB_IP },
           { label: 'Proof it’s yours', value: `remixer-verify=${domain.split('.')[0]}` },
         ].map((r) => (
           <div key={r.label} className="mt-2.5 flex items-center justify-between gap-3 rounded-chip bg-[var(--gray-900)] px-3 py-2.5">
@@ -512,8 +743,8 @@ function ExternalScreen() {
         ))}
         <p className="mt-3 text-[12.5px] leading-[1.5] text-[var(--white-400)]">
           {t({
-            en: 'In GoDaddy: My Products → your domain → DNS. Paste both lines, save, come back here.',
-            uk: 'На GoDaddy: My Products → ваш домен → DNS. Вставте обидва рядки, збережіть і поверніться сюди.',
+            en: `In ${registrar}: your domains → ${domain} → DNS settings. Paste both lines, save, come back here.`,
+            uk: `На ${registrar}: ваші домени → ${domain} → налаштування DNS. Вставте обидва рядки, збережіть і поверніться сюди.`,
           })}
         </p>
       </div>
@@ -655,17 +886,23 @@ export function DomainsSurface() {
   const submit = () => {
     const q = query.trim().toLowerCase()
     if (!q) return
-    /* Intent detection, prototype-grade: a domain already in the account opens the
-       checkout sheet, anything else with a dot reads as external, a bare name is a
-       search.
-
-       Typing an owned name and clicking its Connect button in the list are the same
-       intent, so they must land in the same place. They used not to: the button
-       opened the sheet while the field routed to a standalone screen drawn before
-       the redesign, and which of the two you got depended on whether you reached for
-       the mouse or the keyboard. */
+    /*
+     * Two outcomes, and only one of them is a decision.
+     *
+     * A name already in this account is not a search — there is nothing to look up
+     * and nothing to price — so it opens the confirm sheet directly. Typing it and
+     * clicking its Connect button in the list are the same intent and must land in
+     * the same place; they used not to, and which one you got depended on whether
+     * you reached for the mouse or the keyboard.
+     *
+     * EVERYTHING else is a search, including a full address like `emberandoak.com`.
+     * That used to jump straight to the manual-records screen, which answered a
+     * question the customer had not asked yet: they typed an address to find out
+     * about it, not to start pasting DNS lines. The results screen reads the query
+     * and shows the right one of its three faces (word · phrase · taken) — and the
+     * taken face is where "This is my domain" lives.
+     */
     if (owned.some((o) => o.domain === q)) openDomainModal('connect-existing', q)
-    else if (q.includes('.') && !q.endsWith('.')) goDomains('external', q)
     else goDomains('results', q)
   }
 

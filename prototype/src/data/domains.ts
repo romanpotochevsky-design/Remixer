@@ -142,6 +142,93 @@ export const nameIdeas = (q: string): ResultRow[] => {
   ]
 }
 
+/* ------------------------------------------------- what the query actually is */
+
+/**
+ * A query with a space in it is not a typo — it is a description.
+ *
+ * This is the one case where inventing brand NAMES is the right answer: the person
+ * has not named the thing yet. Once they type a name, the naming stage is over and
+ * suggestions must stay anchored to it (see the ㉗ annotations).
+ */
+export const isPhrase = (q: string) => /\s/.test(q.trim())
+
+/** A query shaped like a domain — they are asking about one specific address. */
+export const looksLikeDomain = (q: string) => /^[a-z0-9-]+(\.[a-z]{2,})+$/i.test(q.trim())
+
+/**
+ * Who holds a taken name.
+ *
+ * Naming the registrar is not a guess: RDAP returns the sponsoring registrar as
+ * registry-level data, and WHOIS privacy does not hide it — so "Registered at
+ * GoDaddy" is a fact we can actually show for gTLDs. (~40% of ccTLDs are still
+ * WHOIS-only text, which is why the real product needs a fallback that says
+ * nothing rather than guessing.)
+ *
+ * The prototype has no RDAP, so it picks deterministically from the name — the same
+ * query always answers the same way, which is what a demo needs.
+ */
+const REGISTRARS = ['GoDaddy', 'Namecheap', 'Cloudflare', 'Squarespace', 'IONOS']
+export const registrarFor = (domain: string) => {
+  let h = 0
+  for (const ch of domain) h = (h * 31 + ch.charCodeAt(0)) % 9973
+  return REGISTRARS[h % REGISTRARS.length]
+}
+
+/**
+ * Close alternatives for a name that is taken — the pivot every competitor makes,
+ * and the only pivot available to us: DreamHost has no brokerage, so "Make an offer"
+ * can never appear.
+ *
+ * ⚠️ The ㉗ board offers `.store` here. `.store` is NOT in DreamHost's verified price
+ * table, so this uses `.shop` — same category, and a price we can actually stand
+ * behind. Swap it back the day .store is verified.
+ */
+export const closeAlternatives = (q: string): ResultRow[] => {
+  const s = stem(q.split('.')[0])
+  return [
+    { domain: `${s}.net`, tld: '.net', reason: { en: 'A trusted, established extension', uk: 'Перевірена, давно знайома зона' } },
+    { domain: `get${s}.com`, tld: '.com', reason: { en: 'Same name, small twist', uk: 'Та сама назва, легкий поворот' } },
+    { domain: `${s}.shop`, tld: '.shop', reason: { en: 'Made for selling online', uk: 'Створена для продажів онлайн' } },
+  ]
+}
+
+/** Title Case, for showing how an invented domain reads as a brand. */
+const titled = (...w: string[]) => w.filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(' ')
+
+/**
+ * Names invented from a described idea.
+ *
+ * Each row leads with the DOMAIN and explains itself by spelling out the brand
+ * reading — "«Odesa Roasters» — closest to what you typed". The reason is not
+ * decoration: the research found per-name rationales are rare in the field, and
+ * that gap is the one we said we would take.
+ */
+export const phraseIdeas = (q: string): ResultRow[] => {
+  const words = q.trim().toLowerCase().split(/\s+/).map((w) => w.replace(/[^a-z0-9]/g, '')).filter(Boolean)
+  const first = words[0] ?? 'your'
+  const second = words[1] ?? first
+  const last = words[words.length - 1] ?? first
+  return [
+    {
+      domain: `${last}${second}.com`, tld: '.com',
+      reason: { en: `“${titled(last, second)}” — closest to what you typed`, uk: `«${titled(last, second)}» — найближче до того, що ви ввели` },
+    },
+    {
+      domain: `${second}harbor.com`, tld: '.com',
+      reason: { en: `“${titled(second, 'Harbor')}” — short, and it sticks`, uk: `«${titled(second, 'Harbor')}» — коротко і запамʼятовується` },
+    },
+    {
+      domain: `sunset${second}.com`, tld: '.com',
+      reason: { en: `“${titled('Sunset', second)}” — warm and easy to say`, uk: `«${titled('Sunset', second)}» — тепло і легко вимовити` },
+    },
+    {
+      domain: `${last}${first}co.com`, tld: '.com',
+      reason: { en: `“${titled(last, first, 'Co')}” — plain and trustworthy`, uk: `«${titled(last, first, 'Co')}» — просто і надійно` },
+    },
+  ]
+}
+
 /** Domains already sitting in the customer's DreamHost account, per inventory axis. */
 export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string; uk: string } }[]> = {
   'dh-free': [
@@ -164,3 +251,17 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
 /** The staging address every project gets for free, hidden from Google. */
 export const STAGING_HOST = 'fit-ration.remixer.site'
 export const CUSTOM_DOMAIN = 'fit-ration.com'
+
+/**
+ * The one address an external domain has to be pointed at.
+ *
+ * ㉘ A2 draws **two** rows off this single value — the bare domain and `www` — because
+ * that is what a registrar's DNS form actually asks for, and a customer who pastes
+ * only the first ends up with half a working site. One IP, two lines to paste.
+ *
+ * Not a nameserver change: nameservers would move the whole domain (and its email)
+ * to us, which is precisely what the "everything else stays untouched" promise rules
+ * out. DreamHost supports Domain Connect in no role, so there is no one-click
+ * alternative to offer — the honest manual path is the only path.
+ */
+export const DH_WEB_IP = '64.90.62.162'

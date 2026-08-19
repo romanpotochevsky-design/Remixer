@@ -35,16 +35,52 @@ export type Inventory =
   /** External registrar without it (Namecheap, Cloudflare) — guided manual records only. */
   | 'external-manual'
 
-/** Axis B — what the current project's domain is doing. */
+/**
+ * Axis B — what the current project's domain is doing.
+ *
+ * The order below is the real timeline, and the split between `registering`,
+ * `propagating` and `connecting` is not decoration — it is DreamHost's own
+ * documented behaviour, and it is the whole reason the buy flow and the
+ * connect-what-you-own flow cannot share one shape:
+ *
+ *  - a domain **already in the account** sits on ns1/ns2/ns3.dreamhost.com and has
+ *    been propagated for months. Pointing it at this site changes records on our
+ *    own DNS, so it really is a matter of seconds → `connecting`.
+ *  - a **freshly registered** domain is new to the global DNS. Registration itself
+ *    finishes "within 15 minutes of completing the purchase form" (verified), but
+ *    "new registrations' nameservers take 24-72 hrs to fully update" (verified).
+ *    Calling that "a few seconds" would be a lie → `registering` then `propagating`.
+ *
+ * See docs/handoff/domain-flows-end-to-end.md §1.
+ */
 export type DomainState =
   | 'staging'
   | 'searching'
   | 'checkout'
+  /** Paid; the registry is creating the domain. ≤15 min, nothing to click. */
+  | 'registering'
+  /** Registered, nameservers spreading across the internet. Hours, up to 72 h. */
+  | 'propagating'
+  /** A domain we already host being pointed at this site. Seconds. */
   | 'connecting'
+  /** The domain answers; Let's Encrypt is still issuing. ~10-30 min. */
   | 'verifying'
   | 'live'
+  /** Registrant email unverified. The site works, but the domain is at risk. */
+  | 'icann-hold'
   | 'unreachable'
   | 'multiple'
+
+/**
+ * Does the domain actually answer for visitors right now?
+ *
+ * This is the one predicate the address field is allowed to trust. Everything
+ * before `verifying` shows the staging address instead, because a field that
+ * displays an address which does not resolve is the single most misleading thing
+ * this panel could do.
+ */
+export const domainResolves = (d: DomainState) =>
+  d === 'verifying' || d === 'live' || d === 'multiple' || d === 'icann-hold'
 
 /** Product UI language. English is the default — this ships to the US market. */
 export type Lang = 'en' | 'uk'
@@ -117,6 +153,53 @@ export const DEFAULT_WORLD: World = {
   sent: [],
 }
 
+/* ----------------------------------------------------------- domain clock */
+
+/**
+ * Play a domain's real timeline out on a compressed clock.
+ *
+ * The prototype has no backend, but these states are not decorative — they are a
+ * real sequence with real durations, and a demo that skips them would teach the
+ * wrong thing about the product. So the chain runs by itself, on the same
+ * "compressed but proportional" rule the flow engine uses: the long step stays
+ * visibly the long one.
+ *
+ * Real durations, all verified (docs/handoff/domain-flows-end-to-end.md §1):
+ *   registering  ≤ 15 min
+ *   propagating  24-72 h   ← by far the longest, and the reason this flow must
+ *                            survive the customer closing the tab
+ *   verifying    10-30 min (Let's Encrypt)
+ *
+ * One chain at a time: starting a new one cancels whatever was in flight, so two
+ * purchases in a row cannot interleave into a nonsense order.
+ */
+let domainTimers: ReturnType<typeof setTimeout>[] = []
+
+export function runDomainTimeline(steps: Array<[DomainState, number]>) {
+  domainTimers.forEach(clearTimeout)
+  domainTimers = []
+  let at = 0
+  for (const [state, ms] of steps) {
+    at += ms
+    domainTimers.push(setTimeout(() => useWorld.getState().set({ domain: state }), at))
+  }
+}
+
+/** Buying a brand-new name: registry, then the long propagation, then SSL. */
+export const BUY_TIMELINE: Array<[DomainState, number]> = [
+  ['registering', 400],
+  ['propagating', 2600],
+  ['verifying', 5200],
+  ['live', 3400],
+]
+
+/** A domain we already host: no propagation step at all — that is the whole point. */
+export const CONNECT_OWN_TIMELINE: Array<[DomainState, number]> = [
+  ['connecting', 200],
+  ['verifying', 2400],
+  ['live', 3200],
+]
+
 /* ------------------------------------------------------------- selectors */
 
 export const hasPlan = (w: World) => w.account === 'paid'
@@ -127,8 +210,10 @@ export const canUseAI = (w: World) =>
 /** Going live on a custom domain is a paid capability. Staging is always free. */
 export const canConnectDomain = (w: World) => hasPlan(w)
 export const isCustomDomainActive = (w: World) =>
+  w.domain === 'registering' || w.domain === 'propagating' ||
   w.domain === 'connecting' || w.domain === 'verifying' ||
-  w.domain === 'live' || w.domain === 'unreachable' || w.domain === 'multiple'
+  w.domain === 'live' || w.domain === 'icann-hold' ||
+  w.domain === 'unreachable' || w.domain === 'multiple'
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
 
 /* ------------------------------------------------------------- validity */
