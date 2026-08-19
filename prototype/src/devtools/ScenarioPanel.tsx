@@ -49,11 +49,16 @@ export function ScenarioPanel() {
   return (
     <>
       {/* The handle earns its place by being findable, not by being visible. It rests at
-          25% opacity with no fill, and only resolves on hover. ⌘. opens it without a click. */}
+          25% opacity with no fill, and only resolves on hover. ⌘. opens it without a click.
+
+          It sits ON the rail's axis, one notch ABOVE the support bubble: the rail's own
+          28px centre line (right-4 + half of w-6), and clear of the bubble's 36px + pb-6.
+          In the corner it read as part of the product's chrome; stacked on the rail it
+          reads as one more tool, which is what it is. */}
       {!presenter && !open && (
         <button
           onClick={() => setOpen((v) => !v)}
-          className="group fixed bottom-2.5 right-2.5 z-[9998] grid h-6 w-6 place-items-center
+          className="group fixed bottom-[68px] right-4 z-[9998] grid h-6 w-6 place-items-center
                      rounded-md opacity-25 transition-opacity duration-200 ease-[cubic-bezier(.2,0,0,1)]
                      hover:bg-white/10 hover:opacity-100 focus-visible:opacity-100"
           title="Prototype console · ⌘."
@@ -124,9 +129,6 @@ export function ScenarioPanel() {
             </div>
 
             <ScrollArea className="min-h-0 flex-1" innerClassName="px-4 py-4" thumb="dark">
-              {/* whole flows, played end to end */}
-              <FlowList />
-
               {/* presets — single frozen situations */}
               <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
                 Situations
@@ -231,6 +233,11 @@ export function ScenarioPanel() {
                   </section>
                 )
               })}
+
+              {/* Whole flows, played end to end — LAST on purpose. The axes above are
+                  what you reach for constantly while drawing; a scripted flow is what
+                  you reach for when showing someone. Frequency decides the order. */}
+              <FlowList />
             </ScrollArea>
 
             {/* footer */}

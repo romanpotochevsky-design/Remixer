@@ -42,6 +42,12 @@ function UrlField({ value, suffix, live }: { value: string; suffix?: string; liv
   )
 }
 
+/**
+ * The staging-address line under the domain row, parked by the designer on 19 Aug 2026
+ * until its home is decided. Off means the panel shows only the live address.
+ */
+const SHOW_STAGING_LINE = false
+
 export function PublishPanel() {
   const { world, set } = useWorld()
   const { publishOpen, togglePublish, openDomains, showToast } = useUI()
@@ -150,12 +156,28 @@ export function PublishPanel() {
   const staging = STAGING_HOST.replace('.remixer.site', '')
 
   const live = world.domain === 'live' || world.domain === 'multiple'
-  const primary =
-    world.unpublished > 0
-      ? live
-        ? { en: `Update · ${world.unpublished} changes · Free`, uk: `Оновити · змін: ${world.unpublished} · Безкоштовно` }
-        : { en: `Publish · Free`, uk: `Опублікувати · Безкоштовно` }
-      : { en: 'Continue', uk: 'Продовжити' }
+
+  /*
+   * The primary button is the panel's OWN function: it publishes the site. It is never
+   * handed to the domain (㉘ A3), and it never becomes a way to dismiss the panel —
+   * which is what the old "Continue" fallback had turned it into. A primary that says
+   * "Continue" states nothing: it names neither what happens nor to what.
+   *
+   * So there are exactly two shapes, and the count is what separates them:
+   *   changes pending → the real action, carrying how many and that it costs nothing
+   *   nothing pending → the same verb, disabled. Saying "Publish" and doing nothing
+   *                     would be worse than being visibly unavailable.
+   *
+   * "Free" stays in the label because publishing for credits is the single most
+   * attackable line in any comparison table against us — the panel says so out loud.
+   */
+  const pending = world.unpublished > 0
+  const n = world.unpublished
+  const primary = !pending
+    ? { en: 'Publish', uk: 'Опублікувати' }
+    : live
+      ? { en: `Update · ${n} ${n === 1 ? 'change' : 'changes'} · Free`, uk: `Оновити · змін: ${n} · Безкоштовно` }
+      : { en: `Publish · ${n} ${n === 1 ? 'change' : 'changes'} · Free`, uk: `Опублікувати · змін: ${n} · Безкоштовно` }
 
   return (
     <AnimatePresence>
@@ -279,9 +301,13 @@ export function PublishPanel() {
                 </button>
               )}
 
-              {/* Staging address — the reassurance that makes a 72-hour wait
-                  tolerable: whatever the domain is doing, this link keeps working. */}
-              {hasDomain && (
+              {/* Staging address — HIDDEN for now (designer, 19 Aug 2026: "пока не знаю
+                  что с ним делать, будет он или нет, или если убрать то куда").
+                  The line is kept rather than deleted because the argument for it is
+                  still live: it is the reassurance that makes a 24–72 h wait tolerable —
+                  whatever the domain is doing, this link keeps working. Flip the flag to
+                  bring it back; where it finally lives is an open design question. */}
+              {SHOW_STAGING_LINE && hasDomain && (
                 <div className="px-1">
                   <p className="text-[12.5px] leading-[1.4] text-[var(--white-300)]">
                     {t({ en: 'Staging address', uk: 'Адреса стейджингу' })}
@@ -298,9 +324,18 @@ export function PublishPanel() {
           {/* ---------------------------------------------------------- button bar */}
           <div className="flex items-center justify-end gap-2 px-4 py-4">
             <button
-              onClick={() => (world.unpublished > 0 ? set({ unpublished: 0 }) : togglePublish(false))}
-              className="h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+              onClick={() => set({ unpublished: 0 })}
+              disabled={!pending}
+              className={`flex h-10 items-center gap-2 rounded-[10px] px-5 text-[14px] font-semibold transition-colors duration-[var(--dur-fast)] ease-std ${
+                pending
+                  ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
+                  : 'cursor-not-allowed bg-[var(--white-100)] text-[var(--white-400)]'
+              }`}
             >
+              {/* The pending-changes dot. Asked for as blue; rendered WHITE because the
+                  button it sits on IS the blue — a blue dot on --action is invisible.
+                  Same signal, the only fill that reads against it. */}
+              {pending && <span className="h-1.5 w-1.5 flex-none rounded-full bg-white/90" aria-hidden />}
               {t(primary)}
             </button>
           </div>
