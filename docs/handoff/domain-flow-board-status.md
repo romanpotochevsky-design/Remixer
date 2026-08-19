@@ -9,8 +9,83 @@
 > The designer's instruction was to work out which boards the DreamHost research
 > has since invalidated, and put those aside without touching what still holds.
 >
-> **Nothing in Figma was moved or edited.** This file is the verdict; the actual
-> re-filing is the designer's call — see §7.
+> **The re-filing has since been carried out** at the designer's explicit request
+> (19 Aug, "убрать куда-то чтобы не мешало"). 28 sections were **moved, not
+> deleted**, onto a new page — see §0. Nothing was erased and every move is
+> reversible.
+
+---
+
+## 0. What was actually moved (19 Aug 2026)
+
+A new page **"🗄 Domain flow · Archive (pre-research)"** — canvas id `28231:3810` —
+now holds the retired work. Everything was **moved**, never deleted.
+
+**28 sections archived**, in four passes:
+
+| pass | sections |
+|---|---|
+| killed by a verified fact / self-labelled old | ③ `23345:5474` · ③v2 `23728:5476` · ✎② `23345:5473` · ㉔ `26993:20573` · 📱 Mobile `23356:5472` · ✎ Alternates `23346:5473` · ① `23345:5472` · 🔎 v2 `23459:5472` · ②v2 `23477:5472` |
+| converged publish rounds | ⑥ `23346:5472` · ⑥-B `23371:5472` · ⑥-A CASE2 `23465:5472` · ⑤ `23345:5476` · ⑦ `26305:5564` · ⑧ `26309:5564` · ⑨ `26311:5564` · ㉕ `27014:20573` |
+| confirm / modal rounds | ⑪ `26338:5564` · ⑫ `26342:5564` · ⑬ `26370:5564` · ⑭ `26373:5564` · ⑮ `26374:5564` · ⑯ `26382:5564` |
+| panel compaction & pricing refinements | ⑰ `26383:5564` · ⑱ `26398:20573` · ⑳ `26829:20573` · ㉑ `26832:20573` · ㉒ `26841:20573` |
+
+**Left standing on "Domain Connection Flow" (`23191:3719`) — 8 domain items:**
+
+| kept | id | why |
+|---|---|---|
+| ㉘ После «This is my domain» | `27281:5564` | current connect-own/external flow |
+| ㉗ Умный поиск · все состояния | `27269:5564` | current search truth |
+| ㉖ свой домен на DreamHost | `27071:20573` | current, matches the shipped guard |
+| ㉓ Add domain · новый домен | `26990:20573` | current buy cases |
+| ④ Manage domains | `23345:5475` | no replacement — multi-domain hub + stalled-DNS help |
+| ⑩ Existing domain → what next | `26336:5564` | no replacement — the primary/redirect branch |
+| ⑲ правило одной точки | `26403:20573` | a rule, not a screen; still disciplines panel states |
+| ⑥-A Launchpad | `23386:5472` | **kept deliberately** — `CLAUDE.md` still cites it as the chosen publish direction, so it stays until that is re-confirmed |
+
+Three non-domain frames also remain (`23209:46739` Cloud/Database, `23209:79562`
+Stripe, `23329:23502` Logged-in user). They belong to other modules, so moving
+them was not this audit's call.
+
+### Correction to §3.1 — ㉕ has a hi-fi replacement after all
+
+The hi-fi page carries **`28206:66756` "㉕ Publish panel · после чекаута ·
+состояния домена"** — the highest node id in the file, i.e. the newest thing in
+it — and it redraws **all seven** states in the current dark language:
+`1 connecting` · `2 live https pending` · `3 live secure` · `4 external pending` ·
+`5 icann verify` · `6 failed` · `7 not paid`.
+
+So the three states §3.1 called orphaned are **not** orphaned: ICANN verification
+("we sent a link to … · 14 days left" + **Resend**), the failure state
+("We can't reach this domain yet · your plan is active" + **Check again**) and the
+lapsed-plan state are all drawn. That removes the main reason to keep the old ㉕,
+which is why it went to the archive with the rest.
+
+### The hi-fi page was cleaned too
+
+**"🔗 Connect Domain" (`23484:69717`) went from 99 top-level objects to 49.**
+**50 leftovers** were moved to the same archive page and parked at `x + 60000`, in
+their own region clear of the archived sections: stray tracing rectangles
+(`Rectangle 1162905*`), pasted screenshots (`image 4**`), scratch text
+(`Текст`, `Text text`, `dfdfffdffdf`), loose vectors, plus two frames that named
+themselves obsolete — `23484:69718` "STATE·1 default · старый вариант" and
+`23498:87366` "v2 · Default (smart field + AI suggestions)" (pre-research).
+
+Component sets were **not** touched (`Domain`, `Button` ×2, `Connect your own
+domain`, `Logo`) — instances elsewhere depend on them.
+
+**Two things deliberately left for the designer to rule on:**
+
+1. **15 "Website Builder / Image Library" frames** sit on this page. They are not
+   domain work at all — they belong to the Images module, and may well be live.
+   Moving another module's work was outside this mandate; they just need re-filing
+   onto their own page.
+2. **5 loose "Website Builder / Connect domain (+ Existing domains)" frames**
+   (`27335:11640`, `27309:66343`, `27878:13178`, `27883:21134`, `27883:21965`) sit
+   *outside* the "Connect domain" section. Two of them are **newer than everything
+   inside it** (`27878`, `27883` vs the section's `27729` top), so they may be work
+   in progress rather than old copies. Not guessed at either way — say which, and
+   they go into the section or into the archive.
 
 ---
 
