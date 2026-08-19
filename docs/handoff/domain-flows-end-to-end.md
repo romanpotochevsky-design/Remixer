@@ -64,7 +64,7 @@ The continuation of ㉖ `27071:20573`. Three entry points, one chain.
 | A0 | entry | dashboard row **Connect** · typed the owned name in search · search result ㉗ `4 в аккаунте` | ✅ | all three land on the same sheet (shipped 19 Aug) |
 | A1 | confirm | ㉖ **A** — nothing on the domain: three elements, "On DreamHost · connects in a few seconds", CTA **Connect domain** | ✅ | no price, no transfer offer |
 | A1b | confirm, risky | ㉖ **B** — a site is already served there: "This domain currently shows another site" / "Your email keeps working · the old site stays on your account", CTA **Replace site** | ✅ | the verb *is* the guard |
-| A2 | **connecting** | **nothing exists** | ⬜ | see below |
+| A2 | **connecting** | built 19 Aug: toast + amber→green topbar, no panel | ✅ built | see below |
 | A3 | live, padlock pending | `28206:66756` state `2 live https pending` — "Secure padlock is switching on · usually within 30 minutes · the site already works" | ✅ | |
 | A4 | live, secure | `28206:66756` state `3 live secure` — padlock on, "Anyone can visit" | ✅ | |
 | A5 | failure | `28206:66756` state `6 failed` — "We can't reach this domain yet" + **Check again** | ✅ | |
@@ -96,14 +96,14 @@ panel, no status page and no checklist.
 |---|---|---|---|---|
 | B0 | search, empty | dashboard `HomeScreen` — 880px field, existing domains + AI suggestions | ✅ built | |
 | B1 | typed a word | ㉗ `1 слово` — exact match hero, other endings, AI ideas, renewal on every row | ✅ | built at 2026 hi-fi as `ResultsScreen` |
-| B1b | typed a phrase | ㉗ `2 фраза` — the one case where inventing names is right | ✅ drawn, ⬜ not built | |
-| B1c | **name is taken** | ㉗ `3 занят` — `Taken` chip, "Registered at GoDaddy", CTA **This is my domain**, then alternatives | ✅ drawn, ⬜ not built | leaves into Flow C (external) |
+| B1b | typed a phrase | ㉗ `2 фраза` — the one case where inventing names is right | ✅ built 19 Aug | AI block leads; footer points back to the classic path |
+| B1c | **name is taken** | ㉗ `3 занят` — `Taken` chip, "Registered at GoDaddy", CTA **This is my domain**, then alternatives | ✅ built 19 Aug | opens the `connect-external` sheet → setup screen (two lines). Plan gate folds into the sheet; `pendingSetup` resumes the setup after checkout |
 | B2 | confirm & price | checkout sheet `27058:100133` / `27254:11737` / `27275:33023` — first year + honest renewal; plan chooser folds in when there is no plan | ✅ built | |
-| B2b | spelling guard | ㉓ `26990:20573` — **"Check the spelling — registrations are final and non-refundable"** | ✅ drawn, ⬜ not in the built sheet | matches the verified no-refund fact; belongs in the sheet |
+| B2b | spelling guard | ㉓ `26990:20573` — **"Check the spelling — registrations are final and non-refundable"** | ✅ built 19 Aug | in the sheet, on every buy |
 | B3 | checkout | hosting panel cart, `panel.dreamhost.com/?tree=checkout.dashboard` | ✅ built 1:1 | leaves Remixer |
 | B4 | Submit Order → back | toast "Remixer Build added" + panel opens with the domain row | ✅ drawn (`28206:66756` state 1) | no receipt page exists — confirmed |
-| B5 | **registering** | **nothing exists** | ⬜ | ≤15 min, registry operation, nothing to click |
-| B6 | **connecting** | `28206:66756` state `1 connecting` | ❌ **copy wrong** | says "seconds"; the verified fact is 24–72 h |
+| B5 | **registering** | built 19 Aug: panel row "usually under 15 minutes", staging address keeps showing | ✅ built | ≤15 min, registry operation, nothing to click |
+| B6 | **connecting → propagating** | built 19 Aug with the honest copy ("most visitors within a few hours, up to 72 hours worldwide") | ✅ built | the board's "seconds" annotation remains wrong for NEW registrations — redraw ㉘-style when the states get their hi-fi pass |
 | B7 | **ICANN registrant verification** | `28206:66756` state `5 icann verify` — "We sent a link to roman@example.com · 14 days left" + **Resend** | ✅ drawn, ⚠️ **fact unverified** | see §4 |
 | B8 | live, padlock pending | state `2 live https pending` | ✅ | |
 | B9 | live, secure | state `3 live secure` | ✅ | |
@@ -154,16 +154,19 @@ say "before the deadline in the email" rather than inventing a countdown.
 
 ## 5. What actually has to be designed, in priority order
 
-1. **B6 connecting, honest about 24–72 h** — the biggest gap, because the current
-   board actively misleads and this is the state most customers will sit in.
-2. **B5 registering** (≤15 min) — cheap, and without it B4 jumps straight to a
-   state that is not true yet.
-3. **A2 the connect transition** — toast + amber→green topbar, no panel.
-4. **B2b the spelling guard** into the built sheet — one line, and it maps to a
-   real no-refund policy.
-5. **B1b / B1c into the prototype** — the phrase and taken states are drawn but not
-   built; `3 занят` is the doorway to the whole external-domain flow.
-6. **Re-verify the ICANN number** (§4).
+> **Status 19 Aug 2026: 1–5 are built in the prototype** (branch
+> `claude/remixer-connect-domain-awdg3f`). Only §4's number is still open.
+
+1. ✅ **B6 connecting, honest about 24–72 h** — Publish panel domain row.
+2. ✅ **B5 registering** (≤15 min).
+3. ✅ **A2 the connect transition** — toast + amber→green topbar, no panel.
+4. ✅ **B2b the spelling guard** in the built sheet.
+5. ✅ **B1b / B1c in the prototype** — the results screen derives its face from the
+   query (word / phrase / taken); `3 занят` opens the `connect-external` sheet, and
+   the sheet leads to the two-lines setup screen. The till interrupting either
+   connect resumes on return (`pendingSetup`).
+6. ⬜ **Re-verify the ICANN number** (§4) — the built copy deliberately ships
+   without a digit until then.
 
 ---
 
