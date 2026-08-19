@@ -8,6 +8,30 @@
 - Paste this link into Design ("Figma links … as context") so Claude can read the real frames.
 - Page is organized into titled **Sections**: ① Buy a new domain · ② Connect a DreamHost domain · ③ Connect an external domain · ④ Manage domains · ⑤ Plan gate · ⑥ Publish panel · **⑥-A Launchpad** (chosen alt) · ⑥-B Site Status (alt) · ✎ Alternates (old variants) · 📱 Mobile · iOS.
 
+## ⚠️ Corrections since this file was written (19 Aug 2026)
+
+Three claims below have since been disproven or superseded. The rest of the document stands.
+
+1. **"Domain Connect one-click for ~50 registrars" (scenario 3) is not buildable today.**
+   DreamHost supports Domain Connect in **no role** — absent from `domainconnect.org`'s
+   provider list, zero mentions across `help.dreamhost.com` (verified Aug 2026). One-click
+   external connect requires buying **Entri** (~$249/mo for 600 connections + ~$500/mo for
+   custom-domain SSL). Until that PO exists, the external path is guided manual records.
+   Any frame showing a one-click consent screen is a *conditional* design — keep it in
+   Alternates, not in the main flow.
+2. **Domain prices are stale here.** Use the official table (verified 06 Aug 2026):
+   `.io $34.99 / $59.99 renew` (not $39.99), `.ai $89.99` with a 2-year minimum (hence the
+   $179.98 front-page figure), `.online $1.99`, `.store $2.99`. `prototype/src/data/domains.ts`
+   carries the correct set.
+3. **The connect flow's state machine is incomplete.** The teardown at
+   `docs/research/domain-connect-competitive-teardown.md` (§5–§6) lists eight failure states
+   the category names and this flow does not — most importantly **"connected but not
+   published yet"** (Lovable calls it `Ready`) and the ~1-hour verification timeout.
+
+Deeper competitor detail on the connect path — automation rails, status vocabularies,
+failure catalogue, collision handling — now lives in
+`docs/research/domain-connect-competitive-teardown.md`.
+
 ## What this is
 In-builder flow for **DreamHost "Remixer"** (AI website builder): connect a domain + publish a site to a real **custom domain**. Everything renders INSIDE the dark Remixer builder, replacing the website-preview area. **Audience: a complete non-technical novice ("housewife test")** — plain language, no jargon, sells without scaring.
 

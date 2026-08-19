@@ -29,9 +29,18 @@ export type Inventory =
   /** Registered with us, but nameservers point elsewhere (usually Cloudflare):
    *  records we write server-side will NOT take effect. Must be detected and explained. */
   | 'dh-external-ns'
-  /** External registrar that supports Domain Connect (GoDaddy, Squarespace, IONOS…). */
+  /**
+   * Authoritative DNS sits with a provider that supports Domain Connect —
+   * GoDaddy, IONOS, Squarespace, NameSilo, WordPress.com and, contrary to what this
+   * comment said before, **Cloudflare** (it ships its own Domain Connect docs page and
+   * is one of the three providers Shopify's "Connect automatically" supports).
+   * Cloudflare still needs its proxy set to "DNS only" before verification passes —
+   * automatable, but with a triage card. One-click needs Entri; see
+   * docs/research/domain-connect-competitive-teardown.md §4.
+   */
   | 'external-dc'
-  /** External registrar without it (Namecheap, Cloudflare) — guided manual records only. */
+  /** No Domain Connect on the authoritative side (Namecheap is the canonical case) —
+   *  guided manual records only. */
   | 'external-manual'
 
 /** Axis B — what the current project's domain is doing. */
