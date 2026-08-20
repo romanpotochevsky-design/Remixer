@@ -65,7 +65,11 @@ export function PublishPanel() {
   const paid = hasPlan(world)
   const connecting = world.domain === 'connecting' || world.domain === 'verifying'
   const live = world.domain === 'live' || world.domain === 'multiple'
-  const staging = STAGING_HOST.replace('.remixer.site', '')
+  /* The zone is the sourced half of the staging address (FACTS DH-302); the label
+     in front of it is still a placeholder shape. Kept in one const so the field
+     and the suffix can never drift apart again — they did, as `.remixer.site`. */
+  const STAGING_ZONE = '.remixer.ai'
+  const staging = STAGING_HOST.replace(STAGING_ZONE, '')
 
   const primary =
     world.unpublished > 0
@@ -117,7 +121,7 @@ export function PublishPanel() {
                 {live || connecting ? (
                   <UrlField value={CUSTOM_DOMAIN} live={live} />
                 ) : (
-                  <UrlField value={staging} suffix=".remixer.site" />
+                  <UrlField value={staging} suffix={STAGING_ZONE} />
                 )}
                 {connecting && (
                   <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--attention)]">

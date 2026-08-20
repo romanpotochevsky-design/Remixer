@@ -161,6 +161,18 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
   ],
 }
 
-/** The staging address every project gets for free, hidden from Google. */
-export const STAGING_HOST = 'fit-ration.remixer.site'
+/**
+ * The staging address every project gets for free, hidden from Google.
+ *
+ * The ZONE is sourced: `remixer.ai`, verified 20.08.2026 from DreamHost's own KB
+ * ("your temporary website ending in remixer.ai") and the Remixer product page
+ * ("free for 30 days on a remixer.ai subdomain") — FACTS DH-302. Corrected here
+ * from `remixer.site`, which was never sourced.
+ *
+ * The LEFT-HAND LABEL is still ours, not the product's: whether staging really
+ * reads `{project}.remixer.ai`, `{account}-{project}.remixer.ai` or a generated
+ * id is unconfirmed (DH-302, open half). One screenshot of the live builder
+ * closes it — until then treat `fit-ration` as a placeholder shape.
+ */
+export const STAGING_HOST = 'fit-ration.remixer.ai'
 export const CUSTOM_DOMAIN = 'fit-ration.com'

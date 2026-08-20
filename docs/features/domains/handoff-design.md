@@ -8,9 +8,9 @@
 - Paste this link into Design ("Figma links … as context") so Claude can read the real frames.
 - Page is organized into titled **Sections**: ① Buy a new domain · ② Connect a DreamHost domain · ③ Connect an external domain · ④ Manage domains · ⑤ Plan gate · ⑥ Publish panel · **⑥-A Launchpad** (chosen alt) · ⑥-B Site Status (alt) · ✎ Alternates (old variants) · 📱 Mobile · iOS.
 
-## ⚠️ Corrections since this file was written (19 Aug 2026)
+## ⚠️ Corrections since this file was written (19–20 Aug 2026)
 
-Four claims below have since been disproven or superseded. The rest of the document stands.
+Five claims below have since been disproven or superseded. The rest of the document stands.
 
 1. **"Domain Connect one-click for ~50 registrars" (scenario 3) is not buildable today.**
    DreamHost supports Domain Connect in **no role** — absent from `domainconnect.org`'s
@@ -60,6 +60,24 @@ Four claims below have since been disproven or superseded. The rest of the docum
    already carries this exact reasoning in its `external-dc` comment; keep the Figma frames
    and this file consistent with it.
 
+5. **The staging host is wrong everywhere in this file (20 Aug 2026).** It says
+   `*.remixer.site`; the product uses **`remixer.ai`**. DreamHost's own KB describes the
+   arrow beside **Publish to Staging** opening "your temporary website **ending in
+   remixer.ai**", and the Remixer product page sells a free 30-day preview "**on a
+   remixer.ai subdomain**" (verified 20 Aug 2026 — `docs/product/FACTS.md` DH-302, restated
+   in DH-005). `remixer.site` was never sourced by anything; neither was `remixer.app`,
+   which the audit uses. The **zone** is now settled. What is **not** settled is the
+   **left-hand label** — whether the address reads `{project}.remixer.ai`,
+   `{account}-{project}.remixer.ai` or a generated id — so any frame that prints a full
+   staging address is showing a placeholder shape, and **one screenshot of the live builder
+   closes it**. Two knock-ons for the frames: the two places below that carry the host are
+   marked in the body, and `prototype/src/data/domains.ts` (`STAGING_HOST`) now holds the
+   corrected zone in one place, printed by the publish panel and the shell.
+   ⚠️ Do not read this correction as blessing the other half of those sentences: "**hidden
+   from Google**" is a *separate* claim, and it was **downgraded to `unverified`** on the
+   same day (DH-303) — no statement about indexing exists in the KB, the product page or
+   the Trial Terms. Keep the two apart when quoting either.
+
 Deeper competitor detail on the connect path — automation rails, status vocabularies,
 failure catalogue, collision handling — now lives in
 `docs/features/domains/research/connect.md`.
@@ -71,6 +89,9 @@ In-builder flow for **DreamHost "Remixer"** (AI website builder): connect a doma
 - **Plan = "Remixer Build" — $9.99/mo** (billed yearly = $119.88, "Save 33%"; monthly = $9.99 first month then $14.99/mo).
 - **30-day free trial, NO credit card** (DreamHost markets it as the longest no-card trial in the category).
 - **Trial logic:** new user writes a prompt on the marketing page → signs up → after the first site generates, the **30-day trial auto-starts**. Building with AI = the trial. **Publishing to a CUSTOM DOMAIN requires upgrading to the paid plan.** The `*.remixer.site` staging preview is always **free + hidden from Google**.
+  **⚠ Corrected — see correction 5 at the top of this file.** The host is **`*.remixer.ai`**
+  (zone verified; the label in front of it is still unconfirmed), and "hidden from Google" is
+  a separate, now-`unverified` claim (DH-303).
 - Plan includes: hosting + global CDN (SmartEdge), **SSL**, **"Connect a Domain"**, **1,000 credits/mo** (+1,000 bonus month 1), 24/7 chat & email support. Credits power AI generate / chat-edit / publish. Add-credits (one-time, 6 mo): +1,000 = $14.99, +2,500 = $34.99 ("Best value").
 - **Domain prices:** .com $9.99 (renews $19.99) · .net $4.99 · .org $7.99 · .io $39.99 · .shop $0.99 · .store $2.99 · .online $0.99 · .me $2.99 · .ai $179.98 (2-yr min). **Free WHOIS privacy forever.**
 - DreamHost has **NO domain brokerage** → never show "Make an offer" on a taken domain (just "Taken — try another").
@@ -94,6 +115,9 @@ In-builder flow for **DreamHost "Remixer"** (AI website builder): connect a doma
 
 ## Publish panel — THE conversion-critical screen
 Two destinations: **Private preview** (free `*.remixer.site`, hidden from Google) + **Public website** (the custom domain — the retention moment).
+**⚠ Corrected — see correction 5 at the top of this file.** Read `*.remixer.ai` for the
+free destination; the subdomain *shape* printed in the frames is a placeholder until someone
+screenshots the live builder, and "hidden from Google" is `unverified` (DH-303).
 
 **CHOSEN DIRECTION = "Launchpad" (section ⑥-A):** one dominant **hero** (eyebrow "PUBLIC WEBSITE") + a demoted **"PRIVATE PREVIEW LINK"** row below a hairline. Parallel structure: public site (hero) ↔ private preview (utility). **4 states:**
 - **CASE 1 — on trial, no plan** (must upgrade): "Go live on your own domain" + "Use your own address like trulieve.com — easy to find on Google and more professional." + indigo box **"Part of the Remixer Build plan · $9.99/mo / Includes hosting, the padlock and your domain. Cancel anytime."** + **Connect a domain →**.

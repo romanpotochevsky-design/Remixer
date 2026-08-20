@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
+import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
@@ -95,10 +96,13 @@ export default function App() {
   }, [chatWidth])
   const { t } = useT()
 
+  /* One source for both addresses (data/domains.ts) — the staging host used to be
+     spelled out here too, which is how the shell and the publish panel ended up
+     printing a zone nobody had sourced. See FACTS DH-302. */
   const address =
     world.domain === 'live' || world.domain === 'multiple'
-      ? 'fit-ration.com'
-      : 'fit-ration.remixer.site'
+      ? CUSTOM_DOMAIN
+      : STAGING_HOST
 
   const publishLabel =
     world.unpublished > 0
