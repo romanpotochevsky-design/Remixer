@@ -670,9 +670,16 @@ function StatusScreen() {
     : world.domain === 'verifying' ? 1
     : 0
   const done = stage === 3
-  /* `securing` shows no button, and that absence IS the message: nothing is required
-     of the person here (STATES.md, `securing` — "Глагол. Нет, намеренно"). Do not add
-     one back to make the screen feel complete. */
+  /* `securing` carries NO ACTION ON THE DOMAIN, and that absence IS the message: nothing
+     is required of the person here (STATES.md, `securing` — "Глагол. Нет, намеренно").
+     Do not add Refresh, Try again, Fix or anything else that implies the padlock can be
+     hurried — it cannot, and offering the gesture would invite pointless clicking.
+
+     `Keep editing` is the one exception, and it is not a counter-example: it acts on the
+     SCREEN, not on the domain. It is the way out, which is literally what the body copy
+     instructs — a screen that says "nothing for you to do" and then traps you contradicts
+     itself, and someone landing here outside a flow would be stuck. Quiet secondary only,
+     the same treatment as the escape on the `needs-attention` branch below. */
   const securing = stage === 2
 
   // The canonical success checklist — one fixed order on every success screen.
@@ -811,6 +818,16 @@ function StatusScreen() {
           </>
         )}
       </div>
+      )}
+
+      {/* the one way out of `securing` — see the note on `securing` above */}
+      {securing && (
+        <button
+          onClick={closeSurface}
+          className="mt-5 w-full text-center text-[13px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[var(--white-700)]"
+        >
+          {t({ en: 'Keep editing', uk: 'Редагувати далі' })}
+        </button>
       )}
     </Screen>
   )

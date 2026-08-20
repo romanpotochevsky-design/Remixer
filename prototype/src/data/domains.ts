@@ -195,8 +195,12 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
  * Names that come back TAKEN — the most common outcome of a domain search, and the
  * state the Figma file draws nowhere (OPEN-QUESTIONS 01). Hardcoded rather than
  * generated so a demo can be steered: search `coffeeshop` and the taken hero shows up.
- * Note that the default demo term, `fit-ration`, is on the list too — its `.com` is one of
- * the customer's own domains, so the default search lands on exactly the ownership case.
+ *
+ * `fit-ration.com` is deliberately NOT here, and it must stay off. It is the default demo
+ * term, so listing it made the FIRST search anyone runs land on the taken card instead of
+ * the Best-match hero — and that hero is the primary screen of the whole buy flow, the one
+ * you show first. The happy path is what a first search shows. The ownership turn still
+ * demonstrates on the other two account domains below.
  *
  * The list deliberately includes the OWNED_DOMAINS names. A domain the customer already
  * holds also reads as "taken" to a search — and that is the case where the quiet
@@ -213,8 +217,8 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
 export const TAKEN_DOMAINS = new Set<string>([
   'coffeeshop.com',
   'nike.com',
-  // already in the customer's DreamHost account — the "Already yours? Connect it" case
-  'fit-ration.com',
+  // already in the customer's DreamHost account — the "Already yours? Connect it" case.
+  // `fit-ration.com` belongs here by that logic and is left out on purpose; see above.
   'odesa-coffee-roasters.com',
   'design-portfolio.net',
   'vegan-burger-delivery.co',
