@@ -71,11 +71,33 @@ export function PublishPanel() {
   const STAGING_ZONE = '.remixer.ai'
   const staging = STAGING_HOST.replace(STAGING_ZONE, '')
 
+  /*
+   * ⚠️ HISTORY, NOT SPEC. These two labels used to read `Publish · Free` and
+   * `Update · N changes · Free` (uk: `… · Безкоштовно`). The `Free` token was
+   * REMOVED 20 Aug 2026. Kept as a note because a deleted mistake comes back and a
+   * labelled one does not — do not re-add it on the strength of a design argument.
+   *
+   * Why it went: publishing consumes credits today (FACTS **DH-008**, `verified`).
+   * `Free` was the audit's RECOMMENDATION rendered as if it were the product's
+   * behaviour, on a surface that is not a mockup: the prototype sits at a permanent
+   * artifact URL that product owners, developers and SEO read, so a developer could
+   * have sized work against a publish that costs nothing.
+   *
+   * What did NOT change, and must not be read out of this edit: the position.
+   * `docs/product/POSITIONING.md` §1 "Unmeter the finish line" still argues publishing
+   * must cost zero credits, and **DH-009** still records that nobody knows whether
+   * getting there is a billing toggle or an architecture project. The button simply
+   * stops asserting a price: it names the action and claims nothing.
+   *
+   * And no credit cost was substituted in the other direction — there is no verified
+   * per-publish figure (**DH-009**), so a number here would be the same error mirrored.
+   * `Free` comes back when DH-008 changes, not before.
+   */
   const primary =
     world.unpublished > 0
       ? live
-        ? { en: `Update · ${world.unpublished} changes · Free`, uk: `Оновити · змін: ${world.unpublished} · Безкоштовно` }
-        : { en: `Publish · Free`, uk: `Опублікувати · Безкоштовно` }
+        ? { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
+        : { en: `Publish`, uk: `Опублікувати` }
       : { en: 'Continue', uk: 'Продовжити' }
 
   return (
@@ -165,13 +187,32 @@ export function PublishPanel() {
                 </button>
               )}
 
-              {/* private preview line under a live/connecting domain */}
+              {/* private preview line under a live/connecting domain.
+                *
+                * ⚠️ HISTORY, NOT SPEC. This line used to read `Private preview · always
+                * free · hidden from Google` (uk: `… · приховано від Google`). The THIRD
+                * clause was REMOVED 20 Aug 2026; the note stays because a deleted mistake
+                * comes back and a labelled one does not.
+                *
+                * Why it went: FACTS **DH-303** downgraded exactly that clause to
+                * `unverified` — no statement about indexing, `noindex` or robots exists in
+                * the Remixer KB, on the product page or in the trial terms, and it cannot
+                * be inherited by analogy: the one DreamHost staging documented as
+                * non-indexable is DreamPress, which achieves it with HTTP auth that cannot
+                * be disabled — a mechanism this preview plainly does not use, since
+                * sending the link is the point. An `unverified` string does not belong on
+                * a surface a team reads.
+                *
+                * `always free` is the VERIFIED half of DH-303 (with DH-005) and stays. EN
+                * and UK are two renderings of one sentence: change them together.
+                * The clause returns only if the platform team confirms the response header
+                * (FACTS §3, close-out item 2) — not on a design argument. */}
               {(live || connecting) && (
                 <div className="flex items-center justify-between gap-3 rounded-[16px] border border-dashed border-[var(--white-200)] px-5 py-4">
                   <div className="min-w-0">
                     <p className="truncate text-[14px] text-[var(--white-500)]">{STAGING_HOST}</p>
                     <p className="mt-0.5 text-[12.5px] text-[var(--white-300)]">
-                      {t({ en: 'Private preview · always free · hidden from Google', uk: 'Приватне прев’ю · завжди безкоштовно · приховано від Google' })}
+                      {t({ en: 'Private preview · always free', uk: 'Приватне прев’ю · завжди безкоштовно' })}
                     </p>
                   </div>
                 </div>

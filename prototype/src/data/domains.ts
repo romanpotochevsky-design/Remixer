@@ -162,7 +162,19 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
 }
 
 /**
- * The staging address every project gets for free, hidden from Google.
+ * The staging address every project gets for free.
+ *
+ * ⚠️ HISTORY, NOT SPEC. This line used to end ", hidden from Google". That clause was
+ * REMOVED 20 Aug 2026 — recorded rather than quietly deleted, because a deleted mistake
+ * comes back and a labelled one does not. FACTS **DH-303** downgraded it to `unverified`:
+ * nothing in the Remixer KB, on the product page or in the trial terms says anything about
+ * indexing, and the only DreamHost staging documented as non-indexable (DreamPress) gets
+ * there with HTTP auth that cannot be disabled — which this preview does not use, since
+ * the point of the link is that you can open and send it. "For free" is the verified half
+ * of DH-303 (with DH-005) and stays. The same claim was printed in the UI by
+ * `PublishPanel.tsx`; both copies were cut in one change, and either both come back or
+ * neither does. What would bring it back: the platform team confirming the response header
+ * (FACTS §3, close-out item 2) — the same one-minute trip that closes the open half below.
  *
  * The ZONE is sourced: `remixer.ai`, verified 20.08.2026 from DreamHost's own KB
  * ("your temporary website ending in remixer.ai") and the Remixer product page
