@@ -118,8 +118,12 @@ in this folder with a real inbound mail story.
   (§10.1). The pricing page advertises a permanently free plan with no card, plus a 30-day
   money-back guarantee. Do not use the 7-day figure.
 - **Anything beyond the tables.** There is **no dedicated Hostinger teardown section in the
-  synthesis** — it appears only in §1.2, the §2 verdict row and scoring column, four rows of §6, and
-  the §10.1 correction. Everything we know about Horizons' actual interface is second-hand. It is the
+  synthesis** — every mention is a row, a cell or an aside inside someone else's section. Do not
+  restate a list of section numbers here (an earlier version of this line named five places and
+  missed three); count them when you need them:
+  `awk '/^#{2,3} /{sec=$0} /[Hh]ostinger/{print NR": "sec}' docs/competitors/audits/synthesis-q3-2026.md`
+  — at the last check 14 mentions, spread over §1, §2, §4, §5, §6, §8 and §10, none of them a
+  teardown. Everything we know about Horizons' actual interface is second-hand. It is the
   thinnest coverage of any company in this folder and, given that it is our structural mirror, that
   is a gap worth closing — see [`_blind-spots.md`](_blind-spots.md), where the whole
   host-with-an-AI-builder cohort sits unbenchmarked (critique §1).

@@ -316,11 +316,18 @@ They agree at 100 and 200 and **diverge above it**:
 
 | Step | `index.css` var | Figma Neutral Alpha |
 |---|---|---|
-| 50 | *(no variable — hardcoded `#ffffff0a` in 13 places, plus `--glass-divider`)* | 4% `#ffffff0a` |
+| 50 | *(no variable — hardcoded `#ffffff0a` inline, plus `--glass-divider` in `index.css`)* | 4% `#ffffff0a` |
 | 100 | `--white-100` = 8% `#ffffff14` | 8% `#ffffff14` ✓ |
 | 200 | `--white-200` = 12% `#ffffff1f` | 12% `#ffffff1f` ✓ |
 | 300 | `--white-300` = **20%** `#ffffff33` | **24%** `#ffffff3d` ✗ |
 | 400 / 500 / 700 / 900 | 40% / 70% / 85% / 95% — a **text** ramp, not a border ramp | — |
+
+⚠️ **Do not restate how many places hardcode `#ffffff0a`** — an earlier version of this row
+said "13 places" and the real number moves with every screen added. Count it when you need it:
+`grep -rc '#ffffff0a' prototype/src` (at the last check: 24 occurrences over 22 lines in four
+files, two of them the `--glass-divider` definition and its comment in `index.css`). The rule
+this row exists to state is that step 50 has **no `--white-*` variable**, which is why it is
+inline everywhere.
 
 So `--white-300` is *not* Neutral Alpha/300, and the composer rim therefore has to be
 written as the literal `#ffffff3d`. Before adding a token named after a Figma step,
