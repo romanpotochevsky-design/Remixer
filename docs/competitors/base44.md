@@ -30,7 +30,7 @@ and it is the only builder that has seriously designed for scale — a searchabl
 holding 600 pages, and a "Files used in this page" reverse lookup that is the best bridge in the
 field between a non-coder's mental model and a file system (§4.2) `[verified · no row]` — the token
 system was read off Base44's own production CSS, 13 Aug 2026
-(`design-system/measured-competitor-tokens.md`). Both are where our design system and our
+(`../design-system/measured-competitor-tokens.md`). Both are where our design system and our
 multi-page future are heading.
 
 **Strategic:** Base44 is Wix's. Wix is a registrar, a host, and sells mailboxes

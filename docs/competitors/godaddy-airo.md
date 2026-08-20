@@ -27,7 +27,7 @@ and is marked in place:
 | Free | $0 | 50 | **0 — cannot publish at all** |
 | Starter | $9.99/mo | 150 | 1 |
 | Professional | $24.99/mo | 300 | 10 |
-| Ultimate | $99.99/mo | 750 `[unverified]` — corroborated, never read off the tier card (CMP-016) | 50 |
+| Ultimate | $99.99/mo | 750 `[unverified · CMP-016 · Aug 2026]` — corroborated, never read off the tier card | 50 |
 
 Measured burn is ~8 credits per prompt, so 50 free credits is about six prompts — single-reviewer
 figure `[unverified · CMP-016 · Aug 2026]`. **Registrar: yes, the largest in the world.**

@@ -70,7 +70,7 @@ impressive the company is.
 
 | Document | What it is for |
 |---|---|
-| [`audits/synthesis-q3-2026.md`](audits/synthesis-q3-2026.md) | The full audit, 13 Aug 2026, ~98 KB, 10 numbered sections. Field scoring (§2), Lovable decoded (§3), per-competitor teardowns (§4), table stakes (§5.1), where we stand (§6), catch-up list (§7), overtake list (§8), design-craft rules (§9), risks (§10). **The section numbers used across this folder are its.** |
+| [`audits/synthesis-q3-2026.md`](audits/synthesis-q3-2026.md) | The full audit, 13 Aug 2026, ~98 KB, 10 numbered sections: §1 "Executive summary" · §2 "The field at a glance" · §3 "Lovable, decoded" · §4 "Per-competitor teardowns" · §5 "Category-wide patterns" (§5.1 "Table stakes") · §6 "Where Remixer stands today" · §7 "The catch-up list" · §8 "The overtake list" · §9 "Design-craft rules for Remixer's own interface" · §10 "Risks and open questions" (§10.1 = the do-not-quote list). **The bare section numbers used across this folder are its** — and they are written with their heading text, per the rule below. |
 | [`audits/synthesis-critique.md`](audits/synthesis-critique.md) | The adversarial read of the audit above. Names what is missing (§1), which claims are asserted rather than observed (§2), where the advice is generic (§3), which recommendations would hurt novices (§4), the strongest counter-argument to the whole thesis (§5), and the eight research questions worth more than the audit (§6). **Never quote the audit without checking here first.** |
 | [`audits/lovable-builder-teardown.md`](audits/lovable-builder-teardown.md) | Lovable's live builder from a real logged-in account, 13 Aug 2026, 2560×1212. Measured shell geometry, the "More" surface control-by-control, and the publish flow captured across five states including the domain paywall. |
 | [`audits/bolt-in-app.md`](audits/bolt-in-app.md) | Bolt's live app from a real Free-plan account, 13 Aug 2026. Short. The headline is the theme discontinuity between marketing and product; also a real preview cold-start failure. |
@@ -84,19 +84,53 @@ still states some refuted claims flatly.
 
 - [`../features/domains/research/connect.md`](../features/domains/research/connect.md) — 19 Aug
   2026, 17 products, "what happens when the user already owns a domain". The status-vocabulary
-  table (§5) and failure catalogue (§6) are the most transferable pages of competitive research we
-  have. §11 corrects our own repo.
+  table (§5 "Status vocabularies") and failure catalogue (§6 "The failure catalogue — the states
+  nobody draws") are the most transferable pages of competitive research we have.
+  §11 "Corrections to our own knowledge base" corrects our own repo. Section map: §3 "Where the
+  connect entry point lives" · §4.1 "Entri — the bought rail" · §4.2 "Domain Connect — the free
+  rail" · §4.3 "Same-house zero-record" · §7 "How ownership is actually proven" · §8 "Apex vs
+  www" · §9 "Collisions" · §10 "Connect vs transfer" · §12 "What Remixer should do — six
+  decisions".
 - [`../features/domains/research/search.md`](../features/domains/research/search.md) — the
   companion on domain **search**, with verified live captures of GoDaddy, Hostinger and Lovable
   result screens. Five named blocks, no numbered sections; cite as
-  `search.md § competitor-search-ux`.
+  `search.md § competitor-search-ux`. The blocks: `§ dreamhost-facts` · `§ competitor-search-ux` ·
+  `§ ai-suggestions-ux` (Horizons' pre-generated names live here) · `§ own-domain-transfer-ux` ·
+  `§ technical-detection`.
 
 ---
 
 ## Confidence discipline
 
-Every claim on these pages carries a marker and, where it matters, a date. The convention is
-inherited from the source documents:
+Every claim on these pages carries **a marker, a fact ID and a date**, written as one bracket:
+
+```
+`[verified · CMP-006 · Aug 2026]`      a claim the register carries
+`[likely · no row]`                    no register row exists for this yet
+`[unverified · CMP-030 · Aug 2026]`    the register carries it *as* unquotable
+```
+
+**Why the ID is not optional.** These pages held **zero** fact IDs until 20.08.2026 while
+`../product/FACTS.md` held 38 `CMP-` rows — count them, do not trust this sentence:
+`grep -c '^| \*\*CMP-' ../product/FACTS.md`. That absence produced two real errors: a status
+disagreement about GoDaddy Airo's credit figures, and Bolt's *hover* colour quoted as its
+brand blue. `AGREEMENTS.md` §3 and
+[`../decisions/0004-facts-live-once-in-a-register.md`](../decisions/0004-facts-live-once-in-a-register.md)
+both require the ID; a page without IDs cannot be checked against the register at all, which
+is how a wrong value survives a fact-check.
+
+**`no row` is a legitimate answer, and inventing an ID is not.** Most of what these dossiers
+carry is UI observation — a control's placement, a menu's contents, a piece of microcopy — and
+the register deliberately holds only "the competitor facts our own design decisions lean on".
+So `no row` means *design-informing, not quotable*, and where a claim is load-bearing enough
+to belong in the register, the page says so in place.
+
+**Cite sections by heading text as well as number:** `connect.md` §4.1 "Entri — the bought
+rail", not `connect.md` §4.1. Numbers move under renumbering and a drifted pointer still looks
+valid — that is exactly how `godaddy-airo.md` came to cite §4.2 twice for a fact that lives in
+§4.1.
+
+The marker vocabulary itself is inherited from the source documents:
 
 | Marker | Means |
 |---|---|
@@ -116,3 +150,8 @@ Two standing cautions:
   dossier here ends with a **Do not repeat** block for exactly this reason.
 
 *Anything on these pages without a marker is analysis, not fact.*
+
+**One more discipline, from the same review.** A claim assembled out of two sentences from two
+different sections is not a quotation, even when both halves are accurate. Attribute each half
+to the section it comes from, or paraphrase and cite both. `godaddy-airo.md` carried one
+stitched quotation of exactly that kind (§4.3 welded to §12) until 20.08.2026.

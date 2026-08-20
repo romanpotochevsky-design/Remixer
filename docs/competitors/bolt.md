@@ -52,7 +52,7 @@ Everything else about Bolt is a warning about token-metered economics.
   `[verified · no row]` — measured off the live product, 13 Aug 2026.
 - **Matched header heights** (`--header-height` and `--panel-header-height` both 50 px) so the seam
   between chat and workbench reads as one band `[verified · no row]` — read off the live CSS
-  custom properties, 13 Aug 2026 (`design-system/measured-competitor-tokens.md`).
+  custom properties, 13 Aug 2026 (`../design-system/measured-competitor-tokens.md`).
 - **Artifact-type chips before the first prompt** — Website · Slides · App · Prototype. Nobody
   should have to describe the *format* in prose (`bolt-in-app.md`, *Dashboard*)
   `[verified · no row]` — 13 Aug 2026, Free-plan account.
