@@ -114,15 +114,15 @@ export const PRESETS: Preset[] = [
     id: 'external-dc',
     label: { en: 'Domain behind Cloudflare', uk: 'Домен за Cloudflare' },
     note: {
-      en: 'Cloudflare has Domain Connect — but the proxy must be "DNS only" to verify',
-      uk: 'У Cloudflare є Domain Connect — але для перевірки проксі має бути «DNS only»',
+      en: 'Type emberandoak.com in the domain search — the situation decides that Cloudflare is detected',
+      uk: 'Введіть emberandoak.com у пошуку доменів — ситуація вирішує, що визначиться Cloudflare',
     },
     patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-dc', domain: 'verifying', unpublished: 0 },
   },
   {
     id: 'external-manual',
     label: { en: 'Domain at another registrar', uk: 'Домен в іншого реєстратора' },
-    note: { en: 'Type a domain of your own to reach the guided manual path', uk: 'Введіть свій домен, щоб дійти до ручного шляху з підказками' },
+    note: { en: 'Type emberandoak.com in the domain search — the situation decides that Namecheap is detected', uk: 'Введіть emberandoak.com у пошуку доменів — ситуація вирішує, що визначиться Namecheap' },
     /* Opens on the domain surface, NOT mid-connect. It used to land on `connecting`,
        which dropped the viewer past the very step this preset is named for — the
        records were already pasted and there was nothing left to show. The point of

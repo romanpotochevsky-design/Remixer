@@ -172,7 +172,19 @@ export const nameIdeas = (q: string): ResultRow[] => {
   ]
 }
 
-/** Domains already sitting in the customer's DreamHost account, per inventory axis. */
+/**
+ * Domains sitting in the customer's DreamHost account, per inventory axis.
+ *
+ * ⚠️ Only `dh-*` buckets belong here, and that is a boundary, not an omission. Being in
+ * the account is the one basis on which we may state that a domain is theirs. For a domain
+ * at another company we have no such basis — nothing in the account references it, and
+ * `research/connect.md` §7 is blunt that **no platform verifies ownership at search or
+ * entry time**; every one of them phrases it conditionally and defers the proof to the
+ * record change. So the external situations stage a *registered* domain (TAKEN_DOMAINS
+ * below), never an *owned* one: the difference between "taken" and "mine" does not exist
+ * at the system level — it is one fact with a question attached, and the question is asked
+ * on the results screen.
+ */
 export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string; uk: string } }[]> = {
   'dh-free': [
     { domain: 'fit-ration.com', note: { en: 'In your DreamHost account · not used yet', uk: 'У вашому акаунті DreamHost · ще не використовується' } },
@@ -188,6 +200,15 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
   'dh-external-ns': [
     { domain: 'fit-ration.com', note: { en: 'Registered with us · managed at Cloudflare', uk: 'Зареєстровано в нас · керується на Cloudflare' } },
     { domain: 'design-portfolio.net', note: { en: 'Registered with us', uk: 'Зареєстровано в нас' } },
+  ],
+  /* Owned elsewhere. Before these two rows existed, picking either external situation in
+     the console changed nothing a viewer could see: the owned block rendered empty and the
+     search field had nothing to recognise, so the whole situation was inert. */
+  'external-dc': [
+    { domain: 'emberandoak.com', note: { en: 'Registered at Cloudflare · not connected yet', uk: 'Зареєстровано на Cloudflare · ще не підключено' } },
+  ],
+  'external-manual': [
+    { domain: 'emberandoak.com', note: { en: 'Registered at Namecheap · not connected yet', uk: 'Зареєстровано на Namecheap · ще не підключено' } },
   ],
 }
 
@@ -222,6 +243,11 @@ export const TAKEN_DOMAINS = new Set<string>([
   'odesa-coffee-roasters.com',
   'design-portfolio.net',
   'vegan-burger-delivery.co',
+  /* The external example. In the `external-dc` / `external-manual` situations this is the
+     name the viewer types to reach the ownership question — and "registered" is all we can
+     honestly assert about it. Which company holds it comes from `registrarFor` below, which
+     is registry-level data (RDAP) and the one thing detection gets right. */
+  'emberandoak.com',
 ])
 
 export const isTaken = (domain: string) => TAKEN_DOMAINS.has(domain.trim().toLowerCase())
@@ -253,3 +279,12 @@ export const isTaken = (domain: string) => TAKEN_DOMAINS.has(domain.trim().toLow
  */
 export const STAGING_HOST = 'fit-ration.remixer.ai'
 export const CUSTOM_DOMAIN = 'fit-ration.com'
+
+/**
+ * Who holds an external domain, per bucket. Registrar identity is registry-level data
+ * (RDAP) and reliable for gTLDs, so naming the company is honest — see STATES.md on the
+ * `{registrar}` placeholder. `GoDaddy` stays the fallback: it is what the external screen
+ * has always said, and only the two external buckets know better.
+ */
+export const registrarFor = (inventory: string) =>
+  inventory === 'external-manual' ? 'Namecheap' : inventory === 'external-dc' ? 'Cloudflare' : 'GoDaddy'

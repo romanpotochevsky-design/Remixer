@@ -19,7 +19,7 @@ import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
   AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, STAGING_HOST, priceFor, isTaken, hasKnownEnding,
-  exactMatch, otherEndings, nameIdeas, type ResultRow,
+  registrarFor, exactMatch, otherEndings, nameIdeas, type ResultRow,
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
@@ -353,16 +353,38 @@ function RowList({ rows, onBuy, border }: { rows: ResultRow[]; onBuy: (d: string
  * THE TAKEN STATE lives on the hero, added 20 Aug 2026. The mockup draws every row as
  * available, which is the one thing a real search never does — a person types the name of
  * their own coffee shop and the .com is gone. There is still no Figma frame for it
- * (OPEN-QUESTIONS 01), so this follows the tone the research settled on: ONE friendly
- * line, then straight into the alternatives that were already sitting underneath. Never a
- * brokerage, never "Make an offer", never a premium price — DreamHost has none of those
- * and DECISIONS 03 makes that permanent. Never a bare "unavailable" with no way out
- * either. The rows below the hero are untouched: they ARE the answer.
+ * (OPEN-QUESTIONS 01), and the design settled here is NOT a verdict but a question.
+ *
+ * There is no system-level difference between "taken" and "mine": one name is registered,
+ * and who holds it is unknown to us. `research/connect.md` §7 and the own-domain block of
+ * `research/search.md` are unanimous — no platform verifies ownership at search or entry
+ * time; Shopify, Wix, Squarespace and Netlify all phrase it conditionally and let the
+ * record change be the proof, and Netlify's "[domain] already has an owner. Is it you?" is
+ * the pattern the research names to copy. So: state the registrar (RDAP, registry-level,
+ * never redacted for gTLDs), ask about the rest, and give the question two real exits —
+ * yes goes to the connect path, no is the list of alternatives already sitting underneath.
+ * Asking it here, on the results screen, is the thing no competitor does: everyone else
+ * makes the person find a separate "connect a domain you own" entry point.
+ *
+ * Never a brokerage, never "Make an offer", never a premium price — DreamHost has none of
+ * those and DECISIONS 03 makes that permanent. Never a bare "unavailable" with no way out.
  */
 function ResultsScreen() {
   const { activeDomain, openDomainModal, goDomains } = useUI()
+  const { world } = useWorld()
   const { t } = useT()
   const term = activeDomain ?? 'fit-ration'
+
+  /* The ownership question outranks anything we could sell, so it takes the top block —
+     the hero position, above the other endings and the name ideas. It is not a second row
+     next to the Best match: when the name is registered there is no Best match to buy. */
+  const registrar = registrarFor(world.inventory)
+  /* The only ownership we may state is account membership: that domain is referenced in
+     the account, so we know. For every other registered name — including the one the
+     external situations stage — we do not, and `research/connect.md` §7 says nobody does
+     at this moment. The affirmative therefore routes to the screen that can actually settle
+     it: the record change at the other company IS the proof, which is why it is deferred. */
+  const inAccount = (OWNED_DOMAINS[world.inventory] ?? []).some((o) => o.domain === hero.domain)
 
   const hero = exactMatch(term)
   const heroPrice = priceFor(hero.tld)!
@@ -389,8 +411,9 @@ function ResultsScreen() {
             <div className="flex flex-col gap-4">
               {/* exact-match hero: gradient wash under a ring-masked gradient rim */}
               {/* Same box, same geometry, two states. The purple wash and the gradient
-                  rim are the "best match" celebration and they do not travel to a name
-                  the person cannot have — a taken hero gets the flat surface instead. */}
+                  rim are the buy celebration and they do not travel to a name that is
+                  already registered — that one gets the flat surface, no price and an
+                  outlined button, so it cannot be mistaken for something on sale. */}
               <motion.div
                 variants={listSwapItem}
                 className="relative rounded-[16px] px-1 pb-1"
@@ -403,8 +426,12 @@ function ResultsScreen() {
                 {!heroTaken && <i className="bestmatch-rim" aria-hidden />}
                 <div className="flex h-10 items-center pl-6 pr-4">
                   {heroTaken ? (
+                    /* Never "taken". That word describes someone else's domain and
+                       prejudges the very question this row exists to ask; "registered" is
+                       the fact, and it is the same fact whether the owner is a stranger or
+                       the person reading it. */
                     <span className="font-display text-[14px] font-semibold text-[#ffffff7a]">
-                      {t({ en: 'Already taken', uk: 'Вже зайнято' })}
+                      {t({ en: 'Already registered', uk: 'Вже зареєстровано' })}
                     </span>
                   ) : (
                   <span
@@ -420,25 +447,61 @@ function ResultsScreen() {
                   </span>
                   )}
                 </div>
-                <div className="flex h-[94px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[#1f1f22] px-6">
-                  <div className="min-w-0 flex-1 pb-1">
+                <div className="flex min-h-[94px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[#1f1f22] px-6 py-4">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-[22px] font-medium leading-none text-white">{hero.domain}</p>
-                    <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">
-                      {heroTaken
-                        ? t({ en: 'Here are some great alternatives', uk: 'Ось кілька гарних альтернатив' })
-                        : t(hero.reason)}
-                    </p>
-                  </div>
-                  <div className="flex h-10 flex-none items-center gap-8">
                     {heroTaken ? (
-                      /* The quiet turn nobody in the field offers: a name that reads as
-                         taken to a search may simply be theirs already, and then the whole
-                         answer is one click to the confirm screen. Outlined, not blue —
-                         the alternatives below are the primary road. No price and no Buy
-                         here, and no brokerage in their place (DECISIONS 03). */
+                      <>
+                        {/* Fact, then question — in that order, and the question is the
+                            whole design. The fact is the registrar, which is registry-level
+                            data (RDAP) and never redacted for gTLDs. The question is
+                            everything else: nobody can know at this moment whether the name
+                            is theirs, and per `research/connect.md` §7 no platform even
+                            tries — Shopify, Wix, Squarespace and Netlify all phrase it
+                            conditionally and let the record change be the proof. The shape
+                            borrows Netlify's honest prompt ("… already has an owner. Is it
+                            you?"), which the research names as the pattern to copy. */}
+                        <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">
+                          {t({
+                            en: `Registered at ${registrar}. Is it yours?`,
+                            uk: `Зареєстровано на ${registrar}. Це ваш домен?`,
+                          })}
+                        </p>
+                        {/* Both exits named in one line, because a question with one answer
+                            is not a question. "Yes" is honest about the cost of yes: a
+                            change the person makes themselves at the other company. That
+                            is effort time, not a waiting window — STATES.md keeps the two
+                            apart and exempts effort from the fact-ID rule. A domain inside
+                            the DreamHost account is the opposite case and says so: zero
+                            records, no other tab. */}
+                        <p className="mt-[7px] text-[12.5px] leading-[1.45] text-[var(--white-300)]">
+                          {inAccount
+                            ? t({
+                                en: 'If it is, it’s in your DreamHost account already — nothing to change anywhere else. If it isn’t, the names below are free.',
+                                uk: 'Якщо так — він уже у вашому акаунті DreamHost, і нічого не треба змінювати деінде. Якщо ні — імена нижче вільні.',
+                              })
+                            : t({
+                                en: `If it is, you make one change at ${registrar} — about five minutes of your own work, and we walk you through it. If it isn’t, the names below are free.`,
+                                uk: `Якщо так — ви робите одну зміну на ${registrar}: близько пʼяти хвилин вашої роботи, і ми проведемо вас крок за кроком. Якщо ні — імена нижче вільні.`,
+                              })}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">{t(hero.reason)}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-none items-center gap-8">
+                    {heroTaken ? (
+                      /* The turn nobody in the field offers on a results screen: the
+                         ownership question asked right here, instead of being hidden behind
+                         a separate "connect a domain you own" entry point. Outlined, not
+                         blue — the alternatives below are the other road, equally open. No
+                         price (we are not selling something that may already be theirs) and
+                         no brokerage in its place (DECISIONS 03). The verb is the dictionary
+                         one; the "Yes" in front of it is what makes it an answer. */
                       <RowButton
-                        label={{ en: 'Already yours? Connect it', uk: 'Уже ваш? Підключіть його' }}
-                        onClick={() => goDomains('own', hero.domain)}
+                        label={{ en: 'Yes, connect it', uk: 'Так, підключити' }}
+                        onClick={() => goDomains(inAccount ? 'own' : 'external', hero.domain)}
                       />
                     ) : (
                       <>
@@ -636,10 +699,16 @@ function OwnScreen() {
 
 /** External domain: registrar detected, guided manual path. No Domain Connect promises. */
 function ExternalScreen() {
-  const { set } = useWorld()
+  const { world, set } = useWorld()
   const { activeDomain, goDomains } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? 'emberandoak.com'
+  /* The registrar was hardcoded "GoDaddy" on every path. Once the external situations own a
+     domain, the row one click back names Namecheap or Cloudflare — and this screen answered
+     with a third company. Same source for both now (`registrarFor`), so the sentence cannot
+     drift from the row that led here. GoDaddy stays the fallback for a hand-typed domain in
+     a bucket that knows nothing about it. */
+  const registrar = registrarFor(world.inventory)
 
   const start = () => {
     /* Only the domain state moves. This used to also write `inventory: 'external-manual'`,
@@ -662,15 +731,18 @@ function ExternalScreen() {
       {/* The detection bar: registrar identity is registry-level data (RDAP) — reliable. */}
       <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
         {t({
-          en: 'Registered at GoDaddy. It stays there — no transfer needed.',
-          uk: 'Зареєстровано на GoDaddy. Він там і залишиться — переносити не треба.',
+          en: `Registered at ${registrar}. It stays there — no transfer needed.`,
+          uk: `Зареєстровано на ${registrar}. Він там і залишиться — переносити не треба.`,
         })}
       </p>
 
       {/* De-jargoned records card: two named values, copy buttons, inline guide. */}
       <div className="mt-5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
         <p className="text-[13px] font-semibold text-[var(--white-700)]">
-          {t({ en: 'Point your domain to us — 2 lines to paste at GoDaddy', uk: 'Спрямуйте домен до нас — 2 рядки вставити на GoDaddy' })}
+          {t({
+            en: `Point your domain to us — 2 lines to paste at ${registrar}`,
+            uk: `Спрямуйте домен до нас — 2 рядки вставити на ${registrar}`,
+          })}
         </p>
         {[
           { label: 'Website address', value: '64.90.62.162' },
@@ -688,8 +760,8 @@ function ExternalScreen() {
         ))}
         <p className="mt-3 text-[12.5px] leading-[1.5] text-[var(--white-400)]">
           {t({
-            en: 'In GoDaddy: My Products → your domain → DNS. Paste both lines, save, come back here.',
-            uk: 'На GoDaddy: My Products → ваш домен → DNS. Вставте обидва рядки, збережіть і поверніться сюди.',
+            en: `In ${registrar}: find ${domain} in your list of domains, open its settings, paste both lines, save, and come back here.`,
+            uk: `На ${registrar}: знайдіть ${domain} у списку своїх доменів, відкрийте налаштування, вставте обидва рядки, збережіть і поверніться сюди.`,
           })}
         </p>
       </div>
@@ -968,6 +1040,12 @@ export function DomainsSurface() {
        screen and the prototype announced "Registered at GoDaddy" about an address that
        cannot exist. A typo belongs in search, next to the alternatives. */
     if (owned.some((o) => o.domain === q)) goDomains('own', q)
+    /* A name we know is registered goes to the QUESTION, not to the records. Typing
+       `emberandoak.com` used to open the external screen directly — which hands someone
+       the two lines to paste and, in doing so, asserts the domain is theirs without ever
+       asking. Nobody can know that at this moment (`research/connect.md` §7), so the fact
+       and the question come first and the records come after the person answers. */
+    else if (isTaken(q)) goDomains('results', q)
     else if (hasKnownEnding(q)) goDomains('external', q)
     else goDomains('results', q)
   }
