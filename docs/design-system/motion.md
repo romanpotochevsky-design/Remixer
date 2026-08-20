@@ -7,6 +7,13 @@ Implementation: `prototype/src/ui/motion.ts` (springs, for `motion/react`),
 Companion documents: `surfaces.md` (the materials that move), `siri-glow-spec.md` (the
 preview-edge glow as an engineering hand-off).
 
+**Facts carry IDs.** Statements about DreamHost or a competitor cite a row of
+`docs/product/FACTS.md`; where a behaviour was only ever observed off a recording or a
+live teardown, that is said instead of implying a register row exists. Cross-references
+name a section by **number and heading** — renumbering has already broken pointers in
+this folder, and a pointer that misses a "do not propose again" record is how a rejected
+design gets re-proposed.
+
 > **Approval flags in this document are binding.** Two effects are marked
 > **designer-approved** and two are marked **designer-rejected**. Approved means the
 > choreography and numbers are signed off and must not be retuned unless the designer
@@ -19,7 +26,7 @@ preview-edge glow as an engineering hand-off).
 
 Modelled on how iOS 26 opens things, which is four rules more than "fade in". We take
 **motion** from iOS 26 and nothing else — the material is macOS-restrained and comes
-from Figma (`surfaces.md` §2).
+from Figma (`surfaces.md` **§2, "Glass — macOS, not iOS"**).
 
 1. **Springs, not durations.** A duration curve takes the same time no matter how far it
    travels; a spring settles. That is the difference between a panel that feels physical
@@ -58,7 +65,7 @@ from Figma (`surfaces.md` §2).
 |---|---|
 | `popover` / `popoverContent` | Popovers, dropdowns, menus. Pair with a matching `transform-origin`. `0.94 → 1` scale, `-4px → 0` rise; the content variant is the 60 ms lag. |
 | `modalScrim` / `modalSheet` | The app-modal checkout sheet over a 70%-black scrim. A centred sheet has no trigger corner, so rule 2 cannot apply — the substitute is a very short rise, and scale starts at **0.97** rather than a popover's 0.94: a 600px sheet inflating from 0.94 reads as a zoom, not as a surface arriving. |
-| `bubbleSend` | Sending a chat message. See §4. |
+| `bubbleSend` | Sending a chat message. See §4, "The chat send choreography". |
 | `messageIn` | A reply arriving — `SPRING_SOFT`, 10px rise. Calmer than a send, because it is not your gesture. |
 | `listSwap` / `listSwapItem` | Content swapping **under** something that stays (the domain lists changing while the search header holds). A conveyor, not a cross-fade: the old content leaves *upward* (`y: -12`, flat and quick) and the new rises from below on a `0.055s` stagger by section. Arriving is a spring because arriving is the part with meaning. |
 | `surface` | A whole screen replacing another inside the same shell. |
@@ -87,11 +94,14 @@ over-engineered is over-engineered for that reason.
 
 Consequences you will hit:
 
-- **Rotating a gradient means rotating an element, not an angle.** Colours live on an
-  oversized square (side ≥ the frame's diagonal, so any rotation still covers it) which
-  is rotated by `transform`. The conic gradient itself never repaints. In our code that
-  square is `142cqmax` — `container-type: size` on the parent is what makes `cq*` units
-  resolve.
+- **Rotating a gradient means rotating an element, not an angle.** Colours live on **one**
+  oversized square per layer, rotated by `transform`; the conic gradient itself never
+  repaints. A rotating square covers the frame at every angle iff its side ≥ the frame's
+  diagonal, so the shipped side is **`142cqmax`** — 142% of the frame's *larger*
+  dimension, which clears the diagonal for any aspect ratio (worst case is a square frame,
+  diagonal 141.4%). Implement the shipped number, not the bound: "the diagonal" builds a
+  square that uncovers a corner. `container-type: size` on the parent is what makes `cq*`
+  units resolve.
 - **Blur is the expensive part, and there is no cheap version.** Measured on the
   published build in a browser with no GPU: the preview glow renders at **4 FPS** with
   the glow on and **60 FPS** with it off. Moving the blur inside the effect, dropping to
@@ -162,7 +172,7 @@ it lives in `prototype/src/modules/chat/ChatPanel.tsx`.
 
 | t | What happens |
 |---|---|
-| 0 | The bubble springs out of the composer (`bubbleSend`) **and** the send flash fires (§5). |
+| 0 | The bubble springs out of the composer (`bubbleSend`) **and** the send flash fires (§5, "Signature effect: the send flash"). |
 | 620 ms | The thread scrolls, carrying the new message to the top of the viewport. |
 | ~700 ms | The preview's edge glow lights up (`App.tsx`). |
 | ~2.6 s | The answer lands; the glow is dismissed over 220 ms and the reply types itself in over ≤ ~1.1 s. |
@@ -181,8 +191,10 @@ non-obvious choices:
   legibility beats restraint here.
 
 **The scroll to the top, not the bottom.** A send parks the message under the chat
-header with empty space below it, where the answer will appear (this is Lovable's
-behaviour, taken off a recording of their builder). A chat that sticks to the bottom
+header with empty space below it, where the answer will appear. This is Lovable's
+behaviour, **observed off a recording of their builder** — an observation, not a
+measurement, and it has no register row; the one measured Lovable-chat fact we hold is
+that its pixel width is `unverified` (**FACTS CMP-031**). A chat that sticks to the bottom
 does the opposite: it pushes your own message off screen while the reply is written. A
 spacer grows at the end of the list to make the room, computed **once per send**, never
 during the answer — otherwise the layout jumps.
@@ -197,7 +209,8 @@ Four hard-won details around that scroll:
   reads as "already full" and no room is made.
 - ⚠️ **Subtract the spacer's height; do not zero it to measure.** Collapsing it shortens
   the scrollable range mid-measurement, the browser clamps `scrollTop`, and the thread
-  jerks. Subtraction cannot be poisoned by a stray transition either (see §3).
+  jerks. Subtraction cannot be poisoned by a stray transition either (see §3, "Reduced
+  motion — both engines").
 - ⚠️ Cancel the `requestAnimationFrame` in cleanup, not just the timer. In a hidden tab
   rAF callbacks freeze in the queue and fire on return, scrolling against layout that no
   longer exists.
@@ -250,7 +263,8 @@ measured 5 FPS during the reveal with the long dissolve, 33 FPS with the short o
 
 Class `.composer-glow` in `index.css`; markup in `ChatPanel.tsx`. Material and thinness
 come from a recording of Google's AI Mode: **a thin iridescent band hugging the box, the
-interior perfectly clean.** The choreography is the designer's own sketch.
+interior perfectly clean.** That, too, is an observation off a recording — no register row,
+no measured values. The choreography is the designer's own sketch.
 
 ### The choreography
 
@@ -280,7 +294,8 @@ filament, `.composer-glow-bloom` (blur 10, opacity .28) is its halo.
 ### Why three arcs, and not a growing conic
 
 **A conic gradient cannot grow an arc.** Animating its angle stops is the 9 FPS trap
-(§2). So the growing horseshoe is **three 90° arcs** — `cg-arc-left`, `cg-arc-top`,
+(§2, "The performance contract"). So the growing horseshoe is **three 90° arcs** —
+`cg-arc-left`, `cg-arc-top`,
 `cg-arc-right` — all parked along the bottom edge (135°–225° in square space) and rotated
 out at **1× / 2× / 3× speed**: they emerge from the bottom-left corner one after another
 and land exactly end to end. The drain mirrors it at 3× / 2× / 1×, everything parking
@@ -322,7 +337,8 @@ A mask is applied **after** the element's filter, so a ring mask crops the blur'
 into two hard edges — that was the "thick gradient contour". The working construction is:
 
 - the conic is clipped by a rounded box with `overflow: hidden` **on the same element as
-  the blur** (Chrome renders nothing if they are nested — §2);
+  the blur** (Chrome renders nothing if they are nested — §2, "The performance
+  contract");
 - the blur then spreads the clipped shape softly outward, like actual light;
 - the visible band is a small **1px overhang** past the field's edge (`inset: -1px`,
   radius 25 = the field's 24 + 1). ⚠️ One stale copy is still in circulation for this
@@ -358,8 +374,8 @@ Also retired: the earlier version — a short bright arc lapping the perimeter �
 > instrument**, and a rainbow on a tool reads as decoration. Applied to any future
 > control: iridescence marks *the machine thinking*, nothing else.
 
-The shipped effect is mono-blue and documented as material in `surfaces.md` §10. Its
-motion contract:
+The shipped effect is mono-blue and documented as material in `surfaces.md` **§10, "The
+chat/canvas divider"**. Its motion contract:
 
 - The bloom and core are painted once and moved by `transform` only; `--glow-y` is
   written to the element, and the drag never goes through React.
@@ -378,7 +394,8 @@ arriving". It was contract-safe (one band, painted once, moved by `transform`, i
 after one pass) and it is gone anyway, because it was **describing the wrong material**.
 
 **A travelling sheen is evidence of glass** — light raking across a transparent surface.
-The Publish panel is opaque `gray-850` in Figma (`surfaces.md` §5). So the sheen
+The Publish panel is opaque `gray-850` in Figma (`surfaces.md` **§5, "The Publish panel
+is solid, and that is final"**). So the sheen
 decorated a material the panel does not have, on the one surface where translucent glass
 had *already* been tried and rolled back.
 
@@ -406,22 +423,12 @@ The motion-language facts a designer needs here:
   vertical mask fades the wide layers in across the boundary, physics for free at no
   per-frame cost).
 - Entry is a 0.6 s opacity/scale swell plus a one-shot full-surface ignition bloom;
-  exit is **220 ms** (§4 explains why it is not 700).
-- ⚠️ **One correction to `siri-glow-spec.md`, which is stale on this point.** The spec
-  describes a single 1.2 s probe on first activation, demoting below 30 FPS. The
-  implementation (`prototype/src/ui/SiriGlow.tsx`) does the opposite and it matters:
-  - it **opens on the lite cut** and measures 800 ms (after a 250 ms settle) **while the
-    glow is on screen**, promoting to the full four layers only if the page held **above
-    50 FPS**. The old probe measured *before* the glow existed, saw an idle shell,
-    concluded "fast machine" and cached `full` forever — five consecutive loads all
-    landed on four layers, so the governor protected nobody;
-  - **`full` is provisional.** The probe ran on the lite cut, so it proved the machine
-    carries *two* layers, not four. While the full cut is on screen the count continues,
-    and **two consecutive bad windows (<30 FPS over 800 ms) demote to lite for the
-    session** — two, not one, because a single window can be eaten by an unrelated GC
-    pause. This is what fixed "works right after a reload, then degrades".
-  - Phones and touch devices (`max-width: 820px` or `pointer: coarse`) get the lite cut
-    immediately, no probe.
+  exit is **220 ms** (§4, "The chat send choreography", explains why it is not 700).
+- The quality governor — lite-first open, the 250 ms settle, the 800 ms measuring window,
+  promotion above 50 FPS, two sub-30 strikes to demote, phones short-circuited — is
+  specified in `siri-glow-spec.md` **"The quality governor"**, which carries the current
+  figures and keeps the superseded single 1.2 s pre-glow probe under an explicit history
+  label. Read it there; do not restate the numbers here.
 
 ---
 
