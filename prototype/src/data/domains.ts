@@ -35,6 +35,36 @@ export const TLD_PRICES: TldPrice[] = [
 export const priceFor = (tld: string) => TLD_PRICES.find((p) => p.tld === tld)
 
 /**
+ * Endings the prototype recognises as real, used only to tell a domain from a typo.
+ *
+ * The universal field has to separate three intents, and a dot alone is not enough:
+ * `mycafe.con` is a mistyped name, not somebody's external domain, and sending it to the
+ * external-domain screen made the prototype announce "Registered at GoDaddy" about an
+ * address that cannot exist. An unrecognised ending goes back to search, where the
+ * alternatives are.
+ *
+ * The sellable list is TLD_PRICES; the extras below are only for detection — endings a
+ * person may legitimately already own even though we do not sell them. Not a price list,
+ * not a promise, and deliberately short: it is a prototype heuristic, not a registry.
+ */
+export const KNOWN_ENDINGS = new Set<string>([
+  ...TLD_PRICES.map((p) => p.tld),
+  '.co', '.dev', '.app', '.store', '.site', '.xyz', '.info', '.biz', '.us',
+  '.uk', '.co.uk', '.eu', '.de', '.fr', '.es', '.it', '.nl', '.pl',
+  '.ua', '.com.ua', '.ca', '.au', '.com.au', '.nz', '.in', '.br', '.mx',
+])
+
+/** True when the text ends in an ending we recognise — one or two levels deep. */
+export const hasKnownEnding = (host: string) => {
+  const parts = host.trim().toLowerCase().split('.')
+  if (parts.length < 2 || parts.some((part) => !part)) return false
+  return (
+    KNOWN_ENDINGS.has(`.${parts.slice(-2).join('.')}`) ||
+    KNOWN_ENDINGS.has(`.${parts[parts.length - 1]}`)
+  )
+}
+
+/**
  * AI name suggestions — the default empty state of the domain search.
  * In the real product these come from the site's own content (the prompt, the pages);
  * the prototype hardcodes the fit-ration demo project's set. Each row carries a short
@@ -160,6 +190,37 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
     { domain: 'design-portfolio.net', note: { en: 'Registered with us', uk: 'Зареєстровано в нас' } },
   ],
 }
+
+/**
+ * Names that come back TAKEN — the most common outcome of a domain search, and the
+ * state the Figma file draws nowhere (OPEN-QUESTIONS 01). Hardcoded rather than
+ * generated so a demo can be steered: search `coffeeshop` and the taken hero shows up.
+ * Note that the default demo term, `fit-ration`, is on the list too — its `.com` is one of
+ * the customer's own domains, so the default search lands on exactly the ownership case.
+ *
+ * The list deliberately includes the OWNED_DOMAINS names. A domain the customer already
+ * holds also reads as "taken" to a search — and that is the case where the quiet
+ * secondary turn, "Already yours? Connect it", is the whole answer. Nobody in the field
+ * offers it.
+ *
+ * What is NOT here, permanently: any brokerage, auction, "Make an offer" or
+ * secondary-market price. DreamHost sells no premium domains and runs no brokerage, so
+ * offering one would promise something that does not exist (DECISIONS 03, "no retroactive
+ * change"). A registry-premium name, if the feed ever returns one, shows as plain taken.
+ * GoDaddy is the only competitor monetising this state ("Hire a Broker") and it reads as
+ * a trap.
+ */
+export const TAKEN_DOMAINS = new Set<string>([
+  'coffeeshop.com',
+  'nike.com',
+  // already in the customer's DreamHost account — the "Already yours? Connect it" case
+  'fit-ration.com',
+  'odesa-coffee-roasters.com',
+  'design-portfolio.net',
+  'vegan-burger-delivery.co',
+])
+
+export const isTaken = (domain: string) => TAKEN_DOMAINS.has(domain.trim().toLowerCase())
 
 /**
  * The staging address every project gets for free.

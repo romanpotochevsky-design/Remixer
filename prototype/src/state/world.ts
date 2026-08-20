@@ -50,6 +50,13 @@ export type DomainState =
   | 'checkout'
   | 'connecting'
   | 'verifying'
+  /** The padlock is being issued. A REAL state, not a label on `verifying`: the
+   *  certificate cannot be issued until the address already answers here (FACTS
+   *  DH-301), so "Connected to your site" and "Security (SSL) on" are two events
+   *  with a wait between them. Added 20 Aug 2026 — before it existed the checklist
+   *  ticked both at once and deleted the one state it exists to explain
+   *  (docs/features/domains/STATES.md, "three items, four stages"). */
+  | 'securing'
   | 'live'
   | 'unreachable'
   | 'multiple'
@@ -124,7 +131,7 @@ export const canUseAI = (w: World) =>
 /** Going live on a custom domain is a paid capability. Staging is always free. */
 export const canConnectDomain = (w: World) => hasPlan(w)
 export const isCustomDomainActive = (w: World) =>
-  w.domain === 'connecting' || w.domain === 'verifying' ||
+  w.domain === 'connecting' || w.domain === 'verifying' || w.domain === 'securing' ||
   w.domain === 'live' || w.domain === 'unreachable' || w.domain === 'multiple'
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
 

@@ -18,7 +18,7 @@ import { useWorld } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
-  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, priceFor,
+  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, STAGING_HOST, priceFor, isTaken, hasKnownEnding,
   exactMatch, otherEndings, nameIdeas, type ResultRow,
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
@@ -350,17 +350,23 @@ function RowList({ rows, onBuy, border }: { rows: ResultRow[]; onBuy: (d: string
  * would be a category error. Only then the AI block, which offers other NAMES,
  * each carrying the reason it was picked.
  *
- * Every row is available in the mockup — there is no taken state drawn anywhere
- * in the file, which is the biggest gap in this screen and is raised with the
- * designer rather than invented here.
+ * THE TAKEN STATE lives on the hero, added 20 Aug 2026. The mockup draws every row as
+ * available, which is the one thing a real search never does — a person types the name of
+ * their own coffee shop and the .com is gone. There is still no Figma frame for it
+ * (OPEN-QUESTIONS 01), so this follows the tone the research settled on: ONE friendly
+ * line, then straight into the alternatives that were already sitting underneath. Never a
+ * brokerage, never "Make an offer", never a premium price — DreamHost has none of those
+ * and DECISIONS 03 makes that permanent. Never a bare "unavailable" with no way out
+ * either. The rows below the hero are untouched: they ARE the answer.
  */
 function ResultsScreen() {
-  const { activeDomain, openDomainModal } = useUI()
+  const { activeDomain, openDomainModal, goDomains } = useUI()
   const { t } = useT()
   const term = activeDomain ?? 'fit-ration'
 
   const hero = exactMatch(term)
   const heroPrice = priceFor(hero.tld)!
+  const heroTaken = isTaken(hero.domain)
   const endings = otherEndings(term)
   const ideas = nameIdeas(term)
 
@@ -382,13 +388,25 @@ function ResultsScreen() {
             {/* ------------------------------------- classic results (27729:15438) */}
             <div className="flex flex-col gap-4">
               {/* exact-match hero: gradient wash under a ring-masked gradient rim */}
+              {/* Same box, same geometry, two states. The purple wash and the gradient
+                  rim are the "best match" celebration and they do not travel to a name
+                  the person cannot have — a taken hero gets the flat surface instead. */}
               <motion.div
                 variants={listSwapItem}
                 className="relative rounded-[16px] px-1 pb-1"
-                style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
+                style={
+                  heroTaken
+                    ? { background: 'var(--white-100)' }
+                    : { background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }
+                }
               >
-                <i className="bestmatch-rim" aria-hidden />
+                {!heroTaken && <i className="bestmatch-rim" aria-hidden />}
                 <div className="flex h-10 items-center pl-6 pr-4">
+                  {heroTaken ? (
+                    <span className="font-display text-[14px] font-semibold text-[#ffffff7a]">
+                      {t({ en: 'Already taken', uk: 'Вже зайнято' })}
+                    </span>
+                  ) : (
                   <span
                     className="font-display text-[14px] font-semibold"
                     style={{
@@ -400,21 +418,40 @@ function ResultsScreen() {
                   >
                     {t({ en: 'Best match', uk: 'Найкращий збіг' })}
                   </span>
+                  )}
                 </div>
                 <div className="flex h-[94px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[#1f1f22] px-6">
                   <div className="min-w-0 flex-1 pb-1">
                     <p className="truncate text-[22px] font-medium leading-none text-white">{hero.domain}</p>
-                    <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">{t(hero.reason)}</p>
+                    <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">
+                      {heroTaken
+                        ? t({ en: 'Here are some great alternatives', uk: 'Ось кілька гарних альтернатив' })
+                        : t(hero.reason)}
+                    </p>
                   </div>
                   <div className="flex h-10 flex-none items-center gap-8">
-                    {/* the promo says itself: list price struck, first year large */}
-                    <PriceStack register={heroPrice.register} renew={heroPrice.renew} strike />
-                    <button
-                      onClick={() => openDomainModal('buy', hero.domain)}
-                      className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-                    >
-                      {t({ en: 'Buy', uk: 'Купити' })}
-                    </button>
+                    {heroTaken ? (
+                      /* The quiet turn nobody in the field offers: a name that reads as
+                         taken to a search may simply be theirs already, and then the whole
+                         answer is one click to the confirm screen. Outlined, not blue —
+                         the alternatives below are the primary road. No price and no Buy
+                         here, and no brokerage in their place (DECISIONS 03). */
+                      <RowButton
+                        label={{ en: 'Already yours? Connect it', uk: 'Уже ваш? Підключіть його' }}
+                        onClick={() => goDomains('own', hero.domain)}
+                      />
+                    ) : (
+                      <>
+                        {/* the promo says itself: list price struck, first year large */}
+                        <PriceStack register={heroPrice.register} renew={heroPrice.renew} strike />
+                        <button
+                          onClick={() => openDomainModal('buy', hero.domain)}
+                          className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+                        >
+                          {t({ en: 'Buy', uk: 'Купити' })}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -546,7 +583,12 @@ function ExternalScreen() {
   const domain = activeDomain ?? 'emberandoak.com'
 
   const start = () => {
-    set({ domain: 'connecting', inventory: 'external-manual' })
+    /* Only the domain state moves. This used to also write `inventory: 'external-manual'`,
+       silently rewriting the world axis mid-flow — and doing it on a screen that says
+       "Registered at GoDaddy", which is `external-dc`: the button contradicted the
+       sentence above it. The inventory axis describes what the customer HAS; it is set by
+       the scenario, never by a click inside one. */
+    set({ domain: 'connecting' })
     goDomains('status', domain)
   }
 
@@ -606,33 +648,96 @@ function ExternalScreen() {
   )
 }
 
-/** Status: the named state machine — connecting → verifying → live, one verb per stop. */
+/**
+ * Status: the named state machine — connecting → securing → live, one verb per stop.
+ *
+ * FOUR stages behind THREE checklist items, and the fourth stage is the whole point:
+ * the padlock cannot be issued until the address already answers here (FACTS DH-301),
+ * so "Connected to your site" and "Security (SSL) on" are two events with a wait
+ * between them. They used to tick together on one `stage >= 2`, which deleted
+ * `securing` — the single state the checklist exists to explain. Fixed 20 Aug 2026;
+ * copy and the no-button rule come verbatim from docs/features/domains/STATES.md
+ * ("three items, four stages" + the `securing` card).
+ */
 function StatusScreen() {
   const { world, set } = useWorld()
   const { activeDomain, closeSurface } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? CUSTOM_DOMAIN
 
-  const stage = world.domain === 'live' || world.domain === 'multiple' ? 2
+  const stage = world.domain === 'live' || world.domain === 'multiple' ? 3
+    : world.domain === 'securing' ? 2
     : world.domain === 'verifying' ? 1
     : 0
+  const done = stage === 3
+  /* `securing` shows no button, and that absence IS the message: nothing is required
+     of the person here (STATES.md, `securing` — "Глагол. Нет, намеренно"). Do not add
+     one back to make the screen feel complete. */
+  const securing = stage === 2
 
   // The canonical success checklist — one fixed order on every success screen.
   const checklist = [
     { label: { en: 'Domain settings updated', uk: 'Налаштування домену оновлено' }, done: stage >= 1 },
     { label: { en: 'Connected to your site', uk: 'Під’єднано до вашого сайту' }, done: stage >= 2 },
-    { label: { en: 'Security (SSL) on', uk: 'Захист (SSL) увімкнено' }, done: stage >= 2 },
+    { label: { en: 'Security (SSL) on', uk: 'Захист (SSL) увімкнено' }, done: stage >= 3 },
   ]
+
+  /*
+   * `needs-attention` — its own screen, not a stage.
+   *
+   * The `unreachable` axis value existed with no screen behind it, so a failure fell
+   * through the "Connecting" branch and told the person their broken address was
+   * progress (STATES.md, disagreement 4; DECISIONS 26). Copy is the `needs-attention`
+   * card verbatim: what happened, then the reassurance that the SITE is fine, then one
+   * verb. No DNS vocabulary. The date and the registrar name are demo data, the same
+   * grade as `emberandoak.com` elsewhere on this surface — not facts.
+   *
+   * `Fix this` should open the `waiting-on-you` comparison ("what's there now / what it
+   * should be"); that screen is not drawn yet (OPEN-QUESTIONS 03), so it takes the
+   * state-machine edge instead — needs-attention → connecting, i.e. "fixed, watching
+   * again". It never says "remove it and add it again", which STATES.md forbids.
+   */
+  if (world.domain === 'unreachable') {
+    return (
+      <Screen>
+        <Eyebrow>{t({ en: 'Stopped showing your site', uk: 'Перестав показувати ваш сайт' })}</Eyebrow>
+        <h2 className="flex items-center gap-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">
+          <span className="h-2.5 w-2.5 flex-none rounded-full bg-[var(--attention)]" aria-hidden />
+          {domain}
+        </h2>
+        <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
+          {t({
+            en: `Something changed at GoDaddy on 18 August. Your site is safe — it’s still at ${STAGING_HOST}.`,
+            uk: `Щось змінилося на боці GoDaddy 18 серпня. Ваш сайт у безпеці — він і далі за адресою ${STAGING_HOST}.`,
+          })}
+        </p>
+        <div className="mt-5">
+          <PrimaryButton
+            label={{ en: 'Fix this', uk: 'Виправити' }}
+            onClick={() => set({ domain: 'connecting' })}
+          />
+        </div>
+        <button
+          onClick={closeSurface}
+          className="mt-3 w-full text-center text-[13px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[var(--white-700)]"
+        >
+          {t({ en: 'Keep editing', uk: 'Редагувати далі' })}
+        </button>
+      </Screen>
+    )
+  }
 
   return (
     <Screen>
       <Eyebrow>
-        {stage === 2
+        {done
           ? t({ en: 'Live', uk: 'Працює' })
-          : t({ en: 'Connecting', uk: 'Підключення' })}
+          : securing
+            ? t({ en: 'Almost there — turning on the padlock', uk: 'Майже готово — увімкнюємо замочок' })
+            : t({ en: 'Connecting', uk: 'Підключення' })}
       </Eyebrow>
       <h2 className="flex items-center gap-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">
-        {stage === 2 ? (
+        {done ? (
           <span className="h-2.5 w-2.5 flex-none rounded-full bg-[var(--live)]" aria-hidden />
         ) : (
           <span className="relative flex h-2.5 w-2.5 flex-none" aria-hidden>
@@ -643,12 +748,17 @@ function StatusScreen() {
         {domain}
       </h2>
       <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
-        {stage === 2
+        {done
           ? t({ en: 'Secure padlock on · anyone can visit.', uk: 'Захисний замочок увімкнено · сайт доступний усім.' })
-          : t({
-              en: 'Usually a few minutes — keep editing, it goes live on its own.',
-              uk: 'Зазвичай кілька хвилин — редагуйте далі, сайт запуститься сам.',
-            })}
+          : securing
+            ? t({
+                en: 'Nothing for you to do. This usually takes ten to thirty minutes, sometimes a little longer.',
+                uk: 'Від вас нічого не потрібно. Зазвичай це триває від десяти до тридцяти хвилин, іноді трохи довше.',
+              })
+            : t({
+                en: 'Usually a few minutes — keep editing, it goes live on its own.',
+                uk: 'Зазвичай кілька хвилин — редагуйте далі, сайт запуститься сам.',
+              })}
       </p>
 
       <div className="mt-5 space-y-2.5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
@@ -667,8 +777,10 @@ function StatusScreen() {
         ))}
       </div>
 
+      {/* `securing` renders no button bar at all — see the note on `securing` above. */}
+      {!securing && (
       <div className="mt-5 flex gap-2">
-        {stage === 2 ? (
+        {done ? (
           <>
             <button
               onClick={closeSurface}
@@ -683,7 +795,9 @@ function StatusScreen() {
         ) : (
           <>
             <button
-              onClick={() => set({ domain: world.domain === 'connecting' ? 'verifying' : 'live' })}
+              /* connecting → securing → live. The padlock is a stop on this road, not a
+                 side effect of arriving: skipping it is what printed "instantly secured". */
+              onClick={() => set({ domain: stage === 0 || stage === 1 ? 'securing' : 'live' })}
               className="h-11 flex-1 rounded-control border border-[var(--white-200)] text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
             >
               {t({ en: 'Refresh status', uk: 'Оновити статус' })}
@@ -697,6 +811,7 @@ function StatusScreen() {
           </>
         )}
       </div>
+      )}
     </Screen>
   )
 }
@@ -731,10 +846,13 @@ export function DomainsSurface() {
   const submit = () => {
     const q = query.trim().toLowerCase()
     if (!q) return
-    // Intent detection, prototype-grade: an owned domain resolves to the confirm
-    // screen, anything with a dot reads as external, a bare name is a search.
+    /* Intent detection, prototype-grade: an owned domain resolves to the confirm screen,
+       a RECOGNISED ending reads as an external domain, and everything else is a search.
+       It used to be "anything with a dot", so `mycafe.con` opened the external-domain
+       screen and the prototype announced "Registered at GoDaddy" about an address that
+       cannot exist. A typo belongs in search, next to the alternatives. */
     if (owned.some((o) => o.domain === q)) goDomains('own', q)
-    else if (q.includes('.') && !q.endsWith('.')) goDomains('external', q)
+    else if (hasKnownEnding(q)) goDomains('external', q)
     else goDomains('results', q)
   }
 

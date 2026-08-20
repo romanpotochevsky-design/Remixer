@@ -73,6 +73,18 @@ export const PRESETS: Preset[] = [
     patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0 },
   },
   {
+    /* The padlock moment, reachable in one click. Nobody demoing this should have to
+       play a flow to reach the stage where "Connected to your site" is ticked and
+       "Security (SSL) on" is still running (FACTS DH-301). */
+    id: 'securing',
+    label: { en: 'Turning on the padlock', uk: 'Увімкнення замочка' },
+    note: {
+      en: 'Address answers, certificate not issued yet — the state the checklist exists to explain. No button on this screen, by design',
+      uk: 'Адреса вже відповідає, сертифіката ще немає — саме той стан, для якого й існує чекліст. Кнопки на цьому екрані немає, це навмисно',
+    },
+    patch: { account: 'paid', credits: 970, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'securing', unpublished: 0 },
+  },
+  {
     id: 'live',
     label: { en: 'Live site', uk: 'Живий сайт' },
     note: { en: 'Everything published, domain working', uk: 'Все опубліковано, домен працює' },
@@ -194,6 +206,7 @@ export const AXES: Axis[] = [
       { value: 'checkout', label: { en: 'Checkout', uk: 'Оформлення' } },
       { value: 'connecting', label: { en: 'Connecting', uk: 'Підключається' } },
       { value: 'verifying', label: { en: 'Verifying', uk: 'Перевіряється' } },
+      { value: 'securing', label: { en: 'Turning on the padlock', uk: 'Увімкнення замочка' } },
       { value: 'live', label: { en: 'Live', uk: 'Живий' } },
       { value: 'unreachable', label: { en: 'Not reachable', uk: 'Не відповідає' } },
       { value: 'multiple', label: { en: 'Several domains', uk: 'Кілька доменів' } },
@@ -249,6 +262,7 @@ export function describe(w: World): Text {
     checkout: { en: 'at checkout', uk: 'оформлює покупку' },
     connecting: { en: 'domain connecting', uk: 'домен підключається' },
     verifying: { en: 'domain verifying', uk: 'домен перевіряється' },
+    securing: { en: 'padlock being turned on', uk: 'увімкнюється замочок' },
     live: { en: 'domain live', uk: 'домен живий' },
     unreachable: { en: 'domain not reachable', uk: 'домен не відповідає' },
     multiple: { en: 'several domains', uk: 'кілька доменів' },

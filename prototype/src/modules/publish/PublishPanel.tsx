@@ -63,7 +63,12 @@ export function PublishPanel() {
   }, [publishOpen, togglePublish])
 
   const paid = hasPlan(world)
-  const connecting = world.domain === 'connecting' || world.domain === 'verifying'
+  const connecting =
+    world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing'
+  /* The padlock is its own stop, not a side effect of arriving. This panel used to step
+     connecting → live, so the moment the padlock lands was invisible here and the pair
+     read as "instantly secured" — the one promise POSITIONING §7 forbids on DH-301. */
+  const securing = world.domain === 'securing'
   const live = world.domain === 'live' || world.domain === 'multiple'
   /* The zone is the sourced half of the staging address (FACTS DH-302); the label
      in front of it is still a placeholder shape. Kept in one const so the field
@@ -147,10 +152,15 @@ export function PublishPanel() {
                 )}
                 {connecting && (
                   <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--attention)]">
-                    {t({
-                      en: 'Connecting — usually a few minutes. Keep editing, it goes live on its own.',
-                      uk: 'Підключається — зазвичай кілька хвилин. Редагуйте далі, сайт запуститься сам.',
-                    })}
+                    {securing
+                      ? t({
+                          en: 'Almost there — turning on the padlock. Nothing for you to do.',
+                          uk: 'Майже готово — увімкнюємо замочок. Від вас нічого не потрібно.',
+                        })
+                      : t({
+                          en: 'Connecting — usually a few minutes. Keep editing, it goes live on its own.',
+                          uk: 'Підключається — зазвичай кілька хвилин. Редагуйте далі, сайт запуститься сам.',
+                        })}
                   </p>
                 )}
                 {live && (
@@ -224,7 +234,7 @@ export function PublishPanel() {
           <div className="flex items-center justify-end gap-2 px-4 py-4">
             {connecting && (
               <button
-                onClick={() => set({ domain: world.domain === 'connecting' ? 'verifying' : 'live' })}
+                onClick={() => set({ domain: securing ? 'live' : 'securing' })}
                 className="h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
               >
                 {t({ en: 'Refresh status', uk: 'Оновити статус' })}

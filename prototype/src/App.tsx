@@ -188,7 +188,7 @@ export default function App() {
 
           {/* center: project button, 280×40 — the live address in permanent chrome */}
           <button
-            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' ? 'status' : 'home')}
+            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing' ? 'status' : 'home')}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -196,7 +196,7 @@ export default function App() {
                 <IconGrid size={22} />
               </span>
               {world.domain === 'live' && <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--live)]" aria-hidden />}
-              {(world.domain === 'connecting' || world.domain === 'verifying') && (
+              {(world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing') && (
                 <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--attention)]" aria-hidden />
               )}
               <span className="truncate text-[15px] font-semibold leading-[1.4]">{address}</span>

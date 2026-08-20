@@ -65,9 +65,11 @@ export const FLOWS: Flow[] = [
       { id: 'saved', label: { en: 'Domain saved as "Connecting"', uk: 'Домен збережено як «Підключається»' }, patch: { domain: 'connecting' }, ms: 2200,
         note: { en: 'It persists — the domain stays in the list even if they walk away. Not drawn: OWNED_DOMAINS (data/domains.ts) has no external buckets, so “Existing domains” stays empty on this path.', uk: 'Персистентність: домен лишається у списку, навіть якщо піти. Не намальовано: у OWNED_DOMAINS (data/domains.ts) немає зовнішніх кошиків, тому «Existing domains» на цьому шляху лишається порожнім.' } },
       { id: 'propagating', label: { en: 'Waiting for DNS to propagate', uk: 'Чекаємо на поширення DNS' }, ms: 3200 },
-      { id: 'verifying', label: { en: 'Records found — checking them, then the padlock', uk: 'Записи знайдено — перевіряємо, далі замочок' }, patch: { domain: 'verifying' }, ms: 2600,
-        note: { en: 'Compressed the hardest on this path: on an external registrar the padlock queues behind the DNS change (FACTS DH-203) and only then behind Let’s Encrypt (DH-301). Never demo this as seconds.', uk: 'Найсильніше стиснутий крок цього шляху: у зовнішнього реєстратора замочок чекає спершу на зміну DNS (FACTS DH-203), і лише потім на Let’s Encrypt (DH-301). Не показувати це як секунди.' } },
-      { id: 'live', label: { en: 'Domain is live, HTTPS on', uk: 'Домен живий, HTTPS увімкнено' }, patch: { domain: 'live' }, ms: 1200 },
+      { id: 'verifying', label: { en: 'Records found — the address answers here now', uk: 'Записи знайдено — адреса вже відповідає в нас' }, patch: { domain: 'verifying' }, ms: 2200,
+        note: { en: 'Compressed the hardest on this path: on an external registrar this step queues behind the DNS change (FACTS DH-203), which is measured in days, not seconds. Never demo this as instant.', uk: 'Найсильніше стиснутий крок цього шляху: у зовнішнього реєстратора він чекає на зміну DNS (FACTS DH-203), а це доба, не секунди. Не показувати це як миттєвість.' } },
+      { id: 'securing', label: { en: 'Almost there — turning on the padlock', uk: 'Майже готово — увімкнюємо замочок' }, patch: { domain: 'securing' }, ms: 2400,
+        note: { en: 'Its own state, not a label: the certificate cannot be issued until the address already answers here (FACTS DH-301), so this wait starts only now — and on this path it stood behind DH-203 first. The screen shows no button on purpose. Compressed to seconds; the copy still says ten to thirty minutes, because that is what a real person waits.', uk: 'Це окремий стан, а не підпис: сертифікат неможливо видати, поки адреса не почала відповідати в нас (FACTS DH-301), тож це очікування починається лише тепер — а на цьому шляху перед ним стояв ще й DH-203. Кнопки на екрані немає навмисно. Стиснуто до секунд; у копірайті лишається «від десяти до тридцяти хвилин», бо саме стільки чекає справжня людина.' } },
+      { id: 'live', label: { en: 'Domain is live, padlock on', uk: 'Домен живий, замочок увімкнено' }, patch: { domain: 'live' }, ms: 1200 },
       { id: 'done', label: { en: 'Success — the site answers on their own address', uk: 'Успіх — сайт доступний за власною адресою' }, awaitUser: true,
         note: { en: 'Success copy should push distribution, not merely confirm', uk: 'Копірайт успіху має штовхати до поширення, а не лише підтверджувати' } },
     ],
@@ -82,11 +84,51 @@ export const FLOWS: Flow[] = [
       { id: 'pick', label: { en: 'Picked a domain from their DreamHost account', uk: 'Обрано домен з акаунта DreamHost' }, ms: 700,
         note: { en: 'Say it plainly: no records to change', uk: 'Сказати прямо: жодного запису змінювати не треба' } },
       { id: 'connect', label: { en: 'Records written on our side', uk: 'Записи пишуться на нашому боці' }, patch: { domain: 'connecting' }, ms: 1600 },
-      { id: 'ssl', label: { en: 'Padlock being set up', uk: 'Налаштовується замочок' }, patch: { domain: 'verifying' }, ms: 1800,
-        note: { en: 'Compressed hard: this wait is 10–30 min (FACTS DH-301), not two seconds. The prototype has no `securing` state — `verifying` plays both roles, so the checklist ticks “Connected” and “Security (SSL) on” together (STATES.md, disagreements 2–3).', uk: 'Сильно стиснуто: це очікування — 10–30 хв (FACTS DH-301), а не дві секунди. У прототипі немає стану `securing` — `verifying` грає обидві ролі, тому чекліст закриває «Connected» і «Security (SSL) on» разом (STATES.md, розбіжності 2–3).' } },
+      { id: 'ssl', label: { en: 'Almost there — turning on the padlock', uk: 'Майже готово — увімкнюємо замочок' }, patch: { domain: 'securing' }, ms: 2000,
+        note: { en: 'Compressed hard: this wait is 10–30 min (FACTS DH-301), not two seconds. `securing` is now a real state, so the checklist ticks “Connected to your site” here and holds “Security (SSL) on” until the next step — the gap this state exists to show.', uk: 'Сильно стиснуто: це очікування — 10–30 хв (FACTS DH-301), а не дві секунди. `securing` тепер справжній стан, тому чекліст закриває «Connected to your site» саме тут, а «Security (SSL) on» тримає до наступного кроку — це й є розрив, заради якого стан існує.' } },
       { id: 'live', label: { en: 'Live — and nothing was typed anywhere else', uk: 'Живий — і ніде більше нічого не вводили' }, patch: { domain: 'live' }, ms: 900,
         note: { en: 'Do not say “instantly secured”: the minute buys the address, the padlock lands behind it (FACTS DH-301).', uk: 'Не казати «миттєво захищено»: хвилина дає адресу, замочок приходить після неї (FACTS DH-301).' } },
       { id: 'done', label: { en: 'Success', uk: 'Успіх' }, awaitUser: true },
+    ],
+  },
+  {
+    /*
+     * The purchase path — the one anyone asks for first, and the one this file was
+     * missing: `connect-external` and `connect-dreamhost` both start from a domain the
+     * person already has. Added 20 Aug 2026.
+     *
+     * It is also our strongest story, and for a structural reason rather than a tonal
+     * one: a domain bought through us lands in our own account, so there is no second
+     * tab, no records to paste and nothing to verify (FACTS DH-213). That makes it
+     * variant A of `connecting` — `in-account`, the ONLY variant COPY-RULES §5 permits
+     * to say "a few minutes", because we write the change ourselves (DH-218) and our own
+     * record lifetime is minutes (DH-217).
+     *
+     * The padlock is still the last thing to arrive (DH-301), which is why `securing`
+     * has its own step here too. Compressed to seconds; the strings stay truthful.
+     */
+    id: 'buy-and-golive',
+    label: { en: 'Buy a new domain → live site', uk: 'Купівля нового домену → живий сайт' },
+    note: { en: 'The fast path, and the only one where the whole address change happens on our side (FACTS DH-213, DH-218). Publishing is NOT narrated as free here — it consumes credits today (DH-008); POSITIONING §1 argues it should not, which is an argument, not the product.', uk: 'Швидкий шлях і єдиний, де вся зміна адреси відбувається на нашому боці (FACTS DH-213, DH-218). Публікація тут НЕ подається як безкоштовна — сьогодні вона витрачає кредити (DH-008); POSITIONING §1 доводить, що не повинна, але це аргумент, а не продукт.' },
+    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'staging', unpublished: 0 },
+    steps: [
+      { id: 'open', label: { en: 'Domains screen — AI name ideas are already there', uk: 'Екран доменів — ідеї назв від AI вже на місці' }, patch: { domain: 'searching' }, awaitUser: true,
+        note: { en: 'The suggestions ARE the empty state, not a third path — nobody is asked to think of a name in front of a blank field. Inventory is `none`, so "Existing domains" is genuinely empty and the only road is search → buy → connect.', uk: 'Підсказки — це і є порожній стан, а не третій шлях: ніхто не мусить вигадувати назву перед пустим полем. Вісь inventory — `none`, тому «Existing domains» справді порожній, і єдина дорога — пошук → купівля → підключення.' } },
+      { id: 'searched', label: { en: 'Name searched — the exact match on top, then other endings', uk: 'Назву знайдено — точний збіг зверху, далі інші закінчення' }, ms: 900,
+        note: { en: 'Order is the argument: the classic registrar answer first (the name they typed), AI-generated OTHER names second. Each AI row carries the reason it was picked — per-name rationales are rare in the field and that gap is ours to take.', uk: 'Порядок і є арґументом: спершу класична відповідь реєстратора (та назва, яку ввели), і лише потім ІНШІ назви від AI. Кожен AI-рядок несе причину вибору — пояснення до кожної назви в полі майже ніхто не дає, і ця прогалина наша.' } },
+      { id: 'picked', label: { en: 'A name is chosen', uk: 'Назву обрано' }, awaitUser: true,
+        note: { en: 'A real decision — the flow stops. Nothing auto-connects on a stray click: every row routes through a confirm.', uk: 'Справжнє рішення — флоу зупиняється. Жодного авто-підключення випадковим кліком: кожен рядок веде через підтвердження.' } },
+      { id: 'sheet', label: { en: 'Checkout sheet — first year and renewal, both visible', uk: 'Шит оплати — і перший рік, і продовження на екрані' }, patch: { domain: 'checkout' }, awaitUser: true,
+        note: { en: 'The paywall is disclosed HERE, inside the sheet, not as a wall in front of browsing — searching a name is free. Both figures always shown (TLD_PRICES): hiding the renewal price is the dark pattern the audit names by name.', uk: 'Пейвол розкривається САМЕ ТУТ, у шиті, а не стіною перед усім переглядом — шукати назву безкоштовно. Обидві цифри показуємо завжди (TLD_PRICES): приховати ціну продовження — це і є той dark pattern, який аудит називає прямо.' } },
+      { id: 'bought', label: { en: 'Domain bought — it lands in the DreamHost account', uk: 'Домен куплено — він одразу в акаунті DreamHost' }, patch: { inventory: 'dh-free' }, ms: 1400,
+        note: { en: 'The structural moment: because the domain is ours, the inventory axis flips to `dh-free` and every external step of the other two flows simply does not exist — no second tab, no records, nothing to verify (FACTS DH-213).', uk: 'Структурний момент: домен наш, тому вісь inventory стає `dh-free`, і всі зовнішні кроки двох інших флоу просто зникають — жодної другої вкладки, жодних записів, нічого підтверджувати (FACTS DH-213).' } },
+      { id: 'connecting', label: { en: 'Connecting — we write the change on our own side', uk: 'Підключення — зміну пишемо на своєму боці' }, patch: { domain: 'connecting' }, ms: 1600,
+        note: { en: 'Variant A, `in-account`: the change is ours to make (DH-218) and our own record lifetime is minutes (DH-217), so this is the one path allowed to say "usually a few minutes". Do not lift that string onto the other two flows — it is untrue on both (FACTS §2.16).', uk: 'Варіант A, `in-account`: зміну робимо ми (DH-218), а власний час життя запису в нас — хвилини (DH-217), тому лише цей шлях має право казати «зазвичай кілька хвилин». Не переносити цей рядок на два інші флоу — там він неправда (FACTS §2.16).' } },
+      { id: 'securing', label: { en: 'Almost there — turning on the padlock', uk: 'Майже готово — увімкнюємо замочок' }, patch: { domain: 'securing' }, ms: 2000,
+        note: { en: 'Even on the fastest path the padlock is last: the certificate cannot be issued until the address already answers here (DH-301). The screen shows no button — nothing is required of the person, and that absence is the message. Compressed to seconds for the demo; the copy still says ten to thirty minutes, because that is the real wait.', uk: 'Навіть на найшвидшому шляху замочок приходить останнім: сертифікат не видати, поки адреса не почала відповідати в нас (DH-301). Кнопки на екрані немає — від людини нічого не потрібно, і саме ця відсутність і є повідомленням. Для демо стиснуто до секунд; у копірайті лишається «від десяти до тридцяти хвилин», бо це справжнє очікування.' } },
+      { id: 'live', label: { en: 'Live on their own address, padlock on', uk: 'Живий на власній адресі, замочок увімкнено' }, patch: { domain: 'live' }, ms: 900 },
+      { id: 'done', label: { en: 'Success — and the screen pushes them to share it', uk: 'Успіх — і екран штовхає поділитися' }, awaitUser: true,
+        note: { en: 'Success copy sells distribution rather than merely confirming, and the most valuable slot holds a live button (Visit site) instead of a disabled one. Not drawn: there is no share sheet — the step narrates the intent, not a screen.', uk: 'Копірайт успіху продає поширення, а не просто підтверджує, і в найдорожчому слоті стоїть жива кнопка (Visit site), а не задизейблена. Не намальовано: шита поширення немає — крок описує намір, а не екран.' } },
     ],
   },
   {
