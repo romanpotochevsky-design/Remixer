@@ -23,14 +23,19 @@ has no ID, it does not go in the product.
   sales pitch and makes the offer less believable, not more.
 - **Short lines.** Cards get about two short lines. If a third is needed, the design is
   answering a question the user didn't ask yet.
-- **Name the situation, never the user's mistake.** *"We can't see the changes at GoDaddy
-  yet"* — not "invalid configuration", not "you entered the wrong record". The category's
-  worst-named states (Vercel's `Invalid Configuration`, Netlify's `Awaiting External DNS`)
-  name the server's opinion and have produced multi-year forum threads (**CMP-010**).
+- **Name the situation, never the user's mistake.** "We can't see the change at {registrar}
+  yet" is the shape — not "invalid configuration", not "you entered the wrong record". The
+  category's worst-named states (Vercel's `Invalid Configuration`, Netlify's `Awaiting
+  External DNS`) name the server's opinion and have produced multi-year forum threads
+  (**CMP-010**). ⚠️ **The shipping string is not written here.** Take it verbatim from
+  `docs/features/domains/STATES.md` (`waiting-on-you`): a paraphrase in this file becomes a
+  second version of the same sentence, and two versions of one sentence is exactly the
+  problem this document exists to prevent.
 - **Every non-success state carries exactly one verb.** One thing to press. If there is no
   action available, say so on purpose — Lovable's "Setting up" offers no button *by design*
   and says "nothing for you to do" (**CMP-009**).
-- **Never promise a notification, a duration or a certainty we don't have.** See §5.
+- **Never promise a notification, a duration or a certainty we don't have.** See §5
+  "Waiting, failure, and promises we can't keep".
 - Sentence case for everything except product nouns (Publish, Domains, Remixer Build).
 - No exclamation marks in system copy. The site going live is the exciting part; the
   interface does not need to perform excitement.
@@ -41,6 +46,13 @@ has no ID, it does not go in the product.
 
 One verb, one meaning, everywhere — including support articles and the marketing site.
 
+**This table is the product-wide dictionary. The verb on a specific domain state is
+`docs/features/domains/STATES.md`** — it carries the state machine, one verb per state and
+the verbatim EN string. Where a state needs a verb that is not general (`Show me what to
+paste`, `Keep editing`, `Finish setup`, `Point it here`), that file decides and this one does
+not repeat it. If the two ever disagree, `STATES.md` wins for the state and this table is
+corrected.
+
 | Verb | Means exactly | Never use it for |
 |---|---|---|
 | **Buy** *(or **Add** — see the conflict below)* | Registering a **new** domain we will charge for | A domain the user already owns |
@@ -50,7 +62,8 @@ One verb, one meaning, everywhere — including support articles and the marketi
 | **Visit site** | Opening the live public address | Opening the preview |
 | **Refresh status** | Re-reading a state the user is waiting on | A page reload |
 | **Fix this** | Starting a guided repair of a detected problem | A generic retry |
-| **Retry** | Re-attempting one failed step — explicitly **not** remove-and-re-add, which resets the clock and is the worst advice in this category (**CMP-009**) | A different operation |
+| **Try again** | Re-attempting one failed step — explicitly **not** remove-and-re-add, which resets the clock and is the worst advice in this category (**CMP-009**). This is the verb on the stuck-certificate variant of `securing` | A different operation. And never write **`Retry`**: that is Lovable's word for this state (**CMP-009**), we borrowed the *behaviour*, not the label, and `STATES.md` renders "Try again" |
+| **Check again** | Asking us to re-read the situation at another company after the user says they have changed something — the second button on `waiting-on-you` | A page reload, or a state we are polling ourselves (that is **Refresh status**) |
 | **Transfer** | Moving the registration itself to DreamHost — always optional, always later (**DH-206**, **DH-209**) | Connecting. These are different products and users conflate them |
 
 ### The one open conflict: `Add` vs `Buy`
@@ -85,9 +98,9 @@ plain replacement that says what will be true, not what the machine does.
 | DNS · DNS settings · zone · zone file | "your domain settings", or nothing at all — describe the outcome ("we'll get {domain} pointing at your site") |
 | A record · CNAME · TXT record · AAAA · CAA | "the settings your domain needs". The real names appear **only** in the escape hatch (see below) |
 | nameserver · nameservers | "point your domain to us"; on the external branch, "your domain's settings live at {registrar} right now" |
-| propagation · propagating · TTL | "the change is spreading across the internet" + an honest window (§5) |
+| propagation · propagating · TTL | "the change is spreading across the internet" + an honest window (§5 "Waiting") |
 | verify ownership · verification record | "we're checking it's yours" — and on a domain already in the DreamHost account, **delete the concept**: "we already know it's yours" (**DH-213**) |
-| SSL certificate · provisioning · issuing a certificate | "the secure padlock". The single tolerated exception is the checklist line "Security (SSL) on" — and whether even that survives is an open question (`docs/features/domains/OPEN-QUESTIONS.md` 09, §4 below) |
+| SSL certificate · provisioning · issuing a certificate | "the secure padlock". The single tolerated exception is the checklist line "Security (SSL) on" — and whether even that survives is an open question (`docs/features/domains/OPEN-QUESTIONS.md` 09, §4 "The canonical success checklist" below) |
 | MX · SPF · DKIM · DMARC | "your email keeps working" — named nowhere in the happy path, guarded silently (**DH-205**) |
 | EPP code · auth code · authorization code | "the transfer code your current provider gives you" |
 | WHOIS · WHOIS privacy | "your contact details stay private" (**DH-113**) |
@@ -168,22 +181,29 @@ anything requiring a change at another company, which DreamHost's own KB documen
 - "One click and we'll set it up at your registrar" for external domains. We cannot do this
   today (**DH-201**, **DH-202**).
 
-**State names.** The naming authority is **`docs/features/domains/STATES.md`** — it carries
-the machine, the verb per state and the verbatim EN string for each. It extends
-`connect.md` §12.1 (adding `unfinished`, `in-use-here`, `elsewhere-in-dreamhost`) and renames
-`taken-over` → `wrong-site`; take its names, not the research's. Do **not** use the audit's
-earlier list ("Provisioning DNS", "Issuing SSL certificate"): those are Lovable's internal
-labels and they break §3 of this document (`FACTS.md` §2.6).
+**State names and state strings.** The naming authority is
+**`docs/features/domains/STATES.md`** — it carries the machine, the verb per state and the
+**verbatim EN string** for each. It extends `connect.md` §12 decision 1 "Ship a named state
+machine, not a spinner" (adding `unfinished`, `in-use-here`, `elsewhere-in-dreamhost`) and
+renames `taken-over` → `wrong-site`; take its names, not the research's. Do **not** use the
+audit's earlier list ("Provisioning DNS", "Issuing SSL certificate"): those are Lovable's
+internal labels and they break §3 "De-jargon" of this document (`FACTS.md` §2.6).
 
-Two states carry the most traffic and do not exist in our design yet:
+**And do not copy its strings into this file.** Earlier drafts of this section quoted the
+research's wording four lines after telling the reader to use `STATES.md` — so the same
+sentence existed twice, in two variants, with the paraphrase in the file that calls itself
+the rules. This section governs the **shape** of the copy; `STATES.md` owns the words.
 
-- **`ready`** — "Your domain is set up. Publish to put your site on it." The novice who
-  connects a domain and never presses Publish concludes the product is broken; this line is
-  the whole fix (**CMP-009**).
-- **`waiting-on-you`** — after about an hour: "We can't see the changes at {registrar} yet."
-  Verb: *Show me what to paste.* Note the phrasing blames the situation, not the user, and
-  the state must not read as "you broke it" — on slow registrars a single pass through it is
-  a plausible outcome of a **correct** configuration.
+Two states carry the most traffic and do not exist in our design yet — both are governed by
+that file:
+
+- **`ready`** — connected, not yet published. The novice who connects a domain and never
+  presses Publish concludes the product is broken; this state is the whole fix, and its verb
+  is the blue **Publish** (**CMP-009**).
+- **`waiting-on-you`** — a *designed* one-hour timeout, not an error. It blames the
+  situation, never the user: on a slow registrar, a single pass through this state is a
+  plausible outcome of a **correct** configuration. Its verb is the one thing to press plus a
+  **Check again** alongside it.
 
 ---
 
@@ -228,9 +248,18 @@ name the same control two different ways. The decided names:
 | The custom domain destination | **Public website** | production, live URL (as a label) |
 | The panel that ships the site | **Publish** | Deploy, Go live (as a panel title) |
 | The domain surface | **Domains** | Domain manager, DNS, Domain settings |
-| The action on a domain you own | **Connect** | Attach, Link, Point |
-| The action on a new domain | **Buy** (pending §2) | Add, Get, Register (in the button) |
+| The action on a domain you own | **Connect** | Attach, Link, Point — see the note below on the one sanctioned use of "Point" |
+| The action on a new domain | **Buy** (pending §2 "The verb dictionary") | Add, Get, Register (in the button) |
 | The AI's balance | **credits** | tokens, points, quota |
+
+**The one sanctioned "Point".** "Point" is banned as a **name for connecting** — the action
+is Connect, everywhere, and "point your domain" is the plain-language *description* the
+de-jargon table hands out in place of "nameservers" (§3), never a button. It survives in
+exactly one place: `docs/features/domains/STATES.md` gives the `wrong-site` state the verb
+**`Point it here`**, and that is deliberate — there the domain is already connected and is
+showing somebody else's site, so the user is not connecting anything; they are redirecting an
+address that already resolves. Nothing else in the product may use the word as a verb, and
+this exception does not spread to `connecting`, `unfinished` or the buy flow.
 
 When a new control needs a name, check this table and the verb dictionary first. If it isn't
 here and it will appear more than once, add it here in the same change that adds the control.

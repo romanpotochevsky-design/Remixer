@@ -6,9 +6,22 @@
 >
 > Sources: `docs/competitors/audits/synthesis-q3-2026.md` (the audit) as corrected by
 > `docs/competitors/audits/synthesis-critique.md` (the critique), plus
-> `docs/features/domains/research/connect.md` §4, §12, which settled two of the arguments
-> with evidence. **Where the audit and the critique disagree, the critique wins.** Numbers
-> come from `docs/product/FACTS.md` by ID and are not restated here.
+> `docs/features/domains/research/connect.md` §4 "The three automation rails" and §12 "What
+> Remixer should do — six decisions", which settled two of the arguments with evidence.
+> **Where the audit and the critique disagree, the critique wins.**
+>
+> **How numbers work in this document.** Every number carries the fact ID it comes from
+> (`docs/product/FACTS.md`). The value **may** be written beside its ID — a document where
+> prices are replaced by identifiers is unreadable, which is a cost ADR-0004 accepted
+> explicitly — but the ID is what makes it checkable, and **on any disagreement between a
+> value here and the register row, the register wins and this line is the one that is
+> wrong.** No number is typed here from memory, and a number with no ID does not belong in
+> this document at all.
+>
+> **Cite sections by heading text as well as number.** Section numbers move, and a pointer
+> that has drifted to the wrong section still looks perfectly valid — the acceptance review
+> on 20.08.2026 found several, including one in this document.
+> `COPY-RULES §6 "Price honesty"` survives a renumber; `COPY-RULES §6` does not.
 >
 > Rule for anything built on this document: **where a claim rests on an unquantified base,
 > say so in the same sentence.** That is the rule, not a score — check each section against it
@@ -61,11 +74,11 @@ the domain attaching, the padlock arriving, the address appearing in the chrome.
 | # | The move | Why it is ours to make | Fact |
 |---|---|---|---|
 | 1 | **Zero-record connect for a domain already in the DreamHost account.** No record table, no second tab, no verification concept at all — ownership is an internal lookup. | We are the registrar of record for domains bought years before Remixer existed. Every AI-native competitor can only automate the domain it sold you today. | **DH-213**, **CMP-006/007** |
-| 2 | **Put it in the publish moment.** One gesture, at the top of the publish sheet, above the preview address. | This is the actual differentiator — see the limit below. | `connect.md` §12.6 |
-| 3 | **A named state machine with a verb on every non-green state**, including the two we do not have: `ready` ("your domain is set up, publish to put your site on it") and `waiting-on-you`. | These are the highest-traffic real states and the category's best-named ones exist to be copied. | **CMP-009**, `connect.md` §12.1 |
+| 2 | **Put it in the publish moment.** One gesture, at the top of the publish sheet, above the preview address. | This is the actual differentiator — see the limit below. | `connect.md` §12 decision 6 "Keep the entry point in the publish moment" |
+| 3 | **A named state machine with a verb on every non-green state**, including the two we do not have: `ready` ("your domain is set up, publish to put your site on it") and `waiting-on-you`. | These are the highest-traffic real states and the category's best-named ones exist to be copied. | **CMP-009**, `connect.md` §12 decision 1 "Ship a named state machine, not a spinner" |
 | 4 | **Guided per-registrar instructions with a deep link**, built for the top registrars in our own data. | The valuable half of Entri is the fallback, not the API login — and it needs no purchase order. | **STD-011** |
-| 5 | **Protect the email.** Detect MX records before touching nameservers and carry them across. | The only business-destroying failure in the catalogue, and DreamHost's own KB already warns that custom records stop working unless recreated first. | **DH-205**, `connect.md` §6 (failure 11) |
-| 6 | **Price honesty at the moment of purchase** — renewal never hidden, price before the cart. | Our own rule, and the one thing a novice can actually verify about us. | **DH-112**, COPY-RULES §4 |
+| 5 | **Protect the email.** Detect MX records before touching nameservers and carry them across. | The only business-destroying failure in the catalogue, and DreamHost's own KB already warns that custom records stop working unless recreated first. | **DH-205**, `connect.md` §6 "The failure catalogue" row 11 |
+| 6 | **Price honesty at the moment of purchase** — renewal never hidden, price before the cart. | Our own rule, and the one thing a novice can actually verify about us. | **DH-112**, COPY-RULES §6 "Price honesty" |
 
 **The limit, stated honestly.** The audit put the heading "Why nobody can copy it" on **all
 five** overtake plays — §8.1 through §8.5; counted with
