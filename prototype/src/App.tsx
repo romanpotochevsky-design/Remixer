@@ -100,14 +100,26 @@ export default function App() {
      spelled out here too, which is how the shell and the publish panel ended up
      printing a zone nobody had sourced. See FACTS DH-302. */
   const address =
-    world.domain === 'live' || world.domain === 'multiple'
+    world.domain === 'live' || world.domain === 'multiple' || world.domain === 'ready'
       ? CUSTOM_DOMAIN
       : STAGING_HOST
 
-  const publishLabel =
-    world.unpublished > 0
-      ? { en: 'Update', uk: 'Оновити' }
-      : { en: 'Publish', uk: 'Опублікувати' }
+  /* Publish button, two states, ONE source of truth.
+     `docs/features/publish/DECISIONS.md` 01 (accepted by the designer 20 Aug 2026):
+     nothing waiting → the button is not accented, so it reads available but does not
+     call; unpublished changes → accent blue with a dot to the LEFT of the label.
+     The dot replaces the counter: the question "publish or not" is binary, so a number
+     asks something nobody is deciding — and a wrong number would discredit the panel,
+     while a dot cannot be wrong in detail.
+     The dot is WHITE ON BLUE, not amber. The audit asked for amber; the designer
+     overrode it deliberately (DECISIONS 01, consequence 3) — unpublished work is a
+     normal working state, not a fault, and painting it in the alarm colour devalues
+     the alarm colour. Do not "restore" the audit's amber.
+     One label, never two (`Publish`, not `Publish`/`Update`): colour plus dot already
+     carries the difference, and two variables in one control read worse than one.
+     Derived from `world.unpublished` — the same value the status pill and the sheet
+     copy read, which is what keeps the three deploy signals from disagreeing. */
+  const pendingPublish = world.unpublished > 0
 
   return (
     <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]">
@@ -188,7 +200,7 @@ export default function App() {
 
           {/* center: project button, 280×40 — the live address in permanent chrome */}
           <button
-            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing' ? 'status' : 'home')}
+            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing' || world.domain === 'ready' ? 'status' : 'home')}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -225,10 +237,14 @@ export default function App() {
             </div>
             <button
               onClick={() => togglePublish()}
-              className="h-9 rounded-[10px] bg-[var(--action)] px-4 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+              className={`flex h-9 items-center gap-2 rounded-[10px] px-4 text-[13px] font-semibold leading-[1.4] transition-colors duration-[var(--dur-fast)] ease-std ${
+                pendingPublish
+                  ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
+                  : 'bg-[var(--gray-800)] text-[var(--white-900)] hover:bg-[var(--gray-750)]'
+              }`}
             >
-              {t(publishLabel)}
-              {world.unpublished > 0 && <span className="ml-1.5 tabular-nums opacity-70">{world.unpublished}</span>}
+              {pendingPublish && <span className="h-1.5 w-1.5 flex-none rounded-full bg-white" aria-hidden />}
+              {t({ en: 'Publish', uk: 'Опублікувати' })}
             </button>
           </div>
         </header>

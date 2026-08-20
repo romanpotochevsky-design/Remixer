@@ -502,7 +502,7 @@ function ResultsScreen() {
 /** "You own this" — the confirm for a domain already in the DreamHost account. */
 function OwnScreen() {
   const { world, set } = useWorld()
-  const { activeDomain, goDomains } = useUI()
+  const { activeDomain, goDomains, closeSurface } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? CUSTOM_DOMAIN
   const inUse = world.inventory === 'dh-in-use'
@@ -529,15 +529,29 @@ function OwnScreen() {
       </p>
 
       {/* Guards. A stray click must never take down a live site or working email. */}
+      {/*
+        * The in-account collision: this domain already serves something — WordPress, a
+        * parking page, an older builder site. For us that is the base case, not an edge
+        * one, and `DECISIONS.md` 20 settles who resolves it: THE USER, not support.
+        * Shopify's "contact support with proof of ownership" is a documented multi-year
+        * community pain and Lovable/Vercel dead-end the person without even naming the
+        * project holding the domain. We copy the best in the category instead — Wix,
+        * whose two choices each name their OUTCOME.
+        *
+        * So: one screen, two named options, and no lone "are you sure?". The old single
+        * confirm read `Replace site at {domain}`, which asked for a decision while
+        * describing only one half of it. Copy is the collisions section of STATES.md
+        * verbatim; `Cancel` is the third line, per the same section.
+        */}
       {inUse && (
         <div className="mt-4 rounded-control border border-[#e5c35940] bg-[#e5c35914] p-3.5">
           <p className="text-[13px] font-semibold text-[var(--attention)]">
-            {t({ en: 'This domain already shows a website', uk: 'На цьому домені вже є сайт' })}
+            {t({ en: `${domain} already shows a website`, uk: `На ${domain} вже є сайт` })}
           </p>
           <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-400)]">
             {t({
-              en: `Connecting will replace what visitors see at ${domain}. Your files stay safe and you can switch back.`,
-              uk: `Підключення замінить те, що бачать відвідувачі на ${domain}. Файли збережуться, і можна повернути як було.`,
+              en: 'Choose what visitors see. Nothing is deleted either way.',
+              uk: 'Виберіть, що бачитимуть відвідувачі. У жодному з варіантів нічого не видаляється.',
             })}
           </p>
         </div>
@@ -556,16 +570,61 @@ function OwnScreen() {
         </div>
       )}
 
-      <div className="mt-5">
-        <PrimaryButton
-          label={
-            inUse
-              ? { en: `Replace site at ${domain}`, uk: `Замінити сайт на ${domain}` }
-              : { en: 'Connect', uk: 'Підключити' }
-          }
-          onClick={connect}
-        />
-      </div>
+      {inUse ? (
+        <div className="mt-5 space-y-3">
+          {/* Option A — the primary one. Naming the reversal is what makes it safe to pick. */}
+          <div className="rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
+            <p className="text-[15px] font-semibold leading-[1.3] text-white">
+              {t({ en: `Show this new site at ${domain}`, uk: `Показувати на ${domain} цей новий сайт` })}
+            </p>
+            <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-500)]">
+              {t({
+                en: 'Your old site stays in your account, and you can switch back any time.',
+                uk: 'Старий сайт залишиться у вашому акаунті — повернути його можна будь-коли.',
+              })}
+            </p>
+            <div className="mt-3">
+              <PrimaryButton label={{ en: 'Use this site', uk: 'Використати цей сайт' }} onClick={connect} />
+            </div>
+          </div>
+
+          {/* Option B — a DIFFERENT outcome, not a softer wording of A: the old site keeps
+              the domain and the new one keeps its own address, so nothing about the
+              address changes and there is nothing to watch.
+              ⚠️ Which address the new site gets is deliberately left as "a different
+              address": `research/connect.md` §9 proposes `www.{domain}`, but "your site
+              lives on www and the old one on the bare name" is a trap for a novice, so the
+              question is open (STATES.md, collisions). Do not invent the answer here. */}
+          <div className="rounded-control border border-[var(--gray-800)] p-4">
+            <p className="text-[15px] font-semibold leading-[1.3] text-white">
+              {t({ en: `Keep the old site at ${domain}`, uk: `Залишити на ${domain} старий сайт` })}
+            </p>
+            <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-500)]">
+              {t({
+                en: `Your new site gets a different address, and visitors to ${domain} keep seeing the old site.`,
+                uk: `Новий сайт отримає іншу адресу, а відвідувачі ${domain} й далі бачитимуть старий сайт.`,
+              })}
+            </p>
+            <button
+              onClick={closeSurface}
+              className="mt-3 h-11 w-full rounded-control border border-[var(--white-200)] text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
+            >
+              {t({ en: 'Keep the old one', uk: 'Залишити старий' })}
+            </button>
+          </div>
+
+          <button
+            onClick={() => goDomains('home')}
+            className="w-full text-center text-[13px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[var(--white-700)]"
+          >
+            {t({ en: 'Cancel', uk: 'Скасувати' })}
+          </button>
+        </div>
+      ) : (
+        <div className="mt-5">
+          <PrimaryButton label={{ en: 'Connect', uk: 'Підключити' }} onClick={connect} />
+        </div>
+      )}
       {!inUse && !externalNs && (
         <p className="mt-2 text-center text-[12.5px] text-[var(--white-300)]">
           {t({ en: 'Under a minute · nothing to configure', uk: 'Менше хвилини · нічого не треба налаштовувати' })}
@@ -704,6 +763,53 @@ function StatusScreen() {
    * state-machine edge instead — needs-attention → connecting, i.e. "fixed, watching
    * again". It never says "remove it and add it again", which STATES.md forbids.
    */
+  /*
+   * `ready` — the address works, the project has never been published.
+   *
+   * STATES.md calls this "probably the most common state a novice reaches in the whole
+   * flow": they connect a domain, never press Publish, and conclude it is broken. Before
+   * this branch existed the prototype had nothing for it, so the situation rendered as
+   * success or as a spinner — both lies. It is neither an error nor a wait: no spinner,
+   * no amber, no green live dot, one blue verb.
+   *
+   * Copy is the `ready` card from STATES.md — MINUS its third sentence, "Publishing is
+   * free". That claim was deliberately removed from this prototype on 20 Aug 2026
+   * (see the HISTORY note in modules/publish/PublishPanel.tsx): publishing consumes
+   * credits today (FACTS **DH-008**, `verified`), the free-publish line is our POSITION,
+   * not the product's behaviour, and this artifact is read by developers who would size
+   * work against it. The card's own wording predates that removal — do not paste the
+   * third sentence back in on the strength of the card.
+   *
+   * The verb is `Publish`, the one action that resolves the state, and it takes the
+   * `ready → live` edge of the state machine while clearing the pending changes.
+   */
+  if (world.domain === 'ready') {
+    return (
+      <Screen>
+        <Eyebrow>{t({ en: 'Ready to publish', uk: 'Готово до публікації' })}</Eyebrow>
+        <h2 className="font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">{domain}</h2>
+        <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
+          {t({
+            en: 'Your address is set up. Visitors will see your site the moment you publish.',
+            uk: 'Вашу адресу налаштовано. Відвідувачі побачать ваш сайт, щойно ви опублікуєте.',
+          })}
+        </p>
+        <div className="mt-5">
+          <PrimaryButton
+            label={{ en: 'Publish', uk: 'Опублікувати' }}
+            onClick={() => set({ domain: 'live', unpublished: 0 })}
+          />
+        </div>
+        <button
+          onClick={closeSurface}
+          className="mt-3 w-full text-center text-[13px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[var(--white-700)]"
+        >
+          {t({ en: 'Keep editing', uk: 'Редагувати далі' })}
+        </button>
+      </Screen>
+    )
+  }
+
   if (world.domain === 'unreachable') {
     return (
       <Screen>

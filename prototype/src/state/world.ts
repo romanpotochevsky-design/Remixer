@@ -57,6 +57,14 @@ export type DomainState =
    *  ticked both at once and deleted the one state it exists to explain
    *  (docs/features/domains/STATES.md, "three items, four stages"). */
   | 'securing'
+  /** The address works and the domain is attached — and the project has NEVER been
+   *  published, so nothing is live and nothing is broken. Probably the most common
+   *  state a novice reaches (docs/features/domains/STATES.md, `ready`): our Launchpad
+   *  offers a domain before the first publish, where Lovable refuses to connect one
+   *  until you have published, so falling in here is easier for us than for them.
+   *  Its verb is `Publish` — the one action that resolves it. Added 20 Aug 2026;
+   *  before it existed this situation rendered as success or as a spinner. */
+  | 'ready'
   | 'live'
   | 'unreachable'
   | 'multiple'
@@ -132,6 +140,9 @@ export const canUseAI = (w: World) =>
 export const canConnectDomain = (w: World) => hasPlan(w)
 export const isCustomDomainActive = (w: World) =>
   w.domain === 'connecting' || w.domain === 'verifying' || w.domain === 'securing' ||
+  /* `ready` counts: the custom domain is already attached, only the publish is missing,
+     so it needs the paid plan exactly like the others (the violation this feeds). */
+  w.domain === 'ready' ||
   w.domain === 'live' || w.domain === 'unreachable' || w.domain === 'multiple'
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
 

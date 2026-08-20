@@ -98,11 +98,15 @@ export function PublishPanel() {
    * per-publish figure (**DH-009**), so a number here would be the same error mirrored.
    * `Free` comes back when DH-008 changes, not before.
    */
+  /* The counter LEFT this label on 20 Aug 2026: it used to read `Update · N changes`,
+     and the number is now carried by a dot instead (`docs/features/publish/DECISIONS.md`
+     01, consequence 1 — if a count is ever wanted it belongs inside this opened panel,
+     never in permanent chrome). One label, not a `Publish`/`Update` switch: colour and
+     dot already say which of the two it is. Both states read `world.unpublished`, so
+     this button, the topbar button and the copy above cannot drift apart. */
   const primary =
     world.unpublished > 0
-      ? live
-        ? { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
-        : { en: `Publish`, uk: `Опублікувати` }
+      ? { en: 'Publish', uk: 'Опублікувати' }
       : { en: 'Continue', uk: 'Продовжити' }
 
   return (
@@ -242,8 +246,9 @@ export function PublishPanel() {
             )}
             <button
               onClick={() => (world.unpublished > 0 ? set({ unpublished: 0 }) : togglePublish(false))}
-              className="h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+              className="flex h-10 items-center gap-2 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
             >
+              {world.unpublished > 0 && <span className="h-1.5 w-1.5 flex-none rounded-full bg-white" aria-hidden />}
               {t(primary)}
             </button>
           </div>

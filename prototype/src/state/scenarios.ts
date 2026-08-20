@@ -85,6 +85,15 @@ export const PRESETS: Preset[] = [
     patch: { account: 'paid', credits: 970, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'securing', unpublished: 0 },
   },
   {
+    id: 'ready',
+    label: { en: 'Ready, never published', uk: 'Готово, ще не опубліковано' },
+    note: {
+      en: 'Domain works, the site was never published — the novice’s most likely state',
+      uk: 'Домен працює, сайт ніколи не публікували — найчастіший стан у новачка',
+    },
+    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'ready', unpublished: 2 },
+  },
+  {
     id: 'live',
     label: { en: 'Live site', uk: 'Живий сайт' },
     note: { en: 'Everything published, domain working', uk: 'Все опубліковано, домен працює' },
@@ -207,6 +216,7 @@ export const AXES: Axis[] = [
       { value: 'connecting', label: { en: 'Connecting', uk: 'Підключається' } },
       { value: 'verifying', label: { en: 'Verifying', uk: 'Перевіряється' } },
       { value: 'securing', label: { en: 'Turning on the padlock', uk: 'Увімкнення замочка' } },
+      { value: 'ready', label: { en: 'Ready to publish', uk: 'Готово до публікації' } },
       { value: 'live', label: { en: 'Live', uk: 'Живий' } },
       { value: 'unreachable', label: { en: 'Not reachable', uk: 'Не відповідає' } },
       { value: 'multiple', label: { en: 'Several domains', uk: 'Кілька доменів' } },
@@ -263,6 +273,7 @@ export function describe(w: World): Text {
     connecting: { en: 'domain connecting', uk: 'домен підключається' },
     verifying: { en: 'domain verifying', uk: 'домен перевіряється' },
     securing: { en: 'padlock being turned on', uk: 'увімкнюється замочок' },
+    ready: { en: 'domain ready, never published', uk: 'домен готовий, ще не опубліковано' },
     live: { en: 'domain live', uk: 'домен живий' },
     unreachable: { en: 'domain not reachable', uk: 'домен не відповідає' },
     multiple: { en: 'several domains', uk: 'кілька доменів' },
