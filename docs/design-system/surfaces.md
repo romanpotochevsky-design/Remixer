@@ -8,6 +8,14 @@ than quietly resolved.
 
 Companion document: `motion.md` (how these surfaces move). Colour meanings: `README.md`.
 
+**Facts carry IDs.** Every statement below about DreamHost or a competitor cites a row of
+`docs/product/FACTS.md` (`DH-###` / `CMP-###` / `STD-###`) rather than restating a value.
+Where a measurement has no register row yet — most of the competitor *design* readings
+live only in `measured-competitor-tokens.md` and the live teardowns — the source document
+and its capture date are named instead, and the gap is said out loud. Cross-references
+name a section by **number and heading**, because renumbering has already broken seven
+pointers in this folder.
+
 ---
 
 ## 1. Shell geometry
@@ -33,8 +41,10 @@ back. Do not add a border to the aside instead — the resizer needs to own that
 
 The right rail holds account avatar (32) plus Style / Integrations / Analytics / Cloud
 at 48×48 on 16px radii, then support chat pinned to the bottom. **Domains and Email
-still have no home in the rail** — that gap is the audit's headline finding, not an
-oversight in the geometry.
+still have no home in the rail** — that gap is the audit's headline finding
+(`synthesis-q3-2026.md` §6, "Where Remixer stands today"), not an oversight in the
+geometry. What *is* in the live rail today is itself an open question the audit could not
+close (§10.2, question 3).
 
 ### ⚠️ The old live-product geometry is superseded
 
@@ -43,13 +53,18 @@ chat column 522, chat on the right). That is dead. It must not be restored, part
 restored, or used to "correct" a mockup that follows the redesign. If you find a screen
 still drawn to 57/64/522, the screen is stale, not the spec.
 
-Also superseded: the audit (`synthesis-q3-2026.md` §9.9) proposes a **408px** chat column
-with 360/720 bounds and a 2px `#1587FF`/50 hover bar. That predates the Figma redesign.
-The numbers above (432, 340/760, and the pointer-local glow of §10) win.
+Also superseded: the audit (`docs/competitors/audits/synthesis-q3-2026.md` **§9.9,
+"Density and layout"**) proposes a **408px** chat column with 360/720 bounds and a 2px
+`#1587FF`/50 hover bar. That predates the Figma redesign. The numbers above (432, 340/760,
+and the pointer-local glow of **§10, "The chat/canvas divider"**) win. Our 432 comes from
+our own Figma, **not** from measuring Lovable — their chat width is `unverified` and must
+not be quoted as a figure (**FACTS CMP-031**).
 
-### Ground vs. panels — and one real bug
+### Ground vs. panels
 
-Elevation is a lightness ladder, not shadows:
+Elevation is a lightness ladder, not shadows. Which value is the ground was itself a
+contradiction on record — the brief and the audit say `#18181B`, the 2026 redesign moved
+the shell to `#09090b` and demoted `#18181b` to a panel colour (**FACTS DH-403**):
 
 | Level | Colour | Used for |
 |---|---|---|
@@ -58,14 +73,14 @@ Elevation is a lightness ladder, not shadows:
 | Overlay | `--gray-850` `#1F1F22` | the Publish panel, the checkout sheet, floating notices |
 | Border-ish | `--gray-800` `#27272A` | the domains dashboard frame border |
 
-⚠️ **`body` currently paints `#18181B`, not `#09090B`.** `index.css:191` sets
-`body { background: var(--gray-950) }` — with a comment citing Figma `28016:42812`
-("the whole frame is #09090B") and explaining that the embedding claude.ai preview panel
-shows its own backdrop through any gap or overscroll otherwise. Then `index.css:903`
-re-declares `body { background: var(--gray-900); … }` in the same `@layer base`, later in
-source order, so **it wins**. The App's root `<div>` paints `--gray-950` on top, which is
-why nobody has noticed — but the stated purpose of line 191 is defeated. One of the two
-declarations should go; the correct ground is `--gray-950`.
+**Fixed, and recorded so it is not re-diagnosed:** `index.css` used to carry a *second*
+`body` rule some 700 lines below the first, painting the pre-redesign `#18181B`. Being
+later in the same `@layer base`, it won — and it defeated the stated purpose of the first
+rule (Figma `28016:42812` paints the whole frame `#09090B`, and without it the embedding
+claude.ai preview panel shows its own backdrop through any gap or overscroll). Nobody
+noticed because `App.tsx`'s root `<div>` paints `--gray-950` over the shell anyway. There
+is now **exactly one `body` rule**, and the comment sitting on it says why there must
+never be a second. The ground is `--gray-950`.
 
 ---
 
@@ -118,19 +133,23 @@ All four must stay out:**
   offender; next to real macOS chrome it screams.
 - ❌ an **inner top highlight** (a specular band down the top edge inside the control)
 - ❌ a **drop shadow** under the glass
-- ❌ **`saturate()`** in the backdrop filter (Bolt does `blur(10px) saturate(1.2)`; that
-  is the iOS recipe, and it is not ours)
+- ❌ **`saturate()`** in the backdrop filter (Bolt does `blur(10px) saturate(1.2)` on its
+  prompt box — the iOS recipe, and not ours. Source: `measured-competitor-tokens.md` §2,
+  "Prompt box", read off live computed styles 13 Aug 2026; no register row yet)
 
 macOS keeps a control quiet: a tinted translucent fill, a real blur behind it, one
 restrained edge. The surface reads as glass because of what shows *through* it, not
 because of light painted *on* it. Figma specifies exactly that and nothing more.
 
-⚠️ **`index.css` still carries a stale comment block immediately above `.liquid-glass`
-that describes the rejected recipe as if it were the spec** — "three layers… a
-translucent fill that is lighter at the top, a backdrop blur with a saturation lift, and
-a 1px gradient RIM… (white .32 → .08 → .24)". The paragraph directly below it reverses
-all of that, and the code implements the reversal. The first paragraph is dead text; read
-past it. This document, not that comment, is the recipe.
+**`index.css` keeps the rejected recipe on purpose, and it is labelled.** The comment
+block immediately above `.liquid-glass` opens with **"⚠️ HISTORY, NOT SPEC. The recipe in
+this paragraph was TRIED AND REJECTED"**, states that the shipped recipe is the paragraph
+below it, and then lists the four properties that must stay out. Leave the label and the
+block alone: a deleted mistake comes back, a labelled one does not.
+
+*(An earlier version of this section called that block "dead text passing itself off as
+spec". It was — before the label was added. Check the first line of a comment before
+repeating the accusation.)*
 
 ### Why the rim is a mask, not a `border`
 
@@ -165,8 +184,10 @@ dims the rim:
 ## 3. Where glass belongs — and where it does not
 
 Glass is **only** where Figma draws it. It is a material with a cost (a `backdrop-filter`
-is a real GPU expense, and Lovable spends exactly one on their entire landing page — on
-the prompt input, the single most important element). Ours, in full:
+is a real GPU expense, and Lovable spends exactly one on their entire landing page — a
+`blur(4px)` on the prompt input, the single most important element; source
+`measured-competitor-tokens.md` §1, "Restraint", 13 Aug 2026, no register row yet). Ours,
+in full:
 
 **Glass, yes:**
 
@@ -180,9 +201,9 @@ the prompt input, the single most important element). Ours, in full:
 
 | Surface | What it is instead | Why |
 |---|---|---|
-| **The Publish panel** | solid `--gray-850` | see §5 — translucent glass was tried here and reverted |
+| **The Publish panel** | solid `--gray-850` | see **§5, "The Publish panel is solid"** — translucent glass was tried here and reverted |
 | The checkout sheet (`DomainModal`) | solid, over a 70%-black scrim | an app-modal; nothing should show through it |
-| The composer **field** | a dark translucent surface, but *not* `.liquid-glass` | see §4 — it is the ground the circles' glass sits on |
+| The composer **field** | a dark translucent surface, but *not* `.liquid-glass` | see **§4, "The composer field"** — it is the ground the circles' glass sits on |
 | The domains dashboard, results lists, cards | `--gray-900` / `#ffffff08` fills with NA/50 hairlines | content surfaces, not chrome |
 | The right rail buttons, the project button | transparent with a hover wash | chrome that must disappear |
 
@@ -268,9 +289,9 @@ Three decisions recorded so they are not re-litigated:
    used to resolve against the centre column and the panel drifted as the chat column
    was resized.
 3. **The travelling `.glass-sheen` on its rim is gone** (reverted 17 Aug 2026). Full
-   reasoning in `motion.md` §6 — short version: a sheen is evidence of *glass*, and this
-   panel has none. What the panel keeps from iOS 26 is the **motion**, never the
-   material.
+   reasoning in `motion.md` **§7, "Reverted: the panel sheen (`.glass-sheen`)"** — short
+   version: a sheen is evidence of *glass*, and this panel has none. What the panel keeps
+   from iOS 26 is the **motion**, never the material.
 
 ---
 
@@ -332,7 +353,8 @@ inline everywhere.
 So `--white-300` is *not* Neutral Alpha/300, and the composer rim therefore has to be
 written as the literal `#ffffff3d`. Before adding a token named after a Figma step,
 check which ladder you are on. The `--white-*` set was measured off the live product on
-13 Aug 2026; the Figma set is the redesign's.
+13 Aug 2026 — the same pass that found production's blue is not our token (**FACTS
+DH-402**); the Figma set is the redesign's.
 
 The black ladder (Figma `Black/…`, for fills on glass) is
 `--black-300` 24% · `--black-700` 64% · `--black-800` 72% · `--black-900` 80%, all of
@@ -342,8 +364,8 @@ The black ladder (Figma `Black/…`, for fills on glass) is
 
 ## 8. Shadows
 
-Shadows are almost absent — elevation is lightness (§1). Four exist in the whole
-product:
+Shadows are almost absent — elevation is lightness (**§1, "Shell geometry"** → "Ground
+vs. panels"). Four exist in the whole product:
 
 | Surface | Shadow |
 |---|---|
@@ -354,9 +376,14 @@ product:
 
 The audit's recommendation is a six-step cumulative ramp at 4% (Lovable's system: each
 larger step *adds* a layer, offsets doubling and spread halving, every layer a constant
-`#0000000a`, plus a `1px` hairline ring). We have not built that ramp. **A single shadow
-at ~10% opacity is a documented AI-slop tell**, so if a new surface needs elevation,
-build the ramp rather than adding a fifth one-off.
+`#0000000a`, plus a `1px` hairline ring — `measured-competitor-tokens.md` §1, "Shadow
+system", 13 Aug 2026, no register row yet). We have not built that ramp.
+
+A single shadow at ~10% opacity is on the practitioner list of AI-slop tells — **cite it
+as craft consensus, never as measured risk** (**FACTS DH-407**: the pattern list is
+`likely` as a documented craft consensus; that it costs us anything is `unverified`). It
+is reason enough not to add a fifth one-off shadow, and not reason enough to justify a
+rebuild on its own.
 
 ---
 
@@ -416,8 +443,10 @@ The line **never turns fully blue.** A full-height blue bar is just a bar; light
 be *somewhere* to read as light. So the line only takes a faint tint and everything
 bright is local to the pointer — a 2px hot core (300px tall, blurred 0.6px) plus a 64px
 halo (460px tall, blurred 12px) that spills onto both panels and dies well before the
-top and bottom edges. Lovable's equivalent highlight is even; ours puts the light where
-your hand is.
+top and bottom edges. Lovable's equivalent highlight is even along the whole divider;
+ours puts the light where your hand is. (That comparison is an observation off a recording
+of their builder, not a measurement — it has no register row, and Lovable's chat-panel
+geometry is `unverified` per **FACTS CMP-031**.)
 
 Grab target: `inset: 0 -5px` — a comfortable target either side of a 1px line.
 Bounds: 340–760, default 432.
@@ -428,7 +457,9 @@ Re-rendering the shell on every `pointermove` would restart the chat, the previe
 its container queries sixty times a second.
 
 ⚠️ The glow is **mono-blue and that is a designer decision** — the iridescent version
-was built, shown and rejected. See `motion.md` §5.
+was built, shown and rejected on 17 Aug 2026. **Do not propose it again.** The rejection
+and the reasoning that generalises from it: `motion.md` **§6, "Signature effect: the
+resizer glow — mono-blue"**.
 
 ---
 
@@ -444,29 +475,37 @@ was built, shown and rejected. See `motion.md` §5.
   Breakpoints in use: `max-width: 900px` (3 cols → 2) and `max-width: 640px` (phone).
 - In mobile mode the frame gets a `ring-1 ring-[#ffffff14]` hairline — floating on the
   ground, the site's own dark sections would otherwise bleed into the shell. (Lovable
-  outlines their preview the same way; measured border `#41413D`.)
+  outlines their preview the same way, on a warm `#41413D` — measured in
+  `docs/competitors/audits/lovable-builder-teardown.md`, live logged-in account,
+  13 Aug 2026; no register row yet.)
 - **The demo site is deliberately two-tone** — white hero on top, dark menu section and
   footer below. It is a *test rig*: the one screen where you can see the edge glow's
   behaviour over both backgrounds at once. It is not a site design, and it should not be
   "improved" into a single-tone page.
-- The device switch is **one button**, as in Lovable: the icon *is* the mode you are in
-  (monitor while desktop, phone once switched) and clicking flips it.
+- The device switch is **one button**, as in Lovable, whose top bar carries a single
+  centre-cluster "Desktop view" control (`lovable-builder-teardown.md`, 13 Aug 2026; no
+  register row yet): the icon *is* the mode you are in (monitor while desktop, phone once
+  switched) and clicking flips it.
 
 ---
 
 ## 12. Reading this against Figma — the standing traps
 
-1. **Read tokens in the dark theme** (§4). The light-mode resolution of `Neutral Alpha`
-   is not merely different, it inverts.
-2. **Check which alpha ladder you are on** (§7). `--white-300` ≠ Neutral Alpha/300.
+1. **Read tokens in the dark theme** (**§4, "The composer field"**). The light-mode
+   resolution of `Neutral Alpha` is not merely different, it inverts.
+2. **Check which alpha ladder you are on** (**§7, "Hairlines and the two alpha ladders"**).
+   `--white-300` ≠ Neutral Alpha/300.
 3. **The mockups contain real inconsistencies, and we implement them as drawn and flag
    them** rather than silently "correcting" them. Currently flagged to the designer:
    the plan cards in the checkout sheet are different heights (72 selected / 80 not)
    with different label tokens; the renewal price `$11.86` in the domain boards matches
-   no row of DreamHost's verified price table and is a placeholder; the domain boards
-   draw the verb **"Buy"** while the audit's verb dictionary says "Add"; and **no board
-   draws a "domain is taken" state at all** — the single most important state in domain
-   search. Do not invent any of these.
+   no row of DreamHost's verified price table and is a placeholder (**FACTS DH-101…DH-110**
+   for the real prices, and **FACTS §2.18**, "The renewal price in the Figma boards", for
+   this exact discrepancy — prices come from `TLD_PRICES`, never from a board); the domain
+   boards draw the verb **"Buy"** while the audit's verb dictionary says "Add" (**FACTS
+   §2.19**, "The verb for buying"; the dictionary itself lives in
+   `docs/product/COPY-RULES.md`); and **no board draws a "domain is taken" state at all**
+   — the single most important state in domain search. Do not invent any of these.
 4. **A missing font file is silent, on purpose.** `/fonts/...` references are absolute
    so Vite leaves them alone: an absent licensed face is a face that quietly does not
    load, not a build error. That is what lets the CSS ship before the fonts do — and it
