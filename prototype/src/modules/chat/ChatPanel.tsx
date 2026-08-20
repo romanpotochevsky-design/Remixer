@@ -326,7 +326,10 @@ export function ChatPanel() {
 
         {/* pb clears exactly the height of the bottom fade, so at rest nothing
             sits under it — the fade only bites into content once you scroll. */}
-        <div ref={list} className="space-y-5 pb-8">
+        {/* Harness handle (scripts/smoke.mjs, AGREEMENTS §5 gate 2): counting bubbles
+            otherwise means selecting on Tailwind classes (`div.liquid-glass--subtle`),
+            and Tailwind rewrites and prunes class names — see prototype/docs. */}
+        <div ref={list} data-testid="chat-thread" className="space-y-5 pb-8">
           {thread.length === 0 && !working ? (
             <p className="pt-10 text-center text-[14px] text-[var(--white-400)]">
               {t({ en: 'Describe what you want to build.', uk: 'Опишіть, що збудувати.' })}
