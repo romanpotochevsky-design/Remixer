@@ -333,3 +333,20 @@ export const IconSparkleAI = ({ size = 20, className }: IconProps) => (
     />
   </svg>
 )
+
+/** Gear — sits after "Manage domains" in the publish panel (Figma 28071:53274, `Settings M`). */
+export const IconSettings = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.06 4.7a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.06a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z" />
+  </svg>
+)
+
+/** Two people — the viewers count in the publish panel header (Figma 28272:49012). */
+export const IconUsers = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M15.5 20v-1.6a4 4 0 0 0-4-4H6.5a4 4 0 0 0-4 4V20" />
+    <circle cx="9" cy="7" r="3.4" />
+    <path d="M21.5 20v-1.6a4 4 0 0 0-3-3.87M16.5 4.13a4 4 0 0 1 0 7.75" />
+  </svg>
+)

@@ -1,15 +1,21 @@
 /**
- * The publish panel — 2026 redesign, pixel source: Figma node 25819:144061 (548×~335).
+ * The publish panel — 2026 redesign.
+ *
+ * **Pixel source: Figma node `28071:53189`** (548×~335), the connected-custom-domain
+ * state. Node `25819:144061` is **SUPERSEDED** for this panel and must not be rebuilt
+ * from; it survives only as the source of the pre-connect (staging) half, which
+ * `28071:53189` does not draw.
  *
  * Card: gray-850, radius 20, hairline border, deep drop shadow, anchored under the
- * Publish button. Header 64px "Publish" (display, 20). Body: an inset card (white-4%,
- * radius 16) holding the website-URL field, then the "Connect your own domain" dashed
- * card. Button bar bottom-right.
+ * Publish button. Header 64px "Publish" (display, 20) with the viewers count on the
+ * right. Body: an inset card (white-4%, radius 16) holding the `Website URL` field and,
+ * under a hairline divider, the padlock line with `Manage domains` + gear. Footer:
+ * `● N unpublished change(s)` on the left, `Publish changes` on the right.
  *
- * The Figma frame draws the base case; the connecting/live cases keep the Launchpad
- * logic from the handoff (⑥-A) re-dressed in the same visual language, so every world
- * state still renders. The subtitle under "Connect your own domain" is the one line
- * that changes with entitlement: trial sells the plan, paid says it's included.
+ * The board draws the DIRTY, connected state; the connecting/staging cases keep the
+ * Launchpad logic from the handoff (⑥-A) re-dressed in the same visual language, so
+ * every world state still renders. The subtitle under "Connect your own domain" is the
+ * one line that changes with entitlement: trial sells the plan, paid says it's included.
  */
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
@@ -17,12 +23,38 @@ import { useWorld, hasPlan } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
-import { IconPlus, IconEdit, IconExternal } from '@/ui/icons'
+import { IconPlus, IconEdit, IconExternal, IconCopy, IconSettings, IconUsers } from '@/ui/icons'
 import { popover, popoverContent } from '@/ui/motion'
 
+/** Ukrainian needs three forms (1 · 2–4 · 5+), so the count sentence is built, not looked up. */
+function ukPlural(n: number, one: string, few: string, many: string) {
+  const d = n % 10
+  const h = n % 100
+  if (d === 1 && h !== 11) return one
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return few
+  return many
+}
 
-/** The inset URL field: value + muted suffix, one trailing icon button. */
-function UrlField({ value, suffix, live }: { value: string; suffix?: string; live?: boolean }) {
+/**
+ * The inset URL field: value + muted suffix, one trailing icon button.
+ *
+ * The board (28071:53224) puts a **copy** button here on a connected domain — the address
+ * is final, so the only thing left to do with it is send it to someone. The staging case
+ * keeps `Edit` from the superseded node: renaming the preview subdomain is still the one
+ * action that address affords, and `28071:53189` does not draw that state.
+ */
+function UrlField({
+  value,
+  suffix,
+  live,
+  trailing = 'edit',
+}: {
+  value: string
+  suffix?: string
+  live?: boolean
+  trailing?: 'copy' | 'edit' | 'open'
+}) {
+  const { t } = useT()
   return (
     <div className="w-full rounded-[12px] border border-[var(--white-200)]">
       <div className="flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 pr-2">
@@ -33,9 +65,21 @@ function UrlField({ value, suffix, live }: { value: string; suffix?: string; liv
         </p>
         <button
           className="grid h-8 w-8 flex-none place-items-center rounded-[8px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-[var(--white-700)]"
-          aria-label={live ? 'Open site' : 'Edit address'}
+          aria-label={
+            trailing === 'copy'
+              ? t({ en: 'Copy address', uk: 'Копіювати адресу' })
+              : trailing === 'open'
+                ? t({ en: 'Open site', uk: 'Відкрити сайт' })
+                : t({ en: 'Edit address', uk: 'Змінити адресу' })
+          }
         >
-          {live ? <IconExternal size={16} /> : <IconEdit size={18} />}
+          {trailing === 'copy' ? (
+            <IconCopy size={20} />
+          ) : trailing === 'open' ? (
+            <IconExternal size={16} />
+          ) : (
+            <IconEdit size={18} />
+          )}
         </button>
       </div>
     </div>
@@ -98,16 +142,24 @@ export function PublishPanel() {
    * per-publish figure (**DH-009**), so a number here would be the same error mirrored.
    * `Free` comes back when DH-008 changes, not before.
    */
-  /* The counter LEFT this label on 20 Aug 2026: it used to read `Update · N changes`,
-     and the number is now carried by a dot instead (`docs/features/publish/DECISIONS.md`
-     01, consequence 1 — if a count is ever wanted it belongs inside this opened panel,
-     never in permanent chrome). One label, not a `Publish`/`Update` switch: colour and
-     dot already say which of the two it is. Both states read `world.unpublished`, so
-     this button, the topbar button and the copy above cannot drift apart. */
-  const primary =
-    world.unpublished > 0
-      ? { en: 'Publish', uk: 'Опублікувати' }
-      : { en: 'Continue', uk: 'Продовжити' }
+  /* Where the count and the dot live, per the board (28071:53279…53293) — and this
+     corrects DECISIONS 01, which put the dot INSIDE the button off a GoDaddy screenshot
+     without opening the designer's own frame:
+       · footer left  → `● N unpublished change(s)`, blue dot on the STATUS TEXT
+       · footer right → `Publish changes`, no dot, no counter in the label
+     The reasoning for a dot over a bare number still stands (the question is binary, and
+     a dot cannot count wrong) — it just belongs next to the sentence that names the state,
+     not inside the verb. Everything reads `world.unpublished`, so this label, the topbar
+     button and the status line cannot drift apart. */
+  const changes = {
+    en: `${world.unpublished} unpublished change${world.unpublished === 1 ? '' : 's'}`,
+    uk: `${world.unpublished} ${ukPlural(
+      world.unpublished,
+      'неопублікована зміна',
+      'неопубліковані зміни',
+      'неопублікованих змін',
+    )}`,
+  }
 
   return (
     <AnimatePresence>
@@ -132,27 +184,44 @@ export function PublishPanel() {
           {/* The panel inflates first, its contents arrive a beat later (motion.ts rule 3). */}
           <motion.div variants={popoverContent}>
           {/* -------------------------------------------------------- header, 64px */}
-          <div className="flex h-16 items-center pl-6">
+          <div className="flex h-16 items-center justify-between pl-6 pr-4">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">
               {t({ en: 'Publish', uk: 'Публікація' })}
             </h3>
+            {/* Viewers count — drawn on the board (28272:49012) as a people glyph + a
+                number, and the board prints `0`. What the number counts is NOT specified
+                anywhere in the frame or in our docs, so nothing here invents a meaning:
+                the shape is reproduced, the value is the board's own literal. */}
+            <div
+              className="flex items-center gap-0.5 text-[var(--white-500)]"
+              aria-label={t({ en: 'Viewers', uk: 'Глядачі' })}
+            >
+              <span className="grid h-6 w-6 flex-none place-items-center">
+                <IconUsers size={20} />
+              </span>
+              <span className="text-[13px] font-medium leading-[1.4]">0</span>
+            </div>
           </div>
 
           {/* ---------------------------------------------------------- body card */}
           <div className="px-1.5">
-            {/* Figma: Neutral Alpha/50 (#ffffff0a) for both the fill and the hairline */}
-            <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a] px-4 pb-4 pt-[19px]">
+            {/* Figma: Neutral Alpha/50 (#ffffff0a) for both the fill and the hairline.
+                Padding sits on the sections, not on the card: the board (28071:53209)
+                divides the card with a full-bleed hairline, which an outer inset would cut. */}
+            <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a]">
+              {/* Text Input section — board 28071:53210: px 16, pt 19, pb 16, gap 16 */}
+              <div className="flex flex-col gap-4 px-4 pb-4 pt-[19px]">
               {/* website URL */}
-              <div className="mb-[19px] flex flex-col gap-[7px]">
+              <div className="flex flex-col gap-[7px]">
+                {/* One label in every state: the board writes `Website URL` on the frame
+                    that HAS a custom domain, so the old "Your domain" switch was ours. */}
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
-                  {live || connecting
-                    ? t({ en: 'Your domain', uk: 'Ваш домен' })
-                    : t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
+                  {t({ en: 'Website URL', uk: 'Адреса вашого сайту' })}
                 </p>
                 {live || connecting ? (
-                  <UrlField value={CUSTOM_DOMAIN} live={live} />
+                  <UrlField value={CUSTOM_DOMAIN} live={live} trailing="copy" />
                 ) : (
-                  <UrlField value={staging} suffix={STAGING_ZONE} />
+                  <UrlField value={staging} suffix={STAGING_ZONE} trailing="edit" />
                 )}
                 {connecting && (
                   <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--attention)]">
@@ -165,11 +234,6 @@ export function PublishPanel() {
                           en: 'Connecting — usually a few minutes. Keep editing, it goes live on its own.',
                           uk: 'Підключається — зазвичай кілька хвилин. Редагуйте далі, сайт запуститься сам.',
                         })}
-                  </p>
-                )}
-                {live && (
-                  <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
-                    {t({ en: 'Secure padlock on · anyone can visit.', uk: 'Захисний замочок увімкнено · сайт доступний усім.' })}
                   </p>
                 )}
               </div>
@@ -231,26 +295,89 @@ export function PublishPanel() {
                   </div>
                 </div>
               )}
+              </div>
+
+              {/* --------------------------------- divider row, board 28071:53258
+                * Hairline across the whole card, then `Secure padlock on · anyone can
+                * visit.` on the left and `Manage domains` + gear on the right. The
+                * padlock sentence used to hang under the field as a loose caption; the
+                * board pairs it with the action that follows from it, which is why the
+                * row exists at all.
+                *
+                * Connecting shows the row for `Manage domains` only — the padlock claim
+                * would be a lie until the certificate lands (DH-301), and the honest
+                * sentence for that window is already printed above the divider. */}
+              {(live || connecting) && (
+                <div className="border-t border-[#ffffff0a] py-4 pl-2 pr-4">
+                  <div className="flex items-center justify-between gap-3 rounded-[12px] pl-2.5">
+                    <p className="min-w-0 text-[13px] leading-normal text-[var(--white-400)]">
+                      {live
+                        ? t({
+                            en: 'Secure padlock on · anyone can visit.',
+                            uk: 'Захисний замочок увімкнено · сайт доступний усім.',
+                          })
+                        : ''}
+                    </p>
+                    <button
+                      onClick={() => openDomains('status')}
+                      className="flex h-8 flex-none items-center gap-1.5 rounded-[8px] pl-4 pr-1 text-[13px] font-semibold leading-[1.4] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                    >
+                      {t({ en: 'Manage domains', uk: 'Керувати доменами' })}
+                      <span className="grid h-6 w-6 flex-none place-items-center text-[var(--white-500)]">
+                        <IconSettings size={20} />
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* ---------------------------------------------------------- button bar */}
-          <div className="flex items-center justify-end gap-2 px-4 py-4">
-            {connecting && (
-              <button
-                onClick={() => set({ domain: securing ? 'live' : 'securing' })}
-                className="h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
-              >
-                {t({ en: 'Refresh status', uk: 'Оновити статус' })}
-              </button>
+          {/* ------------------------------------ button bar, board 28071:53275
+            * Left: the 8px blue dot on the STATUS TEXT. Right: `Publish changes`, a plain
+            * label. The dot is `--action` (#1587FF) — the board's own `#1587ff`; the
+            * sentence is `--white-500`, which lands on the board's #c7ccd6 over gray-850
+            * without minting a one-off hex.
+            *
+            * CLEAN STATE — ⚠️ NOT ON THE BOARD, this half is a reading. `28071:53189`
+            * draws the dirty state only. It used to read `Continue`, a blue CTA that only
+            * closed the panel: pressing the accent colour and getting nothing teaches
+            * people the accent means nothing. So with nothing to publish there is NO blue
+            * button — `Manage domains` stays in the card, and `Visit site` is offered as a
+            * secondary. No verb was invented for publishing what is already published. */}
+          <div className="flex items-center justify-end py-4 pl-6 pr-4">
+            {world.unpublished > 0 && (
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="h-2 w-2 flex-none rounded-full bg-[var(--action)]" aria-hidden />
+                <p className="truncate text-[12px] leading-normal text-[var(--white-500)]">{t(changes)}</p>
+              </div>
             )}
-            <button
-              onClick={() => (world.unpublished > 0 ? set({ unpublished: 0 }) : togglePublish(false))}
-              className="flex h-10 items-center gap-2 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-            >
-              {world.unpublished > 0 && <span className="h-1.5 w-1.5 flex-none rounded-full bg-white" aria-hidden />}
-              {t(primary)}
-            </button>
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+              {connecting && (
+                <button
+                  onClick={() => set({ domain: securing ? 'live' : 'securing' })}
+                  className="h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
+                >
+                  {t({ en: 'Refresh status', uk: 'Оновити статус' })}
+                </button>
+              )}
+              {world.unpublished > 0 ? (
+                <button
+                  onClick={() => set({ unpublished: 0 })}
+                  className="flex h-10 items-center rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+                >
+                  {t({ en: 'Publish changes', uk: 'Опублікувати зміни' })}
+                </button>
+              ) : (
+                <button
+                  onClick={() => togglePublish(false)}
+                  className="flex h-10 items-center gap-2 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)] hover:text-white"
+                >
+                  {t({ en: 'Visit site', uk: 'Перейти на сайт' })}
+                  <IconExternal size={14} />
+                </button>
+              )}
+            </div>
           </div>
           </motion.div>
         </motion.div>
