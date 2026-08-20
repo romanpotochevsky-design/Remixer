@@ -39,10 +39,21 @@
 
 ## 1. The register
 
-*128 rows as of 20 Aug 2026 — 90 verified (10 of them verified only in part, which the
-status cell states), 11 likely, 20 unverified, 7 refuted. Recount when you add rows; a
+*132 rows as of 20 Aug 2026 — 95 verified (15 of them verified only in part, which the
+status cell states), 12 likely, 18 unverified, 7 refuted. Recount when you add rows; a
 register whose header lies about its own contents is the failure mode this file exists to
 prevent.*
+
+*Last sourcing pass: **20 Aug 2026** — the seven load-bearing unsourced claims in §3 were
+taken to search. Outcome: DH-301 (SSL timing) sourced to DreamHost's KB · DH-302 (staging
+host) **closed with its value changed to `*.remixer.ai`**, refuting both `.site` and `.app` ·
+DH-303 ("hidden from Google") **downgraded to `unverified`** · DH-107/DH-110 (prices)
+confirmed first-party, with the `.online` collision reclassified from typo to expired promo ·
+four new rows added (DH-217, DH-218, DH-312, DH-407) · DH-307 and the AI-slop claim left
+unsoftened, with named owners attached. Method note: direct fetching of `dreamhost.com` and
+`help.dreamhost.com` is blocked from the session that ran this pass, so every first-party
+citation below marked "search extraction" was read out of search results, never off the page
+— see PLAYBOOKS 1.*
 
 ### 1A. Plan, trial, credits
 
@@ -52,7 +63,7 @@ prevent.*
 | **DH-002** | Paid monthly: **$9.99 for the first month, then $14.99/mo**. | verified | Jun 2026 | as DH-001 | `DomainModal.tsx` monthly card + footnote · `scenarios.ts` billing hints |
 | **DH-003** | Free trial is **30 days with no credit card**. DreamHost markets it as the longest no-card trial in the category; the audit confirms the length but notes every competitor runs a *perpetual* free tier instead, so it is a differently-shaped offer, not an unambiguous win. | verified (length) / likely (superlative) | Aug 2026 | handoff "Real product facts"; `synthesis-q3-2026.md` §6, §5.1 row 19 | Trial copy · paywall framing · POSITIONING |
 | **DH-004** | The trial **starts after the first site generates**, not at signup. Building with AI is the trial. | verified | Jun 2026 | handoff "Trial logic" | Onboarding copy · trial-day counter (`world.trialDay`) |
-| **DH-005** | Publishing to a **custom domain requires the paid plan**. The `*.remixer.site` preview is free during and after trial. | verified | Jun 2026 | handoff "Trial logic" | `PublishPanel.tsx` gate · `DomainModal.tsx` plan step · Launchpad Case 1/2 |
+| **DH-005** | Publishing to a **custom domain requires the paid plan**. The staging preview (`*.remixer.ai` — DH-302, corrected 20 Aug 2026 from `*.remixer.site`) is free during and after trial. | verified | 20 Aug 2026 | handoff "Trial logic"; the paid-plan gate is restated on DreamHost's own Remixer pages and in the Remixer Trial Terms ("publishing content to a custom domain name requires a paid Remixer subscription") | `PublishPanel.tsx` gate · `DomainModal.tsx` plan step · Launchpad Case 1/2 |
 | **DH-006** | Credits: **1,000/mo included, plus a 1,000 bonus in the first month**. | verified | Jun 2026 | handoff "Plan includes" | Credits chip · `world.credits` / `world.bonus` · spend-order copy (DH-011) |
 | **DH-007** | Top-ups, one-time, valid 6 months: **+1,000 = $14.99 · +2,500 = $34.99** ("Best value"). | verified | Jun 2026 | handoff "Plan includes" | Credits popover · pricing surfaces |
 | **DH-008** | **Publishing consumes credits today.** As far as the audit could establish we are the only major builder that charges for the moment of success. | verified (our ground truth) | Aug 2026 | `synthesis-q3-2026.md` §1.3, §5.1 row 11, §6 | POSITIONING §1 · publish sheet copy · the whole "always free" panel idea |
@@ -80,10 +91,10 @@ is correct as of that date; the hand-off is not (see §2).
 | **DH-104** | `.io` — register **$34.99**, renew **$59.99**, transfer $59.99. | verified | 06 Aug 2026 | as above | `TLD_PRICES` · `otherEndings()` · **hand-off still says $39.99 → §2.1** |
 | **DH-105** | `.shop` — register **$0.99**, renew **$34.99**, transfer $34.99. | verified | 06 Aug 2026 | as above | `TLD_PRICES` · the renewal-honesty example (largest delta) |
 | **DH-106** | `.store` — register **$2.99**, renew **$49.95**, transfer $49.95. | verified | 06 Aug 2026 | as above | Hand-off search frames. **Not in `TLD_PRICES`** — the prototype never offers `.store`, so no priceless row today; add both together if it ever appears |
-| **DH-107** | `.online` — register **$1.99**, renew **$29.95**, transfer $29.95. | verified | 06 Aug 2026 | as above | `TLD_PRICES` · `otherEndings()` · **hand-off says $0.99 → §2.2** |
+| **DH-107** | `.online` — register **$1.99**, renew **$29.95**, transfer $29.95. **The $0.99 in the hand-off was never a typo:** it was DreamHost's own promotional first-year price, announced on dreamhost.com and stated as running **through 31 Jul 2026**, at the same $29.95 renewal. The promo ended six days before the pricing table was read. Both numbers were true; only one is true now. | verified | 20 Aug 2026 | $1.99: official pricing table, 06 Aug 2026 → `search.md` §dreamhost-facts. $0.99 promo: dreamhost.com/news/announcements/register-a-online-domain-for-0-99/ + the free-`.online` announcement, found 20 Aug 2026 via search extraction ×2 | `TLD_PRICES` · `otherEndings()` · §2.2 — reclassified from *typo* to *expired promo captured in a static document*, which is DH-112 in the wild |
 | **DH-108** | `.me` — register **$2.99**, renew **$32.95**, transfer $32.95. | verified | 06 Aug 2026 | as above | `TLD_PRICES` · `AI_SUGGESTIONS` |
 | **DH-109** | `.co` — register **$34.99**, renew **$34.99**, transfer $34.99. | verified | 06 Aug 2026 | as above | `OWNED_DOMAINS` (`vegan-burger-delivery.co`) — a `.co` row must not be priced from `.com` |
-| **DH-110** | `.ai` — **$89.99/yr with a 2-year minimum**, so **$179.98 due at checkout**. Renew $89.99. The front page shows the $179.98 figure. | verified | 06 Aug 2026 | as above | `TLD_PRICES` (`note: 2-year minimum`) · checkout sheet · **hand-off prints $179.98 as if annual → §2.3** |
+| **DH-110** | `.ai` — **$89.99/yr with a 2-year minimum**, so **$179.98 due at checkout**. Renew $89.99. DreamHost's own `.ai` landing page prints "**$179.98/2 yr**" with "**2 year registration required**", and the two-year minimum is a **registry** rule of `.ai` (Anguilla; terms only in even increments), not a DreamHost markup — so it cannot be negotiated away in our UI. **Presentation rule, because the error here is presentational: $179.98 must never appear in a column of first-year annual prices.** Print either "$89.99/yr · 2-year minimum · **$179.98 today**" or "$179.98/2 yr" with the term glued to the number. Never the bare $179.98 next to `.com $9.99`. | verified | 20 Aug 2026 | $89.99 + renewal: official pricing table, 06 Aug 2026 → `search.md`. Term, total and the registry rule re-confirmed 20 Aug 2026 from dreamhost.com/domains/ai (search extraction ×2) | `TLD_PRICES` (`note: 2-year minimum`) · the checkout-sheet total · **hand-off prints $179.98 inside an annual list → §2.3** |
 | **DH-111** | Prices on dreamhost.com are **geo-currency aware** (the site defaulted to EUR; selector offers $ USD / € EUR / £ GBP). Every figure above is the USD reading. | verified | 06 Aug 2026 | as above | Any hardcoded `$` string · i18n · non-US demos |
 | **DH-112** | First-year-vs-renewal gaps are **registry promotions that rotate**: "some TLD registries will offer a promotion on first-year registrations… this list is constantly changing". | verified | 06 Aug 2026 | pricing-page FAQ → `search.md` | Why prices live in `TLD_PRICES` and not in Figma text layers · POSITIONING (price honesty) |
 | **DH-113** | **WHOIS privacy is free for the life of the domain** and auto-renews. Some TLDs don't support it — during transfer-in, the absence of the privacy checkbox is the tell. | verified | Aug 2026 | dreamhost.com/domains + KB 215250318 → `search.md` | Checkout sheet trust line · transfer frames |
@@ -112,33 +123,37 @@ is correct as of that date; the hand-off is not (see §2).
 | **DH-214** | The public domain search on dreamhost.com is served by `marketing-api-aws.dreamhost.io/ajax.cgi?cmd=domreg-availability` behind an **invisible reCAPTCHA score gate**; low scores get HTTP 500 and the UI shows *"Something went wrong! Please try your search again, or contact support for assistance."* There is also a 30-second timeout state. | verified | 06 Aug 2026 | observed live in browser console → `search.md` | The search error state (which our Figma does not draw) · rate-limit/error copy |
 | **DH-215** | DreamHost's **panel** domain search is a plain availability checker with no AI suggestions; the AI naming play is a separate free **Business Name Generator** (keywords + industry → names → live availability check → register). The public search page claims it offers "suggestions" but that UI could not be exercised. | verified (panel) / likely (public page) | Aug 2026 | KB 360001191426 / 224220668 + dreamhost.com/domains → `search.md` | Precedent for our AI suggestions · the "Add For $" button that seeded the `Add = buy` verb (see COPY-RULES) |
 | **DH-216** | DreamHost's current AI builder **Liftoff has no domain search inside the builder** — domain choice happens in the panel hosting flow. Meanwhile dreamhost.com actively markets "Remixer". | verified | 06 Aug 2026 | KB 30431847335828 + observed banner/FAQ → `search.md` | Why in-builder domain purchase is new ground for us · POSITIONING §2 |
+| **DH-217** | **Propagation is per record type, and the two windows differ by an order of magnitude.** DreamHost's KB: "**A records could take up to 6 hours**, while **nameservers could take from 4–72 hours** to take effect." DreamHost's own TTL is **5 minutes** by default; what stretches the window is ISP caching ("usually from a few hours up to 72 hours"). So the *authoritative* change is fast and the *observable* change is not — and a record we write ourselves is a different promise from a nameserver the user changes at another company. | verified | 20 Aug 2026 | KB 215840248 "DNS propagation overview" + KB 214694378, via search extraction ×2 (direct fetch blocked — PLAYBOOKS 1) | **This is the row that lets "usually a few minutes" be split per path → §2.16** · every waiting screen · DH-203 (the nameserver half) |
+| **DH-218** | **Remixer's shipped publish flow, from DreamHost's own KB:** click **Publish** in the top menu, then under **Production** select a domain from a dropdown and click **Connect**; the site "is immediately published to your live website". On DNS: *when the domain is managed by DreamHost, Remixer writes the records itself, and external DNS records are shown only when the user has to add them manually.* One constraint we have drawn nowhere: the target domain must be a **clean hosting environment** — publishing to a domain that still holds an old WordPress install fails until those files are deleted or the old site is moved. | verified (first-party KB via search extraction ×2 — wording extracted, not read on the page) | 20 Aug 2026 | help.dreamhost.com KB 45943689634196 "Create a Site with Remixer" + KB 46355723313812 "Remixer overview" | **DH-213's zero-record path is documented product behaviour, not our inference** · §2.16 (which paths can honestly say minutes) · the "domain is not empty" failure state, absent from every Figma board · the verb **Connect** is already shipping (COPY-RULES) |
 
 ### 1D. Infrastructure, hosting, staging, mail
 
 | ID | Fact | Status | Date | Source | Depends on it |
 |---|---|---|---|---|---|
-| **DH-301** | SSL is Let's Encrypt and is said to take **~10–30 minutes** to issue, so a connected domain resolves before the padlock appears. | unverified | Aug 2026 | **No traceable source.** Appears only in `CLAUDE.md` and the hand-off "Real product facts"; no research document or KB citation anywhere in the repo | "Don't claim instantly secured" · the third checklist item · `StatusScreen` (which currently ticks SSL and Connected together → §2.17) |
-| **DH-302** | The free staging host is **`*.remixer.site`** in the current design artefacts and **`*.remixer.app`** in the audit and the raw dossiers. One of them is wrong; neither cites a first-party page. | unverified (conflict) | 20 Aug 2026 | `.site`: `CLAUDE.md`, hand-off, `domains.ts` `STAGING_HOST`, `PublishPanel.tsx`. `.app`: `synthesis-q3-2026.md` §6/§7-19/§8.4, `archive/raw-research/lenses.json` | Every frame that prints the preview address → §2.9. **Confirm against the live product before any copy ships** |
-| **DH-303** | The staging preview is **always free and hidden from Google**. | likely | Jun 2026 | hand-off "Trial logic"; self-report, no KB or robots/noindex evidence in the repo | `PublishPanel.tsx` "Private preview · always free · hidden from Google" · Launchpad structure |
+| **DH-301** | SSL is Let's Encrypt, and the number has a source after all: DreamHost's own KB says **"Let's Encrypt installations can take 10–30 minutes"** — so a connected domain resolves before the padlock appears. Two conditions travel with it and matter more than the range: **the domain's DNS must already point at DreamHost before a certificate can be issued** (Let's Encrypt locates the domain over DNS), and while propagation is still running the panel shows **"Order Processing"** and installation resumes only once it completes. Consequence: on the external path the padlock queues *behind* DH-203's 4–72 hours, not behind 30 minutes. **Still not measured for a Remixer publish** — this is the panel-install figure. | verified (as DreamHost's documented figure) / unverified (as the number for a Remixer publish) | 20 Aug 2026 | KB 216539548 "Adding a free Let's Encrypt certificate", KB 215089118, KB 216539558 — search extraction ×2. **Was `unverified — no traceable source` until 20 Aug 2026:** the figure in `CLAUDE.md` and the hand-off turns out to be correct and merely uncited | "Don't claim instantly secured" · the third checklist item · `StatusScreen` ticking SSL with Connected → §2.17, **now unblocked** · CMP-035 for how competitors word the same wait |
+| **DH-302** | The free staging host is **`*.remixer.ai`**. **Both spellings this repo carried are wrong** — `*.remixer.site` (`CLAUDE.md`, hand-off, `domains.ts` `STAGING_HOST`, `PublishPanel.tsx`, `App.tsx`) and `*.remixer.app` (`synthesis-q3-2026.md` §6 / Tier 2 item 19 / §8.4, `archive/raw-research/*.json`) are **refuted**. DreamHost's KB describes an arrow beside a **Publish to Staging** button opening a new tab on "your temporary website **ending in remixer.ai**"; the product page sells "build, edit and preview a full site free for 30 days **on a remixer.ai subdomain**". The legacy pre-AI Remixer previewed on `dreamhosters.com`, so this is not old KB text bleeding into the new product. **What remains open is only the left-hand label** — `{project}.remixer.ai`, `{account}-{project}.remixer.ai` or a generated id. | verified (the zone is `remixer.ai` — first-party docs, 5 independent search extractions, incl. one that volunteered the correction against a query naming `.site`/`.app`) / unverified (the subdomain shape) | 20 Aug 2026 | help.dreamhost.com KB 45943689634196 "Create a Site with Remixer"; dreamhost.com/remixer-website-builder/ ; corroborated by two independent reviews. Direct fetch of both blocked (PLAYBOOKS 1) | **`STAGING_HOST` in `domains.ts`, `PublishPanel.tsx`, `App.tsx`, `CLAUDE.md`, the hand-off, and the audit's branch-URL / preview-link proposals — all carry a wrong host today → §2.9.** One screenshot of the live builder closes the remaining shape question |
+| **DH-303** | Two claims, and they do not share a fate. **"Always free"** holds: the product page and the trial terms both describe a free site on a `remixer.ai` subdomain for the trial, and DH-005 keeps the preview free after it. **"Hidden from Google"** has no source anywhere — not the Remixer KB, not the product page, not the Remixer Trial Terms, none of which mention indexing, `noindex` or robots. It cannot even be inherited by analogy: the one DreamHost staging product documented as non-indexable is **DreamPress staging**, which achieves it with **HTTP auth that cannot be disabled** — a mechanism Remixer staging demonstrably does not use, since the point of the staging link is that you can open and send it. | verified (always free) / **unverified (hidden from Google — downgraded from `likely`, 20 Aug 2026)** | 20 Aug 2026 | Free: dreamhost.com/remixer-website-builder/ + dreamhost.com/legal/remixer-trial/. Hidden: **no source found in five differently-phrased searches**; a `site:remixer.ai` probe returned nothing, which is not evidence either way given how the search tool handles operators. DreamPress contrast: KB 360001265112 | `PublishPanel.tsx` prints "Private preview · always free · hidden from Google" **verbatim in shipped UI**. Two of three clauses are fine; the third is an unsourced promise about search engines. **Cut it, soften it to "not linked from anywhere", or get the platform team to confirm the header** |
 | **DH-304** | **SmartEdge**, DreamHost's first-party CDN, runs **10 PoPs**. The number is not disputed; the audit's framing of it as a moat is (Cloudflare runs 300+). | likely | Aug 2026 | `synthesis-q3-2026.md` §6; `synthesis-critique.md` §2 (framing) | POSITIONING §3 (rented vs owned) · rollback copy (DH-310) |
 | **DH-305** | DreamHost **operates its own mail platform** — so we are registrar + host + mail provider in one account. This structural fact is what §8.2 of the audit is built on. | verified (our ground truth) | Aug 2026 | `synthesis-q3-2026.md` §1.3, §8.2 | POSITIONING §3 · the mailbox play · but see DH-306 and CMP-018/CMP-020 |
 | **DH-306** | "One mailbox is a provisioning call costing cents." | unverified | Aug 2026 | `synthesis-q3-2026.md` §8.2, challenged in `synthesis-critique.md` §2 — provisioning is cents; deliverability, IP reputation, KYC, abuse and mail support are not | Any economics claim about bundling a mailbox into DH-001 |
-| **DH-307** | "DreamHost holds a large book of registered, unused domains." **No number exists anywhere in this repo**, and whether registration data may legally be targeted this way was never examined. | unverified | Aug 2026 | `synthesis-q3-2026.md` §8.1; `synthesis-critique.md` §2, §5 | The entire zero-record thesis rests on this. POSITIONING states the dependency explicitly |
+| **DH-307** | "DreamHost holds a large book of registered, unused domains." **No number exists anywhere in this repo**, and whether registration data may legally be targeted this way was never examined. Desk research cannot close it and did not: the *outer* book can be bounded from outside (DH-312), but "registered **and unused**" is internal data and the legality is a legal opinion, not a search result. **Two named answers are needed, from two named owners: (1) data/BI — how many domains sitting in DreamHost accounts have no site on them, and how many of those are on our nameservers (DH-308); (2) legal/privacy — whether registration data may be used to target a builder upsell under the registration agreement and the applicable privacy regime.** Until both exist, this is a hypothesis with a business case attached to it. | unverified | 20 Aug 2026 | `synthesis-q3-2026.md` §8.1; `synthesis-critique.md` §2, §5. Searched externally 20 Aug 2026 — nothing outside DreamHost can answer either half | The entire zero-record thesis rests on this. POSITIONING states the dependency explicitly |
 | **DH-308** | **Unknown: what share of DreamHost-registered domains already point their nameservers elsewhere** (mostly Cloudflare). Those domains cannot be fixed by records we write server-side. | unverified | Aug 2026 | `synthesis-critique.md` §6 Q5; `world.ts` axis `dh-external-ns` | Sizing the zero-record play · why the `dh-external-ns` branch must exist · why "never mention nameservers" is unsafe |
 | **DH-309** | **Unknown: whether the mail API can provision a mailbox and write MX/SPF/DKIM/DMARC transactionally** alongside the A record. Decides whether Email is a button in the rail or a link out. | unverified | Aug 2026 | `synthesis-q3-2026.md` §10.2 Q16 | Mailbox card design · "correct by construction" claim |
 | **DH-310** | **Unknown: how fast SmartEdge purges across its PoPs.** The audit's rollback copy ("visitors will see the previous version within about 30 seconds") has no measured basis and the critique calls it unkeepable across recursive resolvers. | unverified | Aug 2026 | §10.2 Q19; `synthesis-critique.md` §4.2 | Any rollback confirmation copy |
 | **DH-311** | **Unknown: whether Remixer emails or pushes a notification when a domain goes live.** Assumed once, then softened out of the copy. | unverified | Jun 2026 | hand-off open item 1 | The "we'll email you" line is **banned** until this resolves — see COPY-RULES · Connecting/Status frames use "Refresh status" instead |
+| **DH-312** | **The only outside bound on DH-307.** Third-party registrar statistics put DreamHost, LLC (IANA ID **431**) at roughly **753,000 gTLD domains under management** as of May 2026. Treat it as an order of magnitude, not a figure: it is zone-file-derived aggregation by two sites that likely share a source, it counts gTLDs only (no ccTLDs), and it says **nothing** about how many of those domains are parked, siteless, or already pointed at another DNS provider (DH-308). It is the ceiling of the zero-record play, not its size. | likely | 20 Aug 2026 | domainnamestat.com registrar page for IANA ID 431 + domaindetails.com, search extraction ×2 — **third-party aggregators, not DreamHost** | Sizing the zero-record thesis · any slide that wants a number behind "large book" (this one **with its hedge**, or none) |
 
 ### 1E. Brand, colour, type
 
 | ID | Fact | Status | Date | Source | Depends on it |
 |---|---|---|---|---|---|
-| **DH-401** | Colour semantics in our design system: **blue `#1587FF` = action · indigo/violet = brand, plan, AI · green = live · amber = connecting / needs attention.** | verified (our spec) | Aug 2026 | `CLAUDE.md` verified-facts block; hand-off "Brand / colors"; matches Lovable's discipline | Every control · `index.css` `--action` · `--live` / `--attention` |
-| **DH-402** | **What production actually paints is not DH-401.** Measured on the live Remixer (`panel.dreamhost.com/ai-editor`, 13 Aug 2026): Publish is `#0073EC` (the light-mode token) and `#1587FF` is defined but unused; the production blue ramp mixes two hues — `--blue-100…500` are alphas of `#2554F7`, `--blue-600…1000` are `#0073EC`. The prototype deliberately corrects both. | verified | 13 Aug 2026 | measurement recorded in `prototype/src/index.css` token-layer comment | §2.10 · any "verified brand rule" statement · the dev hand-off (this is a production bug, not a token to copy) |
+| **DH-401** | Colour semantics in our design system: **blue = action · indigo/violet = brand, plan, AI · green = live · amber = connecting / needs attention.** The *semantics* are sound and independently mirrored by Lovable. The *hex* is where the row was overstated: `#1587FF` is our token, and it is **not** the blue the shipped product paints (DH-402). What has to stop is the phrase "verified brand rule: `#1587FF` = action", which reads as a statement about the product and is one — a false one. | verified (as our design-system spec) / **refuted (as a description of what ships)** — recorded flatly as `verified` until 20 Aug 2026 and quoted that way in `CLAUDE.md` and the hand-off | 20 Aug 2026 | `CLAUDE.md` verified-facts block; hand-off "Brand / colors"; `docs/design-system/README.md` colour table; semantics corroborated by `lovable-builder-teardown.md` | Every control · `index.css` `--action` · `--live` / `--attention` · §2.10 |
+| **DH-402** | **What production actually paints is not DH-401.** Measured on the live Remixer (`panel.dreamhost.com/ai-editor`, 13 Aug 2026): Publish is **`#0073EC`** — the *light-mode* token, used inside a dark UI — and **`#1587FF` is defined in the system and goes unused**; the production blue ramp mixes two hues, `--blue-100…500` being alphas of **`#2554F7`** while `--blue-600…1000` are `#0073EC`, so a blue tint and a blue button are not the same blue. The prototype deliberately corrects both and keeps `#0073EC` only as `--action-pressed`. | verified (measured, our own product) | 13 Aug 2026 | The measurement lives in the **`prototype/src/index.css` token-layer comment** (lines ~104–113) and **`prototype/tailwind.config.js`** (lines 14–16). ⚠️ It is **not** in `docs/design-system/measured-competitor-tokens.md` — that file measures Lovable, Bolt, v0, Base44 and Airo on the same day and contains **no Remixer reading at all**, so anyone sent there to check the blue finds nothing. Fix the pointer, not the fact | §2.10 · any "verified brand rule" statement · the dev hand-off (this is a production defect to fix, not a token to copy) |
 | **DH-403** | **Shell background:** the brief and the audit say `#18181B`; the 2026 Figma redesign (node 25819:143144, captured 16 Aug 2026) puts the shell on **`#09090b`** and demotes `#18181b` to `gray-900`, a panel colour. | verified | 16 Aug 2026 | Figma redesign → `CLAUDE.md` geometry block; `prototype/tailwind.config.js`, `index.css` | §2.11 · every surface token · the audit's "cool near-black" AI-slop argument, which was written against the old value |
 | **DH-404** | Brand typefaces are **Gilroy** (names, numbers) and **Proxima Nova** (prose) — both commercial, not committed to this public repo. The prototype renders OFL stand-ins: **Figtree for Proxima Nova, Outfit for Gilroy**. Design cannot be approved on the stand-ins. | verified | Aug 2026 | `CLAUDE.md` fonts block; `prototype/public/fonts/README.md` | Every screenshot's line lengths · the checkout sheet's 600px width decision · audit §9.2 |
 | **DH-405** | The credit balance sits **permanently in the top toolbar**. GoDaddy exiles it to a separate page — their single loudest complaint (CMP-038). | verified (ours) | Aug 2026 | `synthesis-q3-2026.md` §6 | Toolbar layout · the "credits always visible" rule |
 | **DH-406** | The **live address sits in primary chrome** (centred domain switcher). The audit adds that no competitor does this; the *explanation* it offers ("because for them attaching a domain is a multi-hour operation") is an invented cause, per the critique. | verified (ours) / unverified (the causal claim) | Aug 2026 | `synthesis-q3-2026.md` §6; `synthesis-critique.md` §2 | Toolbar · POSITIONING (state the observation, never the invented reason) |
+| **DH-407** | **"The documented AI-slop fingerprint of 2026" — documented by practitioners, not by evidence.** Searched 20 Aug 2026: the pattern list our audit uses (Inter, an indigo→purple gradient, three rounded cards in a row, an interchangeable hero) is a real and heavily-repeated **craft consensus** with named 2026 write-ups, and the causal story is the same everywhere — it is Tailwind's `indigo-500` default reflected back out of model training data. One retrieval further attributes the phrase "AI slop aesthetic" to a vendor's own frontend-design document; **single source, do not quote that attribution.** What has **no** source is the half our documents actually lean on: that any user notices, that it costs conversion, or that `#1587FF` sitting three points from Bolt's `#1488FC` is a competitive liability — nobody has shown a user seeing the two side by side, let alone caring. | likely (a documented craft consensus exists, and it is citable as that) / **unverified (that it costs us anything, and the `#1587FF` liability specifically)** | 20 Aug 2026 | Secondary write-ups found 20 Aug 2026: 925studios "AI Slop Fonts and Gradients", two Medium/Bootcamp pieces, vibecodekit "AI Slop Design", the `avoid-ai-design` skill. Critique: `synthesis-critique.md` §1 ("documented by whom?") | Justifies a typeface migration and a palette rebuild (audit §1.3, §9.10; `design-system/README.md` "standing brief", audit §10.2 Q24). **Design against it as taste — the designer may well be right — but never cost it out as a measured risk, and never write "documented" without saying by whom** |
 
 ### 1F. Competitors (`CMP`)
 
@@ -254,6 +269,16 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
   says $0.99. Anyone reading the file top-to-bottom takes the corrected number; anyone
   jumping to the price list — which is what a designer filling in a frame does — takes the
   wrong one. The fix is to correct the list in place, not to add a third note.
+- **Reclassified 20 Aug 2026 — this was never a typo.** DreamHost announced `.online` at
+  **$0.99 for the first year, renewing at $29.95**, and its own announcement page states the
+  promotion ran **through 31 Jul 2026** (there is a separate, earlier "free `.online`"
+  offer as well). The pricing table was read on 06 Aug — six days after it lapsed. So both
+  figures were correct when they were written down, which changes what the lesson is: not
+  "somebody mistyped a price", but **a promotional price was copied into a static document
+  and outlived the promotion.** That is DH-112 happening to us rather than to the reader.
+  Consequence for the design: a first-year price belongs in `TLD_PRICES` with a date, never
+  in a Figma text layer or a hand-off list, and any frame that shows one should be able to
+  render "was $X" without a redesign, because these numbers rotate on registry calendars.
 
 ### 2.3 `.ai` price shape — DH-110
 
@@ -265,6 +290,14 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
   as it is. `TLD_PRICES` carries `register: 89.99` plus the note "2-year minimum" — correct,
   but the checkout sheet must show the $179.98 total or it will surprise at the card step
   (violating price-before-cart).
+- **Confirmed first-party, 20 Aug 2026.** DreamHost's own `.ai` page prints
+  "**$179.98/2 yr**" alongside "**2 year registration required**", and the two-year minimum
+  is a **registry** rule of `.ai` (Anguilla registry; terms in even increments only), not a
+  DreamHost choice — so no amount of UI can offer a one-year `.ai`. **The defect is
+  presentational, so the register now carries a presentation rule** (DH-110): $179.98 may
+  never stand in a column of first-year annual prices. Write "$89.99/yr · 2-year minimum ·
+  **$179.98 today**", or "$179.98/2 yr" with the term glued on. The bare number next to
+  "`.com` $9.99" is the error, not the number itself.
 
 ### 2.4 Cloudflare and Domain Connect — STD-002
 
@@ -328,12 +361,27 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
 - `.remixer.app`: `synthesis-q3-2026.md` §6 ("Editable `*.remixer.app` with a pencil
   affordance"), Tier 2 item 19, §8.4 (`branch-name.yourproject.remixer.app`), plus
   `docs/archive/raw-research/lenses.json` and `recon_dossiers.json` throughout
-- **Winner: undecided — and that is the finding.** Neither side cites a first-party page.
-  The working default stays `.site` (three current artefacts plus project memory), but the
-  register keeps DH-302 at `unverified` until someone reads the live product, because a
-  wrong preview host is a wrong string on the single most-shown screen in the product. The
-  `.app` spelling is also load-bearing in the audit's branch-URL and preview-link
-  proposals, which will inherit the error if it is the wrong one.
+- **Winner: neither. `closed 20 Aug 2026` — the host is `*.remixer.ai`.** Both sides of
+  this argument were wrong, which is why the argument never resolved: two documents were
+  comparing two guesses. DreamHost's own KB ("Create a Site with Remixer") describes an
+  arrow beside a **Publish to Staging** button opening a new tab on "your temporary website
+  **ending in remixer.ai**", and the Remixer product page sells "build, edit and preview a
+  full site free for 30 days **on a remixer.ai subdomain**". Five independent search
+  extractions agree; one of them volunteered the correction against a query that named only
+  `.site` and `.app`. Contamination check: the **legacy** pre-AI Remixer previewed on
+  `dreamhosters.com`, so this is not old KB text bleeding into the new product.
+- **What that costs us.** `*.remixer.site` is currently hardcoded as `STAGING_HOST` in
+  `prototype/src/data/domains.ts` and printed by `PublishPanel.tsx` and `App.tsx`; it is in
+  `CLAUDE.md` and in the hand-off; and `*.remixer.app` is load-bearing in the audit's
+  branch-URL and preview-link proposals (`branch-name.yourproject.remixer.app`). Every one
+  of those is a wrong string on the most-shown screen in the product, and they are all one
+  find-and-replace apart from correct.
+- **The one thing still open**, and it is small: the **left-hand label** — whether the
+  address reads `{project}.remixer.ai`, `{account}-{project}.remixer.ai`, or a generated id.
+  Desk research cannot see it. **One screenshot of the live builder closes it in five
+  seconds**, and that is cheaper than any further searching — which is exactly what this
+  entry said before, and it was right about the method even while both sides were wrong
+  about the answer.
 
 ### 2.10 ⚑ The action blue — DH-401 vs DH-402
 
@@ -341,12 +389,34 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
 - `prototype/src/index.css` token-layer comment, measured on the live product 13 Aug 2026 →
   "Production paints Publish `#0073EC`, the light-mode token; `#1587FF` is defined in the
   system and goes unused" — and the production blue ramp mixes `#2554F7` alphas with `#0073EC`
-- **Winner: both, at different layers.** `#1587FF` is the design system's action token and
-  is what we design and hand off with; `#0073EC` is what production paints today, and that
-  is a defect to fix, not a fact to copy. What must stop is the word *verified* attached to
-  a rule the shipped product breaks — a developer reading only `CLAUDE.md` will assume the
-  code already matches. The audit's "our blue is 3 points from Bolt's" argument (§9.10) also
-  compares Bolt to a colour we do not currently ship.
+- **Winner: both, at different layers — and the register now says which layer each one
+  lives on.** This is not a research question; it is a question of which of our own
+  artefacts to trust, so state the two things separately and stop merging them:
+  - **Measured** (our own product, `panel.dreamhost.com/ai-editor`, 13 Aug 2026): the
+    Publish button paints **`#0073EC`**, which is the *light-mode* token used inside a dark
+    UI; **`#1587FF` is defined in the system and never painted**; and the blue ramp mixes
+    two hues — `--blue-100…500` are alphas of **`#2554F7`** while `--blue-600…1000` are
+    `#0073EC`, so a blue tint and a blue button are different colours.
+  - **Asserted** (our spec, `CLAUDE.md` + hand-off + `design-system/README.md`): `#1587FF`
+    is the action token, one hue across the ramp, `#0073EC` demoted to `--action-pressed`.
+    The *semantics* — blue is the only interactive colour — are corroborated by Lovable and
+    are not in dispute. Only the hex is.
+- **So the word `verified` moves.** DH-401 is `verified` **as our spec** and **refuted as a
+  description of what ships**; DH-402 stays `verified` because it is a measurement. What has
+  to disappear is the sentence "verified brand rule: `#1587FF` = action", which a developer
+  reading `CLAUDE.md` will take as "the code already matches" — it does not.
+- ⚠️ **The source pointer was also wrong, and would have wasted the next reader's hour.**
+  The measurement is **not** in `docs/design-system/measured-competitor-tokens.md`; that
+  document measures Lovable, Bolt, v0, Base44 and Airo on the same 13 Aug and contains no
+  Remixer reading at all. The Remixer numbers live in the token-layer comment at the top of
+  `prototype/src/index.css` and in `prototype/tailwind.config.js` lines 14–16.
+- **This is the designer's call, not a fact to be settled.** Three options, all defensible:
+  keep `#1587FF` and file the production blue as a bug to fix at hand-off; adopt `#0073EC`
+  and re-token the prototype to match what ships; or move the hue deliberately (audit §10.2
+  Q24 — the "three points from Bolt" question, which is itself unverified as a liability,
+  see DH-407). What is **not** an option is leaving two blues both labelled verified.
+  Whichever way it goes, the ramp must end up **one hue** — the two-hue mix is a defect
+  under any of the three.
 
 ### 2.11 ⚑ The shell background — DH-403
 
@@ -413,6 +483,24 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
   and false for anything requiring a nameserver change at another company. One string cannot
   serve both branches; the external branch needs its own honest window. This is currently a
   promise the product cannot keep for an unknown share of users (DH-308).
+- **The split is now a fact row, so the copy can be written against it.** DH-217 (DreamHost
+  KB) gives the two windows: **A records up to ~6 hours, nameservers 4–72 hours**, against a
+  DreamHost TTL of **5 minutes** — the authoritative change is near-instant, the observable
+  one is not, and ISP caches are what stretch it. DH-218 (Remixer's own KB) confirms the
+  branch actually exists in the shipped product: when the domain is managed by DreamHost,
+  **Remixer writes the records itself**; external DNS records are shown only when the user
+  has to add them by hand. Three honest buckets, and each deserves its own string:
+  1. **Domain in the DreamHost account, on our nameservers** — we write the record, TTL 5
+     min. "Usually a few minutes" is *earned* here. This is the only branch that may say it.
+  2. **Domain in the account, nameservers pointed elsewhere** (`dh-external-ns`, DH-308) — a
+     record we write is not authoritative. This branch cannot promise minutes at all.
+  3. **Domain at another registrar/DNS host** — the user changes nameservers: **4–72 hours**
+     documented. The field's honest phrasing for exactly this is "up to 48 hours" (CMP-035).
+  And on all three, the padlock is a *fourth* wait behind the domain resolving (DH-301), not
+  a step inside it.
+- **One more constraint nobody has drawn:** DH-218 — publishing to production **fails** if
+  the target domain still holds an old site's files (a stale WordPress install). That is a
+  timing answer of "never, until you clear it", and it has no frame in any Figma board.
 
 ### 2.17 ⚑ The success checklist ticks SSL too early — DH-301
 
@@ -422,8 +510,17 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
   the hand-off's own rule is "don't claim instantly secured"
 - **Winner: the fact.** The checklist's three lines exist precisely to show that the padlock
   arrives last (that is why the order never varies — see COPY-RULES). Ticking items 2 and 3
-  together deletes the state the checklist was built to explain. Note DH-301 is itself
-  unverified, so the fix needs the real number first.
+  together deletes the state the checklist was built to explain.
+- **Unblocked 20 Aug 2026.** This entry used to end "the fix needs the real number first",
+  because DH-301 was unsourced. It now has a first-party number — DreamHost's KB says
+  **Let's Encrypt installations take 10–30 minutes** — plus the sequencing that matters
+  more than the range: **a certificate cannot be issued until the domain's DNS already
+  points at DreamHost**, and while propagation runs the panel sits on "Order Processing".
+  So the third tick lands **after** the second by construction, and on the external path it
+  lands behind DH-217's 4–72 hours rather than behind half an hour. `StatusScreen` should
+  give SSL its own stage. Wording: CMP-035 shows the field's register for this sentence —
+  Figma Sites says "typically takes up to 15 minutes, but can sometimes require additional
+  time", which is the shape to copy (a number, then an honest tail).
 
 ### 2.18 The renewal price in the Figma boards — DH-101…DH-110
 
@@ -451,15 +548,49 @@ Claims that circulate in this repository as facts and cannot be traced to any pa
 article, measurement or dated observation. They are not necessarily false — they are
 unaudited, and each one is currently load-bearing somewhere.
 
+**Sourcing pass, 20 Aug 2026.** Every row below was taken to search (`WebSearch` only —
+direct fetch of `dreamhost.com` and `help.dreamhost.com` is blocked from this environment,
+see PLAYBOOKS 1). Three closed, one closed with its value **changed**, one was downgraded
+because the search found nothing where the claim needed something, and the rest are
+confirmed as things only DreamHost can answer. Rows stay in this table after closing, with
+the outcome written in, because a list that deletes its wins reads as if nothing was ever
+checked. Confidence rule applied throughout: a first-party page reached through search
+extraction counts only with **two independent retrievals that agree**, and it is still
+labelled as extraction, not as reading.
+
 | ID | Claim | Where it is used as if verified | What it would take to close |
 |---|---|---|---|
-| **DH-301** | SSL (Let's Encrypt) issues in ~10–30 minutes | `CLAUDE.md` verified-facts list; hand-off "Real product facts"; the third line of the success checklist | One measurement on a real connect, or the platform team's number. Competitors publish theirs (CMP-035) |
-| **DH-302** | The preview host is `*.remixer.site` | Every publish frame and the prototype | Open the live product once |
-| **DH-303** | The preview is hidden from Google | Printed verbatim in `PublishPanel.tsx` | Confirm the `noindex`/robots behaviour with the platform team |
-| **DH-307** | DreamHost holds "a large book" of registered, unused domains | The whole zero-record thesis (audit §8.1) and the "targetable list, not a funnel" framing | A query. Also a legal read on whether registration data may be targeted this way |
+| **DH-301** | SSL (Let's Encrypt) issues in ~10–30 minutes | `CLAUDE.md` verified-facts list; hand-off "Real product facts"; the third line of the success checklist | ✅ **CLOSED 20 Aug 2026 — the number was right and merely uncited.** DreamHost's KB: "Let's Encrypt installations can take 10–30 minutes." Two conditions came with it (DNS must already point at DreamHost; "Order Processing" until propagation finishes), which is what actually unblocks §2.17. Residual: nobody has measured it on a *Remixer publish* |
+| **DH-302** | The preview host is `*.remixer.site` | Every publish frame and the prototype | ✅ **CLOSED 20 Aug 2026 — and the value changed. It is `*.remixer.ai`.** Both `.site` and `.app` are refuted (first-party KB + product page, 5 agreeing extractions). Still open, and trivially: the **left-hand label** (`{project}.remixer.ai`?). **One screenshot closes it** |
+| **DH-303** | The preview is hidden from Google | Printed verbatim in `PublishPanel.tsx` | ⬇️ **DOWNGRADED 20 Aug 2026, `likely` → `unverified`.** Five searches found no statement about indexing in the Remixer KB, the product page or the Trial Terms. The only DreamHost staging documented as non-indexable is **DreamPress**, and it uses **undisableable HTTP auth** — a mechanism Remixer staging cannot be using, since you can open and share the link. Confirm the response header with the platform team, or cut the clause from shipped UI |
+| **DH-307** | DreamHost holds "a large book" of registered, unused domains | The whole zero-record thesis (audit §8.1) and the "targetable list, not a funnel" framing | ❌ **STILL UNVERIFIED — and unsourceable from outside.** Searched 20 Aug 2026. All that exists externally is a ceiling: ~**753k gTLD domains under management** (DH-312, third-party zone-file aggregation, May 2026), which counts *all* registrations, not unused ones. Two owners are needed: **data/BI** for the siteless count and how many are on our nameservers (DH-308), **legal/privacy** for whether registration data may be used to target an upsell |
 | **DH-306** | A mailbox "costs cents" | The mailbox-bundling economics | Real unit cost including support minutes, deliverability and abuse |
 | **DH-014** | 2–3 minutes to first render | The audit's headline "Ahead" | p50/p90 from production telemetry |
 | **DH-304** | SmartEdge = 10 PoPs, first-party | Presented as a structural advantage | Not the number — the *comparison*. 300+ PoPs is the competing figure (CMP-019) |
 | **DH-311** | Remixer notifies the user when a domain goes live | Was in the copy; softened out. Still assumed in "it goes live on its own" | Ask whether the notification exists. STD-011 is what would make it real |
-| — | "The documented AI-slop fingerprint of 2026" (Inter + indigo gradient + cool near-black + three rounded cards) | Justifies a typeface migration and a palette rebuild (audit §1.3, §9.10) | The critique's question, unanswered: **documented by whom?** No study, no source, no user data. Treat as a taste hypothesis, not a fact |
+| **DH-407** (was "—") | "The documented AI-slop fingerprint of 2026" (Inter + indigo gradient + cool near-black + three rounded cards) | Justifies a typeface migration and a palette rebuild (audit §1.3, §9.10; the `design-system/README.md` standing brief) | ⚠️ **PARTLY ANSWERED 20 Aug 2026, and promoted to a register row (DH-407).** "Documented by whom?" has an answer: by practitioners, repeatedly, in 2026 — named write-ups exist and all give the same cause (Tailwind's `indigo-500` default reflected out of training data). What still has **no** source is the load-bearing half: that users notice, that it costs conversion, or that `#1587FF` vs Bolt's `#1488FC` is a liability. **Citable as craft consensus; never as a measured risk** |
 | — | "No competitor puts the live address in permanent chrome *because* attaching a domain is a multi-hour operation for them" | Used to explain DH-406 | The observation is ours and fine; the *because* is invented. Drop the clause or test it |
+
+### How to close these — one action each
+
+Ordered by what it costs to find out, cheapest first. The point of the ordering is that the
+top three cost minutes and unblock shipped copy, while the bottom three need someone with
+access to data, telemetry or a lawyer — and nothing below the line should hold up drawing.
+
+| # | Open item | The one action | Who |
+|---|---|---|---|
+| 1 | **DH-302** — the subdomain shape (`{project}.remixer.ai`?) | **Screenshot the live builder's staging address.** Five seconds. Then find-and-replace `remixer.site` in `domains.ts`, `PublishPanel.tsx`, `App.tsx`, `CLAUDE.md`, the hand-off, and `remixer.app` in the audit | Anyone with product access — the designer, now |
+| 2 | **DH-303** — "hidden from Google" | **Load a staging URL and read the response headers / `robots.txt`** (or ask the platform team for the one line). If there is no `X-Robots-Tag`, the clause comes out of `PublishPanel.tsx` today | Platform / anyone with a staging URL |
+| 3 | **DH-301** — SSL timing on *our* flow | **Time one real publish**, from Connect to padlock, and write the number down with the date. The 10–30 min KB figure is the panel install, not our flow | Whoever does the next end-to-end test |
+| 4 | **DH-401 / DH-402** — which blue is ours | **A designer's decision, not a lookup:** keep `#1587FF` and file the production blue as a bug, adopt `#0073EC`, or move the hue on purpose. Record it as an ADR in `docs/decisions/`. Either way the ramp becomes one hue | The designer, then the dev hand-off |
+| 5 | **DH-311** — does anything notify the user at go-live? | **One question to the platform team: is there an email or a webhook on publish?** Until answered, "we'll email you" stays banned (COPY-RULES) | Platform |
+| 6 | **DH-009 / DH-010 / DH-011 / DH-012** — what a publish costs, whether credits expire, spend order, per-action prices | **One meeting with whoever owns billing**, four answers. This is the cheapest large win in the register: it unblocks the credits popover, the plan FAQ, and POSITIONING §1 | Product + billing |
+| 7 | **DH-014** — real time to first render | **p50/p90 out of production telemetry.** Until then the 2–3 minutes is marketing and must not lead a scoreboard | Data / BI |
+| 8 | **DH-307** — the "large book", and DH-308 — how much of it points elsewhere | **One BI query** (domains in accounts with no site; of those, how many on our nameservers) **plus one legal read** on targeting registration data. Both, or the thesis stays a hypothesis | Data/BI + legal |
+| 9 | **DH-306** — a mailbox "costs cents" | **Unit cost including support minutes, deliverability and abuse handling**, not the provisioning call | Mail team / finance |
+| 10 | **DH-310** — SmartEdge purge time | **Measure a purge across PoPs** before any rollback copy promises a number | Platform |
+| 11 | **DH-407** — the AI-slop argument | **Nothing external will settle it.** Either accept it as taste and act, or fund a five-person side-by-side test. Do not keep citing it as documented risk | The designer |
+
+Two of these — 1 and 2 — are printed on screens users see today. They are also the two
+cheapest on the list. That asymmetry is the finding: **the most expensive errors in this
+register are the ones nobody spent five seconds on.**
