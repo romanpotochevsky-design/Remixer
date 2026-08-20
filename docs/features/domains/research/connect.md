@@ -1,12 +1,12 @@
 # Remixer — "Connect a domain" — Competitive teardown (19 Aug 2026)
 
-> Companion to `docs/research/domain-search-research.md`. That document answered **"how do
+> Companion to `docs/features/domains/research/search.md`. That document answered **"how do
 > people FIND a domain"**. This one answers **"what happens after they say 'I already have
 > one'"** — the connect path, its automation rails, its state machine, and every failure
 > state the category has learned to name. 17 products torn down.
 >
-> Read it together with `docs/handoff/domain-connection-design-handoff.md` (which it
-> corrects in two places — see §11) and `docs/audits/synthesis.md` §8.1.
+> Read it together with `docs/features/domains/handoff-design.md` (which it
+> corrects in two places — see §11) and `docs/competitors/audits/synthesis-q3-2026.md` §8.1.
 
 ---
 
@@ -123,7 +123,7 @@ The white-label modal that signs into the user's DNS provider and writes the rec
   buy this rail.
 - **Price (2026):** ~$249/mo for 600 automatic connections a year; custom-domain
   infrastructure + automatic SSL is a separate ~$500/mo add-on → **~$749/mo before the
-  first customer** `[likely]`. Matches the figure already in `synthesis.md` §1.
+  first customer** `[likely]`. Matches the figure already in `synthesis-q3-2026.md` §1.
 - Entri × GoDaddy agreement (June 2025) folds GoDaddy's Domain Connect into Entri —
   the two rails converge `[verified-doc, carried from prior research]`.
 
@@ -132,7 +132,7 @@ The white-label modal that signs into the user's DNS provider and writes the rec
 - **It is becoming an actual internet standard.** IETF working group **`dconn`** exists;
   `draft-ietf-dconn-domainconnect-03` published **3 July 2026**, with a milestone to send
   the spec to the IESG for Standards Track `[verified-doc]`. This materially changes the
-  build-vs-buy question in `synthesis.md` Q14 — implementing against a moving vendor spec
+  build-vs-buy question in `synthesis-q3-2026.md` Q14 — implementing against a moving vendor spec
   is different from implementing against an RFC-track draft.
 - **110+ participating providers, 300+ templates from 120+ service providers**, including
   Microsoft 365, Google Workspace, Apple iCloud+, Squarespace `[likely]`.
@@ -162,7 +162,7 @@ The white-label modal that signs into the user's DNS provider and writes the rec
   behaviour §8.1 of our audit proposes. **They already have it.** What they *don't* have is
   it being reachable in one gesture: the documented path is apps page → app → Domain →
   Settings → Connect Domain → Yes, Continue, and their AI-builder domain purchase still
-  ejects the user to the storefront (`synthesis.md` "Trap 7").
+  ejects the user to the storefront (`synthesis-q3-2026.md` "Trap 7").
 - **Hostinger:** Hostinger-registered domains connect automatically; external ones get
   nameserver/A-record instructions and an "I've Updated NS/DNS" button `[verified-doc,
   prior research]`. Horizons ejects to hPanel for it `[likely]`.
@@ -291,7 +291,7 @@ the UI — "we already know it's yours" is a sentence no competitor can write.
 - **Vercel** auto-suggests the www counterpart when you add an apex `[likely]`; the
   engineering-consensus default is www-canonical with a 301 from apex, because CNAME is
   forbidden at the apex `[likely]`.
-- Our audit's own rule (`synthesis.md` §7 Tier 3) is *"multi-domain with one primary and
+- Our audit's own rule (`synthesis-q3-2026.md` §7 Tier 3) is *"multi-domain with one primary and
   301 by default"*.
 
 **Recommendation:** do what Lovable does — configure both, show one address, and expose the
@@ -369,7 +369,7 @@ turned off (grey cloud / "DNS only")** for verification, which is a *different* 
 Domain Connect support (see failure #5). So Cloudflare is "automatable, but with a triage
 card", not "easy".
 
-### 11.2 The handoff's Domain Connect promise is stale — `docs/handoff/domain-connection-design-handoff.md`
+### 11.2 The handoff's Domain Connect promise is stale — `docs/features/domains/handoff-design.md`
 
 The handoff still says scenario 3 offers *"Domain Connect one-click for ~50 registrars
 (GoDaddy/Squarespace/IONOS/Google)"*. Later research established that **DreamHost supports

@@ -24,13 +24,13 @@ Three claims below have since been disproven or superseded. The rest of the docu
    $179.98 front-page figure), `.online $1.99`, `.store $2.99`. `prototype/src/data/domains.ts`
    carries the correct set.
 3. **The connect flow's state machine is incomplete.** The teardown at
-   `docs/research/domain-connect-competitive-teardown.md` (§5–§6) lists eight failure states
+   `docs/features/domains/research/connect.md` (§5–§6) lists eight failure states
    the category names and this flow does not — most importantly **"connected but not
    published yet"** (Lovable calls it `Ready`) and the ~1-hour verification timeout.
 
 Deeper competitor detail on the connect path — automation rails, status vocabularies,
 failure catalogue, collision handling — now lives in
-`docs/research/domain-connect-competitive-teardown.md`.
+`docs/features/domains/research/connect.md`.
 
 ## What this is
 In-builder flow for **DreamHost "Remixer"** (AI website builder): connect a domain + publish a site to a real **custom domain**. Everything renders INSIDE the dark Remixer builder, replacing the website-preview area. **Audience: a complete non-technical novice ("housewife test")** — plain language, no jargon, sells without scaring.
