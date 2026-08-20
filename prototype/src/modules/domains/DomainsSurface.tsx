@@ -13,7 +13,7 @@
  *  - no DNS jargon on primary paths; the canonical success checklist is fixed.
  */
 import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useWorld } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
@@ -83,12 +83,19 @@ function PriceStack({ register, renew, strike }: { register: number; renew: numb
 }
 
 /**
- * The header both dashboard states share: a centred title over the search pill.
+ * The header both dashboard states share: a centred title over the search pill,
+ * with the permanent "Already have a domain? Connect it" row under it.
  *
  * It is mounted ONCE, by DomainsSurface, and lives OUTSIDE the screen swap: the
  * field is a persistent object, so searching never remounts it — the caret, the
  * focus and the typed text all survive. Rebuilding the header on submit is what
  * made a search feel like a page reload.
+ *
+ * That is now load-bearing for TWO permanent elements, not one. The connect row
+ * belongs here for the same reason and a sharper one: inside HomeScreen or
+ * ResultsScreen it would be a `listSwap` child and would fly up and re-enter on
+ * every single search — the regression DECISIONS 14 exists to prevent, invisible
+ * in a screenshot and obvious in motion. A door that re-enters is not permanent.
  *
  * `compact` is the only knob, and it exists because the mockups disagree: the
  * empty state (27085:107047) draws a 40px title over a white 32px submit, the
@@ -99,7 +106,7 @@ function PriceStack({ register, renew, strike }: { register: number; renew: numb
  * wants the header frozen instead, freeze `compact`.
  */
 function SearchHeader({
-  title, compact, query, setQuery, onSubmit, placeholder,
+  title, compact, query, setQuery, onSubmit, onConnectOwn, fieldRef, placeholder,
 }: {
   title: Text
   /** true on the results screen: 32px title, larger glass submit. */
@@ -107,6 +114,10 @@ function SearchHeader({
   query: string
   setQuery: (v: string) => void
   onSubmit: () => void
+  /** The connect row's click: route a named domain, or point at the field. */
+  onConnectOwn: () => void
+  /** The row focuses the field when nothing is typed yet — hence the handle. */
+  fieldRef: React.RefObject<HTMLInputElement>
   placeholder?: Text
 }) {
   const { t } = useT()
@@ -120,11 +131,14 @@ function SearchHeader({
       >
         {t(title)}
       </h2>
-      <div className="flex justify-center px-8 pb-6">
+      {/* pb 24 → 16: the connect row below takes the difference, and its 8px of
+          hit-box bleed has to land inside a gap it cannot reach the pill through. */}
+      <div className="flex justify-center px-8 pb-4">
         {/* the 56px pill: gray-700 under an NA/50 rim, submit inside its right end */}
         <div className="flex h-14 w-full max-w-[880px] items-center rounded-full border border-[#ffffff0a] bg-[var(--gray-700)] pl-4 pr-2">
           <span className="flex-none text-white"><IconSearch size={20} /></span>
           <input
+            ref={fieldRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
@@ -145,6 +159,57 @@ function SearchHeader({
             <IconArrowRight size={compact ? 24 : 18} />
           </button>
         </div>
+      </div>
+
+      {/*
+       * The permanent door for a domain the person already owns — the designer's
+       * priority, 20.08.2026, in his own words.
+       *
+       * Why a line and not a screen: the capability already existed and was announced
+       * only in the placeholder, which disappears the instant anyone types. And the card
+       * that opens this whole surface says "Connect your own domain" (PublishPanel),
+       * then lands the person in a priced storefront. This row is the handle that door
+       * never had.
+       *
+       * It NEVER animates and it is NOT part of `compact` — home and results render it
+       * identically. The h2's font-size transition above is already this block's one
+       * sanctioned per-frame paint (see the comment there); a second animated property
+       * here would spend budget the glow and the chat need (prototype/docs/PERFORMANCE.md).
+       *
+       * ⚠️ COPY. Never append "free" — "Connect it — free" is banned by name in
+       * COPY-RULES §2: free-ness is not news, it is the absence of a charge. Never
+       * "Transfer it" either: transfer moves the registration and is a DIFFERENT product,
+       * always optional and always later (COPY-RULES §2, DECISIONS 06). The shape is
+       * Wix's one-liner; the verb is ours.
+       *
+       * ⚠️ NO FIGMA FRAME EXISTS FOR THIS ROW. Neither drawn header carries anything
+       * under the field (27085:107047 empty state, 27729:15315 results), so the geometry
+       * is taken from the header's own 8 / 29 / 30 rhythm and the header grows ~32px
+       * because of it. That departure is named to the designer, not hidden
+       * (AGREEMENTS §7). The mobile board answers the same question with a segmented
+       * control ("Get a new domain / I already own one") — two answers to one question,
+       * also his call.
+       */}
+      <div className="flex justify-center px-8 pb-5">
+        <button
+          type="button"
+          onClick={onConnectOwn}
+          /* -my-2 py-2 buys a 36px hit box for 0px of layout: it bleeds 8px into the
+             16px above and the 20px below. Shrink either gap and it starts eating
+             clicks on the pill's bottom edge. `type="button"` is explicit so a future
+             <form> wrapper can never turn this row into a second search submit. */
+          className="group -my-2 py-2 text-[13px] leading-[20px]"
+        >
+          <span className="text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std group-hover:text-[var(--white-500)]">
+            {t({ en: 'Already have a domain?', uk: 'Уже маєте домен?' })}
+          </span>{' '}
+          {/* the verb half carries the action colour and the weight — no underline
+              (there is none anywhere in this prototype), no chip, no arrow: nothing
+              leaves this page */}
+          <span className="font-medium text-[var(--action)] transition-colors duration-[var(--dur-fast)] ease-std group-hover:text-[var(--action-hover)]">
+            {t({ en: 'Connect it', uk: 'Підключіть його' })}
+          </span>
+        </button>
       </div>
     </div>
   )
@@ -174,7 +239,11 @@ function PrimaryButton({ label, onClick }: { label: Text; onClick?: () => void }
 
 /**
  * Home: the domain dashboard (Figma 27085:106382; two-list variant 26181:33524).
- * A 195px header (40px title + 880px search pill) over the content sheet; with
+ * A 228px header — 40px title + 880px search pill + the permanent connect row — over
+ * the content sheet. The drawn header is 195 (the content box; 196 in the DOM, the
+ * hairline included), and the extra ~32 is the row and the 8px it takes off the pill's
+ * bottom padding: a departure from 27085:107047 that is named to the designer, not
+ * hidden. The whole 32 comes out of the sheet below, which is `min-h-0 flex-1`; with
  * DreamHost domains in the account the sheet splits into "Existing domains" +
  * "AI suggestions", otherwise the suggestions column centres alone.
  */
@@ -401,7 +470,13 @@ function ResultsScreen() {
       exit="exit"
       className="flex min-h-0 flex-1 flex-col"
     >
-      <div className="min-h-0 flex-1 rounded-t-[8px] border-r border-t border-[#ffffff0a] bg-[var(--gray-900)]">
+      {/* THE SCREEN THAT WENT BLACK (4b7992d) — hence the handle. Its liveness check
+          must not hang on copy: the most important state of this screen is still an
+          open question (OPEN-QUESTIONS 01) and its wording will move. */}
+      <div
+        data-testid="domains-results"
+        className="min-h-0 flex-1 rounded-t-[8px] border-r border-t border-[#ffffff0a] bg-[var(--gray-900)]"
+      >
         <ScrollArea className="h-full">
           {/* Page pads 32 all round; the lists column inside it is a flat 1200
               wide and centred — the padding must sit OUTSIDE the max-width or
@@ -585,7 +660,11 @@ function OwnScreen() {
    * screen `Manage domains` would land on — pointing at the right thing.
    */
   const connect = () => {
-    set({ domain: 'connecting' })
+    /* The NAME travels with the PHASE, in one `set()`. "Which domain is attached" has
+       exactly one home — `world.customDomain` (state/world.ts, read by `siteAddress` /
+       `projectDomain`) — so a door that moves the phase alone leaves the panel printing
+       whatever name was attached before. `domain` above always resolves to something. */
+    set({ domain: 'connecting', customDomain: domain })
     goDomains('status', domain)
     closeSurface()
     togglePublish(true)
@@ -726,12 +805,15 @@ function ExternalScreen() {
   const registrar = registrarFor(world.inventory)
 
   const start = () => {
-    /* Only the domain state moves. This used to also write `inventory: 'external-manual'`,
+    /* The NAME travels with the PHASE, in one `set()` — same reason as `OwnScreen`'s
+       `connect`: `world.customDomain` (state/world.ts) is the only home of "which domain
+       is attached", and the Publish panel this hands off to reads it. */
+    /* No OTHER axis moves. This used to also write `inventory: 'external-manual'`,
        silently rewriting the world axis mid-flow — and doing it on a screen that says
        "Registered at GoDaddy", which is `external-dc`: the button contradicted the
        sentence above it. The inventory axis describes what the customer HAS; it is set by
        the scenario, never by a click inside one. */
-    set({ domain: 'connecting' })
+    set({ domain: 'connecting', customDomain: domain })
     /* Same handoff as OwnScreen: the wait continues in the Publish panel, and the
        full-page status screen is not where this flow goes any more. See the comment
        on `connect` there for why, and for what `goDomains` is doing on a screen that
@@ -822,9 +904,18 @@ function ExternalScreen() {
  */
 function StatusScreen() {
   const { world, set } = useWorld()
-  const { activeDomain, closeSurface } = useUI()
+  const { closeSurface } = useUI()
   const { t } = useT()
-  const domain = activeDomain ?? CUSTOM_DOMAIN
+  /*
+   * The PROJECT's domain, from the world — not `activeDomain`, which is NAVIGATION:
+   * it is nulled by opening the dashboard and overwritten by typing in the search
+   * field, so "the address of your site" could be changed by browsing. This screen
+   * talks about the domain that is attached (connecting · ready · live · unreachable),
+   * and that name has exactly one home: `world.customDomain`. OwnScreen and
+   * ExternalScreen keep reading `activeDomain` on purpose — there the clicked row IS
+   * the subject, because nothing is attached yet.
+   */
+  const domain = world.customDomain
 
   /* Stage and rows come from ConnectChecklist — the Publish panel shows the same three
      items now, and two copies of one checklist drift. */
@@ -924,6 +1015,12 @@ function StatusScreen() {
         <div className="mt-5">
           <PrimaryButton
             label={{ en: 'Fix this', uk: 'Виправити' }}
+            /* No `customDomain` here, unlike the doors in OwnScreen / ExternalScreen /
+               DomainModal — and that is the point, not an omission. Those doors ATTACH a
+               domain, so they carry its name. This one re-watches a domain that is already
+               attached: `unreachable` is an attached phase, the name is already in the
+               world, and the `domain` this screen renders IS `world.customDomain`. Writing
+               it back would be a tautology that reads as "the name can change here". */
             onClick={() => set({ domain: 'connecting' })}
           />
         </div>
@@ -1038,6 +1135,9 @@ export function DomainsSurface() {
    * read as the page reloading rather than as an answer arriving.
    */
   const [query, setQuery] = useState('')
+  /* The field's handle, for the connect row below: with nothing typed it puts the
+     caret here instead of navigating. Held next to the state it belongs to. */
+  const fieldRef = useRef<HTMLInputElement>(null)
   const searching = domainScreen === 'home' || domainScreen === 'results'
   const owned = OWNED_DOMAINS[world.inventory] ?? []
 
@@ -1061,6 +1161,27 @@ export function DomainsSurface() {
   }
 
   /*
+   * The connect row's click. It adds NO screen, NO route and NO state flag.
+   *
+   * A field that already holds a recognised domain goes through `submit()` — the one
+   * router above, which decides between the account confirm, the ownership question and
+   * the guided-manual records. An empty field gets the caret, because the universal
+   * field IS the entry for a domain you own (DECISIONS 09): there is no
+   * connect-a-domain-you-own screen with its own input, and there must not be one.
+   *
+   * Navigating to `external` from an empty field would be the tempting shortcut and it
+   * is a lie: that screen falls back to the demo domain, so it would hand somebody "two
+   * lines to paste at Namecheap" about a name they never typed. And an `intent` flag on
+   * the UI store would be a second door built out of state, which is still a second door.
+   *
+   * No `scrollIntoView` here on purpose — the header is `flex-none` and never scrolls.
+   */
+  const connectOwn = () => {
+    if (hasKnownEnding(query.trim().toLowerCase())) submit()
+    else fieldRef.current?.focus()
+  }
+
+  /*
    * No plan gate in front of this surface any more.
    *
    * It used to open on a full-screen upgrade wall for anyone without Remixer
@@ -1077,6 +1198,9 @@ export function DomainsSurface() {
        darker base tone (24% black over gray-900) that stays visible behind the
        top bar — the content sheets repaint themselves gray-900 below it. */
     <div
+      /* A handle for the browser walk (AGREEMENTS §5 gate 2). Not a text match on
+         "Domains": that word recurs the moment the right rail gets a Domains entry. */
+      data-testid="domains-surface"
       className="flex h-full flex-col overflow-hidden rounded-[16px] border border-[var(--gray-800)]"
       style={{
         background: 'linear-gradient(rgba(9,9,11,0.24), rgba(9,9,11,0.24)), var(--gray-900)',
@@ -1111,6 +1235,12 @@ export function DomainsSurface() {
           query={query}
           setQuery={setQuery}
           onSubmit={submit}
+          onConnectOwn={connectOwn}
+          fieldRef={fieldRef}
+          /* ⚠️ KEPT AS THE DESIGNER WROTE IT, deliberately. With the connect row
+             shipping, the second half of this line says the same thing 20px lower —
+             but deleting an offer he wrote, inside a change he did not ask for, costs
+             more than mild redundancy. Raised to him as a question instead. */
           placeholder={{
             en: 'Search a name to buy, or enter one you already own',
             uk: 'Шукайте назву для купівлі або введіть свою',
