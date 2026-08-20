@@ -8,11 +8,18 @@
  * Toggle with ⌘. (Ctrl+. on Windows) or the handle at the bottom of the right rail.
  *
  * ⚠️ Position is the designer's call: bottom-right, in the rail's column, ABOVE the
- * green support bubble — not beside it and not on the other side. It overlapped that
- * bubble twice, so the constraint is arithmetic, not taste: the bubble is h-9 (36px)
- * at the foot of the 56px right rail, so it occupies roughly the first 46px above the
- * bottom edge. `bottom-14` (56px) clears it with about 10px of air. If the rail's
- * padding or the bubble's size ever changes, recompute this — do not nudge it by eye,
+ * green support bubble. It collided three times, and every time because the offset
+ * was GUESSED instead of read off the rail. So it is written as the arithmetic now,
+ * not as a number — change the terms, not the total:
+ *
+ *   the rail (App.tsx) is `--rail-w: 56px` with `flex-col items-center pb-6`
+ *   the support bubble is `h-9 w-9` = 36px, centred by the rail
+ *   ⇒ its top edge sits at 24px (pb-6) + 36px = 60px above the bottom
+ *   ⇒ bottom = 1.5rem (pb-6) + 2.25rem (bubble) + 0.5rem (air) = 68px
+ *   ⇒ right = (56 − 24) / 2 = 16px = `right-4`, so this 24px handle shares the
+ *     bubble's centre line instead of sitting 6px off it, which read as crooked
+ *
+ * If `pb-6` or the bubble's size changes, update the terms above. Do not nudge by eye,
  * and do not move it to the left side (tried, rejected by the designer).
  * "Режим показа" hides the handle so only the keyboard opens it.
  */
@@ -60,7 +67,7 @@ export function ScenarioPanel() {
       {!presenter && !open && (
         <button
           onClick={() => setOpen((v) => !v)}
-          className="group fixed bottom-14 right-2.5 z-[9998] grid h-6 w-6 place-items-center
+          className="group fixed bottom-[calc(1.5rem+2.25rem+0.5rem)] right-4 z-[9998] grid h-6 w-6 place-items-center
                      rounded-md opacity-25 transition-opacity duration-200 ease-[cubic-bezier(.2,0,0,1)]
                      hover:bg-white/10 hover:opacity-100 focus-visible:opacity-100"
           title="Prototype console · ⌘."
