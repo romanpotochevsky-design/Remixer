@@ -11,7 +11,8 @@
 > come from `docs/product/FACTS.md` by ID and are not restated here.
 >
 > Rule for anything built on this document: **where a claim rests on an unquantified base,
-> say so in the same sentence.** Three of the four plays below do.
+> say so in the same sentence.** That is the rule, not a score — check each section against it
+> rather than trusting a count of how many currently comply.
 
 ---
 
@@ -66,8 +67,11 @@ the domain attaching, the padlock arriving, the address appearing in the chrome.
 | 5 | **Protect the email.** Detect MX records before touching nameservers and carry them across. | The only business-destroying failure in the catalogue, and DreamHost's own KB already warns that custom records stop working unless recreated first. | **DH-205**, `connect.md` §6 (failure 11) |
 | 6 | **Price honesty at the moment of purchase** — renewal never hidden, price before the cart. | Our own rule, and the one thing a novice can actually verify about us. | **DH-112**, COPY-RULES §4 |
 
-**The limit, stated honestly.** The audit called this uncopyable four times over. It is not
-(**CMP-021**). GoDaddy Airo **already ships zero-record connect** for domains on GoDaddy
+**The limit, stated honestly.** The audit put the heading "Why nobody can copy it" on **all
+five** overtake plays — §8.1 through §8.5; counted with
+`grep -c '^\*\*Why nobody can copy it\.\*\*' docs/competitors/audits/synthesis-q3-2026.md`,
+which returns 5. (The critique said four and the audit's own §8 preamble already corrects it.)
+Not one of the five holds (**CMP-021**). GoDaddy Airo **already ships zero-record connect** for domains on GoDaddy
 nameservers, and Hostinger does it too (**CMP-014**, **CMP-015**). What neither of them has
 done is put it in one gesture inside the AI builder: GoDaddy buries it four clicks deep in a
 settings tree and its in-builder domain purchase ejects the user to the storefront. **The
@@ -212,7 +216,7 @@ Copy this list into any deck review. Each line is refuted or unverifiable in `FA
 
 | Never say | Because | Fact |
 |---|---|---|
-| "Nobody can copy this" (any of the four plays) | Refuted four times over; the mechanism ships at two competitors | **CMP-021**, **CMP-014** |
+| "Nobody can copy this" (any of the five overtake plays, §8.1–§8.5) | Refuted on every one of them; the mechanism ships at two competitors | **CMP-021**, **CMP-014** |
 | "Registrar + host + mail exists nowhere else in this field" | Wix, GoDaddy, IONOS, Hostinger | **CMP-020** |
 | "Emergent is rated 2.7/5" | Single-source; explicitly on the do-not-quote list | **CMP-005** |
 | "We render in 2–3 minutes, versus v0's 6m21s" | n=1 against an unknown p50/p90, comparing different operations | **DH-014** |

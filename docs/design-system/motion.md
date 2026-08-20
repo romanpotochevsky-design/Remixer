@@ -325,10 +325,11 @@ into two hard edges — that was the "thick gradient contour". The working const
   the blur** (Chrome renders nothing if they are nested — §2);
 - the blur then spreads the clipped shape softly outward, like actual light;
 - the visible band is a small **1px overhang** past the field's edge (`inset: -1px`,
-  radius 25 = the field's 24 + 1). ⚠️ Two stale figures are in circulation for this one
-  value: `CLAUDE.md` says 3px and the comment above the rule in `index.css` says 2px.
-  The shipped value is 1px — it was halved on the designer's request because it was
-  catching too much eye — and 1px is what he approved;
+  radius 25 = the field's 24 + 1). ⚠️ One stale copy is still in circulation for this
+  value: **`CLAUDE.md` says 3px**. The `index.css` comment used to say 2px and has been
+  corrected; `prototype/docs/CHAT.md` used to say 3px and has been corrected. The shipped
+  value is 1px — it was halved on the designer's request because it was catching too much
+  eye — and 1px is what he approved;
 - the inward spill lands on `.composer-glow-plate`, an opaque `#09090b` plate exactly
   under the field. The field is 80% translucent, so **without the plate the glow bleeds
   straight through it.**

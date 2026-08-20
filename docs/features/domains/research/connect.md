@@ -227,8 +227,11 @@ Three ideas here are worth more than the rest of this document put together:
 **The lesson:** the category's best-named states describe **what the user should do next**;
 the worst describe **what the server thinks**. Our canonical checklist ("Domain settings
 updated · Connected to your site · Security (SSL) on") is on the right side of that, but it
-is a *success* template. We currently have no vocabulary for the eight ways it doesn't
-succeed.
+is a *success* template. We have no vocabulary for the ways it *doesn't* succeed: §6 below
+enumerates thirteen, and **nine of them — rows 1, 2, 3, 4, 6, 8, 9, 12, 13 — have no state
+in our mockups at all** (two more, rows 7 and 10, are drawn only in part — see
+`../STATES.md`). ⚠️ An earlier draft of this paragraph said "eight ways"; the enumeration in
+§6 is the arbiter, and it says nine.
 
 ---
 
@@ -414,8 +417,10 @@ unfinished.
 **3. Show a record diff, not a record table.** The one quantitative claim found on this:
 *"Support tickets drop dramatically once the DNS onboarding screen includes a simple 'we see
 this record / we expected that record' diff"* `[uncertain]` — weak sourcing, but it matches
-every failure in §6 (1, 2, 3, 4, 6 are all "what's there ≠ what should be there"). A diff
-turns eight invisible failure modes into one visible one. **No competitor does this.** This
+every failure in §6 whose shape is "what's there ≠ what should be there" — rows 1, 2, 3, 4
+and 6. A diff turns exactly those invisible failure modes into one visible one. (Count them
+off that list rather than restating a number: `OPEN-QUESTIONS.md` 03 scopes the same idea to
+rows 1–4, because row 6 has no home in the flow at all.) **No competitor does this.** This
 is a better differentiator than one-click, because one-click is buyable and this is design.
 
 **4. Protect the email, loudly.** Failure #11 is the only business-destroying one. Before we
@@ -438,8 +443,11 @@ it is a head start, not an impossibility.
 
 ## 13. Open questions for the designer
 
-1. **Do we draw the failure states now or ship the happy path first?** §6 says 8 missing
-   states; §5 says the naming is where competitors bleed. My recommendation: draw
+1. **Do we draw the failure states now or ship the happy path first?** §6 enumerates
+   thirteen failures and names **nine** of them — rows 1, 2, 3, 4, 6, 8, 9, 12, 13 — as
+   having no state in *our* mockups (rows 7 and 10 are drawn only in part). Every one of the
+   thirteen is named by some competitor, so none of this is uncharted; §5 says the naming is
+   where competitors bleed. My recommendation: draw
    `ready`, `waiting-on-you` and `needs-attention` next — they cover the majority of real
    traffic and cost three frames.
 2. **Diff or table?** Decision 3 changes the anatomy of the external-connect screen. It is
