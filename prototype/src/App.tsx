@@ -12,8 +12,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { useWorld, canUseAI, hasPlan, paymentFailed } from '@/state/world'
-import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
+import { useWorld, canUseAI, hasPlan, paymentFailed, siteAddress } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { useDomainProgress } from '@/state/progress'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
@@ -102,13 +101,16 @@ export default function App() {
   }, [chatWidth])
   const { t } = useT()
 
-  /* One source for both addresses (data/domains.ts) — the staging host used to be
-     spelled out here too, which is how the shell and the publish panel ended up
-     printing a zone nobody had sourced. See FACTS DH-302. */
-  const address =
-    world.domain === 'live' || world.domain === 'multiple' || world.domain === 'ready'
-      ? CUSTOM_DOMAIN
-      : STAGING_HOST
+  /* WHERE THE SITE ANSWERS RIGHT NOW — one selector, living in the world (state/world.ts).
+     The branch used to be written out here AND again in the Publish panel, each reaching
+     for the `CUSTOM_DOMAIN` constant; two copies of one truth is how they came to
+     disagree. Behaviour is unchanged — this is the same rule with one owner.
+
+     ⚠️ While a domain is connecting this toolbar and the Publish panel print DIFFERENT
+     addresses, deliberately: the site really does still answer only on staging, while the
+     panel is where the person watches the new domain arrive. See the note above
+     `siteAddress` in state/world.ts before "unifying" them. */
+  const address = siteAddress(world)
 
   /* Publish button, two states, ONE source of truth.
      `docs/features/publish/DECISIONS.md` 01 (accepted by the designer 20 Aug 2026):
@@ -212,6 +214,11 @@ export default function App() {
               and `multiple` stay on `home` on purpose — the walk already ends on the
               success screen, and home is where a second domain gets bought. */}
           <button
+            /* Handle for the browser harness (scripts/smoke.mjs). Its LABEL is data —
+               a placeholder project name (FACTS DH-302) — so a text selector on it
+               breaks the day the demo project is renamed, and this is the only door
+               into the domains surface. */
+            data-testid="toolbar-address"
             onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing' || world.domain === 'ready' || world.domain === 'unreachable' ? 'status' : 'home')}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
@@ -248,6 +255,10 @@ export default function App() {
               </span>
             </div>
             <button
+              /* Harness handle: `Publish` is a button label in three places (here, the
+                 `ready` status screen, and beside the panel's `Publish changes`), so
+                 `header button:has-text("Publish")` only works by accident of layout. */
+              data-testid="toolbar-publish"
               onClick={() => togglePublish()}
               className={`flex h-9 items-center gap-2 rounded-[10px] px-4 text-[13px] font-semibold leading-[1.4] transition-colors duration-[var(--dur-fast)] ease-std ${
                 pendingPublish

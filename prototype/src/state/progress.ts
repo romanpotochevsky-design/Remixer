@@ -29,8 +29,9 @@ import { useWorld, type DomainState } from './world'
  *                     would delete the most common novice situation we have.
  *   · `unreachable` — a failure that healed itself on a timer would be a lie, and the
  *                     screen's verb (`Fix this`) exists precisely because a human acts.
- *   · `staging` · `searching` · `checkout` · `multiple` — not waits at all: they sit
- *                     still until somebody clicks something.
+ *   · `staging` · `searching` · `multiple` — not waits at all: they sit still until
+ *                     somebody clicks something. (`checkout` used to be listed here too;
+ *                     it left the axis on 20 Aug 2026 — see state/world.ts.)
  */
 const NEXT: Partial<Record<DomainState, DomainState>> = {
   connecting: 'verifying',

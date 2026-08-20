@@ -201,15 +201,28 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
     { domain: 'fit-ration.com', note: { en: 'Registered with us · managed at Cloudflare', uk: 'Зареєстровано в нас · керується на Cloudflare' } },
     { domain: 'design-portfolio.net', note: { en: 'Registered with us', uk: 'Зареєстровано в нас' } },
   ],
-  /* Owned elsewhere. Before these two rows existed, picking either external situation in
-     the console changed nothing a viewer could see: the owned block rendered empty and the
-     search field had nothing to recognise, so the whole situation was inert. */
-  'external-dc': [
-    { domain: 'emberandoak.com', note: { en: 'Registered at Cloudflare · not connected yet', uk: 'Зареєстровано на Cloudflare · ще не підключено' } },
-  ],
-  'external-manual': [
-    { domain: 'emberandoak.com', note: { en: 'Registered at Namecheap · not connected yet', uk: 'Зареєстровано на Namecheap · ще не підключено' } },
-  ],
+  /*
+   * ⚠️ `external-dc` and `external-manual` BUCKETS USED TO BE HERE, each holding
+   * `emberandoak.com`. They were REMOVED 20 Aug 2026 — recorded, because the argument
+   * that put them here (an external situation with an empty owned column looks inert)
+   * is a good-sounding argument that will be made again.
+   *
+   * What they broke. `submit()` in DomainsSurface tests ownership BEFORE it tests
+   * `isTaken`, so under either external situation typing `emberandoak.com` landed on
+   * OwnScreen, which says "You own this — it's already in your DreamHost account" about
+   * a domain registered at Namecheap. The prototype stated something false on screen;
+   * it contradicted `registrarFor` below, which answers Namecheap/Cloudflare correctly
+   * for those same buckets; and it made the ownership question — the turn our own
+   * research calls the thing no competitor does — unreachable from the two situations
+   * built to demonstrate it.
+   *
+   * Where that name belongs instead: `TAKEN_DOMAINS`, which already carries it, and the
+   * `isTaken` route already sends it to the ownership question ("Registered at
+   * {registrar}. Is it yours?"). That is the honest answer, and the honest emptiness of
+   * the "Existing domains" column in those two situations is TRUE TO LIFE: we cannot
+   * know about a domain sitting at Namecheap. Filling the empty column is the job of the
+   * "Already have a domain? Connect it" row, not of a fake ownership record.
+   */
 }
 
 /**
@@ -278,6 +291,17 @@ export const isTaken = (domain: string) => TAKEN_DOMAINS.has(domain.trim().toLow
  * closes it — until then treat `fit-ration` as a placeholder shape.
  */
 export const STAGING_HOST = 'fit-ration.remixer.ai'
+
+/**
+ * The DEFAULT value of `world.customDomain` — and nothing more than that.
+ *
+ * ⚠️ It is NOT "the site's domain". Reading it that way is exactly what went wrong: the
+ * Publish panel printed this constant, so a customer who connected
+ * `odesa-coffee-roasters.com` was told their site was at `fit-ration.com`. Which domain
+ * is attached is world state (`state/world.ts`, field `customDomain`, selectors
+ * `siteAddress` / `projectDomain`); this line only says which one the demo starts with.
+ * Anything that needs the current address reads the world, never this.
+ */
 export const CUSTOM_DOMAIN = 'fit-ration.com'
 
 /**

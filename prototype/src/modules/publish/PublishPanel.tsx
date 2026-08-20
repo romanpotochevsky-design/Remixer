@@ -22,7 +22,7 @@ import { useEffect, useRef } from 'react'
 import { useWorld, hasPlan } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
-import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
+import { STAGING_HOST } from '@/data/domains'
 import { IconPlus, IconEdit, IconExternal, IconCopy, IconSettings, IconUsers } from '@/ui/icons'
 /* The connection checklist is domain knowledge, so it lives with the domains module and
    is borrowed here — the panel and the status screen must never own two copies of it. */
@@ -117,6 +117,29 @@ export function PublishPanel() {
      read as "instantly secured" — the one promise POSITIONING §7 forbids on DH-301. */
   const securing = world.domain === 'securing'
   const live = world.domain === 'live' || world.domain === 'multiple'
+  /*
+   * IS THERE A CUSTOM DOMAIN ON THIS PROJECT AT ALL — the question this half of the
+   * panel actually asks, and `ready` is a yes.
+   *
+   * ⚠️ `ready` IS A READING. `28071:53189` draws the connected-and-dirty state only;
+   * there is no frame for "domain attached, never published", so which already-drawn
+   * branch it takes was decided from the machine, not from the board: STATES.md's card
+   * says "the address is set up and works, but the project has not been published yet",
+   * and the map runs `securing → ready → live`. So the domain exists and the panel must
+   * print it. Before this, `ready` fell through to the staging branch and the panel
+   * offered `Connect your own domain` for a domain that was already connected and
+   * working — while the toolbar, two inches away, printed that same domain correctly.
+   *
+   * What `ready` deliberately does NOT get: the green dot and the padlock sentence.
+   * `live` stays false, so the dot stays off and the divider row's left half is empty —
+   * "anyone can visit" would be a claim about a site that has never been published.
+   * The frame for this state is the first thing on the STATES.md drawing queue.
+   *
+   * ⚠️ And the panel is SUPPOSED to disagree with the toolbar while connecting: it names
+   * the domain arriving, the toolbar names the address the site answers on today. See
+   * the note above `siteAddress` in state/world.ts. Do not unify them.
+   */
+  const attached = live || connecting || world.domain === 'ready'
   /* The zone is the sourced half of the staging address (FACTS DH-302); the label
      in front of it is still a placeholder shape. Kept in one const so the field
      and the suffix can never drift apart again — they did, as `.remixer.site`. */
@@ -221,8 +244,10 @@ export function PublishPanel() {
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
                   {t({ en: 'Website URL', uk: 'Адреса вашого сайту' })}
                 </p>
-                {live || connecting ? (
-                  <UrlField value={CUSTOM_DOMAIN} live={live} trailing="copy" />
+                {attached ? (
+                  /* From the world, never a constant: connecting any other domain used
+                     to still print `fit-ration.com` here. */
+                  <UrlField value={world.customDomain} live={live} trailing="copy" />
                 ) : (
                   <UrlField value={staging} suffix={STAGING_ZONE} trailing="edit" />
                 )}
@@ -248,8 +273,9 @@ export function PublishPanel() {
                 )}
               </div>
 
-              {/* connect your own domain — dashed card (hidden once a domain is on) */}
-              {!live && !connecting && (
+              {/* connect your own domain — dashed card (hidden once a domain is on,
+                  `ready` included: see `attached` above) */}
+              {!attached && (
                 <button
                   onClick={() => openDomains('home')}
                   /* Hover per Figma 26125:3832: the dashed rim brightens (NA/200 →
@@ -327,8 +353,11 @@ export function PublishPanel() {
                 *
                 * Connecting shows the row for `Manage domains` only — the padlock claim
                 * would be a lie until the certificate lands (DH-301), and the honest
-                * sentence for that window is already printed above the divider. */}
-              {(live || connecting) && (
+                * sentence for that window is already printed above the divider. `ready`
+                * takes the same half: the domain is there to manage, but nothing has been
+                * published, so nothing is claimed. Without this row `ready` had no way
+                * out of the panel at all. */}
+              {attached && (
                 <div className="border-t border-[#ffffff0a] py-4 pl-2 pr-4">
                   <div className="flex items-center justify-between gap-3 rounded-[12px] pl-2.5">
                     <p className="min-w-0 text-[13px] leading-normal text-[var(--white-400)]">
@@ -394,7 +423,15 @@ export function PublishPanel() {
               )}
               {world.unpublished > 0 ? (
                 <button
-                  onClick={() => set({ unpublished: 0 })}
+                  /* In `ready` this press PUBLISHES — it moves the world along the
+                     machine's own `ready --> live` edge, whose named verb is `Publish`
+                     (docs/features/domains/STATES.md). It used to only zero the counter,
+                     which left the world in `ready` for ever and then offered `Visit
+                     site` for a site that had never been published. The status screen
+                     always did the right thing here; the panel did not. */
+                  onClick={() =>
+                    set(world.domain === 'ready' ? { domain: 'live', unpublished: 0 } : { unpublished: 0 })
+                  }
                   className="flex h-10 items-center rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
                 >
                   {t({ en: 'Publish changes', uk: 'Опублікувати зміни' })}

@@ -225,7 +225,10 @@ export const AXES: Axis[] = [
     options: [
       { value: 'staging', label: { en: 'Staging only', uk: 'Лише стейджинг' } },
       { value: 'searching', label: { en: 'Choosing', uk: 'Обирає' } },
-      { value: 'checkout', label: { en: 'Checkout', uk: 'Оформлення' } },
+      /* `Checkout` was a button here until 20 Aug 2026. Paying is not a state of the
+         project's domain — it is a sheet that springs out of `Buy` / `Connect`, and its
+         states live on other axes (see the note in state/world.ts, `DomainState`). This
+         axis now lists only values that have a screen. */
       { value: 'connecting', label: { en: 'Connecting', uk: 'Підключається' } },
       { value: 'verifying', label: { en: 'Verifying', uk: 'Перевіряється' } },
       { value: 'securing', label: { en: 'Turning on the padlock', uk: 'Увімкнення замочка' } },
@@ -287,7 +290,6 @@ export function describe(w: World): Text {
   const domain: Record<World['domain'], Text> = {
     staging: { en: 'no custom domain', uk: 'домен не підключено' },
     searching: { en: 'choosing a domain', uk: 'обирає домен' },
-    checkout: { en: 'at checkout', uk: 'оформлює покупку' },
     connecting: { en: 'domain connecting', uk: 'домен підключається' },
     verifying: { en: 'domain verifying', uk: 'домен перевіряється' },
     securing: { en: 'padlock being turned on', uk: 'увімкнюється замочок' },
@@ -296,7 +298,12 @@ export function describe(w: World): Text {
     unreachable: { en: 'domain not reachable', uk: 'домен не відповідає' },
     multiple: { en: 'several domains', uk: 'кілька доменів' },
   }
-  en.push(domain[w.domain].en); uk.push(domain[w.domain].uk)
+  /* Belt and braces over the guard in world.ts. This lookup is the line that turns a
+     stale `?d=<removed value>` into a blank page: `undefined.en` throws during render
+     and React unmounts the tree. `paramsToWorld` should never hand us one — this makes
+     sure that if it ever does, the console reads slightly wrong instead of dying. */
+  const phase = domain[w.domain] ?? domain.staging
+  en.push(phase.en); uk.push(phase.uk)
 
   if (w.project === 'empty') { en.push('empty project'); uk.push('проєкт порожній') }
   else if (w.project === 'generating') { en.push('generating'); uk.push('іде генерація') }

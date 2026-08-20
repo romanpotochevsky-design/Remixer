@@ -174,12 +174,19 @@ export function DomainModal() {
   const showPlans = !paid
 
   const confirm = () => {
+    /* The world learns WHICH domain is being attached, in the same `set()` that moves the
+       phase — not just that one is. Both the Publish panel and the permanent chrome read
+       `world.customDomain` (state/world.ts, `siteAddress` / `projectDomain`); before this
+       field existed the panel printed a constant, so connecting anything other than the
+       demo domain still showed `fit-ration.com`. Guarded on a non-empty name so a sheet
+       opened without one cannot blank the address. */
+    const attaching = domain ? { customDomain: domain } : null
     if (showPlans) {
       // Checkout hands back a paid account; the connect then completes on its own,
       // which is the promise the cream sub-label makes.
-      set({ account: 'paid', billing: term, domain: 'connecting' })
+      set({ account: 'paid', billing: term, domain: 'connecting', ...attaching })
     } else {
-      set({ domain: 'connecting' })
+      set({ domain: 'connecting', ...attaching })
     }
     closeDomainModal()
     /* The third door into the same handoff, and it takes the same one as `OwnScreen` and
@@ -208,6 +215,9 @@ export function DomainModal() {
           />
 
           <motion.div
+            /* Harness handle: `role="dialog"` sits on the OUTER wrapper, which also holds
+               the scrim, so the 560/600 width assertion needs this inner node. */
+            data-testid="checkout-sheet"
             variants={modalSheet}
             initial="initial"
             animate="animate"

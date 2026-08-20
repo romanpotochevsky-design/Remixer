@@ -46,15 +46,23 @@ npm run artifact   # build + scripts/build-artifact.mjs → один самод�
 в экранах.
 
 Оси мира:
-- `account` — `anonymous | trial | trial-expired | paid`, плюс `trialDay`, `billing`,
-  `credits`, `bonus`.
+- `account` — `anonymous | trial | trial-expired | paid | payment-failed`, плюс `trialDay`,
+  `billing`, `credits`, `bonus`.
 - `inventory` (ось A) — **что у юзера уже есть**: `none`, `dh-free` (домен лежит в аккаунте
   DreamHost, кейс zero-record go-live), `dh-in-use`, `dh-external-ns`, `external-dc`
   (авторитативный DNS у провайдера с Domain Connect), `external-manual` (Namecheap —
   только ручные записи). Эта ось решает, какой экран подключения вообще достижим, и
   независима от того, что делает домен текущего проекта.
-- `domain` (ось B) — что делает домен проекта: `staging | searching | checkout |
-  connecting | verifying | live | unreachable | multiple`.
+- `domain` (ось B) — **фаза** домена проекта: `staging | searching | connecting | verifying |
+  securing | ready | live | unreachable | multiple`. Значение `checkout` было на этой оси и
+  убрано 20.08.2026: оплата — не состояние домена, а шит, который выпрыгивает по кнопке
+  `Buy`/`Connect`, и его состояния лежат на осях `kind × есть ли план` (причина целиком —
+  в комментарии к `DomainState` в `world.ts`).
+- `customDomain` — **какой именно** домен подключён (строка). Фаза и имя — два поля, потому
+  что это два разных вопроса. Читать адрес только через селекторы `siteAddress` («где сайт
+  отвечает прямо сейчас» — постоянный хром) и `projectDomain` («какой домен прикреплён,
+  включая ещё подключающийся» — панель Publish). На `connecting`/`verifying`/`securing` они
+  расходятся НАМЕРЕННО, и сводить их в один селектор нельзя (см. комментарий в `world.ts`).
 - `project` — `empty | generating | built`; `unpublished` — счётчик правок с последней
   публикации; `chat` — `empty | short | long | working | error`.
 - `sent: Message[]` — живой транскрипт чата (см. `CHAT.md`).
@@ -67,8 +75,14 @@ npm run artifact   # build + scripts/build-artifact.mjs → один самод�
    `unpublished > 0` в пустом проекте). Консоль сценариев гасит такие варианты и
    показывает причину — чтобы не потратить утро на дизайн состояния, которого не бывает.
 2. **URL + localStorage.** `worldToParams` / `paramsToWorld` кодируют мир в короткие ключи
-   (`l a t b c z i d p u h`), `syncUrl` пишет и адресную строку, и `localStorage`, — любое
-   состояние это шареная ссылка. Оба вызова best-effort в `try/catch`: внутри
+   (`l a t b c z i d n p u h`), `syncUrl` пишет и адресную строку, и `localStorage`, — любое
+   состояние это шареная ссылка. **Входящие строки валидируются** (`legal` / `sanitize` в
+   `world.ts`): значение, которого у оси нет, отбрасывается и ось остаётся на дефолте.
+   Это не перестраховка — ссылка, скопированная вчера, несёт значение, которого в сегодняшней
+   сборке уже нет (так ушёл `checkout`), и без проверки оно доезжает до словаря
+   `Record<DomainState, Text>` в консоли, где `undefined.en` падает в рендере и гасит всё
+   дерево. Набор допустимых значений выводится из самих юнионов через `Record<Union, true>`,
+   поэтому правка оси ломает сборку, а не проверку. Оба вызова best-effort в `try/catch`: внутри
    песочницы опубликованного артефакта `history` и `storage` могут быть закрыты, а
    прототип обязан продолжать работать. Транскрипт (`sent`) в URL НЕ едет специально:
    ссылка несёт ситуацию, а не чью-то печать. Исключение — восстановление прерванной
