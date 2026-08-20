@@ -10,7 +10,7 @@
 
 ## ⚠️ Corrections since this file was written (19 Aug 2026)
 
-Three claims below have since been disproven or superseded. The rest of the document stands.
+Four claims below have since been disproven or superseded. The rest of the document stands.
 
 1. **"Domain Connect one-click for ~50 registrars" (scenario 3) is not buildable today.**
    DreamHost supports Domain Connect in **no role** — absent from `domainconnect.org`'s
@@ -24,9 +24,41 @@ Three claims below have since been disproven or superseded. The rest of the docu
    $179.98 front-page figure), `.online $1.99`, `.store $2.99`. `prototype/src/data/domains.ts`
    carries the correct set.
 3. **The connect flow's state machine is incomplete.** The teardown at
-   `docs/features/domains/research/connect.md` (§5–§6) lists eight failure states
-   the category names and this flow does not — most importantly **"connected but not
-   published yet"** (Lovable calls it `Ready`) and the ~1-hour verification timeout.
+   `docs/features/domains/research/connect.md` (§5–§6) catalogues **thirteen** failure
+   states the category names, and flags **nine** of them — 1, 2, 3, 4, 6, 8, 9, 12, 13 —
+   as having no frame anywhere in our design. Most important of those: **"connected but not
+   published yet"** (failure 8; Lovable calls it `Ready`, and it is the novice's most likely
+   dead end) and the ~1-hour verification timeout (Lovable's `Unable to verify` — a
+   *designed* timeout, not an error).
+   **The current answer now lives in `docs/features/domains/STATES.md`, not only in the
+   research.** That file names ten states, gives each verbatim EN copy and exactly one verb
+   (`securing` deliberately has none), maps all thirteen failures onto them, and ends with a
+   drawing order — `ready`, then `waiting-on-you`, then `needs-attention` — so start there.
+   It also names what stays homeless after the mapping, and those are the real gaps to design
+   against: failure 6 (a security rule blocks the padlock) has no state and is the one honest
+   hand-off to support; failure 11 (the customer's email dies after connecting) is designed
+   only as *pre-connect* insurance, with no after-the-fact state; failure 12's 48-hour stall
+   has a state but no action while we offer only one external path; the cross-account half of
+   failure 10 is named (`elsewhere-in-dreamhost`) but has no copy, because it has no policy;
+   and failures 1–4 all resolve into a single **comparison** pattern ("here is what's there /
+   here is what should be") that is still an open question — if it isn't approved, the four
+   most common failures lose their home again.
+4. **Cloudflare is in the wrong bucket (scenario 3).** The body says "manual nameservers/DNS
+   for others (**Namecheap/Cloudflare**)". Cloudflare does not belong there: **Cloudflare
+   supports Domain Connect as a DNS provider** — its own documentation page
+   (`developers.cloudflare.com/dns/reference/domain-connect`), a listing on
+   `domainconnect.org`'s provider page, and one of exactly three providers behind Shopify's
+   "Connect automatically" (verified 19 Aug 2026 — `docs/features/domains/research/connect.md`
+   §4.2 and §11.1; IDs STD-002 and STD-003 in `docs/product/FACTS.md`). **Namecheap is the
+   canonical manual case** — absent from the provider list, no support announcement found.
+   The nuance that has to travel with this fix: a Cloudflare-fronted domain still fails
+   verification while the proxy is on ("orange cloud") and must be switched to **"DNS only"**
+   first (STD-004), so Cloudflare is **"automatable, with a triage card" — not "easy"**, and
+   that triage card is a frame we do not have. This is orthogonal to correction 1: Cloudflare
+   supporting the standard does not give *us* one-click, because DreamHost supports it in no
+   role — the automatable path still waits on the Entri PO. `prototype/src/state/world.ts`
+   already carries this exact reasoning in its `external-dc` comment; keep the Figma frames
+   and this file consistent with it.
 
 Deeper competitor detail on the connect path — automation rails, status vocabularies,
 failure catalogue, collision handling — now lives in
@@ -51,6 +83,11 @@ In-builder flow for **DreamHost "Remixer"** (AI website builder): connect a doma
 1. **Buy a new domain** → search results (real prices, exact-match hero + alt TLDs) → DreamHost-style cart → live.
 2. **Connect a domain already at DreamHost** → typeahead lists "Your DreamHost domains" → confirm screen ("You own this") → brief **"Setting up…"** progress → live (HTTPS ~30 min). No checkout (it's already yours). Button is just **"Connect"** (not "Connect · free").
 3. **Connect an external domain** → detect registrar → **Domain Connect one-click** for ~50 registrars (GoDaddy/Squarespace/IONOS/Google — adds DNS *records* via a consent screen, NOT a nameserver rewrite) · **manual nameservers/DNS** for others (Namecheap/Cloudflare). Saved as "Connecting" + resume; status page with "Refresh status".
+   **⚠ Corrected — see corrections 1 and 4 at the top of this file.** Two things in this line
+   are wrong. DreamHost supports Domain Connect in **no** role, so the one-click branch is
+   Entri-dependent, not buildable today. And **Cloudflare does not belong on the manual path**
+   — it supports Domain Connect (automatable, with a "set the proxy to DNS only" triage card);
+   **Namecheap** is the manual example to draw.
 
 ## Interaction model
 **One universal field** that detects intent (buy new / connect owned / paste external). **AI suggestions = the default empty state** (buy + upsell), NOT a 3rd path. Typing a domain you OWN resolves to a "You own this → Connect" confirm (not buy results). Dropdown rows route to a **confirm** screen — they never auto-connect on a stray click. **Verb system: Add = buy · Connect = attach a domain you own · Update/Publish = republish.**

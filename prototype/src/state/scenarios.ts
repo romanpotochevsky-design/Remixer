@@ -91,9 +91,18 @@ export const PRESETS: Preset[] = [
     patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', unpublished: 0 },
   },
   {
+    id: 'external-dc',
+    label: { en: 'Domain behind Cloudflare', uk: 'Домен за Cloudflare' },
+    note: {
+      en: 'Cloudflare has Domain Connect — but the proxy must be "DNS only" to verify',
+      uk: 'У Cloudflare є Domain Connect — але для перевірки проксі має бути «DNS only»',
+    },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-dc', domain: 'verifying', unpublished: 0 },
+  },
+  {
     id: 'external-manual',
     label: { en: 'Domain at another registrar', uk: 'Домен в іншого реєстратора' },
-    note: { en: 'Namecheap / Cloudflare — manual records only', uk: 'Namecheap / Cloudflare — лише ручні записи' },
+    note: { en: 'Namecheap — no Domain Connect, guided manual records', uk: 'Namecheap — без Domain Connect, ручні записи з підказками' },
     patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', unpublished: 0 },
   },
 ]
