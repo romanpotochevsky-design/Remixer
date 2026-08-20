@@ -132,6 +132,11 @@ Security (SSL) on
   "Security (SSL) on" at the same instant deletes the state the checklist exists to explain
   (`FACTS.md` §2.17).
 - No fourth line. If something else needs saying, it is a state, not a checklist item.
+- **The one word under review is "(SSL)".** It is the single technical token the de-jargon
+  rule tolerates, on the grounds that a novice recognises the acronym even without
+  understanding it. That trade-off is an open question, not a settled rule
+  (`docs/features/domains/OPEN-QUESTIONS.md` 09); if it loses, the line becomes
+  "Secure padlock on" and changes on **every** screen at once.
 - The same three lines carry the connecting state (unticked) and the live state (ticked) —
   one component, two states, never two vocabularies.
 

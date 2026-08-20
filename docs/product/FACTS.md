@@ -59,7 +59,7 @@ prevent.*
 | **DH-009** | **Unknown: what a publish actually costs in credits, and whether the charge is flat or re-runs generation work.** This decides whether "publishing is free" is a billing toggle or an unbounded-cost architecture project. | unverified | Aug 2026 | `synthesis-q3-2026.md` §10.2 Q10; `synthesis-critique.md` §2 | POSITIONING §1 (effort estimate) · any "publishing is free" copy |
 | **DH-010** | **Unknown: whether credits roll over and whether they expire.** We have no documented position. The category's single largest rage generator (see CMP-035). | unverified | Aug 2026 | `synthesis-q3-2026.md` §10.2 Q8 | Credits popover · plan FAQ · churn messaging |
 | **DH-011** | **Unknown: the spend order** between included, bonus and purchased credits. Matters because of the first-month bonus (DH-006). | unverified | Aug 2026 | §10.2 Q9 | Credits popover line "we spend the credits closest to expiring first" |
-| **DH-012** | **No per-action credit price list exists.** "1,000 credits" is not comparable to Lovable's 100 or GoDaddy's 150, and users cannot reason about it. | unverified (absence) | Aug 2026 | §10.2 Q7 | Credits popover · pricing page · Framer comparison (CMP-039) |
+| **DH-012** | **No per-action credit price list exists.** "1,000 credits" is not comparable to Lovable's 100 or GoDaddy's 150, and users cannot reason about it. | unverified (absence) | Aug 2026 | §10.2 Q7 | Credits popover · pricing page · Framer comparison (CMP-037) |
 | **DH-013** | The plan includes hosting, the first-party global CDN (SmartEdge — see DH-304), SSL, "Connect a Domain", and 24/7 chat + email support. | verified | Jun 2026 | handoff "Plan includes" | Plan cards · Launchpad Case 2 green box |
 | **DH-014** | Time to first render is quoted as **2–3 minutes**. This is a marketing/ground-truth figure with n=1 behind it; our real p50/p90 is unknown, and the audit's "Ahead" rating against v0's measured 6m21s compares different output classes. | unverified | Aug 2026 | `synthesis-q3-2026.md` §6 vs §10.2 Q2; `synthesis-critique.md` §2 | POSITIONING (speed claim) · any comparison table |
 
@@ -137,7 +137,7 @@ is correct as of that date; the hand-off is not (see §2).
 | **DH-402** | **What production actually paints is not DH-401.** Measured on the live Remixer (`panel.dreamhost.com/ai-editor`, 13 Aug 2026): Publish is `#0073EC` (the light-mode token) and `#1587FF` is defined but unused; the production blue ramp mixes two hues — `--blue-100…500` are alphas of `#2554F7`, `--blue-600…1000` are `#0073EC`. The prototype deliberately corrects both. | verified | 13 Aug 2026 | measurement recorded in `prototype/src/index.css` token-layer comment | §2.10 · any "verified brand rule" statement · the dev hand-off (this is a production bug, not a token to copy) |
 | **DH-403** | **Shell background:** the brief and the audit say `#18181B`; the 2026 Figma redesign (node 25819:143144, captured 16 Aug 2026) puts the shell on **`#09090b`** and demotes `#18181b` to `gray-900`, a panel colour. | verified | 16 Aug 2026 | Figma redesign → `CLAUDE.md` geometry block; `prototype/tailwind.config.js`, `index.css` | §2.11 · every surface token · the audit's "cool near-black" AI-slop argument, which was written against the old value |
 | **DH-404** | Brand typefaces are **Gilroy** (names, numbers) and **Proxima Nova** (prose) — both commercial, not committed to this public repo. The prototype renders OFL stand-ins: **Figtree for Proxima Nova, Outfit for Gilroy**. Design cannot be approved on the stand-ins. | verified | Aug 2026 | `CLAUDE.md` fonts block; `prototype/public/fonts/README.md` | Every screenshot's line lengths · the checkout sheet's 600px width decision · audit §9.2 |
-| **DH-405** | The credit balance sits **permanently in the top toolbar**. GoDaddy exiles it to a separate page — their single loudest complaint (CMP-040). | verified (ours) | Aug 2026 | `synthesis-q3-2026.md` §6 | Toolbar layout · the "credits always visible" rule |
+| **DH-405** | The credit balance sits **permanently in the top toolbar**. GoDaddy exiles it to a separate page — their single loudest complaint (CMP-038). | verified (ours) | Aug 2026 | `synthesis-q3-2026.md` §6 | Toolbar layout · the "credits always visible" rule |
 | **DH-406** | The **live address sits in primary chrome** (centred domain switcher). The audit adds that no competitor does this; the *explanation* it offers ("because for them attaching a domain is a multi-hour operation") is an invented cause, per the critique. | verified (ours) / unverified (the causal claim) | Aug 2026 | `synthesis-q3-2026.md` §6; `synthesis-critique.md` §2 | Toolbar · POSITIONING (state the observation, never the invented reason) |
 
 ### 1F. Competitors (`CMP`)
@@ -230,7 +230,10 @@ register and had not been recorded anywhere before.
 *How a contradiction gets closed:* fix the losing document (or delete the sentence), set
 the register row to the winning value, and leave the entry below in place with a
 `closed dd Mon yyyy` note. Entries are not deleted — a closed contradiction is the record
-of why a value looks the way it does.
+of why a value looks the way it does. The resolution rule is source strength; where two
+sources are equally strong, **both** drop to `likely` and the fact becomes an open question
+(the full procedure is playbook 3 in `docs/global/PLAYBOOKS.md`, and the decision behind
+this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
 
 ### 2.1 `.io` price — DH-104
 
@@ -243,12 +246,14 @@ of why a value looks the way it does.
 
 ### 2.2 ⚑ `.online` price — DH-107
 
-- Hand-off → "`.online $0.99`"
+- `docs/features/domains/handoff-design.md`, body ("Domain prices") → "`.online $0.99`"
+- **The same file**, corrections block at the top → "`.online $1.99`"
 - Research + `domains.ts` → `.online $1.99 / $29.95 renew`
-- **Winner: $1.99.** Same reason as 2.1 — and this one was *not* caught by the hand-off's
-  corrections block, which lists only `.io`, `.ai`, `.online` "$1.99" and `.store`. The
-  correction block and the body of the same file disagree about `.online` inside one
-  document.
+- **Winner: $1.99.** This is the one collision that is *inside a single document*: the
+  hand-off's correction block fixes `.online` and the price list twelve lines below it still
+  says $0.99. Anyone reading the file top-to-bottom takes the corrected number; anyone
+  jumping to the price list — which is what a designer filling in a frame does — takes the
+  wrong one. The fix is to correct the list in place, not to add a third note.
 
 ### 2.3 `.ai` price shape — DH-110
 
@@ -348,8 +353,8 @@ of why a value looks the way it does.
 - `CLAUDE.md` verified-facts block → "Фон билдера **#18181B**"; audit §6 → "we hold #18181B throughout"
 - `CLAUDE.md` prototype block + Figma redesign 25819:143144 (16 Aug 2026) +
   `prototype/tailwind.config.js` → shell is **`#09090b`**; `#18181b` is `gray-900`, a panel colour
-- **Winner: `#09090b`** for anything drawn after 16 Aug 2026. One file states both values
-  180 lines apart. Consequence worth noting: the audit's AI-slop argument about our "cool
+- **Winner: `#09090b`** for anything drawn after 16 Aug 2026. `CLAUDE.md` states both values,
+  in two different sections. Consequence worth noting: the audit's AI-slop argument about our "cool
   near-black" was written against `#18181B` and has not been re-run against the darker
   shell (see POSITIONING).
 
