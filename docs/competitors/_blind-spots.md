@@ -10,6 +10,13 @@ question studying it would answer**, **how to answer it**, and a priority. It is
 list — an entry is done when the question has an answer with a date and a confidence marker on it,
 filed as a new page in this folder.
 
+Two conventions used below, both fixed on 20.08.2026 after an acceptance review. **The connect
+research is cited with its path and its heading**, not as a bare `connect.md §N`: the file is
+[`../features/domains/research/connect.md`](../features/domains/research/connect.md), it lives two
+directories away, and every reference here previously carried neither a path nor a heading. And
+**every competitor claim carries a marker plus its register row** (`../product/FACTS.md`), or an
+explicit `no row` when the register has no line for it yet.
+
 ## Priority at a glance
 
 | # | Subject | Priority | The one-line reason |
@@ -66,23 +73,30 @@ existing site owner?
 
 ## 2. Cloudflare — the most dangerous omission
 
-**Why it matters.** It appears **zero times** in the audit, and it is the single most dangerous
-structural competitor to the entire §8 thesis (critique §1). Cloudflare is a registrar at cost,
-authoritative DNS with the fastest one-click domain attach in existence, a host (Pages/Workers), a
-CDN with 300+ PoPs against SmartEdge's 10 — and it ships **Email Routing free**, which partially
-guts the "real mailbox" moat before it is built.
+**Why it matters.** It was **absent from the audit entirely** when the critique read it, and it is
+the single most dangerous structural competitor to the entire §8 thesis (critique §1). ⚠️ Do not
+repeat "zero times" as a live fact: the corrections applied to the audit on 20.08.2026 now name
+Cloudflare in several places. Count, don't remember —
+`grep -ci cloudflare docs/competitors/audits/synthesis-q3-2026.md`. What has not changed is the
+substance: Cloudflare is a registrar at cost, authoritative DNS with the fastest one-click domain
+attach in existence, a host (Pages/Workers), a CDN with 300+ PoPs against SmartEdge's 10 — and it
+ships **Email Routing free**, which partially guts the "real mailbox" moat before it is built
+`[verified · CMP-019 · 16 Aug 2026]` (our own CDN figure is **DH-304**).
 
 Two facts sharpen this since the audit was written:
 
 - **Cloudflare supports Domain Connect as a DNS provider** — its own docs page plus a listing on
   `domainconnect.org`, and it is one of exactly three providers in Shopify's "Connect automatically"
-  (`connect.md` §4.2) `[verified]`. So *any* competitor can say "move your nameservers to
+  ([`connect.md`](../features/domains/research/connect.md) §4.2 "Domain Connect — the free rail")
+  `[verified · STD-002 · 19 Aug 2026]`. So *any* competitor can say "move your nameservers to
   Cloudflare" and get zero-record connect for free, forever, without being a registrar. That is our
   §8.1 play, rented for nothing.
 - **The catch that makes it a design problem, not just a threat:** while the orange-cloud proxy is
-  on, verification fails. Cloudflare is "automatable, but with a triage card", not "easy"
-  (`connect.md` §11.1, failure #5) `[verified]`. Figma, Lovable and others all ship explicit
-  "set it to DNS only" copy. We will need that card either way.
+  on, verification fails. Cloudflare is "automatable, but with a triage card", not "easy" — the
+  sentence is in [`connect.md`](../features/domains/research/connect.md) §11.1 "Cloudflare is NOT a
+  manual-only case", and the failure row itself is §6 "The failure catalogue" row 5
+  `[verified · STD-004 · 19 Aug 2026]`. Figma, Lovable and others all ship explicit "set it to DNS
+  only" copy. We will need that card either way.
 
 **The question.** Does Cloudflare neutralise the infrastructure moat? Concretely: **what share of
 DreamHost-registered domains already use external nameservers, and how many of those are
@@ -104,9 +118,11 @@ quarter of strategy.
 **Why it matters.** The audit's §8 preamble says registrar + host + mail *"exists nowhere else in
 this field."* Wix **owns Base44**, is a registrar, and sells mailboxes. So do GoDaddy, IONOS and
 Hostinger. That sentence is factually wrong and it is the load-bearing sentence of the overtake
-thesis (critique §1, §5). Wix is also best-in-class at something we need next week: its collision
-handling names the *consequence* of each option — "Assign to a Different Site" offering "Redirect it
-to the primary domain" versus "Replace the current primary domain" (`connect.md` §9) `[verified]`.
+thesis `[refuted · CMP-020 · 16 Aug 2026]` (critique §1, §5). Wix is also best-in-class at something
+we need next week: its collision handling names the *consequence* of each option — "Assign to a
+Different Site" offering "Redirect it to the primary domain" versus "Replace the current primary
+domain" ([`connect.md`](../features/domains/research/connect.md) §9 "Collisions")
+`[verified · CMP-013 · Aug 2026]`.
 
 **The question.** What does Wix actually bundle across registrar, host, mail and AI generation at
 each tier — and therefore what is the honest, defensible version of our positioning sentence?
@@ -127,11 +143,15 @@ true.
 **Why it matters.** The closest **brand** competitor for "a small business wants a nice site", and it
 now has AI generation (critique §1). We have already mined it for connect-flow precedent without ever
 studying it as a competitor — and that precedent is unusually rich: self-serve collision resolution
-plus a "Move domain" action, a **15-day auto-unlink** when verification is abandoned, the explicit
-*"Don't delete MX records during this process"* warning, and a pending state shown **to visitors**
-(`connect.md` §5.2, §6 rows 11 and 13, §9) `[verified]`. It is also the outlier that steers users
-toward *transfer* rather than connect, which third-party educators warn novices about
-(`connect.md` §10) `[verified]`.
+plus a "Move domain" action `[verified · CMP-012 · Aug 2026]`, a **15-day auto-unlink** when
+verification is abandoned `[verified · CMP-036 · 19 Aug 2026]`, the explicit *"Don't delete MX
+records during this process"* warning `[verified-doc · no row]`, and a pending state shown **to
+visitors** `[verified-doc · no row]`
+([`connect.md`](../features/domains/research/connect.md) §5.2 "Everyone else", §6 "The failure
+catalogue" rows 11 and 13, §9 "Collisions"). It is also the outlier that steers users toward
+*transfer* rather than connect, which third-party educators warn novices about
+([`connect.md`](../features/domains/research/connect.md) §10 "Connect vs transfer")
+`[likely · no row]`.
 
 **The question.** What does Squarespace's AI generation actually produce compared with ours, and how
 does a company that wins on *taste* rather than on speed frame an AI builder to a non-technical
@@ -152,9 +172,11 @@ detail is desk-readable.
 should be calibrated against (critique §1). We score ourselves 1/5 on anti-generic output and score
 Lovable 5/5 — but on vibes from marketing copy, with no measurement of what actually comes out the
 other end (critique §1, §6 Q2). Without a ceiling, that scale means nothing. Webflow also runs Entri
-as "Quick connect" `[verified]` and makes a different structural bet on failure: no rich state list,
-but a **"Why is my site down?" diagnostic tool** covering missing site plan, DNS misconfiguration and
-unpublished custom domain (`connect.md` §5.2) `[verified]`.
+as "Quick connect" `[verified · CMP-008 · Aug 2026]` and makes a different structural bet on failure:
+no rich state list, but a **"Why is my site down?" diagnostic tool** covering missing site plan, DNS
+misconfiguration and unpublished custom domain
+([`connect.md`](../features/domains/research/connect.md) §5.2 "Everyone else")
+`[verified-doc · no row]`.
 
 **The question.** What is the real ceiling of AI-generated output against hand-built design — and, on
 the connect flow, does one triage tool beat a named state machine, or are they complementary? The
@@ -163,7 +185,8 @@ hypothesis worth testing rather than a conclusion.
 
 **How to answer it.** For the ceiling: include Webflow-built sites as the control group in the
 output-quality benchmark below. For the diagnostic: read the tool's decision tree and compare against
-our failure catalogue (`connect.md` §6) — does it cover the 13 states, and with how many screens?
+our failure catalogue ([`connect.md`](../features/domains/research/connect.md) §6 "The failure
+catalogue") — does it cover every row of that catalogue, and with how many screens?
 
 **Priority: P1.**
 
@@ -177,8 +200,9 @@ AI builder"* (critique §1). This is a **distribution** risk rather than a featu
 dangerous competitor is not the one that beats us in a comparison table, it is the one the customer
 was already inside when the thought occurred to them. Canva also does two things right in our active
 work area: it puts the custom domain **in the publish moment** (Publish → Website → "Use a custom
-domain") and it ships Domain Connect as "Log in and auto connect" (`connect.md` §3, §4.2)
-`[verified]`.
+domain") and it ships Domain Connect as "Log in and auto connect"
+([`connect.md`](../features/domains/research/connect.md) §3 "Where the connect entry point lives",
+§4.2 "Domain Connect — the free rail") `[verified-doc · no row]`.
 
 **The question.** Is our real acquisition competitor a design tool rather than a builder — and what
 does the funnel look like for a user entering from a non-technical creative context rather than from
