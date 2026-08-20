@@ -185,10 +185,27 @@
   }
 
   html, body, #root { height: 100%; }
-  /* The page's own ground — Figma 28016:42812 paints the whole frame #09090B.
-     Without this, body is transparent and an embedding host (the claude.ai
-     preview panel) shows its own backdrop through any gap or overscroll. */
-  body { background: var(--gray-950); }
+  /*
+   * The page's own ground — Figma 28016:42812 paints the whole frame #09090B.
+   * Without this, body is transparent and an embedding host (the claude.ai
+   * preview panel) shows its own backdrop through any gap or overscroll.
+   *
+   * ⚠️ ONE body rule, and it lives here. There used to be a second one ~700
+   * lines below painting the PRE-redesign #18181B; later in the same @layer, it
+   * won, and it defeated exactly the purpose stated above. Nobody saw it because
+   * App.tsx's root div paints --gray-950 over the whole shell anyway. Its other
+   * declarations were merged in below — do not re-add a second body rule.
+   */
+  body {
+    background: var(--gray-950);
+    color: var(--white-900);
+    /* theme(fontFamily.sans), not a literal stack: this rule is later than
+       Tailwind's preflight and used to silently drop whatever the config said —
+       which is how the OFL stand-in went missing from the body font while
+       still being listed in tailwind.config.js. One source of truth. */
+    font-family: theme(fontFamily.sans);
+    -webkit-font-smoothing: antialiased;
+  }
 
   /*
    * Scrollbars, phone-style. Native ones are off EVERYWHERE: a classic scrollbar
@@ -419,10 +436,14 @@
     pointer-events: none;
     animation: composer-glow-life 0.7s linear both;
   }
-  /* 2px past the field's edge: the plate hides everything inside the field, so
-     without this overhang the visible light would be only the blur's outer
-     tail — too faint to read. The overhang is the filament, the blur its halo.
-     Halved from the first cut on request — it was catching too much eye. */
+  /* 1px past the field's edge (inset -1px, radius 25 = the field's 24 + 1): the
+     plate hides everything inside the field, so without this overhang the
+     visible light would be only the blur's outer tail — too faint to read. The
+     overhang is the filament, the blur its halo. Halved from the first cut on
+     the designer's request — it was catching too much eye — so 1px is the
+     approved figure. (Stale figures are in circulation for this one value:
+     CLAUDE.md says 3px and this comment used to say 2px. The code is the truth,
+     and the flash is designer-approved: do not retune it.) */
   .composer-glow > i {
     position: absolute;
     inset: -1px;
@@ -633,11 +654,27 @@
   }
 
   /*
-   * Liquid glass. The Figma kit's glass controls (and Apple's Liquid Glass they nod to)
-   * are three layers, not a border: a translucent fill that is lighter at the top, a
-   * backdrop blur with a saturation lift, and a 1px gradient RIM that catches light at
-   * the top-left and bottom edges. The rim values are the ones read off the Figma hover
-   * variant (white .32 → .08 → .24), drawn with a mask so it follows any border-radius.
+   * ⚠️ HISTORY, NOT SPEC. The recipe in this paragraph was TRIED AND REJECTED.
+   * It is kept because a deleted mistake comes back and a labelled one does not.
+   * Do not rebuild anything from it — the shipped recipe is the next paragraph.
+   *
+   * The first pass read the Figma kit's glass controls as Apple's Liquid Glass:
+   * three layers rather than a border — a translucent fill lighter at the top, a
+   * backdrop blur with a saturation LIFT, and a 1px gradient rim ramping white
+   * .32 → .08 → .24 (values taken off the Figma hover variant). Next to real
+   * macOS chrome it screamed, and it was rolled back.
+   *
+   * Four properties must therefore stay OUT of .liquid-glass:
+   *   1. 32% white in the rim's hot end — the single biggest offender;
+   *   2. an inner top highlight (a specular band inside the top edge);
+   *   3. a drop shadow under the glass;
+   *   4. saturate() in the backdrop filter (Bolt runs blur(10px) saturate(1.2);
+   *      that is the iOS recipe, and it is not ours).
+   *
+   * What SHIPPED instead is the macOS cut: fill rgba(24,24,27,.8) (--glass-bg),
+   * backdrop-blur 16 with no saturation, and one gentle diagonal rim swinging
+   * around Figma's 12% — 20% → 7% → 16% along 150°. Full recipe and reasoning:
+   * docs/design-system/surfaces.md §2.
    */
   /*
    * Glass, the macOS way — restrained.
@@ -680,23 +717,31 @@
     pointer-events: none;
   }
   /*
-   * The specular sweep: one pass of light along the rim as a panel opens.
-   * This is the iOS 26 signature that separates "a card scaled up" from "a
-   * surface arriving" — and it is purely motion, so it works on the opaque
-   * Figma fill exactly as well as it would on glass.
+   * ⚠️ HISTORY, NOT SPEC. `.glass-sheen` was BUILT AND REJECTED. There is no
+   * such rule in this file any more — the paragraphs below are a record, not an
+   * instruction. They are kept because a deleted mistake comes back and a
+   * labelled one does not.
    *
-   * Contract-safe: the band is painted once and moved with `transform`; the
-   * ring mask and the gradient never change. Plays once, then the element is
-   * inert — it lives and dies with the popover, so idle cost is zero.
-   */
-  /*
-   * There used to be a `.glass-sheen` here: a highlight that swept the Publish
-   * panel's rim as it opened. It is gone deliberately. A travelling sheen is a
-   * GLASS cue — light raking across a transparent surface — and this panel is
-   * opaque gray-850 in Figma. So it decorated a material the panel does not
-   * have, on the one surface where glass had already been tried and rolled
-   * back. The iOS-26 lesson the panel keeps is the MOTION (spring out of the
-   * trigger's corner, contents a beat behind); the material is Figma's.
+   * What it was: a specular sweep — one pass of light travelling along the
+   * Publish panel's rim as the panel opened, the iOS 26 signature that
+   * separates "a card scaled up" from "a surface arriving". It was
+   * contract-safe (one band painted once and moved with `transform`, ring mask
+   * and gradient never changing, inert after its single pass, zero idle cost),
+   * and the note that used to stand here argued exactly that: it is pure
+   * motion, so it works on the opaque Figma fill as well as it would on glass.
+   *
+   * Why it went: reverted 17 Aug 2026, on the designer's question "why this
+   * sheen effect?". Being cheap was never the objection. A travelling sheen is
+   * EVIDENCE OF GLASS — light raking across a translucent surface. The Publish
+   * panel is opaque gray-850 in Figma, and it is the one surface where
+   * translucent glass had already been tried and rolled back, so the sheen
+   * decorated a material the panel does not have.
+   *
+   * The surviving principle: a sheen belongs ONLY on a surface that is
+   * genuinely translucent. What this panel keeps from iOS 26 is the MOTION
+   * (spring out of the trigger's corner, contents a beat behind); the material
+   * is Figma's. Do not re-propose the sheen for the Publish panel — or for any
+   * opaque surface. Full reasoning: docs/design-system/motion.md §7.
    */
 
   /* Quieter cut — chat bubbles, large panels. Figma gives the bubble a faint
@@ -714,19 +759,40 @@
    * On iOS the ENTIRE inner perimeter is lit at once: a continuous multi-hue band
    * hugging the edge — a bright saturated core line right at the border and a tight
    * bloom that dies out within a few percent of the frame. The colours are spread
-   * around the perimeter and drift slowly. Build: two ring-masked conic layers —
-   * the crisp core (3px) and the bloom (44px, blur 36) — rotating slowly in sync,
-   * plus a second bloom drifting the OTHER way in plus-lighter, so hues mix and
-   * shift organically instead of reading as one rigid rotating frame.
+   * around the perimeter and drift slowly.
+   *
+   * Build — what actually ships: FOUR ring-masked conic layers, each with its own
+   * ring width, blur and clock, so the band never reads as one rigid rotating
+   * frame. The rules below are the source of truth; this list is a map of them:
+   *   --core    7px ring, blur 4,  8s        — the hot edge line
+   *   --dense  12px ring, blur 12, 6.5s      — carries most of the light
+   *   --soft   16px ring, blur 44, 9s        — the long falloff, dark surfaces only
+   *   --alt    16px ring, blur 26, 12s REVERSE — sparse counter-drifting accents
+   * plus the one-shot ignition flash (`.siri-flash`). The lite cut keeps only
+   * --dense and --core. Layer-by-layer reasoning and the measured cost of each
+   * configuration: docs/design-system/siri-glow-spec.md.
+   *
+   * ⚠️ HISTORY, NOT SPEC — two superseded descriptions of this build, kept
+   * because one of them is a trap someone would otherwise walk back into:
+   *   1. It is not "two layers: a crisp 3px core plus a 44px/blur-36 bloom
+   *      rotating in sync". That was an early cut; the four layers above ship.
+   *   2. The counter-drifting layer was originally composited in
+   *      `mix-blend-mode: plus-lighter`, so hues would ADD where layers cross.
+   *      That is BANNED — see the ring comment further down: exotic blends over
+   *      large filtered surfaces render solid-green garbage frames on some GPU
+   *      drivers. --alt gets the same organic mixing from ordinary compositing:
+   *      it drifts the other way, on its own clock, with alpha-holed stops.
    */
   /*
    * PERFORMANCE CONTRACT: nothing in this effect may invalidate paint per frame.
    * Rotating a conic-gradient's angle repaints four blurred layers on the CPU —
-   * measured 9fps. Instead each ring holds two oversized SQUARES (side 175% of
-   * the width, so any rotation covers the frame): one painted with the colour
-   * conic, one with black "wave" lobes multiplied on top. The squares rotate
-   * with `transform` — compositor-only. Masks, blurs and gradients are painted
-   * once; the only per-frame work is GPU compositing.
+   * measured 9fps. Instead each ring holds ONE oversized SQUARE (side 142cqmax:
+   * 142% of the frame's LARGER dimension, which is ≥ its diagonal, so the square
+   * still covers the frame at every angle) painted with the colour conic. The
+   * thickness waves are alpha holes baked into that same conic — not a second
+   * square multiplied on top, and not a blend mode. The square rotates with
+   * `transform` — compositor-only. Masks, blurs and gradients are painted once;
+   * the only per-frame work is GPU compositing.
    */
   .siri-glow {
     position: absolute;
@@ -855,10 +921,6 @@
   .siri-glow--split .siri-layer--dense { filter: blur(11px) saturate(160%); }
   .siri-glow--split .siri-layer--core { filter: blur(3px) saturate(170%) brightness(1.2); }
 
-  @keyframes siri-in {
-    from { opacity: 0; transform: scale(1.012); }
-    to   { opacity: 1; transform: none; }
-  }
   /* the entrance flash: a soft coloured bloom sweeps the WHOLE surface once and
      recedes into the edge ring — like the real effect igniting. Painted once,
      animated by opacity only; it ends invisible and costs nothing afterwards. */
@@ -900,16 +962,6 @@
     to   { opacity: 1; transform: scale(1); }
   }
 
-  body {
-    background: var(--gray-900);
-    color: var(--white-900);
-    /* theme(fontFamily.sans), not a literal stack: this rule is later than
-       Tailwind's preflight and used to silently drop whatever the config said —
-       which is how the OFL stand-in went missing from the body font while
-       still being listed in tailwind.config.js. One source of truth. */
-    font-family: theme(fontFamily.sans);
-    -webkit-font-smoothing: antialiased;
-  }
   /* Motion is feedback, not decoration — drop it when asked to. */
   /*
    * ⚠️ `transition: none`, NOT the widespread `transition-duration: .01ms`.

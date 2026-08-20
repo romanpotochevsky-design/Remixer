@@ -8,16 +8,34 @@ production engineer needs to accept it, port it, or re-implement it.
 
 ## What it costs — the headline numbers
 
-| Configuration | FPS |
-|---|---|
-| Naive implementation (animated gradient angles / masks) | **9** — rejected |
-| Final implementation, software rasterizer (no GPU at all) | 25–57 |
-| Final implementation, lite cut, software rasterizer | 40+ |
-| Any machine with GPU compositing (normal case) | 60 |
+Each row is one measurement on one rig, so read the rig with the number. The
+glow's cost swings by more than an order of magnitude between environments;
+none of these figures is a promise.
 
-All measurements: headless Chromium, 1600×900, effect active over a live page.
-The 9fps row is why the performance contract below exists — that version
-saturated the main thread so badly even a toolbar icon spin stuttered.
+| Configuration | Rig, and what was on screen | FPS |
+|---|---|---|
+| Naive implementation (animated gradient angles / masks) | headless Chromium 1600×900, dev build, effect active over the live preview | **9** — rejected |
+| Final implementation, full cut | headless Chromium 1600×900, **software rasterizer (no GPU at all)**, dev build, effect active over the live preview | 25–57 |
+| Final implementation, lite cut | same rig, software rasterizer | 40+ |
+| Final implementation, full cut | **published single-file build** (CSS/JS/fonts inlined), browser with no GPU, glow on over the live preview | **4** |
+| Same page, glow switched off | published single-file build, browser with no GPU | 60 |
+| Final implementation | any machine with GPU compositing — the normal case | 60 |
+
+⚠️ **The 25–57 row and the 4 row are both real, and they are not in conflict:
+different rig, different build.** The first is the dev server under headless
+Chromium; the second is the published artifact in a GPU-less browser, which is
+also roughly how the prototype gets watched inside the claude.ai preview panel.
+That second measurement, and the "blur is the expensive part, and there is no
+cheap version" analysis around it, is in `motion.md` §2. Do not quote either
+number as *the* frame rate — 4 is the floor we have seen and 60 the ceiling.
+
+**The honest conclusion: port the governor, not a headline number.** Because the
+spread is this wide, nothing static can be promised about the glow on an unknown
+machine. What makes it safe to ship is the quality governor below — it opens on
+the cheap cut, counts real frames with the glow on screen, and demotes when the
+machine cannot keep up. The 9fps row is why the performance contract exists at
+all: that version saturated the main thread so badly even a toolbar icon spin
+stuttered.
 
 ## The performance contract
 
@@ -76,16 +94,39 @@ repeats only on a multi-minute cycle.
 
 ## The quality governor
 
-`SiriGlow.tsx` degrades automatically; no configuration:
+`SiriGlow.tsx` degrades automatically; no configuration. The rule is **start
+cheap, earn expensive**: the glow always opens on the lite cut, and the machine
+has to prove it can afford more.
 
 - **Phones / touch devices** (`max-width: 820px` or `pointer: coarse`) get the
   lite cut immediately — no probe. Mobile GPUs pay fill-rate for every blurred
   pixel; the lite cut is indistinguishable at phone sizes.
-- **Everyone else** is probed once: the component counts real frames for 1.2s
-  on first activation. Under 30fps → lite cut, verdict cached for the session.
+- **Everyone else opens on the lite cut too, and is probed once.** After a 250ms
+  settle for the mount, the component counts real frames for 800ms — **while the
+  glow is on screen**. Above 50fps → promote to the full four layers; anything
+  less keeps the lite cut. The verdict is cached for the session.
+- **`full` is provisional, and counting continues after it.** The probe
+  necessarily ran on the *lite* cut, so it only proved the machine carries two
+  layers, not four. While the full cut is on screen the same 800ms windows keep
+  being measured, and **two consecutive windows below 30fps demote to lite for
+  the rest of the session**. Two, not one: a single window can be eaten by an
+  unrelated GC pause.
 - **Lite cut** = core + dense only, waves off: 2 composited squares, 2 blurs.
 - `prefers-reduced-motion` freezes all motion via the app-wide rule; the
   static ring remains as the loading indicator.
+
+⚠️ **Two earlier versions of this governor protected nobody. Both failures are
+the reason for the shape above — do not "simplify" back into either.**
+
+1. **The probe used to run before the glow existed**, over a single 1.2s window:
+   it measured an idle shell, concluded "fast machine", cached `full` and never
+   looked again. Five consecutive loads all landed on the four-layer cut. A frame
+   count only says something about the glow if the glow is running while it
+   counts — hence the lite-first open and the 250ms settle.
+2. **Promotion used to be permanent.** A borderline machine — the embedded
+   claude.ai preview panel, a laptop on battery — passed the probe, got `full`,
+   and then stuttered on every later send: "works right after a reload, degrades
+   afterwards". The two-strike demotion above is what fixed that.
 
 ## Battery and idle cost: zero
 
@@ -96,13 +137,29 @@ CSS animations when the tab is hidden.
 
 ## Porting notes
 
-- The CSS is self-contained (one section in `index.css`) and framework-free;
-  the component is ~50 lines of React for mounting + the governor.
+- The CSS is self-contained (one section in `index.css`) and framework-free.
+  `SiriGlow.tsx` is **153 lines**, and the governor is the bulk of it: the
+  `useGlowQuality` hook is **61 lines** of code (lines 35–95 — 82 lines if you
+  count the module-level cached verdict, the phone short-circuit and their
+  comments), against **34 lines** for mounting and render (44 with comments).
+  An earlier version of this note said "~50 lines for mounting + the governor";
+  that was true before the governor grew its promote-then-watch loop, and it
+  under-budgets the port by a factor of three.
 - Colours are the Remixer logo palette; changing the brand palette = editing
-  two conic-gradient stop lists.
+  **four** conic-gradient stop lists, one per layer (`--core`, `--dense`,
+  `--soft`, `--alt`), plus the ignition flash's radial stops. "Two" was the
+  two-layer-era count.
 - ⚠️ Tailwind users: layer class names must appear as full literals in source
   (`siri-layer--dense`), never composed as `siri-layer--${k}` — the content
   scanner purges rules whose class names it cannot find verbatim. This bug
   shipped once; the component now keeps a literal class map.
-- The wave squares assume `mask-composite: exclude` support (all evergreen
-  browsers). No `@property`, no Houdini, no JS per frame.
+- The RING MASK assumes `mask-composite: exclude` (plus the `-webkit-mask*`
+  pair beside it): two `linear-gradient(#fff 0 0)` layers, one of them
+  `content-box`, differenced on `.siri-layer > i` — so the `padding` on that
+  element is what sets each ring's width. Supported by all evergreen browsers.
+  No `@property`, no Houdini, no JS per frame. ⚠️ This bullet used to read "the
+  **wave squares** assume `mask-composite: exclude`" — wording left over from a
+  two-square build in which a second square multiplied black wave lobes over the
+  colour square. That build is gone: there is one square per layer, the waves
+  are alpha holes in its own conic, and the square needs no mask at all. The
+  ring does.
