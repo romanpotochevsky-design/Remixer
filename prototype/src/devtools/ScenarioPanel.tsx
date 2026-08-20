@@ -5,7 +5,12 @@
  * labels, no brand colour. In a screen share or a screenshot nobody should mistake it for
  * part of the product.
  *
- * Toggle with ⌘. (Ctrl+. on Windows) or the handle in the bottom-right corner.
+ * Toggle with ⌘. (Ctrl+. on Windows) or the handle in the bottom-LEFT corner.
+ *
+ * ⚠️ The handle lives bottom-LEFT on purpose, and must stay there. It sat bottom-right
+ * twice and collided with the demo site's own support bubble both times — because
+ * bottom-right is where every real site puts its chat FAB, so nudging our handle a few
+ * pixels only postpones the collision. Bottom-left is empty by convention.
  * "Режим показа" hides the handle so only the keyboard opens it.
  */
 import { useEffect, useState } from 'react'
@@ -53,7 +58,7 @@ export function ScenarioPanel() {
       {!presenter && !open && (
         <button
           onClick={() => setOpen((v) => !v)}
-          className="group fixed bottom-2.5 right-2.5 z-[9998] grid h-6 w-6 place-items-center
+          className="group fixed bottom-2.5 left-2.5 z-[9998] grid h-6 w-6 place-items-center
                      rounded-md opacity-25 transition-opacity duration-200 ease-[cubic-bezier(.2,0,0,1)]
                      hover:bg-white/10 hover:opacity-100 focus-visible:opacity-100"
           title="Prototype console · ⌘."
