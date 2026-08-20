@@ -164,7 +164,7 @@ comparison table concedes "Professional email: Yes — Purchase required" (§8.2
 | Field position, one-line verdict, "wins the entry screen and loses everything after it" | §1.2, §2, §10 closing note |
 | Where we stand against them (ties on price, ahead on credit visibility) | §6 |
 | Our zero-record play, and why it needs rewriting | §8.1 + `connect.md` §4.3 |
-| Same-house zero-record rail, connect entry depth, Entri×GoDaddy convergence | `connect.md` §4.2, §4.3, §3, §12.6 |
+| Same-house zero-record rail, connect entry depth, Entri×GoDaddy convergence | `connect.md` §4.2, §4.3, §3, §12 decision 6 |
 | Verified live captures of GoDaddy's available/taken domain result screens and connect options | `search.md` § competitor-search-ux |
 | Why "nobody can copy it" is the wrong frame | critique §2 |
 | The MCP gap and the Hostinger lesson never applied to our own panel | critique §1 |
