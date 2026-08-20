@@ -385,9 +385,9 @@ function ResultsScreen() {
      external situations stage — we do not, and `research/connect.md` §7 says nobody does
      at this moment. The affirmative therefore routes to the screen that can actually settle
      it: the record change at the other company IS the proof, which is why it is deferred. */
-  const inAccount = (OWNED_DOMAINS[world.inventory] ?? []).some((o) => o.domain === hero.domain)
 
   const hero = exactMatch(term)
+  const inAccount = (OWNED_DOMAINS[world.inventory] ?? []).some((o) => o.domain === hero.domain)
   const heroPrice = priceFor(hero.tld)!
   const heroTaken = isTaken(hero.domain)
   const endings = otherEndings(term)
