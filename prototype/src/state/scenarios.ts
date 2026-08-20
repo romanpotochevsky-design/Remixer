@@ -123,8 +123,13 @@ export const PRESETS: Preset[] = [
   {
     id: 'external-manual',
     label: { en: 'Domain at another registrar', uk: 'Домен в іншого реєстратора' },
-    note: { en: 'Namecheap — no Domain Connect, guided manual records', uk: 'Namecheap — без Domain Connect, ручні записи з підказками' },
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', unpublished: 0 },
+    note: { en: 'Type a domain of your own to reach the guided manual path', uk: 'Введіть свій домен, щоб дійти до ручного шляху з підказками' },
+    /* Opens on the domain surface, NOT mid-connect. It used to land on `connecting`,
+       which dropped the viewer past the very step this preset is named for — the
+       records were already pasted and there was nothing left to show. The point of
+       this situation is the ENTRY: type a domain that is not in the account and watch
+       the field route it to the external screen. */
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'searching', unpublished: 0 },
   },
 ]
 
