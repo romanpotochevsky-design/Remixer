@@ -4,7 +4,7 @@
  * Deliberately separate from the world store. The world is product truth ("the user has
  * a plan, their domain is connecting"); this store is merely where the camera points
  * ("the domains surface is open, the publish popover is up"). Scenario switches and
- * flows rewrite the world; they must never have to know or care which panel happened
+ * situations rewrite the world; they must never have to know or care which panel happened
  * to be open. Keeping the two apart is what lets both grow for years without tangling.
  *
  * A "surface" is a module that renders in place of the site preview inside the same

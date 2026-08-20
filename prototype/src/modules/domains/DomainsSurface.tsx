@@ -729,16 +729,19 @@ function StatusScreen() {
     : world.domain === 'verifying' ? 1
     : 0
   const done = stage === 3
-  /* `securing` carries NO ACTION ON THE DOMAIN, and that absence IS the message: nothing
+  /* `securing` used to render NO BUTTON BAR AT ALL — the absence was the message: nothing
      is required of the person here (STATES.md, `securing` — "Глагол. Нет, намеренно").
-     Do not add Refresh, Try again, Fix or anything else that implies the padlock can be
-     hurried — it cannot, and offering the gesture would invite pointless clicking.
+     That held while a flow player advanced the state on a timer. The player was deleted on
+     20.08.2026 at the designer's request (every flow is now walked by hand), which turned
+     this screen into the only state you could enter and not leave: no click anywhere in the
+     product moved `securing` → `live`.
 
-     `Keep editing` is the one exception, and it is not a counter-example: it acts on the
-     SCREEN, not on the domain. It is the way out, which is literally what the body copy
-     instructs — a screen that says "nothing for you to do" and then traps you contradicts
-     itself, and someone landing here outside a flow would be stuck. Quiet secondary only,
-     the same treatment as the escape on the `needs-attention` branch below. */
+     Fixed by giving it the SAME bar the other waiting states already carry — `Refresh
+     status`, which advances exactly one stage per click, plus the quiet `Keep editing`
+     escape. The copy still says "nothing for you to do", and that stays true of the
+     DOMAIN: refreshing does not hurry the padlock, it asks whether it has arrived, which
+     is the honest gesture and the one the customer will make anyway. What it must never
+     become is `Try again` or `Fix` — those claim the wait is the person's to shorten. */
   const securing = stage === 2
 
   // The canonical success checklist — one fixed order on every success screen.
@@ -890,8 +893,7 @@ function StatusScreen() {
         ))}
       </div>
 
-      {/* `securing` renders no button bar at all — see the note on `securing` above. */}
-      {!securing && (
+      {/* One bar for every unfinished stage, `securing` included — see the note above. */}
       <div className="mt-5 flex gap-2">
         {done ? (
           <>
@@ -908,9 +910,11 @@ function StatusScreen() {
         ) : (
           <>
             <button
-              /* connecting → securing → live. The padlock is a stop on this road, not a
-                 side effect of arriving: skipping it is what printed "instantly secured". */
-              onClick={() => set({ domain: stage === 0 || stage === 1 ? 'securing' : 'live' })}
+              /* connecting → verifying → securing → live, ONE stage per click — the only
+                 engine this story has now that the flow player is gone. The padlock is a
+                 stop on this road, not a side effect of arriving: skipping it is what
+                 printed "instantly secured". */
+              onClick={() => set({ domain: stage === 0 ? 'verifying' : stage === 1 ? 'securing' : 'live' })}
               className="h-11 flex-1 rounded-control border border-[var(--white-200)] text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
             >
               {t({ en: 'Refresh status', uk: 'Оновити статус' })}
@@ -924,17 +928,6 @@ function StatusScreen() {
           </>
         )}
       </div>
-      )}
-
-      {/* the one way out of `securing` — see the note on `securing` above */}
-      {securing && (
-        <button
-          onClick={closeSurface}
-          className="mt-5 w-full text-center text-[13px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[var(--white-700)]"
-        >
-          {t({ en: 'Keep editing', uk: 'Редагувати далі' })}
-        </button>
-      )}
     </Screen>
   )
 }

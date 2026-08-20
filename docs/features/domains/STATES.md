@@ -609,7 +609,7 @@ account."* Shopify упирается в поддержку с доказате�
 | 6 | `OwnScreen`, `dh-in-use` | один страшный confirm «Replace site at {domain}» | два названных варианта с последствиями (`DECISIONS.md` 20 «Коллизию решает пользователь, а не поддержка») |
 | 7 | `OwnScreen`, `dh-external-ns` | амбер-карточка про Cloudflare + «About 5 minutes» | карточка правильная; «5 минут» — это время работы человека, а не срок ожидания, и рядом с ним должен стоять вариант B, а не общий `connecting` |
 | 8 | `PublishPanel` | «Connecting — usually a few minutes» на всех путях; `securing` не существует | см. раздел про чеклист выше |
-| 9 | `prototype/src/state/flows.ts`, `connect-external` | шаг «Choosing how to connect» проигрывается в сценарии | экрана выбора способа нет и не будет до PO на Entri (`DECISIONS.md` 17 «Ручной путь — primary; one-click — помеченный вариант»). Это подпись для консоли, а не продуктовая строка, но на демо CEO она читается как обещание |
+| 9 | ~~`prototype/src/state/flows.ts`, `connect-external`~~ — **снято 20.08.2026: файл удалён вместе с плеером флоу** | шаг «Choosing how to connect» проигрывался в сценарии | экрана выбора способа нет и не будет до PO на Entri (`DECISIONS.md` 17 «Ручной путь — primary; one-click — помеченный вариант»). Это подпись для консоли, а не продуктовая строка, но на демо CEO она читается как обещание |
 
 ---
 

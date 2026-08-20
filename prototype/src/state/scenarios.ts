@@ -73,14 +73,13 @@ export const PRESETS: Preset[] = [
     patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0 },
   },
   {
-    /* The padlock moment, reachable in one click. Nobody demoing this should have to
-       play a flow to reach the stage where "Connected to your site" is ticked and
-       "Security (SSL) on" is still running (FACTS DH-301). */
+    /* The padlock moment, reachable in one click: the stage where "Connected to your
+       site" is ticked and "Security (SSL) on" is still running (FACTS DH-301). */
     id: 'securing',
     label: { en: 'Turning on the padlock', uk: 'Увімкнення замочка' },
     note: {
-      en: 'Address answers, certificate not issued yet — the state the checklist exists to explain. No button on this screen, by design',
-      uk: 'Адреса вже відповідає, сертифіката ще немає — саме той стан, для якого й існує чекліст. Кнопки на цьому екрані немає, це навмисно',
+      en: 'Address answers, certificate not issued yet — the state the checklist exists to explain. Refresh status carries on to live',
+      uk: 'Адреса вже відповідає, сертифіката ще немає — саме той стан, для якого й існує чекліст. «Оновити статус» веде далі, до живого',
     },
     patch: { account: 'paid', credits: 970, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'securing', unpublished: 0 },
   },

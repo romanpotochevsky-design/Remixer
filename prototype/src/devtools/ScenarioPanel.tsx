@@ -20,7 +20,6 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, violations, type World } from '@/state/world'
 import { AXES, GROUPS, PRESETS, describe } from '@/state/scenarios'
-import { FlowList } from './FlowPlayer'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { useT } from '@/i18n'
 
@@ -132,10 +131,12 @@ export function ScenarioPanel() {
             </div>
 
             <ScrollArea className="min-h-0 flex-1" innerClassName="px-4 py-4" thumb="dark">
-              {/* whole flows, played end to end */}
-              <FlowList />
-
-              {/* presets — single frozen situations */}
+              {/* Situations — the STARTING state you pick before you start clicking.
+                  The "Whole flows" player that used to sit above this (a stepper with
+                  arrows, a step counter and speed controls) was deleted on 20.08.2026 at
+                  the designer's request: a narrated stepper is not how a customer meets
+                  the interface. Every flow is now walked by hand through the real UI, so
+                  no state may be enterable without also being leavable by a click. */}
               <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
                 Situations
               </p>

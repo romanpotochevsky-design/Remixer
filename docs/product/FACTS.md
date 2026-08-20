@@ -59,7 +59,7 @@ citation below marked "search extraction" was read out of search results, never 
 
 | ID | Fact | Status | Date | Source | Depends on it |
 |---|---|---|---|---|---|
-| **DH-001** | The paid plan is called **"Remixer Build"**, $9.99/mo billed yearly — $119.88 up front, marketed as "Save 33%". | verified | Jun 2026 | dreamhost.com, via `docs/features/domains/handoff-design.md` "Real product facts" | `DomainModal.tsx` plan cards · `PublishPanel.tsx` Case 1 · `flows.ts` · every publish/paywall frame |
+| **DH-001** | The paid plan is called **"Remixer Build"**, $9.99/mo billed yearly — $119.88 up front, marketed as "Save 33%". | verified | Jun 2026 | dreamhost.com, via `docs/features/domains/handoff-design.md` "Real product facts" | `DomainModal.tsx` plan cards · `PublishPanel.tsx` Case 1 · every publish/paywall frame (`flows.ts` удалён 20.08.2026) |
 | **DH-002** | Paid monthly: **$9.99 for the first month, then $14.99/mo**. | verified | Jun 2026 | as DH-001 | `DomainModal.tsx` monthly card + footnote · `scenarios.ts` billing hints |
 | **DH-003** | Free trial is **30 days with no credit card**. DreamHost markets it as the longest no-card trial in the category; the audit confirms the length but notes every competitor runs a *perpetual* free tier instead, so it is a differently-shaped offer, not an unambiguous win. | verified (length) / likely (superlative) | Aug 2026 | handoff "Real product facts"; `synthesis-q3-2026.md` §6, §5.1 row 19 | Trial copy · paywall framing · POSITIONING |
 | **DH-004** | The trial **starts after the first site generates**, not at signup. Building with AI is the trial. | verified | Jun 2026 | handoff "Trial logic" | Onboarding copy · trial-day counter (`world.trialDay`) |

@@ -7,8 +7,8 @@
  * a 16px backdrop blur and one even 12%-white hairline — macOS-restrained, no specular
  * rim. Ground is gray-950; the site preview floats on it with an 8px gutter.
  *
- * Everything still renders from the world store — the scenario console and flows
- * drive this shell exactly as they drove the old one.
+ * Everything still renders from the world store — the scenario console picks the
+ * starting situation, and every flow is then walked by hand, by clicking the real UI.
  */
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
@@ -16,7 +16,6 @@ import { useWorld, canUseAI, hasPlan } from '@/state/world'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
-import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
@@ -198,9 +197,15 @@ export default function App() {
             </Glass>
           </div>
 
-          {/* center: project button, 280×40 — the live address in permanent chrome */}
+          {/* center: project button, 280×40 — the live address in permanent chrome.
+              Which screen it opens is the ONLY way into the status page by hand, so the
+              list below must cover every state whose screen lives there — `unreachable`
+              was missing (20.08.2026): the broken-domain screen and its "Fix this" verb
+              could not be reached by any click, only by the deleted flow player. `live`
+              and `multiple` stay on `home` on purpose — the walk already ends on the
+              success screen, and home is where a second domain gets bought. */}
           <button
-            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing' || world.domain === 'ready' ? 'status' : 'home')}
+            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' || world.domain === 'securing' || world.domain === 'ready' || world.domain === 'unreachable' ? 'status' : 'home')}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -346,7 +351,6 @@ export default function App() {
           <main> where the domains surface lives. */}
       <DomainModal />
 
-      <FlowRunner />
       <ScenarioPanel />
     </div>
   )

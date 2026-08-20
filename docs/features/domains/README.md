@@ -108,7 +108,7 @@ https://www.figma.com/design/GP4jNXtc37VTFVZDc9JF0a/AI-Website-Builder
 | Файл | Что делает |
 |---|---|
 | `prototype/src/state/world.ts` | Оси состояния. `Inventory` = что у человека есть, `DomainState` = что делает домен проекта. Новое измерение добавляется сначала здесь. |
-| `prototype/src/state/flows.ts` | Проигрываемые сценарии для демо: `connect-external`, `connect-dreamhost`, `trial-to-paid`, `publish`. |
+| ~~`prototype/src/state/flows.ts`~~ | **Удалён 20.08.2026** вместе с `devtools/FlowPlayer.tsx` — по просьбе дизайнера: степпер, пересказывающий продукт, — не то, как клиент встречает интерфейс. Флоу проходятся руками по настоящему UI, пресеты `scenarios.ts` дают только стартовое состояние. |
 | `prototype/src/state/scenarios.ts` | Мировые пресеты консоли: `dh-zero-record`, `connecting`, `live`, `live-stale`, `domain-broken`, `external-manual`. |
 | `prototype/src/data/domains.ts` | Цены (`TLD_PRICES`, verified), AI-подсказки, генераторы выдачи, домены в аккаунте (`OWNED_DOMAINS`), `STAGING_HOST`. |
 | `prototype/src/modules/domains/DomainsSurface.tsx` | Пять экранов поверхности: `home`, `results`, `own`, `external`, `status` + постоянная шапка поиска. |
