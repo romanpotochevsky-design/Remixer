@@ -36,7 +36,7 @@ export type Inventory =
    * is one of the three providers Shopify's "Connect automatically" supports).
    * Cloudflare still needs its proxy set to "DNS only" before verification passes —
    * automatable, but with a triage card. One-click needs Entri; see
-   * docs/research/domain-connect-competitive-teardown.md §4.
+   * docs/features/domains/research/connect.md §4.
    */
   | 'external-dc'
   /** No Domain Connect on the authoritative side (Namecheap is the canonical case) —
