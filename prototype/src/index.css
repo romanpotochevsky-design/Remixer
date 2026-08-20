@@ -605,10 +605,17 @@
   }
 
   /*
-   * The Best-match hero's rim (Figma 27085:107276): #be59ff fading out along the
-   * diagonal. Drawn as a ring mask, NOT as a border-box background layer — the
-   * card's own fill is 10% alpha, so an opaque gradient underneath would show
-   * straight through it (it did: the whole label row went solid purple).
+   * The Best-match hero's rim (Figma 27085:107276): #be59ff fading out
+   * HORIZONTALLY, left to right — the same 90° axis as the card's own wash.
+   * Drawn as a ring mask, NOT as a border-box background layer — the card's own
+   * fill is 10% alpha, so an opaque gradient underneath would show straight
+   * through it (it did: the whole label row went solid purple).
+   *
+   * ⚠️ HISTORY, NOT SPEC — a 135° version of this rim was built and dropped:
+   * run diagonally, the light cut across the fill's axis and lit the bottom-left
+   * corner that the fill leaves dark. This comment described the rim as diagonal
+   * long after that version was gone; the rule below is 90°, and the inline note
+   * on it says which axis and why.
    */
   .bestmatch-rim {
     position: absolute;
@@ -617,8 +624,8 @@
     padding: 1px;
     pointer-events: none;
     /* Same axis as the card's own wash (90°): violet where the tint is strongest,
-       through blue, gone by the right edge. A 135° rim ran the light diagonally
-       against the fill and lit the bottom-left corner the fill leaves dark. */
+       through blue, gone by the right edge. (The rejected 135° version is recorded
+       in the block comment above.) */
     background: linear-gradient(90deg, #be59ff, rgba(77, 114, 255, 0.4) 62%, rgba(77, 114, 255, 0) 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -837,7 +844,7 @@
     will-change: transform;
   }
 
-  /* the hot edge line — shallow alpha dips, its own 12s clock */
+  /* the hot edge line — shallow alpha dips, its own 8s clock */
   .siri-layer--core > i { padding: 7px; }
   .siri-layer--core { filter: blur(4px) saturate(160%) brightness(1.25); }
   .siri-layer--core .siri-spin {
@@ -848,7 +855,7 @@
     animation: siri-rot 8s linear infinite;
   }
 
-  /* the dense halo — deep alpha holes, 9s */
+  /* the dense halo — deep alpha holes, 6.5s */
   .siri-layer--dense > i { padding: 12px; }
   .siri-layer--dense {
     filter: blur(12px) saturate(140%);
@@ -862,7 +869,7 @@
     animation: siri-rot 6.5s linear infinite;
   }
 
-  /* the soft wash — its own dip pattern, 11s, so it slides against the halo */
+  /* the soft wash — its own dip pattern, 9s, so it slides against the halo */
   .siri-layer--soft > i { padding: 16px; }
   .siri-layer--soft {
     filter: blur(44px) saturate(125%);
