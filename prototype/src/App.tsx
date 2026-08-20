@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { useWorld, canUseAI, hasPlan } from '@/state/world'
+import { useWorld, canUseAI, hasPlan, paymentFailed } from '@/state/world'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
@@ -343,6 +343,30 @@ export default function App() {
       {!canUseAI(world) && !hasPlan(world) && world.account === 'trial-expired' && (
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-full bg-[var(--gray-850)] px-4 py-2 text-[13px] text-[var(--white-500)] shadow-lg">
           {t({ en: 'Trial ended — your site is safe. Upgrade to keep editing with AI.', uk: 'Тріал завершився — сайт у безпеці. Оновіться, щоб редагувати з AI.' })}
+        </div>
+      )}
+
+      {/*
+        Dunning notice — the whole UI of `payment-failed`, on purpose.
+
+        ⚠️ It names the problem and the one action available, and it says NOTHING
+        about the site: not "your site is safe" (the line the lapsed trial above is
+        allowed to use, because there the behaviour IS decided), and not that it is
+        down either. Whether a live site on a custom domain survives a failed
+        renewal is a blocking product question owned by DreamHost billing —
+        docs/features/account-and-billing.md §2. Everything printed here is true
+        under every possible answer to it; the next person fills the gap from
+        billing's dunning policy, not from a guess made here.
+
+        Verb: `Fix` — the house verb for a guided repair of a detected problem
+        (COPY-RULES §2). NOT `Update`, which in this product means re-publishing.
+      */}
+      {paymentFailed(world) && (
+        <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-full bg-[var(--gray-850)] px-4 py-2 text-[13px] text-[var(--attention)] shadow-lg">
+          {t({
+            en: 'Payment didn’t go through. Fix payment to restore your plan.',
+            uk: 'Платіж не пройшов. Виправте оплату, щоб відновити план.',
+          })}
         </div>
       )}
 

@@ -257,6 +257,12 @@ export function PublishPanel() {
                       {t({ en: 'Connect your own domain', uk: 'Підключити власний домен' })}
                     </span>
                     <span className="mt-1 block text-[13px] leading-normal text-[var(--white-500)]">
+                      {/* `payment-failed` (added 20 Aug 2026) lands in the lower branch,
+                          and that is correct without deciding anything: connecting a NEW
+                          domain does require an active plan, and this whole card is hidden
+                          once a domain is live or connecting, so it makes no claim about an
+                          EXISTING site — the open billing question in
+                          docs/features/account-and-billing.md §2. */}
                       {paid
                         ? t({ en: 'Included in your Remixer Build plan', uk: 'Входить у ваш план Remixer Build' })
                         : t({ en: 'Requires the Remixer Build plan — $9.99/mo', uk: 'Потрібен план Remixer Build — $9.99/міс' })}

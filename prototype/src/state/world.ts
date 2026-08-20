@@ -10,7 +10,27 @@ import { create } from 'zustand'
 /* ------------------------------------------------------------------ axes */
 
 /** Where the customer stands with us commercially. */
-export type Account = 'anonymous' | 'trial' | 'trial-expired' | 'paid'
+export type Account =
+  | 'anonymous'
+  | 'trial'
+  | 'trial-expired'
+  | 'paid'
+  /**
+   * The subscription existed and the renewal payment did not go through.
+   * Named by the designer 20 Aug 2026 (docs/features/account-and-billing.md §2)
+   * as the fifth value this axis was missing.
+   *
+   * ⚠️ What happens to a LIVE SITE on a custom domain in this state is a
+   * BLOCKING product question owned by DreamHost billing, not by design: does
+   * the site go dark at once, fall back to the `*.remixer.ai` address (DH-302),
+   * sit in a grace period of N days, and does a domain bought through us keep
+   * living on its own? Until billing answers, this value carries ONLY what is
+   * true under every possible answer: entitlement behaves like `trial-expired`
+   * (AI off, neither the site nor the project destroyed), and no screen says
+   * anything about whether the site is still up. Do not fill that silence by
+   * guessing — fill §2 first, from billing.
+   */
+  | 'payment-failed'
 
 export type Billing = 'monthly' | 'yearly'
 
@@ -131,9 +151,15 @@ export const DEFAULT_WORLD: World = {
 
 /* ------------------------------------------------------------- selectors */
 
+/** `payment-failed` is deliberately NOT a plan: the renewal did not happen, so
+ *  entitlement mirrors `trial-expired`. Says nothing about the live site — see
+ *  the `payment-failed` note above and docs/features/account-and-billing.md §2. */
 export const hasPlan = (w: World) => w.account === 'paid'
 export const inTrial = (w: World) => w.account === 'trial'
-/** AI actions need both an entitlement and a balance. */
+/** The dunning state, for the one line and one verb it is allowed to render. */
+export const paymentFailed = (w: World) => w.account === 'payment-failed'
+/** AI actions need both an entitlement and a balance.
+ *  `payment-failed` is absent on purpose — AI off, exactly as for a lapsed trial. */
 export const canUseAI = (w: World) =>
   (w.account === 'trial' || w.account === 'paid') && w.credits > 0
 /** Going live on a custom domain is a paid capability. Staging is always free. */
@@ -161,7 +187,17 @@ export interface Violation {
 export function violations(w: World): Violation[] {
   const out: Violation[] = []
 
-  if (isCustomDomainActive(w) && !hasPlan(w)) {
+  /*
+   * The paid-plan gate on a custom domain — true for everyone who has never had
+   * a plan. `payment-failed` is excluded, and the exclusion is the honest move,
+   * not an oversight: whether a custom domain survives a failed renewal is the
+   * open billing question (docs/features/account-and-billing.md §2). Calling the
+   * combination impossible here would invent the answer AND print it in the
+   * console as a settled reason. So the console lets you stage payment-failed
+   * with a live domain — which is precisely the state billing has to rule on.
+   * When §2 is answered, this is the line that changes.
+   */
+  if (isCustomDomainActive(w) && !hasPlan(w) && w.account !== 'payment-failed') {
     out.push({
       field: 'domain',
       value: w.domain,

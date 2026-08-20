@@ -178,6 +178,13 @@ export const AXES: Axis[] = [
       { value: 'trial', label: { en: 'On trial', uk: 'Тріал' } },
       { value: 'trial-expired', label: { en: 'Trial expired', uk: 'Тріал завершився' } },
       { value: 'paid', label: { en: 'Paid', uk: 'Оплачено' } },
+      {
+        value: 'payment-failed',
+        label: { en: 'Payment failed', uk: 'Платіж не пройшов' },
+        /* The hint stops at the entitlement. What happens to a live site is the
+           open billing question — docs/features/account-and-billing.md §2. */
+        hint: { en: 'subscription not renewed — AI off', uk: 'підписка не поновилася — AI вимкнено' },
+      },
     ],
   },
   {
@@ -191,7 +198,9 @@ export const AXES: Axis[] = [
       { value: 'monthly', label: { en: 'Monthly', uk: 'Щомісячно' }, hint: { en: '$14.99/mo', uk: '$14.99/міс' } },
       { value: 'yearly', label: { en: 'Yearly', uk: 'Річний' }, hint: { en: '$9.99/mo', uk: '$9.99/міс' } },
     ],
-    appliesWhen: (w) => w.account === 'paid',
+    /* Also on `payment-failed`: the lapsed subscription had a term, and hiding it
+       would leave a stale value in the world with no way to see or change it. */
+    appliesWhen: (w) => w.account === 'paid' || w.account === 'payment-failed',
   },
   {
     key: 'credits', group: G.credits, label: { en: 'Balance', uk: 'Баланс' }, kind: 'number',
@@ -264,6 +273,11 @@ export function describe(w: World): Text {
   if (w.account === 'anonymous') { en.push('Not signed up'); uk.push('Не зареєстрований') }
   else if (w.account === 'trial') { en.push(`Trial · day ${w.trialDay} of 30`); uk.push(`Тріал · день ${w.trialDay} з 30`) }
   else if (w.account === 'trial-expired') { en.push('Trial expired'); uk.push('Тріал завершився') }
+  /* Its own branch, not a fall-through: without it `payment-failed` landed in the
+     final `else` below and the console read it out as "Paid" — the exact silent
+     miscategorisation that adding a value to an axis invites. The sentence stops
+     at the subscription and says nothing about the site (account-and-billing §2). */
+  else if (w.account === 'payment-failed') { en.push('Payment failed · not renewed'); uk.push('Платіж не пройшов · не поновлено') }
   else if (w.billing === 'yearly') { en.push('Paid · yearly'); uk.push('Оплачено · річний') }
   else { en.push('Paid · monthly'); uk.push('Оплачено · щомісячно') }
 

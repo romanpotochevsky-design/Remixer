@@ -167,6 +167,10 @@ export function DomainModal() {
 
   /* The plan chooser is what makes the sheet tall, and it is present exactly when
      the account cannot go live yet. Everything else keys off these two booleans. */
+  /* `payment-failed` (added 20 Aug 2026) has no active plan, so it sees the plan
+     chooser here — and `confirm()` below hands back `paid`, which is what settling
+     the payment does. Nothing here states what happened to an already-live site;
+     that is billing's answer to give (docs/features/account-and-billing.md §2). */
   const showPlans = !paid
 
   const confirm = () => {

@@ -25,12 +25,58 @@
  */
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useWorld, violations, type World } from '@/state/world'
-import { AXES, GROUPS, PRESETS, describe } from '@/state/scenarios'
+import { useWorld, violations, type Account, type World } from '@/state/world'
+import { AXES, GROUPS, PRESETS, describe, type Preset } from '@/state/scenarios'
 import { ScrollArea } from '@/ui/ScrollArea'
-import { useT } from '@/i18n'
+import { useT, type Text } from '@/i18n'
 
 const EASE = [0.2, 0, 0, 1] as const
+
+/*
+ * ------------------------------------------------- the subscription axis (outer)
+ *
+ * The situations used to be one flat list, so two independent axes — the account
+ * state and the domain state — were multiplied into it and it read as mush
+ * (designer, 20.08.2026: docs/features/account-and-billing.md §1). The account
+ * axis now sits ABOVE the situations as their frame; the situations are the inner
+ * list. Both axes were always separate in the code (`Account` / `DomainState`);
+ * only the console failed to show it.
+ *
+ * The control is DERIVED from `world.account` — never a second copy of it, per
+ * the rule at the top of world.ts — so it cannot go stale, and any situation or
+ * axis click that moves the account moves the control with it.
+ *
+ * PRECEDENCE (the least surprising of the options, and why):
+ *   · a SUBSCRIPTION click changes only `world.account` and leaves the staged
+ *     situation alone. That is the only way to reach a combination no preset
+ *     names — e.g. `payment-failed` + a live domain, the exact state §2 has to
+ *     rule on;
+ *   · a SITUATION click applies the preset whole, INCLUDING the account state it
+ *     names. The situation is the more specific statement, and a third of these
+ *     labels are account states ("Trial expired", "Paid, no domain") — stripping
+ *     their account would leave the button lying about what it staged.
+ *   ⇒ the last thing clicked wins, and the control shows where you are. Nothing
+ *     is silently overridden, because nothing is stored twice.
+ *
+ * A situation is DISABLED when it cannot exist under the account state now
+ * chosen (tested with `violations()`, never with new rules of the console's own)
+ * — struck through with the product's reason in its title, not hidden: the whole
+ * point is to see that a live custom domain is impossible without a paid plan.
+ * A disabled situation is reachable in two clicks: choose the frame, then it.
+ */
+const SUBSCRIPTION: { has: boolean; label: Text }[] = [
+  { has: true, label: { en: 'Has subscription', uk: 'Є підписка' } },
+  { has: false, label: { en: 'No subscription', uk: 'Підписки немає' } },
+]
+
+/** The designer's three, in his order. `anonymous` is deliberately not among them:
+ *  "not signed up" is the state before any subscription, not a kind of not having
+ *  one, and it stays reachable on the Customer → Status axis below. */
+const NO_SUBSCRIPTION: { value: Account; label: Text }[] = [
+  { value: 'trial', label: { en: 'In trial', uk: 'У тріалі' } },
+  { value: 'trial-expired', label: { en: 'Trial expired', uk: 'Тріал завершився' } },
+  { value: 'payment-failed', label: { en: 'Payment failed, not renewed', uk: 'Платіж не пройшов, підписку не поновлено' } },
+]
 
 export function ScenarioPanel() {
   const [open, setOpen] = useState(false)
@@ -53,6 +99,57 @@ export function ScenarioPanel() {
   /** Would picking this value produce a state the real product cannot reach? */
   const blocked = (key: keyof World, value: unknown) =>
     violations({ ...world, [key]: value } as World).find((v) => v.field === key)
+
+  const hasSubscription = world.account === 'paid'
+  const staged = problems.map((v) => v.field + v.value)
+
+  /**
+   * What an account state ENTAILS on another axis. Not extra design: `violations()`
+   * already states that a lapsed trial has a zero balance, so the frame has to carry
+   * that with it. Without this, choosing "Trial expired" struck out fourteen of the
+   * fifteen situations — every one of them carries credits — and the frame the
+   * designer asked for arrived dead on its first click.
+   *
+   * `payment-failed` entails NOTHING here on purpose: whether the balance, the domain
+   * or the site survive a failed renewal is the open billing question
+   * (docs/features/account-and-billing.md §2). Guessing a value would answer it.
+   */
+  const entail = (account: Account): Partial<World> =>
+    account === 'trial-expired' ? { account, credits: 0 } : { account }
+
+  /**
+   * The violation moving the account would INTRODUCE — not one already on screen.
+   *
+   * Deliberately not `blocked('account', …)`: the paid-plan gate is filed under
+   * `domain` (that is the field which has to give way), so filtering by field
+   * misses the one case the designer asked to see — dropping the subscription
+   * while a custom domain is live.
+   */
+  const accountBlocked = (account: Account) =>
+    violations({ ...world, ...entail(account) } as World).find(
+      (v) => !staged.includes(v.field + v.value),
+    )
+
+  /** Can this situation exist for the account state now chosen? Tested with the
+   *  CHOSEN account, not the one the preset carries — the frame is the outer axis. */
+  const presetBlocked = (p: Preset) =>
+    violations({ ...world, ...p.patch, ...entail(world.account) } as World)[0]
+
+  /** The distinct reasons ruling situations out right now, deduplicated on the
+   *  English string: eight struck-through buttons almost always share one cause,
+   *  and eight copies of it would read as noise. */
+  const blockedReasons = PRESETS.reduce<Text[]>((acc, p) => {
+    const v = preset === p.id ? undefined : presetBlocked(p)
+    if (v && !acc.some((r) => r.en === v.reason.en)) acc.push(v.reason)
+    return acc
+  }, [])
+
+  /** `No subscription` has to land on one of its three. It prefers "in trial" — the
+   *  common case — and skips to the first reachable one when the staged situation
+   *  rules that out (a live domain leaves only `payment-failed`, whose reachability
+   *  is the open question in account-and-billing §2). */
+  const firstReachableNoSub = () =>
+    NO_SUBSCRIPTION.find((o) => !accountBlocked(o.value))?.value
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(window.location.href)
@@ -138,28 +235,97 @@ export function ScenarioPanel() {
             </div>
 
             <ScrollArea className="min-h-0 flex-1" innerClassName="px-4 py-4" thumb="dark">
+              {/* Subscription — the outer axis, above the situations it frames.
+                  See the note at the top of this file for the precedence rule. */}
+              <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
+                Subscription
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {SUBSCRIPTION.map((s) => {
+                  const active = s.has === hasSubscription
+                  const target = s.has ? 'paid' : firstReachableNoSub()
+                  const block = s.has ? accountBlocked('paid') : !target
+                  return (
+                    <button
+                      key={String(s.has)}
+                      disabled={!!block && !active}
+                      onClick={() => target && set(entail(target))}
+                      title={
+                        s.has
+                          ? t(accountBlocked('paid')?.reason ?? { en: 'Plan active', uk: 'План активний' })
+                          /* Which of the three it lands on is not a guess the designer
+                             should have to make from a strikethrough. */
+                          : t(NO_SUBSCRIPTION.find((o) => o.value === target)?.label ??
+                              { en: 'Not reachable from this situation', uk: 'Недосяжно з цієї ситуації' })
+                      }
+                      className={`rounded-md border px-2.5 py-2 text-left text-[12.5px] leading-tight
+                                  transition-colors duration-150 ${
+                        active
+                          ? 'border-neutral-900 bg-neutral-900 text-white'
+                          : block
+                            ? 'cursor-not-allowed border-black/5 bg-black/[0.03] text-neutral-400 line-through'
+                            : 'border-black/10 bg-white text-neutral-800 hover:border-black/25'
+                      }`}
+                    >
+                      {t(s.label)}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Second level, revealed by `No subscription` — the designer's three. */}
+              {!hasSubscription && (
+                <div className="mt-1.5 flex flex-wrap gap-1 pl-2">
+                  {NO_SUBSCRIPTION.map((o) => {
+                    const active = world.account === o.value
+                    const block = accountBlocked(o.value)
+                    return (
+                      <button
+                        key={o.value}
+                        disabled={!!block && !active}
+                        onClick={() => set(entail(o.value))}
+                        title={block ? t(block.reason) : undefined}
+                        className={`rounded border px-2 py-1 text-[12px] transition-colors duration-150 ${
+                          active
+                            ? 'border-neutral-900 bg-neutral-900 text-white'
+                            : block
+                              ? 'cursor-not-allowed border-black/5 bg-black/[0.03] text-neutral-400 line-through'
+                              : 'border-black/10 bg-white text-neutral-700 hover:border-black/30'
+                        }`}
+                      >
+                        {t(o.label)}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               {/* Situations — the STARTING state you pick before you start clicking.
                   The "Whole flows" player that used to sit above this (a stepper with
                   arrows, a step counter and speed controls) was deleted on 20.08.2026 at
                   the designer's request: a narrated stepper is not how a customer meets
                   the interface. Every flow is now walked by hand through the real UI, so
                   no state may be enterable without also being leavable by a click. */}
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
+              <p className="mb-2 mt-5 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
                 Situations
               </p>
-              <div className="mb-6 grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 {PRESETS.map((p) => {
                   const active = preset === p.id
+                  const block = presetBlocked(p)
                   return (
                     <button
                       key={p.id}
+                      disabled={!!block && !active}
                       onClick={() => set(p.patch, p.id)}
-                      title={t(p.note)}
+                      title={block ? t(block.reason) : t(p.note)}
                       className={`rounded-md border px-2.5 py-2 text-left text-[12.5px] leading-tight
                                   transition-colors duration-150 ${
                         active
                           ? 'border-neutral-900 bg-neutral-900 text-white'
-                          : 'border-black/10 bg-white text-neutral-800 hover:border-black/25'
+                          : block
+                            ? 'cursor-not-allowed border-black/5 bg-black/[0.03] text-neutral-400 line-through'
+                            : 'border-black/10 bg-white text-neutral-800 hover:border-black/25'
                       }`}
                     >
                       {t(p.label)}
@@ -167,6 +333,20 @@ export function ScenarioPanel() {
                   )
                 })}
               </div>
+
+              {/* The reasons, in words and once each — a strikethrough alone tells the
+                  designer that something is out of reach but not what rules it out. */}
+              {blockedReasons.length > 0 && (
+                <ul className="mb-6 mt-2 space-y-1">
+                  {blockedReasons.map((r, i) => (
+                    <li key={i} className="flex gap-1.5 text-[12px] leading-snug text-neutral-500">
+                      <span aria-hidden>—</span>
+                      <span>{t(r)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {blockedReasons.length === 0 && <div className="mb-6" />}
 
               {/* axes */}
               {GROUPS.map((group) => {
