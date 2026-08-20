@@ -6,6 +6,12 @@ Designed in the prototype (`prototype/src/ui/SiriGlow.tsx` +
 `prototype/src/index.css`, section "Siri edge glow"); this document is what a
 production engineer needs to accept it, port it, or re-implement it.
 
+Every number below is either a measurement (with its rig named) or a value read out
+of `SiriGlow.tsx` / `index.css`. Where the document touches a fact about DreamHost
+or a competitor it cites a row of `docs/product/FACTS.md` by ID; cross-references
+name a section by **number and heading**, because renumbering has broken pointers
+in this folder before.
+
 ## What it costs — the headline numbers
 
 Each row is one measurement on one rig, so read the rig with the number. The
@@ -26,8 +32,9 @@ different rig, different build.** The first is the dev server under headless
 Chromium; the second is the published artifact in a GPU-less browser, which is
 also roughly how the prototype gets watched inside the claude.ai preview panel.
 That second measurement, and the "blur is the expensive part, and there is no
-cheap version" analysis around it, is in `motion.md` §2. Do not quote either
-number as *the* frame rate — 4 is the floor we have seen and 60 the ceiling.
+cheap version" analysis around it, is in `motion.md` **§2, "The performance
+contract"**. Do not quote either number as *the* frame rate — 4 is the floor we
+have seen and 60 the ceiling.
 
 **The honest conclusion: port the governor, not a headline number.** Because the
 spread is this wide, nothing static can be promised about the glow on an unknown
@@ -45,9 +52,15 @@ mask and blur is painted once; the only per-frame work is GPU compositing of
 
 How that is achieved:
 
-- Colours live on oversized squares (side = the frame diagonal, so any
-  rotation covers the frame) that ROTATE via `transform`. The conic gradient
-  itself is never re-painted.
+- Colours live on **one** oversized square per layer (`.siri-spin`) that
+  ROTATES via `transform`. The conic gradient itself is never re-painted.
+  ⚠️ **Port the shipped side, which is `142cqmax` — 142% of the frame's LARGER
+  dimension, not its diagonal.** The geometric requirement is side ≥ diagonal;
+  142% of the larger dimension satisfies it for every aspect ratio (the worst
+  case is a square frame, diagonal 141.4%), and it is easy to compute in CSS,
+  which the diagonal is not. Implementing the bound literally builds a *smaller*
+  square that uncovers a corner at extreme aspect ratios. `container-type: size`
+  on `.siri-layer > i` is what makes `cq*` units resolve.
 - Thickness waves are alpha holes baked into each layer's conic (flat 5-6%
   arcs at near-zero alpha). NO blend modes anywhere: exotic blends over large
   filtered surfaces triggered solid-green garbage frames on some GPU drivers.
@@ -68,9 +81,17 @@ full frame on the CPU every frame. That is the 9fps failure mode.
 3. `--soft` — 16px ring, blur 44: the long falloff. Dark surfaces only.
 4. `--alt` — sparse counter-rotating colour accents (12s, reverse).
 
-Plus the ignition flash: a full-surface coloured bloom (opacity-only, plays
-once, ends invisible) that recedes into the ring — like the real effect
+Plus the ignition flash (`.siri-flash`): a full-surface coloured bloom that
+plays once, ends invisible, and recedes into the ring — like the real effect
 lighting up.
+
+⚠️ **Stated precisely, because "opacity-only" is what this used to say:** the
+flash and the entry/exit keyframes carry a micro-`scale` alongside `opacity` —
+`siri-flash` runs `scale(.99) → 1 → 1.004`, `siri-in` `scale(1.012) → 1`,
+`siri-out` `→ scale(1.01)`. `scale` is a **transform**, so the contract
+("transform and opacity only") is satisfied, not broken. The rule to port is
+*transform/opacity*, never the narrower "opacity only" — a porter who enforces
+the narrow version will delete motion that is contract-safe.
 
 **Surface awareness** (matched against photos of the real effect over a white
 app and a black app): the content is NEVER dimmed; over a `light` surface only
@@ -111,7 +132,14 @@ has to prove it can afford more.
   being measured, and **two consecutive windows below 30fps demote to lite for
   the rest of the session**. Two, not one: a single window can be eaten by an
   unrelated GC pause.
-- **Lite cut** = core + dense only, waves off: 2 composited squares, 2 blurs.
+- **Lite cut** = `--core` + `--dense` only: **2 composited squares, 2 blurs.**
+  What it drops is `--soft` and `--alt` (`LITE_LAYERS` in `SiriGlow.tsx`), and it
+  stops the breathing on what is left —
+  `.siri-glow--lite .siri-layer--dense { opacity: .9; animation: none }`.
+  ⚠️ It does **not** "switch the waves off": the waves are alpha holes baked into
+  each layer's own conic, so they cannot be switched off independently of the
+  layer. Wording claiming otherwise is left over from a two-square build (see the
+  last porting note).
 - `prefers-reduced-motion` freezes all motion via the app-wide rule; the
   static ring remains as the loading indicator.
 
@@ -145,10 +173,14 @@ CSS animations when the tab is hidden.
   An earlier version of this note said "~50 lines for mounting + the governor";
   that was true before the governor grew its promote-then-watch loop, and it
   under-budgets the port by a factor of three.
-- Colours are the Remixer logo palette; changing the brand palette = editing
-  **four** conic-gradient stop lists, one per layer (`--core`, `--dense`,
-  `--soft`, `--alt`), plus the ignition flash's radial stops. "Two" was the
-  two-layer-era count.
+- Colours are the Remixer logo palette. It has **no fact-register row of its
+  own** — the register covers our semantic colour tokens (**FACTS DH-401** for the
+  semantics, **DH-402** for the fact that production paints a different blue from
+  the spec, **DH-403** for the shell ground), and the spectrum used here is
+  documented only in `docs/design-system/README.md`, rule 5. Changing the brand
+  palette = editing **four** conic-gradient stop lists, one per layer (`--core`,
+  `--dense`, `--soft`, `--alt`), plus the ignition flash's radial stops. "Two" was
+  the two-layer-era count.
 - ⚠️ Tailwind users: layer class names must appear as full literals in source
   (`siri-layer--dense`), never composed as `siri-layer--${k}` — the content
   scanner purges rules whose class names it cannot find verbatim. This bug

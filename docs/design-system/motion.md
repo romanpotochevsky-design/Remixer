@@ -14,11 +14,14 @@ name a section by **number and heading** — renumbering has already broken poin
 this folder, and a pointer that misses a "do not propose again" record is how a rejected
 design gets re-proposed.
 
-> **Approval flags in this document are binding.** Two effects are marked
-> **designer-approved** and two are marked **designer-rejected**. Approved means the
-> choreography and numbers are signed off and must not be retuned unless the designer
-> asks. Rejected means it was built, shown, and turned down — re-proposing it wastes his
-> time and ours. Both kinds of flag exist because both mistakes have already been made.
+> **Approval flags in this document are binding.** There is **one ✅ designer-approved**
+> effect (the send flash, §5) and **two ❌ designer-rejected** ones (the iridescent
+> resizer glow, §6; the panel sheen, §7). Approved means the choreography and numbers are
+> signed off and must not be retuned unless the designer asks. Rejected means it was
+> built, shown, and turned down — re-proposing it wastes his time and ours. Both kinds of
+> flag exist because both mistakes have already been made. Count them with
+> `grep -c '^> ### [✅❌]'` rather than trusting this sentence; an earlier version of it
+> said "two and two" and was wrong about the approvals.
 
 ---
 

@@ -44,7 +44,7 @@ at 48×48 on 16px radii, then support chat pinned to the bottom. **Domains and E
 still have no home in the rail** — that gap is the audit's headline finding
 (`synthesis-q3-2026.md` §6, "Where Remixer stands today"), not an oversight in the
 geometry. What *is* in the live rail today is itself an open question the audit could not
-close (§10.2, question 3).
+close (§10.2, "Open questions we must answer internally", question 3).
 
 ### ⚠️ The old live-product geometry is superseded
 
@@ -134,8 +134,9 @@ All four must stay out:**
 - ❌ an **inner top highlight** (a specular band down the top edge inside the control)
 - ❌ a **drop shadow** under the glass
 - ❌ **`saturate()`** in the backdrop filter (Bolt does `blur(10px) saturate(1.2)` on its
-  prompt box — the iOS recipe, and not ours. Source: `measured-competitor-tokens.md` §2,
-  "Prompt box", read off live computed styles 13 Aug 2026; no register row yet)
+  prompt box — the iOS recipe, and not ours. Source: `measured-competitor-tokens.md`
+  §2, "Bolt.new (StackBlitz)" → "Prompt box", read off live computed styles 13 Aug 2026;
+  no register row yet)
 
 macOS keeps a control quiet: a tinted translucent fill, a real blur behind it, one
 restrained edge. The surface reads as glass because of what shows *through* it, not
