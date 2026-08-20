@@ -147,7 +147,7 @@ function PlanCard({
 
 export function DomainModal() {
   const { world, set } = useWorld()
-  const { domainModal, closeDomainModal, goDomains } = useUI()
+  const { domainModal, closeDomainModal, goDomains, closeSurface, togglePublish } = useUI()
   const { t } = useT()
   const [term, setTerm] = useState<Term>('yearly')
 
@@ -182,7 +182,15 @@ export function DomainModal() {
       set({ domain: 'connecting' })
     }
     closeDomainModal()
+    /* The third door into the same handoff, and it takes the same one as `OwnScreen` and
+       `ExternalScreen` (20.08.2026): the wait continues in the Publish panel, not on a
+       full-page status screen. Leaving the purchase path — the most demoed path of the
+       three — landing on that page would have made the product half-consistent, which is
+       worse than either answer. `goDomains` writes the active domain only; the surface
+       closes on the next line. */
     goDomains('status', domain)
+    closeSurface()
+    togglePublish(true)
   }
 
   return (

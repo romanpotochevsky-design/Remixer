@@ -24,6 +24,9 @@ import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { IconPlus, IconEdit, IconExternal, IconCopy, IconSettings, IconUsers } from '@/ui/icons'
+/* The connection checklist is domain knowledge, so it lives with the domains module and
+   is borrowed here — the panel and the status screen must never own two copies of it. */
+import { ConnectChecklist, connectStage } from '@/modules/domains/ConnectChecklist'
 import { popover, popoverContent } from '@/ui/motion'
 
 /** Ukrainian needs three forms (1 · 2–4 · 5+), so the count sentence is built, not looked up. */
@@ -225,10 +228,17 @@ export function PublishPanel() {
                 )}
                 {connecting && (
                   <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--attention)]">
+                    {/* One sentence, and it must never say what the checklist below already
+                        says. It carries the two things ticks cannot: how long this takes,
+                        and that the person is released ("keep editing" / "nothing for you
+                        to do"). The `securing` line used to open with "Almost there —
+                        turning on the padlock", which is now the unticked `Security (SSL)
+                        on` row two inches below it; what is left is the STATES.md wording
+                        for that wait (FACTS DH-301). */}
                     {securing
                       ? t({
-                          en: 'Almost there — turning on the padlock. Nothing for you to do.',
-                          uk: 'Майже готово — увімкнюємо замочок. Від вас нічого не потрібно.',
+                          en: 'Nothing for you to do. This usually takes ten to thirty minutes, sometimes a little longer.',
+                          uk: 'Від вас нічого не потрібно. Зазвичай це триває від десяти до тридцяти хвилин, іноді трохи довше.',
                         })
                       : t({
                           en: 'Connecting — usually a few minutes. Keep editing, it goes live on its own.',
@@ -271,34 +281,39 @@ export function PublishPanel() {
                 </button>
               )}
 
-              {/* private preview line under a live/connecting domain.
+              {/* THE CONNECTION CHECKLIST — and what this slot used to hold.
                 *
-                * ⚠️ HISTORY, NOT SPEC. This line used to read `Private preview · always
-                * free · hidden from Google` (uk: `… · приховано від Google`). The THIRD
-                * clause was REMOVED 20 Aug 2026; the note stays because a deleted mistake
-                * comes back and a labelled one does not.
+                * Until 20.08.2026 this spot printed a dashed card with the staging address
+                * under `Private preview · always free`. It is gone, on the designer's word,
+                * and for a sharper reason than clutter: it is not on his board
+                * (`28071:53189`), it survived from the earlier Launchpad direction, and it
+                * was occupying the slot where he expects to watch the connection tick over.
+                * Once a custom domain is on, the staging host is not the address of the site
+                * and repeating it here is noise. Where there is NO custom domain the staging
+                * address is still shown — in the `Website URL` field above, which is
+                * genuinely where that site lives, next to the `Connect your own domain`
+                * card; the two never appear together.
                 *
-                * Why it went: FACTS **DH-303** downgraded exactly that clause to
-                * `unverified` — no statement about indexing, `noindex` or robots exists in
-                * the Remixer KB, on the product page or in the trial terms, and it cannot
-                * be inherited by analogy: the one DreamHost staging documented as
-                * non-indexable is DreamPress, which achieves it with HTTP auth that cannot
-                * be disabled — a mechanism this preview plainly does not use, since
-                * sending the link is the point. An `unverified` string does not belong on
-                * a surface a team reads.
+                * ⚠️ If that line is ever restored anywhere, it comes back WITHOUT its old
+                * third clause `· hidden from Google`: FACTS **DH-303** downgraded exactly
+                * that claim to `unverified` — nothing in the KB, the product page or the
+                * trial terms says anything about indexing, and it cannot be inherited from
+                * DreamPress, which achieves it with HTTP auth this preview cannot use
+                * (the link is meant to be sent to people). `always free` is the verified
+                * half (DH-303 with DH-005).
                 *
-                * `always free` is the VERIFIED half of DH-303 (with DH-005) and stays. EN
-                * and UK are two renderings of one sentence: change them together.
-                * The clause returns only if the platform team confirms the response header
-                * (FACTS §3, close-out item 2) — not on a design argument. */}
-              {(live || connecting) && (
-                <div className="flex items-center justify-between gap-3 rounded-[16px] border border-dashed border-[var(--white-200)] px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] text-[var(--white-500)]">{STAGING_HOST}</p>
-                    <p className="mt-0.5 text-[12.5px] text-[var(--white-300)]">
-                      {t({ en: 'Private preview · always free', uk: 'Приватне прев’ю · завжди безкоштовно' })}
-                    </p>
-                  </div>
+                * What renders instead: the canonical checklist, ticking as the state
+                * advances — the flow that starts on `Connect` now finishes in THIS window,
+                * and state/progress.ts is what walks it. Three items, fixed order, shared
+                * with the status screen (modules/domains/ConnectChecklist.tsx); the order is
+                * the information, because the padlock lands last (DH-301).
+                *
+                * `live` deliberately gets NO checklist: three green ticks after the fact are
+                * a receipt for something the address, the padlock line and `Manage domains`
+                * already report — and those three are all the board draws. */}
+              {connecting && (
+                <div className="rounded-[16px] border border-[var(--white-200)] px-5 py-4">
+                  <ConnectChecklist stage={connectStage(world.domain)} />
                 </div>
               )}
               </div>
@@ -361,7 +376,17 @@ export function PublishPanel() {
             <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
               {connecting && (
                 <button
-                  onClick={() => set({ domain: securing ? 'live' : 'securing' })}
+                  /* ONE stage per press — connecting → verifying → securing → live, the
+                     same road the status screen walks. It used to jump connecting →
+                     securing, which was invisible while nothing else was on screen; with
+                     the checklist here it would tick two rows at once and delete
+                     `verifying` from the story. Refresh is an accelerator, not a shortcut:
+                     it asks whether the next step has happened, and state/progress.ts
+                     cancels and re-schedules its timer around every press, so nothing is
+                     skipped and nothing fires twice. */
+                  onClick={() =>
+                    set({ domain: world.domain === 'connecting' ? 'verifying' : world.domain === 'verifying' ? 'securing' : 'live' })
+                  }
                   className="h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
                 >
                   {t({ en: 'Refresh status', uk: 'Оновити статус' })}

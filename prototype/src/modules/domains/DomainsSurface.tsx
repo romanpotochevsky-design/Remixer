@@ -27,6 +27,7 @@ import {
   IconAIMark, IconChevronDown,
 } from '@/ui/icons'
 import { surface, listSwap, listSwapItem } from '@/ui/motion'
+import { ConnectChecklist, connectStage } from './ConnectChecklist'
 
 
 /* ------------------------------------------------------------------ shared bits */
@@ -565,15 +566,29 @@ function ResultsScreen() {
 /** "You own this" — the confirm for a domain already in the DreamHost account. */
 function OwnScreen() {
   const { world, set } = useWorld()
-  const { activeDomain, goDomains, closeSurface } = useUI()
+  const { activeDomain, goDomains, closeSurface, togglePublish } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? CUSTOM_DOMAIN
   const inUse = world.inventory === 'dh-in-use'
   const externalNs = world.inventory === 'dh-external-ns'
 
+  /*
+   * The handoff: connecting continues IN THE PUBLISH PANEL, not on a full-page screen.
+   * The designer's call, 20.08.2026 — a whole page devoted to waiting is not where this
+   * belongs; the panel already renders every stage of it, and the person stays in the
+   * builder where the copy tells them to keep working. So: set the state, remember which
+   * domain it is, close the surface, and OPEN THE PANEL — a surface that just vanished
+   * with nothing appearing in its place would be worse than the page.
+   *
+   * `goDomains` here does not navigate anywhere (the surface closes on the next line);
+   * it is the only writer of `activeDomain`, so it keeps the picked domain — and the
+   * screen `Manage domains` would land on — pointing at the right thing.
+   */
   const connect = () => {
     set({ domain: 'connecting' })
     goDomains('status', domain)
+    closeSurface()
+    togglePublish(true)
   }
 
   return (
@@ -700,7 +715,7 @@ function OwnScreen() {
 /** External domain: registrar detected, guided manual path. No Domain Connect promises. */
 function ExternalScreen() {
   const { world, set } = useWorld()
-  const { activeDomain, goDomains } = useUI()
+  const { activeDomain, goDomains, closeSurface, togglePublish } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? 'emberandoak.com'
   /* The registrar was hardcoded "GoDaddy" on every path. Once the external situations own a
@@ -717,7 +732,13 @@ function ExternalScreen() {
        sentence above it. The inventory axis describes what the customer HAS; it is set by
        the scenario, never by a click inside one. */
     set({ domain: 'connecting' })
+    /* Same handoff as OwnScreen: the wait continues in the Publish panel, and the
+       full-page status screen is not where this flow goes any more. See the comment
+       on `connect` there for why, and for what `goDomains` is doing on a screen that
+       is about to close. */
     goDomains('status', domain)
+    closeSurface()
+    togglePublish(true)
   }
 
   return (
@@ -782,6 +803,15 @@ function ExternalScreen() {
 /**
  * Status: the named state machine — connecting → securing → live, one verb per stop.
  *
+ * ⚠️ IT SURVIVES ON PURPOSE, even though connecting no longer routes here (20.08.2026 —
+ * that handoff now closes the surface and opens the Publish panel instead). Two states
+ * have NO OTHER HOME: `ready` (the address works, nobody ever pressed Publish) and
+ * `unreachable` (the domain stopped answering). Both are reached from the toolbar's
+ * address button, which is the only hand-driven way in — delete this screen and those two
+ * situations become undesignable again, which is exactly the hole that was closed here
+ * earlier today. The connecting stages still render here for anyone who opens
+ * `Manage domains` mid-wait; they are simply not where the flow is handed off.
+ *
  * FOUR stages behind THREE checklist items, and the fourth stage is the whole point:
  * the padlock cannot be issued until the address already answers here (FACTS DH-301),
  * so "Connected to your site" and "Security (SSL) on" are two events with a wait
@@ -796,10 +826,9 @@ function StatusScreen() {
   const { t } = useT()
   const domain = activeDomain ?? CUSTOM_DOMAIN
 
-  const stage = world.domain === 'live' || world.domain === 'multiple' ? 3
-    : world.domain === 'securing' ? 2
-    : world.domain === 'verifying' ? 1
-    : 0
+  /* Stage and rows come from ConnectChecklist — the Publish panel shows the same three
+     items now, and two copies of one checklist drift. */
+  const stage = connectStage(world.domain)
   const done = stage === 3
   /* `securing` used to render NO BUTTON BAR AT ALL — the absence was the message: nothing
      is required of the person here (STATES.md, `securing` — "Глагол. Нет, намеренно").
@@ -815,13 +844,6 @@ function StatusScreen() {
      is the honest gesture and the one the customer will make anyway. What it must never
      become is `Try again` or `Fix` — those claim the wait is the person's to shorten. */
   const securing = stage === 2
-
-  // The canonical success checklist — one fixed order on every success screen.
-  const checklist = [
-    { label: { en: 'Domain settings updated', uk: 'Налаштування домену оновлено' }, done: stage >= 1 },
-    { label: { en: 'Connected to your site', uk: 'Під’єднано до вашого сайту' }, done: stage >= 2 },
-    { label: { en: 'Security (SSL) on', uk: 'Захист (SSL) увімкнено' }, done: stage >= 3 },
-  ]
 
   /*
    * `needs-attention` — its own screen, not a stage.
@@ -949,20 +971,8 @@ function StatusScreen() {
               })}
       </p>
 
-      <div className="mt-5 space-y-2.5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
-        {checklist.map((c) => (
-          <div key={c.label.en} className="flex items-center gap-2.5 text-[14px]">
-            <span
-              className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[11px] ${
-                c.done ? 'bg-[#48ba7933] text-[var(--live)]' : 'border border-[var(--gray-700)] text-transparent'
-              }`}
-              aria-hidden
-            >
-              ✓
-            </span>
-            <span className={c.done ? 'text-[var(--white-700)]' : 'text-[var(--white-400)]'}>{t(c.label)}</span>
-          </div>
-        ))}
+      <div className="mt-5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
+        <ConnectChecklist stage={stage} />
       </div>
 
       {/* One bar for every unfinished stage, `securing` included — see the note above. */}

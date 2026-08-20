@@ -15,6 +15,7 @@ import { motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan, paymentFailed } from '@/state/world'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
+import { useDomainProgress } from '@/state/progress'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
@@ -50,6 +51,12 @@ const RAIL = [
 export default function App() {
   const { world } = useWorld()
   const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth } = useUI()
+
+  /* The waiting domain states walk themselves to success — connecting → verifying →
+     securing → live — wherever the person happens to be looking. It lives up here
+     because it must survive every panel closing; see state/progress.ts for why it is
+     NOT part of the stepper the designer deleted. */
+  useDomainProgress()
 
   /*
    * The glow waits for the send choreography to finish.
