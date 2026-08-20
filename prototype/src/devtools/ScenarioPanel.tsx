@@ -5,12 +5,15 @@
  * labels, no brand colour. In a screen share or a screenshot nobody should mistake it for
  * part of the product.
  *
- * Toggle with ⌘. (Ctrl+. on Windows) or the handle in the bottom-LEFT corner.
+ * Toggle with ⌘. (Ctrl+. on Windows) or the handle at the bottom of the right rail.
  *
- * ⚠️ The handle lives bottom-LEFT on purpose, and must stay there. It sat bottom-right
- * twice and collided with the demo site's own support bubble both times — because
- * bottom-right is where every real site puts its chat FAB, so nudging our handle a few
- * pixels only postpones the collision. Bottom-left is empty by convention.
+ * ⚠️ Position is the designer's call: bottom-right, in the rail's column, ABOVE the
+ * green support bubble — not beside it and not on the other side. It overlapped that
+ * bubble twice, so the constraint is arithmetic, not taste: the bubble is h-9 (36px)
+ * at the foot of the 56px right rail, so it occupies roughly the first 46px above the
+ * bottom edge. `bottom-14` (56px) clears it with about 10px of air. If the rail's
+ * padding or the bubble's size ever changes, recompute this — do not nudge it by eye,
+ * and do not move it to the left side (tried, rejected by the designer).
  * "Режим показа" hides the handle so only the keyboard opens it.
  */
 import { useEffect, useState } from 'react'
@@ -58,7 +61,7 @@ export function ScenarioPanel() {
       {!presenter && !open && (
         <button
           onClick={() => setOpen((v) => !v)}
-          className="group fixed bottom-2.5 left-2.5 z-[9998] grid h-6 w-6 place-items-center
+          className="group fixed bottom-14 right-2.5 z-[9998] grid h-6 w-6 place-items-center
                      rounded-md opacity-25 transition-opacity duration-200 ease-[cubic-bezier(.2,0,0,1)]
                      hover:bg-white/10 hover:opacity-100 focus-visible:opacity-100"
           title="Prototype console · ⌘."
