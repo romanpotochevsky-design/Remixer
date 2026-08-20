@@ -64,7 +64,7 @@ citation below marked "search extraction" was read out of search results, never 
 | **DH-003** | Free trial is **30 days with no credit card**. DreamHost markets it as the longest no-card trial in the category; the audit confirms the length but notes every competitor runs a *perpetual* free tier instead, so it is a differently-shaped offer, not an unambiguous win. | verified (length) / likely (superlative) | Aug 2026 | handoff "Real product facts"; `synthesis-q3-2026.md` §6, §5.1 row 19 | Trial copy · paywall framing · POSITIONING |
 | **DH-004** | The trial **starts after the first site generates**, not at signup. Building with AI is the trial. | verified | Jun 2026 | handoff "Trial logic" | Onboarding copy · trial-day counter (`world.trialDay`) |
 | **DH-005** | Publishing to a **custom domain requires the paid plan**. The staging preview (`*.remixer.ai` — DH-302, corrected 20 Aug 2026 from `*.remixer.site`) is free during and after trial. | verified | 20 Aug 2026 | handoff "Trial logic"; the paid-plan gate is restated on DreamHost's own Remixer pages and in the Remixer Trial Terms ("publishing content to a custom domain name requires a paid Remixer subscription") | `PublishPanel.tsx` gate · `DomainModal.tsx` plan step · Launchpad Case 1/2 |
-| **DH-006** | Credits: **1,000/mo included, plus a 1,000 bonus in the first month**. | verified | Jun 2026 | handoff "Plan includes" | Credits chip · `world.credits` / `world.bonus` · spend-order copy (DH-011) |
+| **DH-006** | Credits: **1,000/mo included, plus a 1,000 bonus in the first month**. | verified | Jun 2026 | handoff "Plan includes" | Credits chip · `world.credits` · spend-order copy (DH-011). ⚠️ **`world.bonus` is NOT a consumer — it is inert.** This column named it until 20 Aug 2026; `grep -rn 'bonus' prototype/src \| grep -v 'src/state/'` returns nothing, so the field is declared in `world.ts`, given a URL key and a console toggle, and read by no screen. The 1,000-bonus half of this fact is therefore **recorded and undrawn**: nothing in the prototype tells a first-month user the bonus exists. Wiring it is a design question (does the credits chip or its popover say so?), not a bug to fix quietly |
 | **DH-007** | Top-ups, one-time, valid 6 months: **+1,000 = $14.99 · +2,500 = $34.99** ("Best value"). | verified | Jun 2026 | handoff "Plan includes" | Credits popover · pricing surfaces |
 | **DH-008** | **Publishing consumes credits today.** As far as the audit could establish we are the only major builder that charges for the moment of success. | verified (our ground truth) | Aug 2026 | `synthesis-q3-2026.md` §1.3, §5.1 row 11, §6 | POSITIONING §1 · publish sheet copy · the whole "always free" panel idea |
 | **DH-009** | **Unknown: what a publish actually costs in credits, and whether the charge is flat or re-runs generation work.** This decides whether "publishing is free" is a billing toggle or an unbounded-cost architecture project. | unverified | Aug 2026 | `synthesis-q3-2026.md` §10.2 Q10; `synthesis-critique.md` §2 | POSITIONING §1 (effort estimate) · any "publishing is free" copy |
@@ -81,7 +81,12 @@ at `dreamhost.com/domains/pricing`, read in USD on **06 Aug 2026** and recorded 
 `docs/features/domains/research/search.md` §dreamhost-facts. Register / Renew / Transfer,
 USD. Every row was flagged "Sale" on the page, which is why first-year and renewal diverge
 (DH-112). `prototype/src/data/domains.ts` (`TLD_PRICES`) is the machine-readable copy and
-is correct as of that date; the hand-off is not (see §2).
+is correct as of that date; **the hand-off's price line is not, and deliberately stays that
+way** — `docs/features/domains/handoff-design.md` prints `.io $39.99` and `.online $0.99` in
+its "Domain prices" bullet, refuted in place by correction 2 at the top of that file rather
+than silently overwritten, because DH-106 and `CLAUDE.md`'s warning ledger both point at that
+bullet as the live example of "trust the research, not the hand-off". Rewriting the bullet
+would delete the specimen those two pointers name. See §2.
 
 | ID | Fact | Status | Date | Source | Depends on it |
 |---|---|---|---|---|---|
@@ -131,7 +136,7 @@ is correct as of that date; the hand-off is not (see §2).
 | ID | Fact | Status | Date | Source | Depends on it |
 |---|---|---|---|---|---|
 | **DH-301** | SSL is Let's Encrypt, and the number has a source after all: DreamHost's own KB says **"Let's Encrypt installations can take 10–30 minutes"** — so a connected domain resolves before the padlock appears. Two conditions travel with it and matter more than the range: **the domain's DNS must already point at DreamHost before a certificate can be issued** (Let's Encrypt locates the domain over DNS), and while propagation is still running the panel shows **"Order Processing"** and installation resumes only once it completes. Consequence: on the external path the padlock queues *behind* DH-203's 4–72 hours, not behind 30 minutes. **Still not measured for a Remixer publish** — this is the panel-install figure. | verified (as DreamHost's documented figure) / unverified (as the number for a Remixer publish) | 20 Aug 2026 | KB 216539548 "Adding a free Let's Encrypt certificate", KB 215089118, KB 216539558 — search extraction ×2. **Was `unverified — no traceable source` until 20 Aug 2026:** the figure in `CLAUDE.md` and the hand-off turns out to be correct and merely uncited | "Don't claim instantly secured" · the third checklist item · `StatusScreen` ticking SSL with Connected → §2.17, **now unblocked** · CMP-035 for how competitors word the same wait |
-| **DH-302** | The free staging host is **`*.remixer.ai`**. **Both spellings this repo carried are wrong** — `*.remixer.site` (`CLAUDE.md`, hand-off, `domains.ts` `STAGING_HOST`, `PublishPanel.tsx`, `App.tsx`) and `*.remixer.app` (`synthesis-q3-2026.md` §6 / Tier 2 item 19 / §8.4, `archive/raw-research/*.json`) are **refuted**. DreamHost's KB describes an arrow beside a **Publish to Staging** button opening a new tab on "your temporary website **ending in remixer.ai**"; the product page sells "build, edit and preview a full site free for 30 days **on a remixer.ai subdomain**". The legacy pre-AI Remixer previewed on `dreamhosters.com`, so this is not old KB text bleeding into the new product. **What remains open is only the left-hand label** — `{project}.remixer.ai`, `{account}-{project}.remixer.ai` or a generated id. | verified (the zone is `remixer.ai` — first-party docs, 5 independent search extractions, incl. one that volunteered the correction against a query naming `.site`/`.app`) / unverified (the subdomain shape) | 20 Aug 2026 | help.dreamhost.com KB 45943689634196 "Create a Site with Remixer"; dreamhost.com/remixer-website-builder/ ; corroborated by two independent reviews. Direct fetch of both blocked (PLAYBOOKS 1) | **`STAGING_HOST` in `domains.ts`, `PublishPanel.tsx`, `App.tsx`, `CLAUDE.md`, the hand-off, and the audit's branch-URL / preview-link proposals — all carry a wrong host today → §2.9.** One screenshot of the live builder closes the remaining shape question |
+| **DH-302** | The free staging host is **`*.remixer.ai`**. **Both spellings this repo carried are wrong** — `*.remixer.site` (`CLAUDE.md`, hand-off, `domains.ts` `STAGING_HOST`, `PublishPanel.tsx`, `App.tsx`) and `*.remixer.app` (`synthesis-q3-2026.md` §6 / Tier 2 item 19 / §8.4, `archive/raw-research/*.json`) are **refuted**. DreamHost's KB describes an arrow beside a **Publish to Staging** button opening a new tab on "your temporary website **ending in remixer.ai**"; the product page sells "build, edit and preview a full site free for 30 days **on a remixer.ai subdomain**". The legacy pre-AI Remixer previewed on `dreamhosters.com`, so this is not old KB text bleeding into the new product. **What remains open is only the left-hand label** — `{project}.remixer.ai`, `{account}-{project}.remixer.ai` or a generated id. | verified (the zone is `remixer.ai` — first-party docs, 5 independent search extractions, incl. one that volunteered the correction against a query naming `.site`/`.app`) / unverified (the subdomain shape) | 20 Aug 2026 | help.dreamhost.com KB 45943689634196 "Create a Site with Remixer"; dreamhost.com/remixer-website-builder/ ; corroborated by two independent reviews. Direct fetch of both blocked (PLAYBOOKS 1) | **The zone is corrected everywhere it is printed as product truth (re-checked 20 Aug 2026): `grep -rn 'remixer\.site' prototype/src CLAUDE.md docs/features` returns only historical comments and refutation notes, never a live address.** `STAGING_HOST` in `domains.ts` holds `remixer.ai` and `PublishPanel.tsx` / `App.tsx` print it from there; `CLAUDE.md` carries the correction in its ledger; the hand-off's prose was fixed 20 Aug 2026 (see §2.9). **One document still prints a wrong host in prose and is not ours to fix: `synthesis-q3-2026.md` keeps `*.remixer.app` in the §6 row, Tier 2 item 19 and §8.4 (`grep -c 'remixer\.app'` → 7), corrected only by notes appended at :511 and :754.** One screenshot of the live builder closes the remaining shape question |
 | **DH-303** | Two claims, and they do not share a fate. **"Always free"** holds: the product page and the trial terms both describe a free site on a `remixer.ai` subdomain for the trial, and DH-005 keeps the preview free after it. **"Hidden from Google"** has no source anywhere — not the Remixer KB, not the product page, not the Remixer Trial Terms, none of which mention indexing, `noindex` or robots. It cannot even be inherited by analogy: the one DreamHost staging product documented as non-indexable is **DreamPress staging**, which achieves it with **HTTP auth that cannot be disabled** — a mechanism Remixer staging demonstrably does not use, since the point of the staging link is that you can open and send it. | verified (always free) / **unverified (hidden from Google — downgraded from `likely`, 20 Aug 2026)** | 20 Aug 2026 | Free: dreamhost.com/remixer-website-builder/ + dreamhost.com/legal/remixer-trial/. Hidden: **no source found in five differently-phrased searches**; a `site:remixer.ai` probe returned nothing, which is not evidence either way given how the search tool handles operators. DreamPress contrast: KB 360001265112 | `PublishPanel.tsx` prints "Private preview · always free · hidden from Google" **verbatim in shipped UI**. Two of three clauses are fine; the third is an unsourced promise about search engines. **Cut it, soften it to "not linked from anywhere", or get the platform team to confirm the header** |
 | **DH-304** | **SmartEdge**, DreamHost's first-party CDN, runs **10 PoPs**. The number is not disputed; the audit's framing of it as a moat is (Cloudflare runs 300+). | likely | Aug 2026 | `synthesis-q3-2026.md` §6; `synthesis-critique.md` §2 (framing) | POSITIONING §3 (rented vs owned) · rollback copy (DH-310) |
 | **DH-305** | DreamHost **operates its own mail platform** — so we are registrar + host + mail provider in one account. This structural fact is what §8.2 of the audit is built on. | verified (our ground truth) | Aug 2026 | `synthesis-q3-2026.md` §1.3, §8.2 | POSITIONING §3 · the mailbox play · but see DH-306 and CMP-018/CMP-020 |
@@ -167,7 +172,7 @@ row says so.
 | **CMP-002** | **GoDaddy Airo:** credits are consumed only by agent actions; *"Credits are not used for non-agent actions"* — and publishing is not an agent action. | verified | Aug 2026 | GoDaddy docs → §1.1 | POSITIONING §1 |
 | **CMP-003** | **Bolt** exempts version restores, UI-button actions and security audits. **Base44** exempts all manual visual edits and every database read/write. **Figma Make** stages edits credit-free until you press apply. | verified | Aug 2026 | §1.1, §5.2 | POSITIONING §1 · the free-lane idea |
 | **CMP-004** | **Emergent** is the only product in the sweep with an analogue to our publish charge: **50 credits/month as rent on an active deployment**. | likely | Aug 2026 | §1.1 (fourteen products compared) | POSITIONING §1 — the only company we resemble on this line |
-| **CMP-005** | Emergent's Trustpilot rating of ~2.7/5. | unverified | Aug 2026 | §10.1 "single-source / medium confidence" | **Do not quote in any deck.** `CLAUDE.md` currently states it as fact → §2.14 |
+| **CMP-005** | Emergent's Trustpilot rating of ~2.7/5. | unverified | Aug 2026 | §10.1 "single-source / medium confidence" | **Do not quote in any deck.** ✅ Fixed in `CLAUDE.md` 20 Aug 2026: its warnings ledger now names the rating `unverified` and bans it from leadership material, keeping only the structural fact (CMP-004). → §2.14 |
 | **CMP-006** | **Lovable is a full registrar** — sells domains in-app, registers with no project attached, supports transfer-in with EPP, transfer-out, WHOIS privacy toggle: *"Lovable becomes the registrar for that domain."* | verified | Aug 2026 | Lovable docs → §1.1 | POSITIONING §2 — "selling a domain" is table stakes, not a moat |
 | **CMP-007** | **v0/Vercel** sells domains inside the publish flow (Publish → Customize → Buy a Domain) at registrar cost. **Bolt** resells; **Base44** resells via Wix or IONOS; **Emergent** resells IONOS free for year one with SSL in under ten minutes. | verified | Aug 2026 | §1.1 | POSITIONING §2 |
 | **CMP-008** | **Lovable and Replit both bought Entri.** Replit's release note, 5 Jun 2026: *"custom domain DNS setup automated; users no longer need manual record configuration."* Webflow uses it too ("Quick connect… powered by Entri"). | verified | Aug 2026 | Replit/Lovable/Webflow docs → §1.1, `connect.md` §4.1 | POSITIONING §3 (the rail is buyable) · STD-009 |
@@ -214,7 +219,7 @@ row says so.
 | **STD-006** | Discovery only works if the domain's **authoritative DNS provider** supports it: *"The settings endpoint returns a 404 if the domain is not using Vercel's nameservers."* A GoDaddy-registered domain pointed elsewhere will not discover as GoDaddy. | verified | Aug 2026 | Vercel docs → `search.md` | Why registrar ≠ DNS provider in our copy · DH-308 |
 | **STD-007** | Domain Connect is **becoming an internet standard**: IETF working group `dconn`, `draft-ietf-dconn-domainconnect-03` published **3 Jul 2026**, milestone to send to the IESG for Standards Track. | verified | 19 Aug 2026 | IETF datatracker → `connect.md` §4.2 | The build-vs-buy calculus (STD-009) · POSITIONING §3 |
 | **STD-008** | Three different Domain Connect "size" numbers are on record and they measure different things: **9 live DNS providers** (STD-001) · **110+ participating providers, 300+ templates from 120+ service providers** · APNIC's **~20 implementing providers managing 35% of the `.com` zone** (as of May 2024). Do not merge them. | likely | 19 Aug 2026 | domainconnect.org; APNIC Dec 2025 → `search.md`, `connect.md` §4.2 | Any coverage claim in a deck → §2.7 |
-| **STD-009** | **Entri pricing: ~$249/mo for 600 automatic connections a year, plus ~$500/mo for custom-domain SSL infrastructure ≈ ~$749/mo before the first customer.** Both source documents hedge this figure. | unverified | 19 Aug 2026 | `synthesis-q3-2026.md` §1.1 marks it "(unverified pricing)"; `connect.md` §4.1 marks it `[likely]` | Every "buy the rail" argument. **`CLAUDE.md` states it without a hedge** → §2.8 |
+| **STD-009** | **Entri pricing: ~$249/mo for 600 automatic connections a year, plus ~$500/mo for custom-domain SSL infrastructure ≈ ~$749/mo before the first customer.** Both source documents hedge this figure. | unverified | 19 Aug 2026 | `synthesis-q3-2026.md` §1.1 marks it "(unverified pricing)"; `connect.md` §4.1 marks it `[likely]` | Every "buy the rail" argument. ✅ Fixed in `CLAUDE.md` 20 Aug 2026: it now prints the figure as **`STD-009, unverified`** with "both sources hedge the number — cite by ID, not as fact" travelling in the same sentence. → §2.8 |
 | **STD-010** | **Entri coverage: "60+ DNS providers with direct API login"** (product page) and a 2026 third-party comparison claiming it *"automatically detect[s] and configur[es] DNS for 75% of domains"*. The 40–50% figure in the audit was **Domain Connect's** coverage, not Entri's. | likely | 19 Aug 2026 | `connect.md` §4.1 | §2.7 · sizing the manual fallback |
 | **STD-011** | **Entri's most stealable half is the fallback, not the API:** per-registrar step-by-step instructions, a **deep link into that provider's DNS settings page**, pointer to your own KB articles, full white-labelling, and a **webhook the moment the domain is live**. | likely | 19 Aug 2026 | Entri product material → `connect.md` §4.1, §12.2 | The guided-manual screens we can build without a PO · DH-311 (the webhook is what would make "we'll tell you" real) |
 | **STD-012** | **Entri × GoDaddy (Jun 2025)** folds GoDaddy's Domain Connect into Entri — the two rails are converging. | verified | 19 Aug 2026 | prior research → `connect.md` §4.1 | Build-vs-buy timing |
@@ -241,6 +246,16 @@ Every place in this repository where two documents state different values for th
 fact. Each entry names the fact ID, quotes both sides with paths, and says which one wins
 and why. **Nothing here is a hypothetical.** Items marked ⚑ were found while building this
 register and had not been recorded anywhere before.
+
+⚠️ **The quoted bullets inside each entry are a dated inventory, not a description of those
+documents today.** They record what each side said *when the collision was found*, which is
+what makes the entry worth keeping — but a document that has since been rewritten will no
+longer contain the quote. The live claim is always the **Winner** line, and that is the line
+to keep true. Concretely: `CLAUDE.md` was rewritten on 20 Aug 2026 (57 KB → 20 KB) and the
+sections several bullets below cite by name — "Ключевые проверенные факты", the verified-facts
+block, the prototype-geometry block, the audit-conclusions list — **no longer exist in it**.
+Do not grep for them and conclude the register is broken; do not re-open an entry whose
+Winner line already says it is closed.
 
 *How a contradiction gets closed:* fix the losing document (or delete the sentence), set
 the register row to the winning value, and leave the entry below in place with a
@@ -306,11 +321,15 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
 - Hand-off, scenario 3 → "manual nameservers/DNS for others (Namecheap/**Cloudflare**)"
 - `connect.md` §4.2/§11.1 + `search.md` §technical-detection → **Cloudflare supports Domain
   Connect** (own docs page, on the provider list, one of Shopify's three auto-connect providers)
-- **Winner: Cloudflare supports it; Namecheap is the manual exemplar.** `world.ts` and
-  `CLAUDE.md` are fixed; **the hand-off is not** — its correction block never mentions
-  Cloudflare, so scenario 3 still tells a designer to draw Cloudflare on the manual path.
-  Caveat that must travel with the fix: STD-004 — Cloudflare is *automatable with a triage
-  card*, not "easy".
+- **Winner: Cloudflare supports it; Namecheap is the manual exemplar.** ✅ All three are
+  fixed: `world.ts`, `CLAUDE.md`, and the hand-off — whose correction block **does** now
+  carry it, as correction 4 "Cloudflare is in the wrong bucket (scenario 3)"
+  (`grep -c Cloudflare docs/features/domains/handoff-design.md` → non-zero; the correction
+  cites STD-002/STD-003 and names Namecheap as the canonical manual case). *This bullet said
+  "the hand-off is not" until 20 Aug 2026, when correction 4 was written — a reverse pointer
+  that outlived its subject.* Caveat that must travel with the fix: STD-004 — Cloudflare is
+  *automatable with a triage card*, not "easy". Residual, and it is a **drawing** gap rather
+  than a documents one: the triage card itself has no frame.
 
 ### 2.5 One-click Domain Connect for external domains — DH-201, DH-202
 
@@ -370,12 +389,16 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
   extractions agree; one of them volunteered the correction against a query that named only
   `.site` and `.app`. Contamination check: the **legacy** pre-AI Remixer previewed on
   `dreamhosters.com`, so this is not old KB text bleeding into the new product.
-- **What that costs us.** `*.remixer.site` is currently hardcoded as `STAGING_HOST` in
-  `prototype/src/data/domains.ts` and printed by `PublishPanel.tsx` and `App.tsx`; it is in
-  `CLAUDE.md` and in the hand-off; and `*.remixer.app` is load-bearing in the audit's
-  branch-URL and preview-link proposals (`branch-name.yourproject.remixer.app`). Every one
-  of those is a wrong string on the most-shown screen in the product, and they are all one
-  find-and-replace apart from correct.
+- **What it cost us, and what is left.** `*.remixer.site` *was* hardcoded as `STAGING_HOST`
+  in `prototype/src/data/domains.ts` and printed by `PublishPanel.tsx` and `App.tsx`, and it
+  was in `CLAUDE.md` and in the hand-off — a wrong string on the most-shown screen in the
+  product. **All of those are fixed** (`grep -rn 'remixer\.site' prototype/src CLAUDE.md
+  docs/features` → historical comments and refutation notes only; `STAGING_HOST` holds a
+  `remixer.ai` value in one place, and the panel and the shell print it from there).
+  **What is still wrong: the audit.** `*.remixer.app` remains load-bearing in
+  `synthesis-q3-2026.md`'s branch-URL and preview-link proposals
+  (`branch-name.yourproject.remixer.app`) — `grep -c 'remixer\.app'` → 7, corrected only by
+  notes appended at :511 and :754, never in the rows themselves.
 - **The one thing still open**, and it is small: the **left-hand label** — whether the
   address reads `{project}.remixer.ai`, `{account}-{project}.remixer.ai`, or a generated id.
   Desk research cannot see it. **One screenshot of the live builder closes it in five
@@ -423,8 +446,13 @@ this file is `docs/decisions/0004-facts-live-once-in-a-register.md`).
 - `CLAUDE.md` verified-facts block → "Фон билдера **#18181B**"; audit §6 → "we hold #18181B throughout"
 - `CLAUDE.md` prototype block + Figma redesign 25819:143144 (16 Aug 2026) +
   `prototype/tailwind.config.js` → shell is **`#09090b`**; `#18181b` is `gray-900`, a panel colour
-- **Winner: `#09090b`** for anything drawn after 16 Aug 2026. `CLAUDE.md` states both values,
-  in two different sections. Consequence worth noting: the audit's AI-slop argument about our "cool
+- **Winner: `#09090b`** for anything drawn after 16 Aug 2026. ✅ The double statement is gone:
+  `CLAUDE.md` was rewritten 20 Aug 2026 and now carries the value **once**, in its
+  corrections ledger, as "shell — `#09090b`; `#18181b` is `gray-900`, a panel colour",
+  pointing at DH-403 (`grep -in '18181b' CLAUDE.md` → one line, and it is that ledger row
+  demoting the value to `gray-900`, never the shell). The two conflicting sections it used
+  to have — a "verified facts" block and a prototype-geometry block — no longer exist.
+  Consequence worth noting and still open: the audit's AI-slop argument about our "cool
   near-black" was written against `#18181B` and has not been re-run against the darker
   shell (see POSITIONING).
 
@@ -579,7 +607,7 @@ access to data, telemetry or a lawyer — and nothing below the line should hold
 
 | # | Open item | The one action | Who |
 |---|---|---|---|
-| 1 | **DH-302** — the subdomain shape (`{project}.remixer.ai`?) | **Screenshot the live builder's staging address.** Five seconds. Then find-and-replace `remixer.site` in `domains.ts`, `PublishPanel.tsx`, `App.tsx`, `CLAUDE.md`, the hand-off, and `remixer.app` in the audit | Anyone with product access — the designer, now |
+| 1 | **DH-302** — the subdomain shape (`{project}.remixer.ai`?) | **Screenshot the live builder's staging address.** Five seconds — and that is now the *whole* job: the `remixer.site` replacement is **done** (20 Aug 2026) in `domains.ts`, `PublishPanel.tsx`, `App.tsx`, `CLAUDE.md` and the hand-off, so only the **label** in front of `remixer.ai` is still a placeholder. One correction is still owed by someone else: **`remixer.app` in `synthesis-q3-2026.md`** (§6 row, Tier 2 item 19, §8.4) | Anyone with product access — the designer, now |
 | 2 | **DH-303** — "hidden from Google" | **Load a staging URL and read the response headers / `robots.txt`** (or ask the platform team for the one line). If there is no `X-Robots-Tag`, the clause comes out of `PublishPanel.tsx` today | Platform / anyone with a staging URL |
 | 3 | **DH-301** — SSL timing on *our* flow | **Time one real publish**, from Connect to padlock, and write the number down with the date. The 10–30 min KB figure is the panel install, not our flow | Whoever does the next end-to-end test |
 | 4 | **DH-401 / DH-402** — which blue is ours | **A designer's decision, not a lookup:** keep `#1587FF` and file the production blue as a bug, adopt `#0073EC`, or move the hue on purpose. Record it as an ADR in `docs/decisions/`. Either way the ramp becomes one hue | The designer, then the dev hand-off |

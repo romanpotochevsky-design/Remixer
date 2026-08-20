@@ -344,11 +344,15 @@ into two hard edges — that was the "thick gradient contour". The working const
   contract");
 - the blur then spreads the clipped shape softly outward, like actual light;
 - the visible band is a small **1px overhang** past the field's edge (`inset: -1px`,
-  radius 25 = the field's 24 + 1). ⚠️ One stale copy is still in circulation for this
-  value: **`CLAUDE.md` says 3px**. The `index.css` comment used to say 2px and has been
-  corrected; `prototype/docs/CHAT.md` used to say 3px and has been corrected. The shipped
-  value is 1px — it was halved on the designer's request because it was catching too much
-  eye — and 1px is what he approved;
+  radius 25 = the field's 24 + 1). The shipped value is 1px — it was halved on the
+  designer's request because it was catching too much eye — and 1px is what he approved.
+  **No stale copy is left in circulation** (checked 20 Aug 2026 —
+  `grep -rn '3px' CLAUDE.md prototype/docs/CHAT.md prototype/src/index.css` returns nothing
+  for this value): the `index.css` comment used to say 2px, `prototype/docs/CHAT.md` used to
+  say 3px, and `CLAUDE.md` used to say 3px — all three are corrected, and CLAUDE.md now
+  carries the 1px value in its "numbers this file used to get wrong" ledger, pointing back
+  at **this file** as the source of truth. So this line is the source: change it here, and
+  the ledger row follows;
 - the inward spill lands on `.composer-glow-plate`, an opaque `#09090b` plate exactly
   under the field. The field is 80% translucent, so **without the plate the glow bleeds
   straight through it.**

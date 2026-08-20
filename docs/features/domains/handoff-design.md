@@ -60,8 +60,12 @@ Five claims below have since been disproven or superseded. The rest of the docum
    already carries this exact reasoning in its `external-dc` comment; keep the Figma frames
    and this file consistent with it.
 
-5. **The staging host is wrong everywhere in this file (20 Aug 2026).** It says
-   `*.remixer.site`; the product uses **`remixer.ai`**. DreamHost's own KB describes the
+5. **The staging host was wrong everywhere in this file — fixed in the body 20 Aug 2026.**
+   It said `*.remixer.site`; the product uses **`remixer.ai`**. Unlike correction 2, this one
+   was applied *in place* rather than left as a specimen: a wrong hostname on the
+   most-shown screen in the product has no teaching value, and no other pointer cites it.
+   The two prose lines that carried it (Trial logic, Publish panel) now read `remixer.ai`
+   with the open question attached. DreamHost's own KB describes the
    arrow beside **Publish to Staging** opening "your temporary website **ending in
    remixer.ai**", and the Remixer product page sells a free 30-day preview "**on a
    remixer.ai subdomain**" (verified 20 Aug 2026 — `docs/product/FACTS.md` DH-302, restated
@@ -70,9 +74,10 @@ Five claims below have since been disproven or superseded. The rest of the docum
    **left-hand label** — whether the address reads `{project}.remixer.ai`,
    `{account}-{project}.remixer.ai` or a generated id — so any frame that prints a full
    staging address is showing a placeholder shape, and **one screenshot of the live builder
-   closes it**. Two knock-ons for the frames: the two places below that carry the host are
-   marked in the body, and `prototype/src/data/domains.ts` (`STAGING_HOST`) now holds the
-   corrected zone in one place, printed by the publish panel and the shell.
+   closes it**. Two knock-ons for the frames: the two places below that carried the host now
+   print the corrected zone with the open label flagged, and
+   `prototype/src/data/domains.ts` (`STAGING_HOST`) holds that zone in one place, printed by
+   the publish panel and the shell rather than retyped by either.
    ⚠️ Do not read this correction as blessing the other half of those sentences: "**hidden
    from Google**" is a *separate* claim, and it was **downgraded to `unverified`** on the
    same day (DH-303) — no statement about indexing exists in the KB, the product page or
@@ -88,10 +93,14 @@ In-builder flow for **DreamHost "Remixer"** (AI website builder): connect a doma
 ## Real product facts (verified from dreamhost.com, June 2026 — use these, don't invent)
 - **Plan = "Remixer Build" — $9.99/mo** (billed yearly = $119.88, "Save 33%"; monthly = $9.99 first month then $14.99/mo).
 - **30-day free trial, NO credit card** (DreamHost markets it as the longest no-card trial in the category).
-- **Trial logic:** new user writes a prompt on the marketing page → signs up → after the first site generates, the **30-day trial auto-starts**. Building with AI = the trial. **Publishing to a CUSTOM DOMAIN requires upgrading to the paid plan.** The `*.remixer.site` staging preview is always **free + hidden from Google**.
-  **⚠ Corrected — see correction 5 at the top of this file.** The host is **`*.remixer.ai`**
-  (zone verified; the label in front of it is still unconfirmed), and "hidden from Google" is
-  a separate, now-`unverified` claim (DH-303).
+- **Trial logic:** new user writes a prompt on the marketing page → signs up → after the first site generates, the **30-day trial auto-starts**. Building with AI = the trial. **Publishing to a CUSTOM DOMAIN requires upgrading to the paid plan.** The staging preview lives in the **`remixer.ai`** zone (DH-302) and is always **free** (DH-005, DH-303).
+  **⚠ Two limits on that sentence — it used to read `*.remixer.site`, which is refuted
+  (correction 5 above).** (1) Only the **zone** is verified; the **label in front of it is
+  still unconfirmed** — `{project}.remixer.ai`, `{account}-{project}.remixer.ai` or a
+  generated id — so **do not print a full staging address in a frame as if it were real**;
+  one screenshot of the live builder closes it. (2) **"Hidden from Google" is gone from this
+  line on purpose:** it is a separate claim, downgraded to `unverified` (DH-303), with no
+  source in the KB, the product page or the Trial Terms. Do not put it back.
 - Plan includes: hosting + global CDN (SmartEdge), **SSL**, **"Connect a Domain"**, **1,000 credits/mo** (+1,000 bonus month 1), 24/7 chat & email support. Credits power AI generate / chat-edit / publish. Add-credits (one-time, 6 mo): +1,000 = $14.99, +2,500 = $34.99 ("Best value").
 - **Domain prices:** .com $9.99 (renews $19.99) · .net $4.99 · .org $7.99 · .io $39.99 · .shop $0.99 · .store $2.99 · .online $0.99 · .me $2.99 · .ai $179.98 (2-yr min). **Free WHOIS privacy forever.**
 - DreamHost has **NO domain brokerage** → never show "Make an offer" on a taken domain (just "Taken — try another").
@@ -114,10 +123,12 @@ In-builder flow for **DreamHost "Remixer"** (AI website builder): connect a doma
 **One universal field** that detects intent (buy new / connect owned / paste external). **AI suggestions = the default empty state** (buy + upsell), NOT a 3rd path. Typing a domain you OWN resolves to a "You own this → Connect" confirm (not buy results). Dropdown rows route to a **confirm** screen — they never auto-connect on a stray click. **Verb system: Add = buy · Connect = attach a domain you own · Update/Publish = republish.**
 
 ## Publish panel — THE conversion-critical screen
-Two destinations: **Private preview** (free `*.remixer.site`, hidden from Google) + **Public website** (the custom domain — the retention moment).
-**⚠ Corrected — see correction 5 at the top of this file.** Read `*.remixer.ai` for the
-free destination; the subdomain *shape* printed in the frames is a placeholder until someone
-screenshots the live builder, and "hidden from Google" is `unverified` (DH-303).
+Two destinations: **Private preview** (free, in the **`remixer.ai`** zone — DH-302/DH-005) + **Public website** (the custom domain — the retention moment).
+**⚠ It used to say `*.remixer.site`, which is refuted (correction 5 above).** The **zone** is
+settled; the **subdomain shape** printed in the frames is still a placeholder until someone
+screenshots the live builder, so treat any full staging address in a frame as lorem. And
+"hidden from Google" has been **dropped from this line** — `unverified` (DH-303), not a
+promise we can print next to a search engine's name.
 
 **CHOSEN DIRECTION = "Launchpad" (section ⑥-A):** one dominant **hero** (eyebrow "PUBLIC WEBSITE") + a demoted **"PRIVATE PREVIEW LINK"** row below a hairline. Parallel structure: public site (hero) ↔ private preview (utility). **4 states:**
 - **CASE 1 — on trial, no plan** (must upgrade): "Go live on your own domain" + "Use your own address like trulieve.com — easy to find on Google and more professional." + indigo box **"Part of the Remixer Build plan · $9.99/mo / Includes hosting, the padlock and your domain. Cancel anytime."** + **Connect a domain →**.
