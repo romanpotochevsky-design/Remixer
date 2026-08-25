@@ -171,12 +171,18 @@ function Composer() {
     <>
       {/* ------------------------------------------- the field (28364:40219) */}
       <div
-        className="relative w-[960px] max-w-full flex-none rounded-[32px] border border-[var(--white-100)] bg-[var(--black-900)] backdrop-blur-[16px]"
-        /* Figma's padding is 17/16/16/0 on a 138-tall box with a 1px stroke, and a
-           Figma stroke sits INSIDE the geometry. A CSS border does not: it would add
-           2px and make the box 140. So the border's pixel comes out of the padding,
-           which keeps both the outer 138 and the inner offsets on the drawn numbers. */
-        style={{ boxShadow: '0 16px 80px 0 rgba(0, 0, 0, 0.08)', padding: '16px 15px 15px 0' }}
+        className="relative w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
+        /* Figma's padding is 17/16/16/0 on a 138-tall box whose 1px stroke sits
+           INSIDE the geometry. A CSS `border` does not: it eats a pixel of the
+           content box, which put the text row, the `+` button and the caret 1px
+           right of the drawn x and made the two inner rows 943 instead of 944.
+           So the rim is an INSET shadow — no layout, follows the 32px radius, one
+           static paint — and the padding is Figma's, unmodified. Same reason the
+           shell's glass rims are drawn rather than bordered (CLAUDE.md). */
+        style={{
+          boxShadow: '0 16px 80px 0 rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--white-100)',
+          padding: '17px 16px 16px 0',
+        }}
       >
         {/* text row 944 × 52, pl 24 / pr 8. The row is 52 because Figma's
             placeholder carries a second, EMPTY paragraph (2 × 26); the empty line
@@ -259,7 +265,10 @@ function Composer() {
               // duplicates in the drawn list, so the index is the only honest key
               key={`${label}-${i}`}
               onClick={() => { setDraft(label); field.current?.focus() }}
-              className="h-10 flex-none whitespace-nowrap rounded-full border border-[#ffffff3d] bg-[var(--black-200)] px-5 text-[14px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+              /* Label is `White/900` = 80% white, written out rather than taken
+                 from `--white-700`, which is 85% (spec §9 flags it as a near miss
+                 and the chip label is the place it shows). */
+              className="h-10 flex-none whitespace-nowrap rounded-full border border-[#ffffff3d] bg-[var(--black-200)] px-5 text-[14px] text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
             >
               {label}
             </button>

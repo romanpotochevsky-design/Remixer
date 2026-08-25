@@ -937,9 +937,14 @@
      * The colour field. On the board this is two 4000px ellipses under a real Gaussian
      * blur (`Magenta` 28364:40185 below `Blue` 28364:40186) over the near-black ground;
      * here it is four static gradients, least-squares fitted to the eight colours the
-     * spec sampled off the 1:1 render (§4.1). Seven of the eight land within 5/255 per
-     * channel and the worst is 14 in one channel — inside the accuracy of reference
-     * values that were themselves read off a render by eye.
+     * spec sampled off the 1:1 render (§4.1). Re-measured off the built page in QA:
+     * six of the eight land within 5/255 on every channel; the two mid-height
+     * samples are short of BLUE by 14 (mid-left) and 10 (mid-right) and within 5 on
+     * the other two channels — i.e. the flanks read a touch warmer than the board
+     * halfway down. Left as fitted: the reference values are themselves "≈ measured,
+     * all approximate" (§4.1), and every attempt to add that blue back has to pass
+     * under the opaque top of the Shadow plate, which is what produced the visible
+     * artefacts the note below is about. Confirm by eye against the board first.
      *
      * Painted bottom to top: ground · magenta · blue · a vertical VEIL of the ground
      * colour · a faint blue ambient lift. Layer order between the two glows is Figma's,
@@ -1037,13 +1042,28 @@
    * BE #121217 at y=271 or the edge shows there instead — that is the continuity
    * constraint in the fit above, and it is derived from the board, not invented.
    */
+  /* ⚠️ The plate's band is a FRACTION of the panel, not 272 absolute pixels.
+     Every other layer in this hero is proportional (the field's stops are
+     percentages), so the plate's top edge is the only place a seam can appear —
+     its top is fully opaque, and continuity depends on the field ALREADY being
+     #121217 at that exact line. Pinned at 272px it only lined up at the drawn
+     812; at 1440×900 the panel is 516 and the edge fell at 53% of it, well into
+     the coloured part of the ramp, and a hard horizontal line ran the full width
+     under the subtitle. 272/812 keeps the edge on the same line of the ramp at
+     any height, and resolves to exactly 272px at the design size. */
+  /* The 1.8% ramp at the very top is ours, not Figma's: the plate arrives fully
+     opaque, and the field it lands on is a least-squares fit, so it is out by
+     3–4/255 on that one line — plus the dot texture, which the plate covers,
+     stops dead there. Measured: (21,15,27) above the edge against (18,18,23)
+     below it. Five pixels of cross-fade put both differences under the gradient's
+     own rate of change, so the texture dissolves instead of ending on a line. */
   .home-hero-shadow {
     position: absolute;
     left: 0;
     right: 0;
-    top: 272px;
-    height: 272px;
-    background: linear-gradient(to bottom, #121217 0%, rgba(18, 18, 23, 0) 80.288%);
+    top: 33.4975%;
+    height: 33.4975%;
+    background: linear-gradient(to bottom, rgba(18, 18, 23, 0) 0%, #121217 1.8%, rgba(18, 18, 23, 0) 80.288%);
   }
 
   /*

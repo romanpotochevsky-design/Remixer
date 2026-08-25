@@ -264,6 +264,18 @@ background:
   #09090b;
 ```
 
+🛠 **QA correction, 25 Aug 2026 — this recipe does not reproduce the samples above.
+Do not build from it; build from `.home-hero` in `prototype/src/index.css`.** Evaluate the
+magenta layer at the mid-left sample (20, 400) in a 1640 × 812 panel: the ellipse is
+centred at (0, 958.2) with an ending shape of 1968 × 771.4, so the point sits at
+√((20/1968)² + (558.2/771.4)²) = **72.4 % of the ending shape**, past the 62 % stop where
+the alpha is already 0. The recipe therefore paints **zero magenta at mid-left**, where the
+table says `#3a1f52`. The blue layer fails the same way at (1630, 400). Two radial
+gradients cannot carry both a near-black top edge and a saturated bottom edge without
+putting their ending shapes — which are hard edges — inside the panel; the shipped version
+hands the vertical ramp to a separate linear veil for exactly that reason, and the
+composite is measured against all eight samples in the QA report.
+
 ⚠️ **Performance note, from this project's own history.** `CLAUDE.md` records that large
 blurred surfaces cost essentially the whole frame budget (4 fps with the Siri glow on, 60
 with it off). Two 4000 px blurred ellipses must **not** be implemented as real
@@ -275,8 +287,31 @@ animate them.
 `28364:40187`, 1640 × 272 at (0, 272), radius 0:
 
 ```css
+/* ❌ what get_design_context emits — the direction is REVERSED, see below */
 background: linear-gradient(to bottom, rgba(18,18,23,0) 0%, #121217 80.288%);
+
+/* ✅ what the layer actually draws */
+background: linear-gradient(to bottom, #121217 0%, rgba(18,18,23,0) 80.288%);
 ```
+
+🛠 **QA correction, 25 Aug 2026 — the dark end is at the TOP.** An isolated render of the
+layer (`get_screenshot 28364:40187, contentsOnly`) composites its alpha over white and comes
+back **opaque near-black across its top ~18 %, ramping to white by ~88 %** — i.e. alpha 1 at
+the top, 0 at the bottom. Figma stores a gradient as stops *plus* handle positions and the
+code export carries only the stops, so a flipped handle is invisible to it. Taken the
+export's way the plate is fully opaque from y = 490 to its bottom edge at 544 and then jumps
+(124, 49, 153) in RGB into the glow below — a hard line across the whole panel that the
+board does not have. Both versions were built and screenshotted before trusting the render.
+
+Two consequences the implementation has to carry:
+
+* the plate's **top edge is the hard one**, so the field above it must already *be* `#121217`
+  at y = 271 or the seam shows there instead — that is a continuity constraint on the
+  background fit, not a free parameter;
+* the band is **272 / 812 = 33.4975 % of the panel, not 272 absolute pixels**. Every other
+  layer in the hero is proportional; pinning the plate in pixels only lines up at the drawn
+  812, and at 1440 × 900 (panel 516) the edge lands at 53 % of the ramp and draws a visible
+  full-width line under the subtitle.
 
 It covers hero y 272 → 544, i.e. exactly the headline (320–387), the subtitle (398–454) and
 the top of the composer (490–544). `#121217` is a **raw hex, not a token**.
@@ -334,7 +369,18 @@ invisible, which contradicts the render. Interpreting them as **hero-relative** 
 predicts `Ellipse 1`'s top at hero y ≈ 327 near x ≈ 820, which is exactly where an arc
 appears in the isolated render; and `Ellipse 1179` (r = 400) lands centred on the logo
 (logo centre = 804, 208 — ring centre = 820, 208.26). **The table above uses the
-hero-relative reading. Marked as inference; verify against the render before shipping.**
+hero-relative reading.**
+
+🛠 **QA, 25 Aug 2026 — hero-relative is now VERIFIED, twice, and no longer an inference.**
+`get_screenshot` on the two decisive rings reports the node's own natural size *after* the
+hero's clip:
+
+* `28364:40181` (`Ellipse 1179`, nominally 800 × 800) comes back **800 × 608** — clipped by
+  exactly 192 px, which is the 191.739 the hero-relative reading predicts above the panel's
+  top edge. Read parent-relative the ring would start at hero y ≈ −814 and render as nothing.
+* `28364:40183` (`Ellipse 1`, 236.418²) comes back **236 × 236, unclipped** — only possible
+  if it sits at hero y 326.5 → 562.9, i.e. wholly inside the panel. Parent-relative puts it
+  at hero y −295 → −59, entirely above the panel.
 Note the family is *not* strictly concentric — three rings share centre x = 820, two share
 centre y = 208.26, and `Ellipse 1180` is an outlier that sits almost entirely below the
 hero (its topmost point is at y = 861, i.e. off-panel) and contributes only via the clip.
@@ -386,7 +432,8 @@ bottom→top. That is a pixel-for-pixel match to the Figma mark. **Reuse it at `
 | Font | **Proxima Nova Regular**, **20 px**, line-height **1.4** → 28 px |
 | Letter-spacing | 0 |
 | Colour | `White/800` → **`#ffffffb8`** (72 % white) |
-| ⚠️ | The text node contains a **second, empty paragraph** (a bare `​`). That is why the box is 56 px (2 × 28) instead of 28. **Do not reproduce the empty line** — reproduce 28 px of text and take the extra 28 px out of the rhythm, or the composer lands 28 px lower than the mock. |
+| ⚠️ | The text node contains a **second, empty paragraph** (a bare `​`). That is why the box is 56 px (2 × 28) instead of 28. **Do not render the empty line — but do keep the 28 px it occupies.** Render 28 px of text and add the other 28 px to the gap that follows (so the 36 px `conteiner` padding-top becomes 64 px). The empty line is invisible either way; the 28 px is *not* — it is what puts the composer at hero y = 490, which is where the board draws it. Delete the space as well as the line and the composer, the chips and the whole lower half move up 28 px. |
+| 🛠 | **QA correction, 25 Aug 2026.** The instruction above used to read "take the extra 28 px out of the rhythm, or the composer lands 28 px lower than the mock", which is backwards on both halves: removing the space moves the composer *up*, and the only way to land it 28 px *low* is to render the empty line **and** keep the gap. Rewritten to state the rule as one action. |
 
 ### 4.8 Vertical gaps, one list
 
@@ -432,7 +479,8 @@ padding-left:24px; padding-right:8px`.
 |---|---|---|
 | Caret | `28364:40221` (wrapper, `padding-top: 5`, stretch) → `28364:40222` | box **0 × 16**; the SVG is drawn at `inset: -3.13% -0.5px` → renders as a **1 px × 17 px** bar. Colour `Text/Default/Default` → **`#ffffff`**. Sits at x = 24. |
 | Placeholder | `28364:40223`, box 128 × 52 at x = 25 | **`e.g. Bella’s Bakery`** — note the **typographic apostrophe `’` (U+2019)**. Proxima Nova Regular **16 px**, line-height **26 px**, colour `Background/Neutral/500` → **`#c7c7cd`** *(the `#71717a` in the reference code is the light-theme trap)*. |
-| ⚠️ | | This node also carries a **second empty paragraph** — that is why the row is 52 px (2 × 26) instead of 26. Same caveat as the subtitle. |
+| ⚠️ | | This node also carries a **second empty paragraph** — that is why the row is 52 px (2 × 26) instead of 26. |
+| 🛠 | | **QA correction, 25 Aug 2026: this is NOT "the same caveat as the subtitle".** The subtitle's phantom line sits *between* elements, so its 28 px can be moved into the following gap. This one sits *inside* the field: 17 + **52** + 17 + 36 + 16 = the composer's drawn 138. Take the phantom out here and the field itself becomes 112 and every button in it moves — so the row keeps `height: 52` with a single 26 px line of text in it, and only the empty line is dropped. |
 
 ### 5.3 Button row
 

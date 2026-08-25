@@ -238,14 +238,25 @@ export function HomeDock() {
 
   return (
     <section
-      /* 376 tall, full-bleed, 32px side insets, 24px of slack below the cards. It
-         may be squeezed on a short viewport, and when it is the cards give up
-         picture height instead of the page growing a scrollbar. */
-      className="flex min-h-[236px] flex-none flex-col px-8 pb-6"
-      style={{ flex: '0 1 376px' }}
+      /*
+       * Full-bleed, 32px side insets, 24px of slack below the cards, and a title
+       * row whose height is the ONE thing the two boards disagree about: 80 with
+       * the tabs (28364:40053, dock 376) and 88 with the `Templates` heading
+       * (28375:43006, dock 384, hero 804). Carrying both means the heading and
+       * the filter chips land on their drawn y instead of 4px low — and because
+       * the extra 8px comes out of the hero, the card row still starts at 900 in
+       * both states, exactly as the boards draw it.
+       *
+       * It may be squeezed on a short viewport, and when it is the cards give up
+       * picture height instead of the page growing a scrollbar.
+       */
+      className={`flex flex-none flex-col px-8 pb-6 ${owned ? 'min-h-[236px]' : 'min-h-[244px]'}`}
+      style={{ flex: owned ? '0 1 376px' : '0 1 384px' }}
     >
-      {/* title row 1592 × 80 */}
-      <div className="flex h-20 flex-none items-center justify-between gap-6 pr-2">
+      {/* title row 1592 × 80 (tabs) / × 88 (heading) */}
+      <div
+        className={`flex flex-none items-center justify-between gap-6 pr-2 ${owned ? 'h-20' : 'h-[88px]'}`}
+      >
         {owned ? (
           <DockTabs />
         ) : (
