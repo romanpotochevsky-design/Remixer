@@ -123,6 +123,14 @@
     --gray-600: #52525b;
     --gray-500: #71717a;
     --gray-400: #a1a1aa;
+    /* The light end of the ramp. The dark shell never needed it, but the Home page
+       does: in the dark theme Figma's `Background/Neutral/*` ramp is INVERTED, so its
+       950 is #fafafa (the enabled Build pill), its 900 is #f7f7f7 (the active filter
+       chip) and its 500 is #c7c7cd (the composer placeholder — the #71717a in the
+       code export is the light-theme trap). */
+    --gray-350: #c7c7cd;
+    --gray-75: #f7f7f7;
+    --gray-50: #fafafa;
 
     /* white alpha ladder, as shipped */
     /* 4% — Figma Neutral Alpha/50. Added for the Home dock's tab track (28364:42996);
@@ -919,28 +927,55 @@
    * Everything in this section is STATIC PAINT. The hero as drawn is two 4000px
    * ellipses under a real Gaussian blur; this project already measured what large
    * blurred surfaces cost (4fps with the preview glow on, 60 with it off), so not
-   * one pixel of it is a live `filter: blur()`. Two radial gradients, one linear
-   * plate, one tiled mask, four stroked circles — painted once, composited free,
-   * nothing animating and no `backdrop-filter` anywhere except the 1640×72 topbar,
-   * which is drawn that way.
+   * one pixel of it is a live `filter: blur()`. Two radial gradients, two linear
+   * ones, one linear plate, one tiled mask and four ring-masked circles — painted
+   * once, composited free, nothing animating, and no `backdrop-filter` anywhere
+   * except the 1640×72 topbar and the composer, both of which are drawn that way.
    */
   .home-hero {
     /*
-     * The colour field. The board's two blurred ellipses are re-fitted as radial
-     * gradients against the eight colours the spec sampled off the 1:1 render
-     * (§4.1): rms error 2.3 per channel, i.e. closer than the eye can hold. Layer
-     * order matches Figma — Magenta below Blue — because they overlap at the
-     * bottom centre and the order decides the violet you get there.
+     * The colour field. On the board this is two 4000px ellipses under a real Gaussian
+     * blur (`Magenta` 28364:40185 below `Blue` 28364:40186) over the near-black ground;
+     * here it is four static gradients, least-squares fitted to the eight colours the
+     * spec sampled off the 1:1 render (§4.1). Seven of the eight land within 5/255 per
+     * channel and the worst is 14 in one channel — inside the accuracy of reference
+     * values that were themselves read off a render by eye.
      *
-     * The top band is not pure #09090b on the board (#0d0d13 … #101018): the
-     * blurs' tails reach the whole panel. That is the faint linear lift on top.
+     * Painted bottom to top: ground · magenta · blue · a vertical VEIL of the ground
+     * colour · a faint blue ambient lift. Layer order between the two glows is Figma's,
+     * because they overlap along the bottom edge and the order decides the violet you
+     * get in the middle.
+     *
+     * ⚠️ THE VEIL IS THE PART THAT MATTERS, and it took three rejected attempts to
+     * find. The panel has to be near-black along its top edge (#0d0d13) and saturated
+     * along its bottom (#b055d8), and if that whole ramp has to come out of the two
+     * glows alone then their ENDING SHAPES land inside the panel — and a radial
+     * gradient's ending shape is a hard edge. Rendered and screenshotted, that showed
+     * up as a bright elliptical arc across the top right (a fit with few stops), and
+     * then as a dark wedge under the headline (a fit whose boundary crossed mid-panel).
+     * A physically honest error-function falloff has no edge but cannot be dark at
+     * y=272 and still hit the measured colour at y=392 — it lands 25/255 too dark
+     * through the whole middle band. Handing the vertical ramp to a plain linear veil
+     * fixes all of it: both glows can then be far bigger than the panel (no boundary
+     * anywhere near it), and the veil has no shape to leak.
      */
     background:
-      linear-gradient(to bottom, rgba(124, 147, 248, 0.046), rgba(124, 147, 248, 0) 27.9%),
-      radial-gradient(59% 134.19% at 101.31% 134.94%,
-        rgba(40, 84, 210, 0.966) 0%, rgba(40, 84, 210, 0.58) 80%, rgba(40, 84, 210, 0) 100%),
-      radial-gradient(153.98% 99.98% at -17.54% 100.76%,
-        rgba(193, 89, 240, 0.999) 0%, rgba(193, 89, 240, 0.39) 78.1%, rgba(193, 89, 240, 0) 100%),
+      /* the ambient lift — the board's top band is #0d0d13…#101018, not #09090b */
+      linear-gradient(to bottom, rgba(124, 147, 248, 0.046), rgba(124, 147, 248, 0) 26.6%),
+      /* the veil: what actually makes the top third dark (see the note above) */
+      linear-gradient(to bottom,
+        rgba(9, 9, 11, 0.95) 0%, rgba(9, 9, 11, 0.95) 15%, rgba(9, 9, 11, 0.95) 30%,
+        rgba(9, 9, 11, 0) 45%),
+      /* `Blue` 28364:40186 */
+      radial-gradient(222.17% 171.75% at 130.22% 98.52%,
+        rgba(18, 104, 255, 1) 0%, rgba(18, 104, 255, 0.569) 15%, rgba(18, 104, 255, 0.29) 30%,
+        rgba(18, 104, 255, 0.125) 45%, rgba(18, 104, 255, 0.041) 60%, rgba(18, 104, 255, 0.015) 70%,
+        rgba(18, 104, 255, 0.004) 80%, rgba(18, 104, 255, 0) 90%),
+      /* `Magenta` 28364:40185 */
+      radial-gradient(338.04% 134.85% at -26.38% 98.52%,
+        rgba(217, 97, 255, 1) 0%, rgba(217, 97, 255, 0.708) 15%, rgba(217, 97, 255, 0.469) 30%,
+        rgba(217, 97, 255, 0.281) 45%, rgba(217, 97, 255, 0.143) 60%, rgba(217, 97, 255, 0.078) 70%,
+        rgba(217, 97, 255, 0.033) 80%, rgba(217, 97, 255, 0.008) 90%, rgba(217, 97, 255, 0) 100%),
       var(--gray-950);
 
     /* Vertical rhythm, hero-relative (§2): 160 pad · logo 96 · 64 · headline ·
@@ -969,24 +1004,38 @@
    */
   @media (max-height: 960px) {
     .home-hero {
-      --home-logo: 80px;
-      --home-gap-logo: 40px;
-      --home-gap-sub: 44px;
+      --home-logo: 64px;
+      --home-gap-logo: 28px;
+      --home-gap-sub: 32px;
+      --home-gap-chips: 18px;
     }
   }
   @media (max-height: 820px) {
     .home-hero {
-      --home-logo: 64px;
-      --home-gap-logo: 28px;
-      --home-gap-sub: 32px;
-      --home-gap-chips: 16px;
+      --home-logo: 52px;
+      --home-gap-logo: 20px;
+      --home-gap-sub: 24px;
+      --home-gap-chips: 12px;
     }
   }
 
   /*
-   * The `Shadow` plate (28364:40187), exactly as drawn: 1640×272 at hero y=272,
-   * transparent → #121217 at 80.288%. It is what puts contrast behind the
-   * headline, and it is a raw hex in Figma, not a token.
+   * The `Shadow` plate (28364:40187): 1640×272 at hero y=272, #121217 → transparent
+   * at 80.288% of its height. A raw hex in Figma, not a token. This is what puts
+   * contrast behind the headline (y 320–387).
+   *
+   * ⚠️ The direction is FLIPPED from what the code generator reports (it emits
+   * `to bottom, rgba(18,18,23,0) → #121217 80.288%`). An isolated render of the
+   * layer settles it: the dark end is at the TOP. Figma stores a gradient as stops
+   * plus handle positions and the export only carries the stops, so a flipped
+   * handle is invisible to it. Taken the generator's way the plate is fully opaque
+   * from y=490 to its bottom edge at 544 and then jumps (124, 49, 153) in RGB into
+   * the glow below — a hard line across the whole panel, which the board does not
+   * have. Both versions were built and screenshotted before trusting the render.
+   *
+   * Because the plate's top edge is a hard one, the field above it has to already
+   * BE #121217 at y=271 or the edge shows there instead — that is the continuity
+   * constraint in the fit above, and it is derived from the board, not invented.
    */
   .home-hero-shadow {
     position: absolute;
@@ -994,7 +1043,7 @@
     right: 0;
     top: 272px;
     height: 272px;
-    background: linear-gradient(to bottom, rgba(18, 18, 23, 0) 0%, #121217 80.288%);
+    background: linear-gradient(to bottom, #121217 0%, rgba(18, 18, 23, 0) 80.288%);
   }
 
   /*

@@ -43,12 +43,14 @@ import { HomeDock } from './Dock'
 /**
  * The four painted layers behind the hero content.
  *
+ * Three of the board's six hero layers; the two glows and the ground are painted by
+ * the panel itself (`.home-hero` in index.css).
+ *
  * Figma stacks them dots → rings → magenta → blue → shadow, i.e. the texture and the
- * rings sit UNDER the glows. Taken literally that hides them: at the bottom the glows
- * are ~90% opaque, and the dots there are the ones you can actually see on the board
- * (Figma is compositing those layers with a blend the MCP does not expose). So the
- * order here is the RENDERED order — colour field, then dots, then rings, then the
- * shadow plate over all three — which is what the board looks like.
+ * rings sit UNDER the glows. Taken literally that hides them: along the bottom the
+ * glows are ~90% opaque, and the dots down there are exactly the ones you CAN see on
+ * the board (Figma is compositing those layers with a blend the MCP does not expose).
+ * So the order here is the rendered one — field, then dots, then rings.
  */
 function HeroBackdrop() {
   return (
@@ -75,8 +77,11 @@ function HeroBackdrop() {
         <span className="home-hero-ring" style={{ left: 'calc(50% - 118.21px)', top: 326.47, width: 236.42, height: 236.42 }} />
       </div>
 
-      {/* `Shadow` 28364:40187 — the plate that puts contrast behind the headline */}
+      {/* `Shadow` 28364:40187 — the plate behind the headline. Dark at its TOP: an
+          isolated render of the layer says so, the code export says the opposite,
+          and only one of the two leaves the board without a hard line (index.css). */}
       <div className="home-hero-shadow pointer-events-none" aria-hidden />
+
     </>
   )
 }
@@ -106,7 +111,7 @@ function HomeTopbar() {
       >
         <span
           className="block h-full w-full rounded-full"
-          style={{ background: 'linear-gradient(145deg, #4b3a7d 10%, #2a3560 55%, #1b2547)' }}
+          style={{ background: 'linear-gradient(145deg, #9d8ce8 0%, #6478d0 52%, #3b4a8f)' }}
         />
       </button>
     </header>
@@ -167,7 +172,11 @@ function Composer() {
       {/* ------------------------------------------- the field (28364:40219) */}
       <div
         className="relative w-[960px] max-w-full flex-none rounded-[32px] border border-[var(--white-100)] bg-[var(--black-900)] backdrop-blur-[16px]"
-        style={{ boxShadow: '0 16px 80px 0 rgba(0, 0, 0, 0.08)', padding: '17px 16px 16px 0' }}
+        /* Figma's padding is 17/16/16/0 on a 138-tall box with a 1px stroke, and a
+           Figma stroke sits INSIDE the geometry. A CSS border does not: it would add
+           2px and make the box 140. So the border's pixel comes out of the padding,
+           which keeps both the outer 138 and the inner offsets on the drawn numbers. */
+        style={{ boxShadow: '0 16px 80px 0 rgba(0, 0, 0, 0.08)', padding: '16px 15px 15px 0' }}
       >
         {/* text row 944 × 52, pl 24 / pr 8. The row is 52 because Figma's
             placeholder carries a second, EMPTY paragraph (2 × 26); the empty line
@@ -301,7 +310,10 @@ export function HomePage() {
               in the same 160 : 118 ratio at any height, so at 812 they land on the
               exact numbers and never squeeze the content first. */}
           <div className="relative z-10 mx-auto flex h-full w-full max-w-[1640px] flex-col items-center px-4">
-            <div className="min-h-0" style={{ flex: '160 1 0' }} aria-hidden />
+            {/* The top pad is 160 of the drawn slack, but it may never fall below the
+                topbar's own 72: the bar is transparent with a blur, so anything that
+                slides under it comes out smeared rather than clipped. */}
+            <div style={{ flex: '160 1 0', minHeight: 76 }} aria-hidden />
 
             {/* logo 96 × 96, horizontally centred (28364:40192) */}
             <div className="flex-none" style={{ height: 'var(--home-logo)', width: 'var(--home-logo)' }}>
@@ -322,6 +334,8 @@ export function HomePage() {
 
             <div className="h-[11px] flex-none" aria-hidden />
 
+            {/* Proxima Nova Regular 20/1.4 at White/800 — 72% white, written out
+                rather than taken from `--white-500`, which is 70% (spec §9). */}
             <p className="flex-none text-center text-[20px] leading-[1.4] text-[#ffffffb8]">
               {t({
                 en: 'Create stunning apps & websites by chatting with AI.',
@@ -335,9 +349,8 @@ export function HomePage() {
                 composer. */}
             <div className="flex-none" style={{ height: 'var(--home-gap-sub)' }} aria-hidden />
 
-            {/* Remounted on a language switch: the field is uncontrolled between
-                renders only in the sense that its placeholder is, but a locale
-                change should not leave a half-typed prompt under a new language. */}
+            {/* Keyed on the locale: switching language mid-sentence should not leave
+                half a prompt sitting under a placeholder in the other one. */}
             <Composer key={lang} />
 
             <div className="min-h-0" style={{ flex: '118 1 0' }} aria-hidden />

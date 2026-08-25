@@ -48,7 +48,9 @@ function DockTabs() {
   ]
 
   return (
-    <div className="flex h-11 flex-none items-center gap-1.5 rounded-full border border-[#ffffff52] bg-[var(--white-050)] p-1.5">
+    /* 211 × 44: 6px of padding, 101 + 6 + 92 of tabs. The 1px rim comes out of the
+       padding rather than adding to the track, the same reason as the composer's. */
+    <div className="flex h-11 w-[211px] flex-none items-center gap-1.5 rounded-full border border-[#ffffff52] bg-[var(--white-050)] p-[5px]">
       {tabs.map((tab) => {
         const active = dockTab === tab.id
         return (
@@ -129,7 +131,7 @@ function ProjectCard({ project }: { project: HomeProject }) {
 
       <div className="flex h-14 w-full flex-none items-center justify-between">
         <div className="flex min-w-0 flex-col gap-[5px] pb-px pl-1 pt-3">
-          <p className="truncate font-display text-[18px] font-medium leading-none text-white">{project.name}</p>
+          <p className="truncate font-display text-[18px] font-medium leading-[1.2] text-white">{project.name}</p>
           <p className="truncate text-[12px] leading-[1.4] text-[var(--white-480)]">{t(project.updatedLabel)}</p>
         </div>
         {/* 40 × 40, radius 10, 24px icon box with a 20px leaf. What the menu holds is
@@ -209,7 +211,7 @@ function TemplateCard({ template }: { template: Template }) {
       <div className="flex h-[54px] w-full flex-none flex-col gap-[5px] pb-px pl-1 pt-3">
         {/* verbatim from the board; the captions do not describe their own
             screenshots and two of the six repeat — see data/templates.ts */}
-        <p className="truncate font-display text-[16px] font-medium leading-none text-white">{template.name}</p>
+        <p className="truncate font-display text-[16px] font-medium leading-[1.2] text-white">{template.name}</p>
         <p className="truncate text-[12px] leading-[1.4] text-[var(--white-480)]">{template.description}</p>
       </div>
 
