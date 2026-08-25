@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MotionConfig } from 'motion/react'
-import App from './App'
+import Root from './Root'
 import './index.css'
 
 createRoot(document.getElementById('root')!).render(
@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')!).render(
         dead, which reads as "animations are broken", not as an accessibility
         setting being honoured. */}
     <MotionConfig reducedMotion="user">
-      <App />
+      <Root />
     </MotionConfig>
   </StrictMode>,
 )

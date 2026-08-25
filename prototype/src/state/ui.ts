@@ -13,6 +13,21 @@
  * more entry in `Surface`, not a new layout.
  */
 import { create } from 'zustand'
+import type { TemplateCategoryId } from '@/data/templates'
+
+/**
+ * Which top-level page is on screen.
+ *
+ * The Home page (Figma 28364:40053) is NOT a surface inside the builder — it has its
+ * own chrome: a transparent topbar over the hero, no chat column, no right rail. So it
+ * cannot be an entry in `Surface`; it sits one level up, and `Root.tsx` picks between
+ * the two. Every future top-level page (account, billing, the hosting panel) becomes
+ * one more value here rather than another special case inside the builder shell.
+ */
+export type Page = 'home' | 'builder'
+
+/** The Home page dock's two halves (Figma 28364:42996 — the segmented control). */
+export type DockTab = 'projects' | 'templates'
 
 export type Surface =
   | 'preview'
@@ -65,6 +80,11 @@ export const MOBILE_WIDTH = 390
 export const MOBILE_HEIGHT = 844
 
 interface UIStore {
+  page: Page
+  /** Which half of the Home dock is showing. Only meaningful with projects in hand. */
+  dockTab: DockTab
+  /** Which template category chip is active. `all` is the drawn default. */
+  templateFilter: TemplateCategoryId
   surface: Surface
   domainScreen: DomainScreen
   /** The domain the user is acting on inside the domains surface. */
@@ -79,6 +99,10 @@ interface UIStore {
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
 
+  goHome: () => void
+  openBuilder: () => void
+  setDockTab: (tab: DockTab) => void
+  setTemplateFilter: (id: TemplateCategoryId) => void
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
   openSurface: (s: Surface) => void
@@ -95,6 +119,10 @@ interface UIStore {
 let reloadTimer: ReturnType<typeof setTimeout> | null = null
 
 export const useUI = create<UIStore>((set, get) => ({
+  /* The prototype opens where the product does — on the Home page. */
+  page: 'home',
+  dockTab: 'projects',
+  templateFilter: 'all',
   surface: 'preview',
   domainScreen: 'home',
   activeDomain: null,
@@ -104,6 +132,12 @@ export const useUI = create<UIStore>((set, get) => ({
   chatWidth: CHAT_DEFAULT,
   reloading: false,
 
+  /* Leaving the builder closes what was open inside it: coming back to a half-open
+     publish popover from another page reads as a bug, not as continuity. */
+  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null }),
+  openBuilder: () => set({ page: 'builder' }),
+  setDockTab: (dockTab) => set({ dockTab }),
+  setTemplateFilter: (templateFilter) => set({ templateFilter }),
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
   openSurface: (surface) => set({ surface, publishOpen: false }),

@@ -49,7 +49,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome } = useUI()
 
   /*
    * The glow waits for the send choreography to finish.
@@ -111,12 +111,18 @@ export default function App() {
       <aside className="flex flex-none flex-col" style={{ width: 'calc(var(--chat-w) - 1px)' }}>
         {/* chat top toolbar (Figma 25819:143769) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
-          <div className="flex items-center">
+          {/* the mark is the way back to the Home page, as it is in every builder
+              in the category */}
+          <button
+            onClick={() => goHome()}
+            aria-label={t({ en: 'Back to Home', uk: 'На головну' })}
+            className="flex items-center"
+          >
             <div className="grid w-14 place-items-center">
               <LogoRemixer size={32} />
             </div>
             <span className="font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
-          </div>
+          </button>
           <Glass className="gap-0.5 p-0.5">
             <button
               aria-label={t({ en: 'Version history', uk: 'Історія версій' })}

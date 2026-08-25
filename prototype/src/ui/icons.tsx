@@ -246,6 +246,39 @@ export const IconMore = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/* ---- Home page set (Figma 28364:40053 / 28375:43006) ---- */
+
+/**
+ * The return arrow on the composer's Build button (28364:40245).
+ * Standard ↵: a shaft running right→left with a chevron head at the left end and a
+ * riser at the right that turns down into it.
+ */
+export const IconEnter = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M19 7v4.5a1.5 1.5 0 0 1-1.5 1.5H6" />
+    <path d="m9.5 9.5-3.5 3.5 3.5 3.5" />
+  </svg>
+)
+
+/**
+ * The chip row's end cap (28364:40343) is a plain chevron, not an arrow with a shaft —
+ * `IconArrowRight` is the wrong glyph there.
+ */
+export const IconChevronRight = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path d="m7.5 4.5 6 5.5-6 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** The project card's kebab (28364:40640) — VERTICAL, unlike IconMore. */
+export const IconMoreVertical = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="0" fill="currentColor">
+    <circle cx="12" cy="5.5" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="12" cy="18.5" r="1.6" />
+  </svg>
+)
+
 /* ---- domains dashboard set (Figma 27085:106382 / 26181:33524) ---- */
 
 export const IconSearch = ({ size = 20, className }: IconProps) => (

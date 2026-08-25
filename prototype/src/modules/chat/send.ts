@@ -78,6 +78,24 @@ function deliverAnswer(prompt: string) {
 }
 
 /**
+ * A build started from the Home page — the page's whole reason to exist.
+ *
+ * Same machinery as a chat send, one step in front of it: the Home composer starts a
+ * NEW site, so the project axes are cleared first and `sendMessage` then does exactly
+ * what it does in the builder (seed the transcript, flip chat to 'working', put the
+ * project into 'generating', schedule the canned answer). Nothing here duplicates its
+ * choreography or touches its timings — the builder shell must not be able to tell
+ * which composer the message came from.
+ */
+export function startBuild(prompt: string) {
+  const text = prompt.trim()
+  if (!text) return
+  const { set, preset } = useWorld.getState()
+  set({ project: 'empty', chat: 'empty', sent: [], unpublished: 0 }, preset)
+  sendMessage(text)
+}
+
+/**
  * Pick up a send that a reload interrupted.
  *
  * The world persists (localStorage + URL — any state is a shareable link), but

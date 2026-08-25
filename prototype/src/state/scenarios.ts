@@ -9,7 +9,7 @@
  * Ukrainian is the second language.
  */
 import type { World } from './world'
-import { DEFAULT_WORLD } from './world'
+import { DEFAULT_WORLD, DEMO_PROJECTS } from './world'
 import type { Text } from '../i18n'
 
 export interface Preset {
@@ -25,25 +25,25 @@ export const PRESETS: Preset[] = [
     id: 'first-run',
     label: { en: 'First run', uk: 'Перший запуск' },
     note: { en: 'Blank canvas, nothing generated yet', uk: 'Порожнє полотно, ще нічого не згенеровано' },
-    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', domain: 'staging', inventory: 'none', unpublished: 0 },
+    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', domain: 'staging', inventory: 'none', unpublished: 0, projects: [] },
   },
   {
     id: 'generating',
     label: { en: 'Generating', uk: 'Іде генерація' },
     note: { en: 'The site assembles in front of you', uk: 'Сайт збирається на очах' },
-    patch: { account: 'trial', trialDay: 1, credits: 1880, project: 'generating', chat: 'working', domain: 'staging', unpublished: 0 },
+    patch: { account: 'trial', trialDay: 1, credits: 1880, project: 'generating', chat: 'working', domain: 'staging', unpublished: 0, projects: [] },
   },
   {
     id: 'trial-mid',
     label: { en: 'Trial, day 22', uk: 'Тріал, день 22' },
     note: { en: 'Building, credits going down, no domain yet', uk: 'Будує, кредити витрачаються, домену немає' },
-    patch: { account: 'trial', trialDay: 22, credits: 640, bonus: true, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 3 },
+    patch: { account: 'trial', trialDay: 22, credits: 640, bonus: true, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 3, projects: DEMO_PROJECTS },
   },
   {
     id: 'trial-low',
     label: { en: 'Credits running out', uk: 'Кредити закінчуються' },
     note: { en: 'The upsell moment', uk: 'Момент апселу' },
-    patch: { account: 'trial', trialDay: 27, credits: 40, project: 'built', chat: 'long', domain: 'staging', unpublished: 1 },
+    patch: { account: 'trial', trialDay: 27, credits: 40, project: 'built', chat: 'long', domain: 'staging', unpublished: 1, projects: DEMO_PROJECTS },
   },
   {
     id: 'trial-expired',
@@ -52,49 +52,49 @@ export const PRESETS: Preset[] = [
       en: 'AI off, manual editing alive. Frame as an UPGRADE, never as "start a trial"',
       uk: 'AI вимкнено, ручне редагування живе. Це АПГРЕЙД, а не «почни тріал»',
     },
-    patch: { account: 'trial-expired', trialDay: 30, credits: 0, bonus: false, project: 'built', chat: 'long', domain: 'staging', unpublished: 2 },
+    patch: { account: 'trial-expired', trialDay: 30, credits: 0, bonus: false, project: 'built', chat: 'long', domain: 'staging', unpublished: 2, projects: DEMO_PROJECTS },
   },
   {
     id: 'paid-no-domain',
     label: { en: 'Paid, no domain', uk: 'Оплачено, домену немає' },
     note: { en: 'Plan active, site still on staging', uk: 'План активний, сайт на стейджингу' },
-    patch: { account: 'paid', billing: 'yearly', credits: 1000, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 0 },
+    patch: { account: 'paid', billing: 'yearly', credits: 1000, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 0, projects: DEMO_PROJECTS },
   },
   {
     id: 'dh-zero-record',
     label: { en: 'Own domain on DreamHost', uk: 'Власний домен на DreamHost' },
     note: { en: 'Our edge: connect with zero DNS records', uk: 'Наша перевага: підключення без жодного DNS-запису' },
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'searching', unpublished: 0 },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'searching', unpublished: 0, projects: DEMO_PROJECTS },
   },
   {
     id: 'connecting',
     label: { en: 'Domain connecting', uk: 'Домен підключається' },
     note: { en: 'Waiting on DNS — nothing for the user to do', uk: 'Чекаємо на DNS — користувачу нічого робити' },
-    patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0 },
+    patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0, projects: DEMO_PROJECTS },
   },
   {
     id: 'live',
     label: { en: 'Live site', uk: 'Живий сайт' },
     note: { en: 'Everything published, domain working', uk: 'Все опубліковано, домен працює' },
-    patch: { account: 'paid', credits: 940, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 0 },
+    patch: { account: 'paid', credits: 940, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 0, projects: DEMO_PROJECTS },
   },
   {
     id: 'live-stale',
     label: { en: 'Live, with edits', uk: 'Живий, є правки' },
     note: { en: 'The build is newer than what is published', uk: 'Зібране новіше за опубліковане' },
-    patch: { account: 'paid', credits: 900, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4 },
+    patch: { account: 'paid', credits: 900, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4, projects: DEMO_PROJECTS },
   },
   {
     id: 'domain-broken',
     label: { en: 'Domain not responding', uk: 'Домен не відповідає' },
     note: { en: 'Failure state — needs a recovery verb', uk: 'Стан помилки — потрібне дієслово відновлення' },
-    patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', unpublished: 0 },
+    patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', unpublished: 0, projects: DEMO_PROJECTS },
   },
   {
     id: 'external-manual',
     label: { en: 'Domain at another registrar', uk: 'Домен в іншого реєстратора' },
     note: { en: 'Namecheap / Cloudflare — manual records only', uk: 'Namecheap / Cloudflare — лише ручні записи' },
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', unpublished: 0 },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', unpublished: 0, projects: DEMO_PROJECTS },
   },
 ]
 
@@ -104,6 +104,12 @@ export interface AxisOption {
   value: string
   label: Text
   hint?: Text
+  /**
+   * For axes whose value is NOT a scalar (a list, an object): the patch this option
+   * applies, instead of the console's default `{ [key]: value }`. `projects` is the
+   * first such axis — the dock's two states are "an empty shelf" and "one site".
+   */
+  patch?: Partial<World>
 }
 
 export interface Axis {
@@ -117,6 +123,8 @@ export interface Axis {
   step?: number
   /** Hide the axis when it cannot apply (e.g. trial day when not on trial). */
   appliesWhen?: (w: World) => boolean
+  /** Non-scalar axes: which option value reads as active right now. */
+  current?: (w: World) => string
 }
 
 const G = {
@@ -127,6 +135,7 @@ const G = {
   domain: { en: 'Project domain', uk: 'Домен проєкту' },
   project: { en: 'Project', uk: 'Проєкт' },
   chat: { en: 'Chat', uk: 'Чат' },
+  home: { en: 'Home page', uk: 'Головна' },
 }
 
 export const AXES: Axis[] = [
@@ -212,6 +221,28 @@ export const AXES: Axis[] = [
       { value: 'error', label: { en: 'Error', uk: 'Помилка' } },
     ],
   },
+  {
+    /*
+     * The Home page dock has exactly two shapes, and which one you get is decided
+     * here rather than by a flag on the page: a customer with nothing generated is
+     * shown templates, a customer with a site is shown their shelf with the
+     * `My projects | Templates` tabs over it (Figma 28375:43006 / 28364:40053).
+     */
+    key: 'projects', group: G.home, label: { en: 'Sites they have', uk: 'Створені сайти' }, kind: 'options',
+    current: (w) => (w.projects.length ? 'one' : 'none'),
+    options: [
+      {
+        value: 'none', label: { en: 'No projects yet', uk: 'Ще нічого немає' },
+        hint: { en: 'first run — the dock shows templates', uk: 'перший запуск — у доку шаблони' },
+        patch: { projects: [] },
+      },
+      {
+        value: 'one', label: { en: 'One site', uk: 'Один сайт' },
+        hint: { en: 'the dock shows My projects', uk: 'у доку «My projects»' },
+        patch: { projects: DEMO_PROJECTS },
+      },
+    ],
+  },
 ]
 
 /** Distinct groups, in the order they first appear. */
@@ -246,6 +277,7 @@ export function describe(w: World): Text {
   }
   en.push(domain[w.domain].en); uk.push(domain[w.domain].uk)
 
+  if (!w.projects.length) { en.push('no sites yet'); uk.push('сайтів ще немає') }
   if (w.project === 'empty') { en.push('empty project'); uk.push('проєкт порожній') }
   else if (w.project === 'generating') { en.push('generating'); uk.push('іде генерація') }
   else if (w.unpublished > 0) {

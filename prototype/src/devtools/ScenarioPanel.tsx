@@ -36,9 +36,11 @@ export function ScenarioPanel() {
 
   const problems = violations(world)
 
-  /** Would picking this value produce a state the real product cannot reach? */
-  const blocked = (key: keyof World, value: unknown) =>
-    violations({ ...world, [key]: value } as World).find((v) => v.field === key)
+  /** Would picking this value produce a state the real product cannot reach?
+   *  Takes the option's own patch, so non-scalar axes (a list of projects) are
+   *  checked as the value they actually apply, not as the option's id string. */
+  const blocked = (key: keyof World, patch: Partial<World>) =>
+    violations({ ...world, ...patch } as World).find((v) => v.field === key)
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(window.location.href)
@@ -178,13 +180,19 @@ export function ScenarioPanel() {
                           {axis.kind === 'options' && (
                             <div className="flex flex-wrap gap-1">
                               {axis.options!.map((opt) => {
-                                const active = String(world[axis.key]) === opt.value
-                                const block = blocked(axis.key, opt.value)
+                                /* `current` exists for axes whose value is not a
+                                   scalar — the option id and the stored value are
+                                   then different things. */
+                                const patch = opt.patch ?? ({ [axis.key]: opt.value } as Partial<World>)
+                                const active = axis.current
+                                  ? axis.current(world) === opt.value
+                                  : String(world[axis.key]) === opt.value
+                                const block = blocked(axis.key, patch)
                                 return (
                                   <button
                                     key={opt.value}
                                     disabled={!!block && !active}
-                                    onClick={() => set({ [axis.key]: opt.value } as Partial<World>)}
+                                    onClick={() => set(patch)}
                                     title={block ? t(block.reason) : opt.hint ? t(opt.hint) : undefined}
                                     className={`rounded border px-2 py-1 text-[12px] transition-colors duration-150 ${
                                       active

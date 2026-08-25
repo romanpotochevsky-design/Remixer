@@ -6,6 +6,7 @@
  * the truth. Add a new dimension here first, then read it in the screens.
  */
 import { create } from 'zustand'
+import type { ThumbId } from '@/modules/home/thumbs'
 
 /* ------------------------------------------------------------------ axes */
 
@@ -63,6 +64,47 @@ export interface Message {
   text: string | { en: string; uk: string }
 }
 
+/**
+ * Axis D — the sites this customer has already generated.
+ *
+ * This is product truth, not navigation: it is what the Home page's dock reads to
+ * decide whether it opens on "My projects" at all. An EMPTY list is the first-run
+ * customer, who is shown templates instead — the two states drawn on Figma
+ * 28364:40053 (one project + five empty slots) and 28375:43006 (templates).
+ *
+ * The list is deliberately not derived from `project`: that axis describes the ONE
+ * project currently open in the builder, while this is the customer's shelf. A
+ * customer can stand in a generating project and still own three finished sites.
+ */
+export interface HomeProject {
+  id: string
+  /** The card's title. Figma titles it with the live address, `synco.com`. */
+  name: string
+  /** Pre-rendered relative time: the prototype has no clock to derive one from. */
+  updatedLabel: { en: string; uk: string }
+  /** Which miniature site the card shows (see modules/home/thumbs.tsx). */
+  thumb: ThumbId
+}
+
+/**
+ * The one project Figma draws, verbatim (28364:40635 / 40636).
+ *
+ * ⚠️ `payments` is not a mistake. The board fills this card with template card 1's
+ * screenshot (the PayNexus fintech page) — Figma placeholder reuse, the same habit
+ * that gives two template cards the identical caption — and the page is signed off by
+ * comparing renders side by side, so the drawn screenshot is the one to draw. A
+ * dedicated `synco` thumbnail exists in thumbs.tsx for the day the real asset lands:
+ * swap this one field and nothing else changes.
+ */
+export const DEMO_PROJECTS: HomeProject[] = [
+  {
+    id: 'synco',
+    name: 'synco.com',
+    updatedLabel: { en: 'Updated 1 hour ago', uk: 'Оновлено годину тому' },
+    thumb: 'payments',
+  },
+]
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -79,6 +121,8 @@ export interface World {
   /** Edits made since the last publish. Drives the stale-publish signal. */
   unpublished: number
   chat: Chat
+  /** Every site this customer has generated. Empty = the first-run Home page. */
+  projects: HomeProject[]
   /**
    * The live transcript, once the user has actually typed something.
    *
@@ -102,6 +146,7 @@ export const DEFAULT_WORLD: World = {
   project: 'built',
   unpublished: 0,
   chat: 'long',
+  projects: DEMO_PROJECTS,
   sent: [],
 }
 
@@ -118,6 +163,8 @@ export const isCustomDomainActive = (w: World) =>
   w.domain === 'connecting' || w.domain === 'verifying' ||
   w.domain === 'live' || w.domain === 'unreachable' || w.domain === 'multiple'
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
+/** First run on the Home page: nothing generated yet, so the dock shows templates. */
+export const hasProjects = (w: World) => w.projects.length > 0
 
 /* ------------------------------------------------------------- validity */
 
@@ -173,11 +220,23 @@ const KEYS: Record<string, keyof World> = {
   i: 'inventory', d: 'domain', p: 'project', u: 'unpublished', h: 'chat',
 }
 
+/**
+ * `projects` is a LIST, so it cannot ride the scalar table above — but the Home
+ * page's whole shape hangs off it, and a demo state that cannot be linked is a demo
+ * state nobody else can open. What a link needs to carry is the axis, not the rows:
+ * it travels as a COUNT (`w=0` is the first-run customer with an empty dock), and
+ * anything else restores the drawn demo project.
+ */
+const PROJECTS_KEY = 'w'
+
 export function worldToParams(w: World): string {
   const q = new URLSearchParams()
   for (const [short, key] of Object.entries(KEYS)) {
     const v = w[key]
     if (v !== DEFAULT_WORLD[key]) q.set(short, String(v))
+  }
+  if (w.projects.length !== DEFAULT_WORLD.projects.length) {
+    q.set(PROJECTS_KEY, String(w.projects.length))
   }
   return q.toString()
 }
@@ -193,6 +252,8 @@ export function paramsToWorld(search: string): Partial<World> {
       : typeof ref === 'boolean' ? raw === 'true'
       : raw
   }
+  const count = q.get(PROJECTS_KEY)
+  if (count !== null) w.projects = DEMO_PROJECTS.slice(0, Math.max(0, Number(count) || 0))
   return w as Partial<World>
 }
 

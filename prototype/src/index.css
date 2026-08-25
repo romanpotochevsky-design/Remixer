@@ -125,12 +125,18 @@
     --gray-400: #a1a1aa;
 
     /* white alpha ladder, as shipped */
+    /* 4% — Figma Neutral Alpha/50. Added for the Home dock's tab track (28364:42996);
+       the ladder below starts at 8%, and 4% is a real step in the kit. */
+    --white-050: #ffffff0a;
     --white-100: #ffffff14;
     --white-200: #ffffff1f;
     --white-300: #ffffff33;
     --white-400: #ffffff66;
     --white-500: #ffffffb2;
     --white-700: #ffffffd9;
+    /* 48% — Figma Text/Default/Secondary. The Home page leans on it for card meta,
+       the inactive tab label and the kebab; the ladder's 40% and 70% both miss. */
+    --white-480: #ffffff7a;
     --white-900: #fffffff2;
 
     /* action — one hue, all steps */
@@ -151,6 +157,8 @@
     --brand-to: #4a2bc3;
 
     /* black alpha ladder — Figma "Black/…", used on glass controls */
+    /* 16% — Figma Black/200, the Home page's prompt-chip fill (28364:40330). */
+    --black-200: #09090b29;
     --black-300: #09090b3d;
     --black-700: #09090ba3;
     --black-800: #09090bb8;
@@ -608,15 +616,16 @@
   .scroll-area { position: relative; }
   .scroll-thumb {
     position: absolute;
-    top: 0;
-    right: 3px;
-    width: 4px;
     border-radius: 999px;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s var(--ease-std);
     will-change: transform;
   }
+  /* Vertical is the default surface; horizontal is the Home page's card row and
+     chip row, where the bar lies along the bottom edge instead. */
+  .scroll-thumb--y { top: 0; right: 3px; width: 4px; }
+  .scroll-thumb--x { left: 0; bottom: 3px; height: 4px; }
   .scroll-thumb[data-off] { display: none; }
   .scroll-thumb[data-on],
   .scroll-area:hover > .scroll-thumb { opacity: 1; }
@@ -899,6 +908,170 @@
     from { opacity: 0; transform: scale(1.012); }
     to   { opacity: 1; transform: scale(1); }
   }
+
+  /*
+   * ======================================================= HOME PAGE
+   * Figma 28364:40053 (canonical, "My projects") and 28375:43006 (Templates).
+   * A top-level PAGE, not a surface inside the builder: 8px-inset rounded hero
+   * panel with a transparent 72px topbar over it, and a full-bleed 376px dock
+   * pinned under it. Numbers come from docs/features/home-page/figma-spec.md.
+   *
+   * Everything in this section is STATIC PAINT. The hero as drawn is two 4000px
+   * ellipses under a real Gaussian blur; this project already measured what large
+   * blurred surfaces cost (4fps with the preview glow on, 60 with it off), so not
+   * one pixel of it is a live `filter: blur()`. Two radial gradients, one linear
+   * plate, one tiled mask, four stroked circles — painted once, composited free,
+   * nothing animating and no `backdrop-filter` anywhere except the 1640×72 topbar,
+   * which is drawn that way.
+   */
+  .home-hero {
+    /*
+     * The colour field. The board's two blurred ellipses are re-fitted as radial
+     * gradients against the eight colours the spec sampled off the 1:1 render
+     * (§4.1): rms error 2.3 per channel, i.e. closer than the eye can hold. Layer
+     * order matches Figma — Magenta below Blue — because they overlap at the
+     * bottom centre and the order decides the violet you get there.
+     *
+     * The top band is not pure #09090b on the board (#0d0d13 … #101018): the
+     * blurs' tails reach the whole panel. That is the faint linear lift on top.
+     */
+    background:
+      linear-gradient(to bottom, rgba(124, 147, 248, 0.046), rgba(124, 147, 248, 0) 27.9%),
+      radial-gradient(59% 134.19% at 101.31% 134.94%,
+        rgba(40, 84, 210, 0.966) 0%, rgba(40, 84, 210, 0.58) 80%, rgba(40, 84, 210, 0) 100%),
+      radial-gradient(153.98% 99.98% at -17.54% 100.76%,
+        rgba(193, 89, 240, 0.999) 0%, rgba(193, 89, 240, 0.39) 78.1%, rgba(193, 89, 240, 0) 100%),
+      var(--gray-950);
+
+    /* Vertical rhythm, hero-relative (§2): 160 pad · logo 96 · 64 · headline ·
+       11 · subtitle · 64 · composer 138 · 24 · chips 42 · 118 slack. The 64
+       under the subtitle is Figma's phantom empty line (28) plus the composer
+       container's own padding-top (36) — the phantom is NOT rendered as an empty
+       line, only as the space it occupies, so the composer lands where the board
+       draws it. */
+    --home-logo: 96px;
+    --home-gap-logo: 64px;
+    --home-gap-sub: 64px;
+    --home-gap-chips: 24px;
+    --home-h1: 56px;
+  }
+  /* The headline is `whitespace-nowrap` at 56px, i.e. 735px wide and unable to
+     wrap — so below roughly 800px of column it has to come down in size instead of
+     running off the panel. Not drawn; no mobile board exists (spec §12.19). */
+  @media (max-width: 940px) {
+    .home-hero { --home-h1: 40px; }
+  }
+  /*
+   * Nothing responsive is drawn (§12.19). At 1196px of viewport height the rhythm
+   * above is exact; below that the hero is the band that loses height, so the two
+   * biggest gaps and the logo give way first — in that order, because they are
+   * space rather than content. The headline, composer and chips never shrink.
+   */
+  @media (max-height: 960px) {
+    .home-hero {
+      --home-logo: 80px;
+      --home-gap-logo: 40px;
+      --home-gap-sub: 44px;
+    }
+  }
+  @media (max-height: 820px) {
+    .home-hero {
+      --home-logo: 64px;
+      --home-gap-logo: 28px;
+      --home-gap-sub: 32px;
+      --home-gap-chips: 16px;
+    }
+  }
+
+  /*
+   * The `Shadow` plate (28364:40187), exactly as drawn: 1640×272 at hero y=272,
+   * transparent → #121217 at 80.288%. It is what puts contrast behind the
+   * headline, and it is a raw hex in Figma, not a token.
+   */
+  .home-hero-shadow {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 272px;
+    height: 272px;
+    background: linear-gradient(to bottom, rgba(18, 18, 23, 0) 0%, #121217 80.288%);
+  }
+
+  /*
+   * The dotted texture (`Union` 28364:40177): a boolean union of thousands of
+   * vector dots in Figma, ≈12.8px pitch, ≈1.5px dots, offset 22px down inside the
+   * hero. Importing it as SVG would ship thousands of paths, so it is a tiled
+   * MASK over a colour field instead — the dots pick up the hue axis of the glows
+   * exactly as they do on the board (grey at the top, magenta bottom-left, blue
+   * bottom-right) while the lattice itself is one painted tile.
+   */
+  .home-hero-dots {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 22px;
+    bottom: 0;
+    background:
+      radial-gradient(80% 90% at 0% 100%, rgba(255, 176, 255, 0.62), rgba(255, 176, 255, 0) 62%),
+      radial-gradient(75% 90% at 100% 100%, rgba(150, 180, 255, 0.62), rgba(150, 180, 255, 0) 58%),
+      var(--gray-700);
+    -webkit-mask-image: radial-gradient(circle at center, #000 0.75px, transparent 0.85px);
+    mask-image: radial-gradient(circle at center, #000 0.75px, transparent 0.85px);
+    -webkit-mask-size: 12.8px 12.8px;
+    mask-size: 12.8px 12.8px;
+  }
+
+  /*
+   * The rings (`Circles` 28364:40178) — five 1px ellipses, of which four are
+   * visible. Their coordinate space in the MCP dump is ambiguous (§4.4); the
+   * hero-relative reading is the confirmed one: an isolated render of
+   * `Ellipse 1179` comes back 800×608, i.e. clipped by exactly the 192px that
+   * reading predicts. `Ellipse 1180` starts 49px BELOW the panel and is dropped.
+   *
+   * Drawn as one inline SVG rather than five masked divs: the stroke is a
+   * gradient (White/100 → Background/Neutral/200 left to right), and an SVG
+   * gradient stroke is one paint with no mask compositing at all.
+   */
+  .home-hero-rings {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  /* One ring: a 1px gradient stroke (White/100 → Background/Neutral/200, left to
+     right) painted through a ring mask so it follows the circle and costs no layout.
+     ⚠️ The gradient's axis is the spec's ≈measured reading and still unconfirmed —
+     at 8–12% white on this ground both ends are barely there either way. */
+  .home-hero-ring {
+    position: absolute;
+    border-radius: 50%;
+    padding: 1px;
+    background: linear-gradient(90deg, var(--white-100), var(--gray-750));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
+  /*
+   * The chip row's right edge. Figma paints an OPAQUE #283a71 rectangle over the
+   * last chip (28364:40378) — a colour hand-matched to the hero behind that one
+   * spot, which reads as a highlighted blue chip rather than as a fade and would
+   * mis-match the moment the gradient, the row's position or the window width
+   * changed. Same intent, done properly: a mask, so the true background shows
+   * through. Raised with the designer as a file bug, not copied. (§6, §12.5)
+   */
+  .home-chip-scroller {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+  }
+
+  /*
+   * The card row. Cards are `flex: 1 0 0` in Figma, so their width is an OUTPUT
+   * (238.667 at six-up in a 1592 column) — never a fixed size. They stop
+   * shrinking at 200px, which is what the 7-up board already showed as the
+   * tightest readable card; past that the row scrolls instead.
+   */
+  .home-card { flex: 1 0 0; min-width: 200px; }
 
   body {
     background: var(--gray-900);
