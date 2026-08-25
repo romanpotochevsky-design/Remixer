@@ -86,6 +86,17 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
   const [filter, setFilter] = useState<TemplateCategoryId>('all')
 
   /*
+   * True until the entrance spring lands. While it is, the cards' hover ring
+   * gets a zero duration (`--card-hover-dur`), because the sheet arriving under
+   * a parked cursor leaves one card hovered without the pointer ever moving —
+   * and a ring fading itself in on a surface that is still growing reads as the
+   * grid glitching. See the note on the ring in Dock.tsx's TemplateCard. One
+   * boolean, flipped once by the spring's own completion: no timers to keep in
+   * step with the motion tokens, and nothing per frame.
+   */
+  const [entering, setEntering] = useState(true)
+
+  /*
    * FOCUS. This is `aria-modal` over the whole page, which makes a screen
    * reader hide everything behind it — so leaving the keyboard out there is
    * worse than not claiming to be modal at all. Measured before this existed:
@@ -170,7 +181,11 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
         initial="initial"
         animate="animate"
         exit="exit"
-        style={{ transformOrigin: origin }}
+        onAnimationComplete={() => setEntering(false)}
+        style={{
+          transformOrigin: origin,
+          ...(entering ? { '--card-hover-dur': '0s' } : null),
+        } as React.CSSProperties}
         className="absolute inset-4 overflow-hidden rounded-[16px] bg-[var(--gray-900)] focus:outline-none"
       >
         {/* One motion block over both boxes, so the content still lands as the

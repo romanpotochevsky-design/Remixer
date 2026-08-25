@@ -1278,10 +1278,35 @@
    *   · the count would then change at a width no board covers, and the grid the
    *     designer approved would only exist between two arbitrary breakpoints.
    * Revisit when the library stops being a multiple of six, or grows past ~30.
+   *
+   * NARROW SCREENS: below the design size the count DROPS instead of the cards
+   * being squeezed — six-up ran all the way down to a 157px card at 1200, and a
+   * website miniature stops being a picture of a website somewhere around 200
+   * (looked at 1100, 1200, 1280 and 1440; 200 is where the AURA card's body copy
+   * turns to grey mush and ArchiForm's chart columns merge).
+   *
+   * ⚠️ ONE declaration does both ends, but NOT the obvious one. Plain
+   * `minmax(200px, 1fr)` under `auto-fill` also caps the card at ~2 × 200: it
+   * fits a seventh column the moment 200 more pixels exist, so it hands back
+   * eight columns of 210 at 2000 — the exact opposite of the reference. What
+   * makes it work is a minimum that is the LARGER of the readable floor and the
+   * six-up width: above the crossover the floor IS six-up, so a seventh column
+   * can never fit and the six stretch; below it the floor is 200px and auto-fill
+   * drops to 5, then 4, then 3.
+   *
+   *   6 up to a 200px card (viewport ≥ 1462) · 5 down to 1224 · 4 down to 992 · 3 below
+   *
+   * The `- 1px` keeps the six-up case off a knife edge: auto-fill divides the
+   * track by (min + gap), and at exactly six-up that division lands on 6.000,
+   * where a rounding hair the wrong way would silently give five. One pixel of
+   * slack cannot let a seventh column in (that needs min ≤ (W − 192)/7, which is
+   * ~195 at the design size against our ~232) and the `1fr` still spends the
+   * whole track, so the resolved card width is unchanged.
    */
   .tplpick-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns:
+      repeat(auto-fill, minmax(max(200px, (100% - 5 * 32px) / 6 - 1px), 1fr));
     gap: 32px;
   }
 

@@ -147,8 +147,9 @@ function ProjectCard({ project }: { project: HomeProject }) {
     <div className="home-card group relative flex flex-col">
       {/* `home-thumb` carries the drawn 238.667 / 216 ratio instead of a bare
           `flex-1`, so the picture keeps its proportion wherever the card has the
-          height for it; inside the dock's fixed band it shrinks back to 216. */}
-      <div className="home-thumb relative w-full overflow-hidden rounded-[12px] ring-[var(--white-200)] transition-shadow duration-[var(--dur-fast)] ease-std group-hover:ring-1">
+          height for it; inside the dock's fixed band it shrinks back to 216.
+          Hover duration via `--card-hover-dur` — see TemplateCard. */}
+      <div className="home-thumb relative w-full overflow-hidden rounded-[12px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1">
         <Thumb id={project.thumb} className="absolute inset-0" />
       </div>
 
@@ -252,8 +253,21 @@ export function TemplateCard({
   return (
     <div className={`${className} group relative flex flex-col`}>
       {/* radius 8 here against the project card's 12 — as drawn on the two boards,
-          flagged as probably accidental (spec §12.12) */}
-      <div className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--dur-fast)] ease-std group-hover:ring-1`}>
+          flagged as probably accidental (spec §12.12)
+
+          ⚠️ The hover ring's DURATION is a variable, not a constant, and that is
+          the whole of the fix for a flicker QA caught: a surface that arrives
+          under a parked cursor makes one card hovered a frame after it mounts,
+          so its ring animated in — measured from `box-shadow: transparent 0px`
+          at t=0 to the full hairline at ~100ms, all of it while the sheet was
+          still springing. It read as the grid glitching on arrival. The card is
+          the dock's signed-off component, so nothing about the ring itself moves
+          — only who decides how long it takes: an owner that is still animating
+          sets `--card-hover-dur: 0s`, and the ring is simply THERE when the
+          sheet lands (which is honest — the pointer is over that card) instead
+          of announcing itself. Unset everywhere else, so the dock and a settled
+          picker both keep the drawn `--dur-fast` fade. */}
+      <div className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1`}>
         <Thumb id={template.id} className="absolute inset-0" />
       </div>
 
