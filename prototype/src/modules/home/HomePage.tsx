@@ -41,46 +41,75 @@ import { HomeDock } from './Dock'
 /* ------------------------------------------------------------------ backdrop */
 
 /**
- * The four painted layers behind the hero content.
+ * `Circles` 28364:40178 — the five ring radii, largest first so the smallest paints
+ * last. Exact values from `get_metadata` (widths / 2). All five share one centre:
+ * the logo mark's, hero (820, 208.25). See HeroBackdrop for the proof.
+ */
+const RING_RADII = [830.252, 652.763, 400, 350.282, 118.209]
+
+/**
+ * The three painted layers over the hero's colour field.
  *
  * Three of the board's six hero layers; the two glows and the ground are painted by
  * the panel itself (`.home-hero` in index.css).
  *
  * Figma stacks them dots → rings → magenta → blue → shadow, i.e. the texture and the
- * rings sit UNDER the glows. Taken literally that hides them: along the bottom the
- * glows are ~90% opaque, and the dots down there are exactly the ones you CAN see on
- * the board (Figma is compositing those layers with a blend the MCP does not expose).
- * So the order here is the rendered one — field, then dots, then rings.
+ * rings sit UNDER the glows and under the plate. Taken literally that hides both: the
+ * glows are ~90% opaque along the bottom, and the plate is fully opaque at its top, so
+ * the dots survive only in the band above y=272 — which is the opposite of the board,
+ * where the lattice runs the full height. Figma is compositing those layers with a
+ * blend the MCP does not expose, so the order here is the RENDERED one: field, rings,
+ * plate, then the lattice on top of everything.
  */
 function HeroBackdrop() {
   return (
     <>
-      {/* the dotted texture — a tiled mask over a coloured field (see index.css) */}
-      <div className="home-hero-dots pointer-events-none" aria-hidden />
-
       {/*
-       * `Circles` 28364:40178 — five 1px ellipses, four of them visible.
-       * Centres are hero-relative (the reading confirmed by an isolated render of
-       * Ellipse 1179 coming back clipped to exactly 800 × 608); `Ellipse 1180`
-       * starts 49px below the panel's bottom edge and is dropped. Three of the four
-       * are centred on the panel's own centre line, so they are placed off `50%`
-       * and stay centred with the headline at any width.
+       * `Circles` 28364:40178 — five 1px circles, and they are CONCENTRIC: every one
+       * of them shares the logo mark's centre, hero (820, 208.25). On the board they
+       * read as a target centred on the mark.
+       *
+       * ⚠️ The per-ellipse centres in spec §4.4 are WRONG and produced a set of
+       * off-centre sweeps with no ring around the mark at all. `get_metadata` reports
+       * one usable coordinate per ellipse and garbage for the other; the proof is the
+       * parent frame's own bounding box, which is 1660.504 square at hero
+       * (−10.25, −622) — i.e. EXACTLY the bounding box of a d=1660.504 circle centred
+       * on (820, 208.25). A frame's bbox is the union of its children, and the union
+       * can only equal the largest circle's own bbox if every other circle sits inside
+       * it sharing that centre. Radii (exact, from get_metadata widths): 830.252,
+       * 652.763, 400.000, 350.282, 118.209.
+       *
+       * The centre tracks the mark: 50% horizontally (the logo is centred in a centred
+       * column) and `--home-rings-y` vertically, which the height breakpoints move with
+       * the logo.
        */}
       <div className="home-hero-rings pointer-events-none" aria-hidden>
-        {/* Ellipse 3 · r 830.25 · centre (820, 465.13) */}
-        <span className="home-hero-ring" style={{ left: 'calc(50% - 830.25px)', top: -365.13, width: 1660.5, height: 1660.5 }} />
-        {/* Ellipse 1179 · r 400 · centre (820, 208.26) — lands on the logo */}
-        <span className="home-hero-ring" style={{ left: 'calc(50% - 400px)', top: -191.74, width: 800, height: 800 }} />
-        {/* Ellipse 2 · r 350.28 · centre (1170.28, 208.26) */}
-        <span className="home-hero-ring" style={{ left: '50%', top: -142.02, width: 700.56, height: 700.56 }} />
-        {/* Ellipse 1 · r 118.21 · centre (820, 444.68) */}
-        <span className="home-hero-ring" style={{ left: 'calc(50% - 118.21px)', top: 326.47, width: 236.42, height: 236.42 }} />
+        {RING_RADII.map((r) => (
+          <span
+            key={r}
+            className="home-hero-ring"
+            style={{
+              left: `calc(50% - ${r}px)`,
+              top: `calc(var(--home-rings-y) - ${r}px)`,
+              width: r * 2,
+              height: r * 2,
+            }}
+          />
+        ))}
       </div>
 
       {/* `Shadow` 28364:40187 — the plate behind the headline. Dark at its TOP: an
           isolated render of the layer says so, the code export says the opposite,
           and only one of the two leaves the board without a hard line (index.css). */}
       <div className="home-hero-shadow pointer-events-none" aria-hidden />
+
+      {/* The dotted texture (`Union` 28364:40177), painted LAST — above the plate.
+          Under it (Figma's own z-order) the plate's opaque top wiped the lattice out
+          from y=272 down, so the texture ended on a straight line under the logo and
+          read as strongest exactly where the board's is quietest. One uniform
+          low-alpha white lattice over the whole panel instead: no mask, no edge, and
+          the local contrast decides where it reads (see index.css). */}
+      <div className="home-hero-dots pointer-events-none" aria-hidden />
 
     </>
   )
@@ -101,17 +130,25 @@ function HomeTopbar() {
           as a link; here it is the page you are already on, so it does nothing. */}
       <span className="font-display text-[28px] font-semibold leading-none text-white">Remixer</span>
 
-      {/* Avatar 28364:40812. The board's asset is a photograph with a violet→blue
-          ring baked into the raster — we never draw a person, so it becomes an
-          abstract gradient disc inside the same ring, at the same 32px. */}
+      {/*
+       * Avatar 28364:40812. The board's asset is a photograph with a violet→blue ring
+       * baked into the raster; we never draw a person, so it stays an abstract disc —
+       * but the RING is not decoration, it is the thing that makes this read as an
+       * avatar, so it is drawn explicitly at the same 32px.
+       *
+       * ⚠️ The ring only reads if the disc under it is clearly darker. The first
+       * version used a blue-violet disc in a violet-blue ring: same hue, same value,
+       * and the ring disappeared into it — the whole control looked like a bare
+       * gradient dot. The disc is now a step darker and cooler than the rim.
+       */}
       <button
         aria-label={t({ en: 'Account', uk: 'Акаунт' })}
-        className="grid h-8 w-8 flex-none place-items-center rounded-full p-[1.5px]"
-        style={{ background: 'linear-gradient(145deg, #7c5cf8, #4a6bfb)' }}
+        className="grid h-8 w-8 flex-none place-items-center rounded-full p-[2px]"
+        style={{ background: 'linear-gradient(140deg, #8b5cf6 0%, #7057f9 46%, #4a6bfb 100%)' }}
       >
         <span
           className="block h-full w-full rounded-full"
-          style={{ background: 'linear-gradient(145deg, #9d8ce8 0%, #6478d0 52%, #3b4a8f)' }}
+          style={{ background: 'linear-gradient(150deg, #5a5f8e 0%, #3a3f6b 54%, #20244a 100%)' }}
         />
       </button>
     </header>

@@ -29,16 +29,36 @@ export const LogoRemixer = ({ size = 32, className }: IconProps) => (
     <path d="M90.0026 60.0028C73.4385 60.0028 60.0061 73.4351 60.0061 89.9991V119.995H120.012V59.9902H90.0152L90.0026 60.0028Z" fill="url(#rxl-a)" />
     <path d="M60.0058 29.9963V0H0.000244141V60.0051H29.9967C46.5608 60.0051 59.9932 46.5728 59.9932 30.0088L60.0058 29.9963Z" fill="url(#rxl-b)" />
     <path d="M29.9971 60.0078C46.5635 60.008 59.9931 73.4376 59.9932 90.0039C59.9932 106.57 46.5635 120 29.9971 120C13.4305 120 0 106.57 0 90.0039C0.000106173 73.4375 13.4305 60.0078 29.9971 60.0078ZM90.0029 0C106.569 0.000219558 119.999 13.4298 119.999 29.9961C119.999 46.5624 106.569 59.992 90.0029 59.9922C73.4363 59.9922 60.0059 46.5626 60.0059 29.9961C60.0059 13.4297 73.4364 0 90.0029 0Z" fill="url(#rxl-c)" />
-    <path d="M60.0061 30H90.0026V59.9963C73.4385 59.9963 60.0061 46.5514 60.0061 30Z" fill="white" />
-    <path d="M29.9965 60.0078 29.9965 30.0116 59.993 30.0116C59.993 46.5756 46.548 60.0078 29.9965 60.0078Z" fill="white" />
-    <path d="M60.0061 89.998H30.0096L30.0096 60.0018C46.5737 60.0018 60.0061 73.4467 60.0061 89.998Z" fill="white" />
-    <path d="M90.0033 60.0078V90.0041H60.0068C60.0068 73.4401 73.4518 60.0078 90.0033 60.0078Z" fill="white" />
+    {/*
+      * The white centre plate: a 60×60 square with a four-pointed sparkle knocked out
+      * of it (evenodd). It is NOT four quarter-wedges.
+      *
+      * ⚠️ It used to be, and that inverted the mark. Four wedges whose inner edge is a
+      * quarter-arc of r30 about the centre leave a hole that reaches almost to the
+      * plate's edges, so the WHITE read as a big four-point star and the dark shape as
+      * a fat diamond behind it. The board is the other way round: an unbroken white
+      * square with a SMALL dark sparkle inside it, points on the axes at 20 of the
+      * plate's 30 half-width, waist ≈8.3 on the diagonals. Measured off a 96px render
+      * of `Logo` 28364:40192 — note that a `contentsOnly` render of `Logotype`
+      * 28364:40193 loses the knock-out entirely and comes back as a plain white
+      * square, so it is the parent frame that has to be rendered to see this.
+      */}
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M30 30H90V90H30V30ZM60 40C60 51.0457 51.0457 60 40 60C51.0457 60 60 68.9543 60 80C60 68.9543 68.9543 60 80 60C68.9543 60 60 51.0457 60 40Z"
+      fill="white"
+    />
     <defs>
+      {/* The two grey cells: light at the mark's OUTER corner, dark at the centre.
+          ⚠️ The light end was Gray/500 #71717a and read noticeably lighter than the
+          board at 96px — the cells are meant to sit back, not compete with the two
+          coloured discs. Gray/600 #52525b → Gray/700 #3f3f46, both kit tokens. */}
       <linearGradient id="rxl-a" x1="60.0118" y1="59.9902" x2="120.011" y2="119.99" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#3F3F46" /><stop offset="1" stopColor="#71717A" />
+        <stop stopColor="#3F3F46" /><stop offset="1" stopColor="#52525B" />
       </linearGradient>
       <linearGradient id="rxl-b" x1="0.00593913" y1="0" x2="60.0051" y2="59.9997" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#71717A" /><stop offset="1" stopColor="#3F3F46" />
+        <stop stopColor="#52525B" /><stop offset="1" stopColor="#3F3F46" />
       </linearGradient>
       <linearGradient id="rxl-c" x1="-42.6678" y1="168.529" x2="-31.5028" y2="-70.2933" gradientUnits="userSpaceOnUse">
         <stop stopColor="#BE59FF" /><stop offset="0.19" stopColor="#9D60FF" />

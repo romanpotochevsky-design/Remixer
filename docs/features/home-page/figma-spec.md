@@ -338,6 +338,24 @@ background-size: 12.8px 12.8px;
 this section I would confirm with the designer** (or get as a PNG/SVG export) before
 shipping.
 
+🛠 **QA SECOND PASS, 25 Aug 2026 — do NOT build the coloured masked overlay, and do not put
+the lattice under the `Shadow` plate.** Both were tried and both inverted the board:
+
+* An opaque `Gray/700` dot over the near-black top is a **38/255** speck (measured). The
+  quietest part of the panel came out as the loudest grid on the page — the opposite of the
+  observation this section records.
+* Figma's z-order puts the `Union` below the plate, and the plate is **opaque at its top**
+  (§4.2), so the lattice was wiped out from y = 272 down and ended on a straight horizontal
+  line under the logo.
+
+What the board has is **one uniform low-alpha white lattice across the whole panel** — no
+mask, no colour field, no edge — painted above everything so nothing can clip it. Local
+contrast does the work the colour gradient was trying to do: on near-black a ~6 %-white speck
+is nothing, over the mid-tone violet it resolves, over the saturated bottom it fades again.
+Shipped as `radial-gradient(circle at center, rgba(255,255,255,.06) .75px, transparent .85px)`
+at `background-size: 12.8px 12.8px`; measured peak contrast +12/255 on the dark top (was +38),
++2…+6 through the middle and the bottom, and continuous everywhere.
+
 ### 4.4 The concentric rings
 
 `Circles` `28364:40178` — five ellipses, **no fill, 1 px stroke each**.
@@ -371,7 +389,36 @@ appears in the isolated render; and `Ellipse 1179` (r = 400) lands centred on th
 (logo centre = 804, 208 — ring centre = 820, 208.26). **The table above uses the
 hero-relative reading.**
 
-🛠 **QA, 25 Aug 2026 — hero-relative is now VERIFIED, twice, and no longer an inference.**
+🛠🛠 **QA SECOND PASS, 25 Aug 2026 — THE CENTRES IN THE TABLE ABOVE ARE WRONG. All five
+circles are CONCENTRIC on the logo mark's centre, hero (820, 208.25).** Radii (exact, from
+`get_metadata` widths ÷ 2): **830.252 · 652.763 · 400.000 · 350.282 · 118.209**. Nothing else
+about the family is true: it is not "not strictly concentric", `Ellipse 1180` is not an
+outlier below the panel, and `Ellipse 2` is not offset to the right.
+
+*The proof is the parent frame's own bounding box.* `Circles` `28364:40178` is **1660.504 ×
+1660.504 at hero (−10.25, −622)** — which is exactly the bounding box of a circle of diameter
+1660.504 centred on **(820.00, 208.25)**, i.e. on the mark (the logo is 96 × 96 at hero
+(771.995, 160), so its centre is (819.995, 208)). A frame's bbox is the union of its children,
+and that union can only *equal* the largest circle's own bbox if every other circle lies
+inside it — which, with the largest one defining all four edges, means they share its centre.
+Under the table's reading `Ellipse 1180` alone would span hero y 861 → 2166, more than 1100 px
+past the frame's own bottom edge. Impossible.
+
+*What `get_metadata` is doing:* for each ellipse it reports **one** coordinate in the
+concentric position and garbage for the other — `Ellipse 3` x = −10.25 = 820 − 830.252 ✓ (y
+wrong), `Ellipse 2` y = −142.019 = 208.26 − 350.282 ✓ (x wrong), `Ellipse 1` x = 701.793 =
+820 − 118.209 ✓ (y wrong), `Ellipse 1179` **both** ✓. That is why the table looked plausible:
+one coordinate per row is real.
+
+*What the wrong centres produce:* no ring around the mark at all, `Ellipse 1180` dropped
+entirely, and `Ellipse 2` swung out to the right half as an arc curving the wrong way. On the
+board the set reads unmistakably as a target centred on the mark. Also note the isolated-render
+sizes are **not** a usable clip probe here — the stroke is a gradient that goes nearly
+transparent along part of each arc, and the PNG is trimmed to its painted bounds
+(`Ellipse 2`, a 700.564 circle, comes back 495 × 456).
+
+🛠 **QA, 25 Aug 2026 — hero-relative is VERIFIED, twice** (this part of the note stands; it
+discriminates hero-relative from parent-relative, not the centres).
 `get_screenshot` on the two decisive rings reports the node's own natural size *after* the
 hero's clip:
 
@@ -405,10 +452,24 @@ circle**, **bottom-left is a violet circle**; a **white 48 × 48 square sits ove
 with a four-pointed concave star knocked out of it**, so the star reads dark on white.
 
 ✅ **This mark already exists in the prototype**: `LogoRemixer` in
-`/home/user/Remixer/prototype/src/ui/icons.tsx`. Its `viewBox` is `0 0 120.012 120`, its
-circles are at (30, 90) violet and (90, 30) blue, its grey squares use
-`#71717A → #3F3F46`, and its accent gradient runs `#BE59FF → #9D60FF → #4274FF → #1F7CFF`
-bottom→top. That is a pixel-for-pixel match to the Figma mark. **Reuse it at `size={96}`.**
+`/home/user/Remixer/prototype/src/ui/icons.tsx`. **Reuse it at `size={96}`.**
+
+🛠 **QA SECOND PASS, 25 Aug 2026 — it was NOT "a pixel-for-pixel match", on two counts, both
+now fixed in `icons.tsx`.**
+
+* **The white centre was inverted.** It was four quarter-wedges whose inner edge is an arc of
+  r30 about the centre, which leaves a hole reaching almost to the plate's edges: the WHITE
+  read as a big four-pointed star and the dark shape as a fat diamond behind it. The board is
+  the other way round — an unbroken white 60 × 60 square (viewBox 30…90) with a **small** dark
+  sparkle knocked out of it, points on the axes at 20 of the plate's 30 half-width, waist ≈8.3
+  on the diagonals.
+* **The greys were a step too light.** `#71717A` (Gray/500) at the outer corners reads
+  noticeably lighter than the board at 96 px; the cells are meant to sit back behind the two
+  coloured discs. Now `#52525B` (Gray/600) → `#3F3F46` (Gray/700).
+
+⚠️ To see the knock-out at all you must render the **parent** frame `Logo` `28364:40192`. A
+`contentsOnly` render of `Logotype` `28364:40193` loses the boolean and comes back as a plain
+white square — which is presumably how the original claim got made.
 
 ### 4.6 Headline
 
@@ -1037,8 +1098,14 @@ buttons and the two tab-control sizes.
 2. **Dot-texture cell size.** Measured **≈ 12.8 px** pitch, **≈ 1.5 px** dot. Confirm, or
    export the layer.
 3. **Ring stroke.** Is it a 1 px gradient from `White/100` `#ffffff14` to
-   `Background/Neutral/200` `#33333a`, and at what angle? And is `Ellipse 1180` meant to be
-   there at all — its topmost point sits 49 px *below* the hero's bottom edge.
+   `Background/Neutral/200` `#33333a`, and at what angle?
+   🛠 *QA second pass:* the `Ellipse 1180` half of this question was based on the wrong
+   centres and is withdrawn — it is concentric with the rest and clearly visible (see §4.4).
+   On the stroke: both ends now ship as **white alpha** (5 % → 15.5 %), matched to the
+   spec's appearance on the dark top of the panel (15.5 % white over `#0e0e15` *is* `#33333a`)
+   but self-erasing over the saturated bottom, where an opaque `#33333a` line is darker than
+   what it crosses and reads as a scratch. The board's arcs fade out down there. Still worth
+   confirming the axis.
 4. **Which Build state ships as enabled?** The drawn enabled variant (`28364:40238`) is a
    **near-white `#fafafa` pill with a `#09090b` label — not blue.** That contradicts the
    verified brand rule `#1587FF = action` in `CLAUDE.md`. Intentional, or should it be blue?

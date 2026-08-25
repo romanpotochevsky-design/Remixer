@@ -937,14 +937,10 @@
      * The colour field. On the board this is two 4000px ellipses under a real Gaussian
      * blur (`Magenta` 28364:40185 below `Blue` 28364:40186) over the near-black ground;
      * here it is four static gradients, least-squares fitted to the eight colours the
-     * spec sampled off the 1:1 render (§4.1). Re-measured off the built page in QA:
-     * six of the eight land within 5/255 on every channel; the two mid-height
-     * samples are short of BLUE by 14 (mid-left) and 10 (mid-right) and within 5 on
-     * the other two channels — i.e. the flanks read a touch warmer than the board
-     * halfway down. Left as fitted: the reference values are themselves "≈ measured,
-     * all approximate" (§4.1), and every attempt to add that blue back has to pass
-     * under the opaque top of the Shadow plate, which is what produced the visible
-     * artefacts the note below is about. Confirm by eye against the board first.
+     * spec sampled off the 1:1 render (§4.1). Re-measured off the built page after the
+     * navy-band correction below: worst per-channel error 7/255 (the bottom-centre
+     * sample, 7 too green), rms 2.77 across all 24 channels. The first fit was worst
+     * 15 / rms 4.50.
      *
      * Painted bottom to top: ground · magenta · blue · a vertical VEIL of the ground
      * colour · a faint blue ambient lift. Layer order between the two glows is Figma's,
@@ -967,6 +963,30 @@
     background:
       /* the ambient lift — the board's top band is #0d0d13…#101018, not #09090b */
       linear-gradient(to bottom, rgba(124, 147, 248, 0.046), rgba(124, 147, 248, 0) 26.6%),
+      /*
+       * The mid-height NAVY BAND. Not a layer Figma draws — a correction, and the only
+       * one that could be made without moving anything that already matched.
+       *
+       * Measured against the eight samples, the two glows alone leave the panel's
+       * flanks 15 (left) and 11 (right) short of BLUE halfway down: the flanks read
+       * warm where the board reads indigo, and the area behind the composer reads
+       * violet where the board reads navy. Both flanks are at 58–65% of the blue
+       * glow's ending shape, and the bottom-left corner — which already matched — sits
+       * at 58% too, so ANY change to the blue's reach or alpha ladder that fixes the
+       * middle also washes the bottom-left corner: tried, and it cost 11/255 of red
+       * there. A band is the one shape that separates them, because the difference
+       * between "halfway down" and "at the bottom" is vertical, not radial.
+       *
+       * Zero at 34% and 76% of the panel, so it has no edge and cannot reach either
+       * the top band or the bottom corners. The 34% is not arbitrary: it is where the
+       * Shadow plate starts (33.4975%). Starting the band any higher put its blue just
+       * ABOVE the plate's opaque top, which doubled the rate of change across that
+       * edge — 10/255 of blue over 3px — and made a seam of it again. Starting at 34%
+       * scores identically on all eight samples and leaves the edge alone. Result:
+       * worst per-channel error 15 → 7, rms 4.50 → 2.98.
+       */
+      linear-gradient(to bottom,
+        rgba(70, 60, 255, 0) 34%, rgba(70, 60, 255, 0.14) 48%, rgba(70, 60, 255, 0) 76%),
       /* the veil: what actually makes the top third dark (see the note above) */
       linear-gradient(to bottom,
         rgba(9, 9, 11, 0.95) 0%, rgba(9, 9, 11, 0.95) 15%, rgba(9, 9, 11, 0.95) 30%,
@@ -976,10 +996,13 @@
         rgba(18, 104, 255, 1) 0%, rgba(18, 104, 255, 0.569) 15%, rgba(18, 104, 255, 0.29) 30%,
         rgba(18, 104, 255, 0.125) 45%, rgba(18, 104, 255, 0.041) 60%, rgba(18, 104, 255, 0.015) 70%,
         rgba(18, 104, 255, 0.004) 80%, rgba(18, 104, 255, 0) 90%),
-      /* `Magenta` 28364:40185 */
+      /* `Magenta` 28364:40185 — the 15/30/45% stops are pulled ~2.5% below the first
+         fit: the left flank between y 600 and 780 was reading hotter than the board,
+         and those three stops are the ones that govern it. The 0% stop is untouched,
+         so the bottom-left corner still lands on its sample. */
       radial-gradient(338.04% 134.85% at -26.38% 98.52%,
-        rgba(217, 97, 255, 1) 0%, rgba(217, 97, 255, 0.708) 15%, rgba(217, 97, 255, 0.469) 30%,
-        rgba(217, 97, 255, 0.281) 45%, rgba(217, 97, 255, 0.143) 60%, rgba(217, 97, 255, 0.078) 70%,
+        rgba(217, 97, 255, 1) 0%, rgba(217, 97, 255, 0.69) 15%, rgba(217, 97, 255, 0.455) 30%,
+        rgba(217, 97, 255, 0.273) 45%, rgba(217, 97, 255, 0.14) 60%, rgba(217, 97, 255, 0.077) 70%,
         rgba(217, 97, 255, 0.033) 80%, rgba(217, 97, 255, 0.008) 90%, rgba(217, 97, 255, 0) 100%),
       var(--gray-950);
 
@@ -994,6 +1017,8 @@
     --home-gap-sub: 64px;
     --home-gap-chips: 24px;
     --home-h1: 56px;
+    /* centre of the concentric ring set = centre of the logo mark */
+    --home-rings-y: 208.25px;
   }
   /* The headline is `whitespace-nowrap` at 56px, i.e. 735px wide and unable to
      wrap — so below roughly 800px of column it has to come down in size instead of
@@ -1013,6 +1038,8 @@
       --home-gap-logo: 28px;
       --home-gap-sub: 32px;
       --home-gap-chips: 18px;
+      /* the top spacer is at its 76px floor here, so 76 + 64/2 */
+      --home-rings-y: 108px;
     }
   }
   @media (max-height: 820px) {
@@ -1021,6 +1048,8 @@
       --home-gap-logo: 20px;
       --home-gap-sub: 24px;
       --home-gap-chips: 12px;
+      /* 76 + 52/2 */
+      --home-rings-y: 102px;
     }
   }
 
@@ -1067,12 +1096,26 @@
   }
 
   /*
-   * The dotted texture (`Union` 28364:40177): a boolean union of thousands of
-   * vector dots in Figma, ≈12.8px pitch, ≈1.5px dots, offset 22px down inside the
-   * hero. Importing it as SVG would ship thousands of paths, so it is a tiled
-   * MASK over a colour field instead — the dots pick up the hue axis of the glows
-   * exactly as they do on the board (grey at the top, magenta bottom-left, blue
-   * bottom-right) while the lattice itself is one painted tile.
+   * The dotted texture (`Union` 28364:40177): a boolean union of thousands of vector
+   * dots in Figma, ≈12.8px pitch, ≈1.5px dots, offset 22px down inside the hero.
+   * Importing it as SVG would ship thousands of paths, so it is one tiled radial
+   * gradient — the cheapest possible lattice, painted once.
+   *
+   * ⚠️ TWO REJECTED VERSIONS, and both failures were the same mistake: treating the
+   * lattice as something that varies. It does not.
+   *   1. A tiled MASK over a coloured field (grey at the top, magenta bottom-left,
+   *      blue bottom-right, following the glows' hue axis). Over near-black an opaque
+   *      Gray/700 dot is a 38/255 speck — measured — so the quiet top of the panel
+   *      came out as the loudest grid on the page.
+   *   2. That layer painted UNDER the `Shadow` plate, which is Figma's own z-order.
+   *      The plate is opaque at its top, so it wiped the lattice out from y=272 down
+   *      and the texture ended on a straight horizontal line right under the logo.
+   * Together they inverted the board: strongest where it should be a whisper, absent
+   * where it should read. What the board actually has is ONE uniform low-alpha white
+   * lattice across the whole panel — no mask, no colour field, no edge. Local contrast
+   * does the rest: on near-black a 4%-white speck is nothing, over the mid-tone violet
+   * it resolves into texture, and over the saturated bottom it fades out again.
+   * Painted last (see HeroBackdrop), so nothing can clip it.
    */
   .home-hero-dots {
     position: absolute;
@@ -1080,41 +1123,44 @@
     right: 0;
     top: 22px;
     bottom: 0;
-    background:
-      radial-gradient(80% 90% at 0% 100%, rgba(255, 176, 255, 0.62), rgba(255, 176, 255, 0) 62%),
-      radial-gradient(75% 90% at 100% 100%, rgba(150, 180, 255, 0.62), rgba(150, 180, 255, 0) 58%),
-      var(--gray-700);
-    -webkit-mask-image: radial-gradient(circle at center, #000 0.75px, transparent 0.85px);
-    mask-image: radial-gradient(circle at center, #000 0.75px, transparent 0.85px);
-    -webkit-mask-size: 12.8px 12.8px;
-    mask-size: 12.8px 12.8px;
+    background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.06) 0.75px, transparent 0.85px);
+    background-size: 12.8px 12.8px;
   }
 
   /*
-   * The rings (`Circles` 28364:40178) — five 1px ellipses, of which four are
-   * visible. Their coordinate space in the MCP dump is ambiguous (§4.4); the
-   * hero-relative reading is the confirmed one: an isolated render of
-   * `Ellipse 1179` comes back 800×608, i.e. clipped by exactly the 192px that
-   * reading predicts. `Ellipse 1180` starts 49px BELOW the panel and is dropped.
+   * The rings (`Circles` 28364:40178) — five 1px circles, ALL CONCENTRIC on the logo
+   * mark's centre. The per-ellipse centres in spec §4.4 are wrong (see HeroBackdrop
+   * for the proof and for what they produced); the radii are exact.
    *
-   * Drawn as one inline SVG rather than five masked divs: the stroke is a
-   * gradient (White/100 → Background/Neutral/200 left to right), and an SVG
-   * gradient stroke is one paint with no mask compositing at all.
+   * `--home-rings-y` is that centre's distance from the panel's top edge: 160 of
+   * padding + half the 96px mark = 208.25 as drawn. On a short viewport the top spacer
+   * clamps to its 76px floor and the mark shrinks, so the breakpoints below move the
+   * rings with it — a target centred on nothing is worse than no target.
    */
   .home-hero-rings {
     position: absolute;
     inset: 0;
     overflow: hidden;
   }
-  /* One ring: a 1px gradient stroke (White/100 → Background/Neutral/200, left to
-     right) painted through a ring mask so it follows the circle and costs no layout.
-     ⚠️ The gradient's axis is the spec's ≈measured reading and still unconfirmed —
-     at 8–12% white on this ground both ends are barely there either way. */
+  /*
+   * One ring: a 1px gradient stroke painted through a ring mask, so it follows the
+   * circle and costs no layout.
+   *
+   * The spec derives the stroke as White/100 `#ffffff14` → Background/Neutral/200
+   * `#33333a`, left to right (§4.4, ≈measured, and §12.3 asks the designer to confirm
+   * it). Both ends are written as WHITE ALPHA here instead, matched to that
+   * appearance on the dark top of the panel — 15.5% white over `#0e0e15` is `#33333a`
+   * to the unit. The reason is the bottom of the panel: an OPAQUE `#33333a` line
+   * crossing the saturated magenta and blue is darker than what it crosses, so it
+   * reads as a scratch, and the board's arcs plainly fade out down there instead.
+   * White alpha does that on its own — identical where it is visible, self-erasing
+   * where the board's is.
+   */
   .home-hero-ring {
     position: absolute;
     border-radius: 50%;
     padding: 1px;
-    background: linear-gradient(90deg, var(--white-100), var(--gray-750));
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.155));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);

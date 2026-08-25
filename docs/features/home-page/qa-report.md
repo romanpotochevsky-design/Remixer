@@ -376,3 +376,184 @@ Plain words, in the order I would look.
     filter chip (§12.13 — no card declares a category, so the chips filter on data we invented),
     what `More` opens (§12.14), and whether the Build pill really is `#fafafa` rather than the
     brand's action blue (§12.4 — built as drawn).
+
+---
+
+# Second pass — 25 Aug 2026
+
+Manager review of the five captures against the board renders, both open at 1656 × 1196, found
+five things the measurements had missed. All five are fixed; the captures at the five paths are
+re-taken from the rebuilt page. Two of them were not implementation slips at all — they were
+**wrong numbers in the spec that my first pass had confirmed rather than caught**, and the spec
+is corrected accordingly.
+
+## 1. The rings were wrong — the whole set (highest priority) — CLOSED
+
+**What he saw:** the board reads as nested concentric circles all sharing the logo mark's
+centre, a target on the mark. Ours had no ring around the mark at all, arcs sweeping down the
+right flank curving in a direction the board's never do, and the board's left-side arcs missing
+entirely.
+
+**What it was:** spec §4.4's per-ellipse centres. My first pass "verified" §4.4 — that
+verification was real but it answered the wrong question: it discriminated *hero-relative* from
+*parent-relative*, and said nothing about the centres. The centres are wrong.
+
+**The proof, and it is exact.** The parent frame `Circles` `28364:40178` is **1660.504 ×
+1660.504 at hero (−10.25, −622)**. That is precisely the bounding box of a d = 1660.504 circle
+centred on **(820.00, 208.25)** — the logo mark's centre (mark 96 × 96 at hero (771.995, 160)
+→ centre (819.995, 208)). A frame's bbox is the union of its children, and that union can only
+*equal* the largest circle's own bbox if every other circle sits inside it while the largest
+defines all four edges: i.e. they are concentric. Under §4.4's table, `Ellipse 1180` alone
+would span hero y 861 → 2166, over 1100 px past the frame's own bottom edge. Impossible.
+
+`get_metadata` reports, for each ellipse, **one** coordinate at its concentric value and
+garbage for the other — `Ellipse 3` x = −10.25 = 820 − 830.252 ✓, `Ellipse 2`
+y = −142.019 = 208.26 − 350.282 ✓, `Ellipse 1` x = 701.793 = 820 − 118.209 ✓, `Ellipse 1179`
+both ✓. One real coordinate per row is why the table looked plausible.
+
+**Shipped:** five circles, radii **830.252 · 652.763 · 400.000 · 350.282 · 118.209**, all
+centred on `50%` horizontally and `--home-rings-y` vertically. That variable is the mark's
+centre distance from the panel's top — 208.25 as drawn, and the two height breakpoints move it
+with the logo (76 + logo/2 once the top spacer hits its floor), because a target centred on
+nothing is worse than no target.
+
+**Also changed, same layer:** the stroke's two ends are now **white alpha, 5 % → 15.5 %**
+instead of `#ffffff14 → #33333a`. 15.5 % white over `#0e0e15` *is* `#33333a` to the unit, so
+the appearance on the dark top of the panel is unchanged — but an *opaque* `#33333a` line
+crossing the saturated bottom is darker than what it crosses and reads as a scratch, and the
+board's arcs plainly fade out down there. White alpha does that for free. Flagged into §12.3.
+
+⚠️ Note for anyone re-checking this: isolated-render dimensions are **not** a clip probe on
+these nodes. The stroke goes nearly transparent along part of each arc and the PNG is trimmed
+to its painted bounds — `Ellipse 2`, a 700.564 circle, comes back 495 × 456.
+
+## 2. The dot lattice was inverted — CLOSED
+
+**What he saw:** on the board the dots are invisible over the near-black top and become legible
+only over the mid-tone colour further down. Ours were strongest in the dark top band and then
+stopped dead at a horizontal seam around y ≈ 270, a straight line under the logo.
+
+**What it was:** two compounding mistakes, both from taking Figma's construction literally.
+A tiled *mask* over a coloured field meant an opaque `Gray/700` dot over near-black — a
+**38/255** speck, measured. And Figma's z-order puts the `Union` below the `Shadow` plate,
+whose top is opaque, so the lattice was wiped out from y = 272 down.
+
+**Shipped:** one uniform low-alpha white lattice over the whole panel — no mask, no colour
+field, no edge — `rgba(255,255,255,.06)` dots at the same 12.8 px pitch and 1.5 px size,
+painted **last** so nothing can clip it. Measured contrast at the dot centres:
+
+| Band | Before | After |
+|---|---|---|
+| dark top (y 151) | ground (12,12,17) → dot (50,50,56) = **+38** | dot (24,23,27) = **+12** |
+| mid violet (y 676) | +10 G, −30 B (coloured dots) | +2 / +6 / +2 |
+| bright bottom-left (y 791) | +18 G, −19 B | +2 / +5 / +1 |
+| inside the plate band (y 400) | **no dots at all** | +3 / +2 / +1 — continuous |
+
+## 3. The avatar had no readable ring — CLOSED
+
+The ring was there in the markup all along; it just could not be seen. A violet→blue rim
+around a blue-violet disc is the same hue at the same value, so the whole control read as a
+bare gradient dot. The rim is now 2 px `#8b5cf6 → #7057f9 → #4a6bfb` and the disc a clear step
+darker and cooler (`#5a5f8e → #3a3f6b → #20244a`). Still an abstract disc — we do not draw a
+person — but it now reads as an avatar.
+
+## 4. The logo mark was off at 96 px — CLOSED
+
+Two errors, both in `src/ui/icons.tsx`, and §4.5's "pixel-for-pixel match" claim is corrected:
+
+* **The white centre was inverted.** Four quarter-wedges with an inner arc of r30 about the
+  centre leave a hole that reaches almost to the plate's edge, so the *white* read as a big
+  four-pointed star with a fat dark diamond behind it. The board is the reverse: an unbroken
+  white 60 × 60 plate with a **small** dark sparkle knocked out of it — points on the axes at
+  20 of the plate's 30 half-width, waist ≈8.3 on the diagonals. Now one path with
+  `fill-rule: evenodd`.
+* **The greys were a step too light.** `#71717A` (Gray/500) at the outer corners against the
+  board's darker cells. Now `#52525B` (Gray/600) → `#3F3F46` (Gray/700), both kit tokens.
+
+⚠️ The knock-out is only visible if you render the **parent** frame `Logo` `28364:40192`; a
+`contentsOnly` render of `Logotype` `28364:40193` loses the boolean and returns a plain white
+square, which is presumably how the original claim was made.
+
+**Shared-component check:** rendered at 26, 32 and 48 px and in situ in the builder's topbar —
+the sparkle still reads at 32 px and the darker cells sit back better beside the wordmark.
+
+## 5. The glows are refit — CLOSED, inside the ≤8/255 budget
+
+**What he saw:** the left edge around y 600–800 brighter magenta than the board; behind the
+composer the board more navy where ours was more violet. Same defect as the first pass's
+mid-band ΔB finding.
+
+**Why the obvious fix does not work, measured:** both mid-height flanks sit at 58–65 % of the
+blue glow's ending shape — and the bottom-left corner, which already matched, sits at 58 % too.
+Any change to the blue's reach or alpha ladder that fixes the middle therefore washes the
+bottom-left: tried it, and it cost **11/255 of red** at `BL` and 9 at `BC`. The difference
+between "halfway down" and "at the bottom" is *vertical*, not radial, so the correction has to
+be a band, not a glow.
+
+**Shipped:** a mid-height navy band —
+`linear-gradient(to bottom, rgba(70,60,255,0) 34%, rgba(70,60,255,.14) 48%, rgba(70,60,255,0) 76%)`
+— plus the magenta's 15/30/45 % stops pulled ~2.5 % (its 0 % stop untouched, so the bottom-left
+corner stays on its sample). The band's 34 % start is not arbitrary: it is where the `Shadow`
+plate begins (33.4975 %). Starting it any higher put blue just *above* the plate's opaque top,
+doubling the rate of change across that edge (10/255 of blue over 3 px) and making a seam of it
+again; 34 % scores identically on all eight samples and leaves the edge alone. Verified by
+scanning down through the edge: ≤3 units per step over 5 px, same as before the refit.
+
+| Point | Spec | First pass | Δ | Second pass | Δ |
+|---|---|---|---|---|---|
+| TL (20,20) | 13,13,19 | 14,14,21 | +1 +1 +2 | 14,14,21 | +1 +1 +2 |
+| TC (828,20) | 16,16,24 | 14,15,21 | −2 −1 −3 | 14,15,21 | −2 −1 −3 |
+| TR (1630,20) | 14,16,24 | 14,14,22 | 0 −2 −2 | 14,15,22 | 0 −1 −2 |
+| **ML (20,400)** | 58,31,82 | 53,31,67 | −5 0 **−15** | 51,31,77 | **−7** 0 −5 |
+| **MR (1630,400)** | 27,36,82 | 31,33,71 | +4 −3 **−11** | 33,34,82 | +6 −2 **0** |
+| BL (20,800) | 176,85,216 | 175,84,219 | −1 −1 +3 | 174,83,216 | −2 −2 **0** |
+| BC (828,810) | 106,63,176 | 105,70,176 | −1 +7 0 | 102,69,173 | −4 +6 −3 |
+| BR (1630,810) | 47,79,192 | 46,79,194 | −1 0 +2 | 45,78,192 | −2 −1 **0** |
+
+**Worst per-channel error 15 → 7. RMS across all 24 channels 4.50 → 2.98.** Inside the ≤8
+budget on every channel of every sample, and no artefact: the band is a three-stop gradient
+that reaches zero at both ends, and the panel was scanned for edges at the band's boundaries
+and at the plate's.
+
+**What the refit does *not* fully close:** the left edge between y 600 and 780. The magenta
+tame moved it about 4/255 (y 620 went 138,67,172 → 134,65,167) and that is as far as I can
+push it without breaking `BL` or `BC`, because there is **no reference sample between y 400
+and y 800** — the two that bracket it now sit within 7 and 2. If it still reads hot to him,
+one sampled colour at (20, 650) off the board closes it in a single pass; guessing at the
+falloff shape is how the three documented artefacts happened the first time.
+
+## Everything re-verified after the five fixes
+
+| Check | Result |
+|---|---|
+| `npm run build` (tsc + vite) | green |
+| Geometry, board `28364:40053` | unchanged — the only failing rows are the same 9 font-substitution widths |
+| Geometry, board `28375:43006` | hero 1640 × 804, dock 384 @ 812, title 88, chips y 838, card row 900 — exact |
+| Responsive sweep 1656/1440/1280 | no page scroll; plate proportional at every size |
+| Interaction suite | **30/30 pass** |
+| Builder-shell regression (bubble spring, thread parking 0 → 330, Siri glow 2 layers, 27/27 words typing, settle) | **7/7 pass** — shared CSS and the shared icon both touched, nothing disturbed |
+| `npm run artifact` single file | 0.53 MB, **1 request total, zero non-`file:`/`data:` requests, zero console messages**, interactive |
+
+## What did not change, and why
+
+Everything he ruled out of scope is untouched: the enabled Build pill, the composer geometry,
+the tab track, the card grid, every interaction. The type-width differences are still there and
+still recorded — the licensed faces are not in the repo. The avatar photograph and the seven
+site screenshots are still stand-ins; they close when the assets are committed. The chip-row
+edge is still a real mask rather than the board's opaque `#283a71` scrim, still a decision for
+him (§12.5).
+
+## Spec corrections made in this pass
+
+`docs/features/home-page/figma-spec.md`, all marked 🛠 and dated:
+
+* **§4.4 — the ring centres.** Marked wrong, with the frame-bbox proof, the exact radii, the
+  `get_metadata` failure mode, and a warning that isolated-render sizes are not a clip probe
+  here. The first pass's "hero-relative verified" note is kept but scoped to what it actually
+  proved.
+* **§4.3 — the dot texture.** Do not build the coloured masked overlay and do not put the
+  lattice under the plate; both inverted the board, with the measured numbers.
+* **§4.5 — the logo mark.** "Pixel-for-pixel match" withdrawn: the white centre was inverted
+  and the greys a step light, plus the note that `Logotype` must not be rendered alone.
+* **§12.3 — the ring stroke.** The `Ellipse 1180` half of the question withdrawn (it was based
+  on the wrong centres); the white-alpha substitution recorded, the axis still open.
