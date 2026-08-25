@@ -55,7 +55,7 @@ docs/
 │   ├── README.md              индекс фича-баз
 │   ├── builder-shell/         шелл билдера: чат, композер, отправка, glow, резайзер, превью, publish
 │   ├── domains/               доменный модуль: поиск, выдача, чек-аут, подключение
-│   └── home-page/             входная страница: README фича-базы + figma-spec.md + qa-report.md
+│   └── home-page/             входная страница: README фича-базы + figma-spec[-add-template].md + qa-report[-add-template].md
 ├── sessions/                  ← глобальный журнал всех сессий Claude
 │   ├── README.md              как вести журнал
 │   ├── index.md               таблица всех сессий, новые сверху

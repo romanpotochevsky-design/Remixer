@@ -13,7 +13,7 @@
 |---|---|---|
 | **Builder shell** | шелл билдера: колонка чата, композер, хореография отправки, Remixer glow, резайзер, превью, панель Publish, правый рейл | [`builder-shell/README.md`](builder-shell/README.md) |
 | **Domains** | доменный модуль: дашборд, поиск, результаты, чек-аут-шит, подключение домена | [`domains/README.md`](domains/README.md) |
-| **Home page** | входная страница приложения: герой с композером, промпт-чипы, док с проектами и шаблонами (Figma 28364:40053 / 28375:43006) | [`home-page/README.md`](home-page/README.md) · [`figma-spec.md`](home-page/figma-spec.md) · [`qa-report.md`](home-page/qa-report.md) |
+| **Home page** | входная страница приложения: герой с композером, промпт-чипы, док с проектами и шаблонами (Figma 28364:40053 / 28375:43006); «Add template» — пикер шаблонов (28616:59168) и детальный просмотр (28637:42088); продакшен-вход страницы | [`home-page/README.md`](home-page/README.md) · [`figma-spec.md`](home-page/figma-spec.md) · [`figma-spec-add-template.md`](home-page/figma-spec-add-template.md) · [`qa-report.md`](home-page/qa-report.md) · [`qa-report-add-template.md`](home-page/qa-report-add-template.md) |
 
 ## Ещё не имеет своей базы (по мере появления — создавать папку)
 
