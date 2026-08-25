@@ -993,7 +993,11 @@ function Crypto() {
       </div>
 
       <p className="absolute inset-x-0 text-center font-display font-semibold" style={{ top: '73.5%', color: '#ffffffd9', fontSize: '3cqw' }}>
-        Join MineMax
+        {/* Verbatim from the board per figma-spec-add-template.md §6.1. ⚠️ Both
+            that transcription and this QA's re-read are by eye off a 233px MCP
+            render (the proxy blocks the full-resolution asset), so "Ask" vs an
+            earlier "Join" is a read, not a certainty — confirm with the designer. */}
+        Ask MineMax
       </p>
 
       {/* the two purple feature cards, cut by the card's bottom edge */}
