@@ -1207,6 +1207,35 @@
   .home-card { flex: 1 0 0; min-width: 200px; }
 
   /*
+   * THUMBNAIL PROPORTION — the other half of "card width is an output".
+   *
+   * Figma sizes the thumbnail frame with `flex: 1`, i.e. by HEIGHT: whatever is
+   * left of the 272 card once the meta bar has taken its 56 (54 on a template
+   * card). That is the same picture as the board only while the card is exactly
+   * as wide as the board draws it. Stretch the card and a fixed-height thumbnail
+   * letterboxes — measured on the dock at 2560, where the card is 389 wide and
+   * the drawn 216-tall frame reads 1.80 : 1 against the drawn 1.105 : 1.
+   *
+   * So the drawn size is stated as the RATIO it implies, and `flex: 1 1 auto`
+   * makes that ratio the thumbnail's NATURAL size rather than its final one:
+   *   · picker — the card's height is free, so the ratio decides it and the
+   *     whole card grows proportionally as its column widens
+   *   · dock  — the card's height is the band's (272, via `items-stretch` in a
+   *     376/384 band), so the thumbnail shrinks straight back to the drawn
+   *     216/218 and nothing about the drawn band moves
+   * Each ratio resolves to the drawn pixel at the drawn width:
+   *   238.667 / 216 → 272 − 56 (project card) · 238.667 / 218 → 272 − 54
+   *   (dock template card) · 233.333 / 218 → 272 − 54 (picker card).
+   *
+   * ⚠️ The thumbnail in the .tsx must NOT also carry Tailwind's `flex-1`: this
+   * block is in `@layer base`, utilities come later and would win, and a
+   * `flex-basis: 0` erases the ratio as a size.
+   */
+  .home-thumb { flex: 1 1 auto; min-height: 0; aspect-ratio: 238.667 / 216; }
+  .home-thumb--template { aspect-ratio: 238.667 / 218; }
+  .tplpick-thumb { flex: 1 1 auto; min-height: 0; aspect-ratio: 233.333 / 218; }
+
+  /*
    * ------------------------------------ template picker (Figma 28616:59168)
    * The sheet's heading is cap-trimmed in Figma — a 22px box for 32px type —
    * and the whole vertical rhythm (57 above it, 40 below) is measured to the
@@ -1220,6 +1249,40 @@
   .tplpick-heading {
     text-box-trim: trim-both;
     text-box-edge: cap alphabetic;
+  }
+
+  /*
+   * THE GRID. Six `1fr` columns with the drawn 32px gaps, filling the sheet
+   * between its drawn 32px side insets — so the card width is an OUTPUT of the
+   * column, which is what Figma's `flex: 1 0 0` on every card already says. At
+   * the drawn 1656 the sheet's content column is 1560 and this resolves to
+   * 6 × 233.333 + 5 × 32 — the board's own number, to the pixel.
+   *
+   * It replaces a `max-width: 1560px` centred column, which parked the grid in
+   * the middle of a wide monitor with 484px of dead ground either side at 2560
+   * (measured). The reference the designer gave is dribbble.com's shot grid at
+   * ~2000: fixed side margins, the column COUNT unchanged, the cards stretching
+   * to consume the width. At 2000 that is six ≈292px cards; six `1fr` columns in
+   * our sheet give 290.667 there, i.e. the same grid.
+   *
+   * WIDE SCREENS: the count is HELD at six all the way up and the cards keep
+   * growing (384 at 2560) rather than a seventh column appearing past some
+   * card-width threshold. Both were built and looked at side by side at 2560,
+   * and the deciding argument was not taste:
+   *   · the library is 18 cards and the board lays it out 3 × 6. Six divides it
+   *     exactly. Eight (what a 320px card ceiling asks for at 2560) leaves two
+   *     orphans alone at the foot of an otherwise empty row — it reads broken.
+   *   · a card is a website screenshot, so the extra width goes straight into
+   *     the one thing a template picker is for. Shrinking cards to fit more
+   *     columns turns the sheet into a contact sheet.
+   *   · the count would then change at a width no board covers, and the grid the
+   *     designer approved would only exist between two arbitrary breakpoints.
+   * Revisit when the library stops being a multiple of six, or grows past ~30.
+   */
+  .tplpick-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 32px;
   }
 
   body {

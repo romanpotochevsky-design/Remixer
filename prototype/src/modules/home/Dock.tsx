@@ -145,7 +145,10 @@ function ProjectCard({ project }: { project: HomeProject }) {
 
   return (
     <div className="home-card group relative flex flex-col">
-      <div className="relative w-full flex-1 overflow-hidden rounded-[12px] ring-[var(--white-200)] transition-shadow duration-[var(--dur-fast)] ease-std group-hover:ring-1">
+      {/* `home-thumb` carries the drawn 238.667 / 216 ratio instead of a bare
+          `flex-1`, so the picture keeps its proportion wherever the card has the
+          height for it; inside the dock's fixed band it shrinks back to 216. */}
+      <div className="home-thumb relative w-full overflow-hidden rounded-[12px] ring-[var(--white-200)] transition-shadow duration-[var(--dur-fast)] ease-std group-hover:ring-1">
         <Thumb id={project.thumb} className="absolute inset-0" />
       </div>
 
@@ -213,12 +216,20 @@ function EmptySlot() {
  * not rendered — hidden as drawn, same as here.
  */
 export function TemplateCard({
-  template, className = 'home-card', onPick, pickLabel,
+  template,
+  className = 'home-card',
+  thumbClassName = 'home-thumb home-thumb--template',
+  onPick, pickLabel,
 }: {
   template: Template
   /** Wrapper sizing. The dock's flex row sizes cards itself (`home-card`);
-   *  the picker's grid owns the width and fixes the drawn 272 height. */
+   *  the picker's grid column owns the width and the card takes its height
+   *  from the thumbnail's ratio, so it grows proportionally. */
   className?: string
+  /** The thumbnail's drawn ratio — 238.667/218 in the dock, 233.333/218 in the
+   *  picker (`tplpick-thumb`). Both land on the drawn 272 card at the drawn
+   *  width; see the note beside them in index.css. */
+  thumbClassName?: string
   /** Overrides the default click — the picker attaches instead of building. */
   onPick?: () => void
   /** Accessible name for the overriding action. */
@@ -242,7 +253,7 @@ export function TemplateCard({
     <div className={`${className} group relative flex flex-col`}>
       {/* radius 8 here against the project card's 12 — as drawn on the two boards,
           flagged as probably accidental (spec §12.12) */}
-      <div className="relative w-full flex-1 overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--dur-fast)] ease-std group-hover:ring-1">
+      <div className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--dur-fast)] ease-std group-hover:ring-1`}>
         <Thumb id={template.id} className="absolute inset-0" />
       </div>
 

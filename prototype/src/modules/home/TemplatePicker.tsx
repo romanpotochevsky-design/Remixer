@@ -11,16 +11,25 @@
  *     `Gray/900` #18181b, overflow clipped; NO border, shadow or backdrop blur
  *   · close — 40×40, radius 12 (the Build button's radius, not the composer
  *     circles'), 16px from the sheet's top-right corner
- *   · content column — 1560 wide (32px side insets), centred: heading (57
- *     above the cap, 40 below), the dock's category chips (16 above, 32
- *     below), then a 6-column grid of the dock's template card at 233.333 ×
- *     272 with 32px gaps — 18 cards, third row fully visible with 81px of
- *     sheet below it at the drawn size
+ *   · content column — the sheet minus its drawn 32px side insets (1560 at the
+ *     design size): heading (57 above the cap, 40 below), the dock's category
+ *     chips (16 above, 32 below), then a 6-column grid of the dock's template
+ *     card at 233.333 × 272 with 32px gaps — 18 cards, third row fully visible
+ *     with 81px of sheet below it at the drawn size
+ *
+ * AWAY FROM THE DESIGN SIZE the column is FLUID: the 32px insets hold and the
+ * six columns stretch, so the grid fills the window instead of parking in the
+ * middle of it (the capped 1560 column left 484px of dead ground either side at
+ * 2560). Card width is the column's output at every width, and the card's HEIGHT
+ * follows from the thumbnail's drawn ratio, so the whole card grows in
+ * proportion while its caption keeps the drawn type. Geometry and the reasoning
+ * for holding six columns on very wide screens: `.tplpick-grid` in index.css.
  *
  * The board draws no scroll state (spec §10.3), but 18 cards fit the drawn
  * height exactly and a library will not stay at 18 — so the sheet body scrolls
- * through the house `ScrollArea` when the viewport is shorter than the design.
- * At 1196 nothing scrolls, as drawn.
+ * through the house `ScrollArea` when the viewport is shorter than the design,
+ * and on a wide one, where the taller cards outgrow the sheet. At the drawn
+ * 1656 × 1196 nothing scrolls, as drawn.
  *
  * MOTION (nothing is drawn — spec §9; house language from motion.ts): the
  * sheet springs in with its transform-origin at the "Add template" pill, so
@@ -164,14 +173,37 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
         style={{ transformOrigin: origin }}
         className="absolute inset-4 overflow-hidden rounded-[16px] bg-[var(--gray-900)] focus:outline-none"
       >
-        <ScrollArea axis="y" className="h-full" innerClassName="px-8">
-          <motion.div
-            variants={fullscreenContent}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="mx-auto w-full max-w-[1560px]"
-          >
+        {/* One motion block over both boxes, so the content still lands as the
+            single ~60ms-later beat the sheet's motion note describes. */}
+        <motion.div
+          variants={fullscreenContent}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          /* FLUID. The 32px side insets are the `px-8` on the two boxes below,
+             and the content takes everything between them — no `max-width`, so
+             the grid fills the sheet instead of sitting in the middle of a wide
+             monitor. At the drawn 1656 this is the board's 1560 exactly. The
+             heading and the chip row centre in the same box, which at 1656 is
+             the same centre they had inside the capped column. */
+          className="flex h-full flex-col"
+        >
+          {/*
+           * HEADER — outside the scroller, so the title and the filter chips
+           * hold still while the grid moves under them (the close button always
+           * did, being absolute on the sheet).
+           *
+           * ⚠️ OURS, not drawn: the board has one column and no scroll state at
+           * all (spec §10.3), so nothing says which parts of it are fixed. It
+           * became a real question with the fluid grid, because cards that grow
+           * with the column make the sheet scroll on a WIDE monitor too and not
+           * just a short one — 366px of it at 2560 — and chips that scroll away
+           * in the normal case leave the only filter in the sheet unreachable.
+           * The drawn rhythm is unchanged either way: 57 + 22.5 + 40 above, then
+           * 16 + 36 + 32 for the chips = 203.5, so the grid still starts at the
+           * board's y. Flagged to the designer.
+           */}
+          <div className="flex-none px-8">
             {/* header 119 (28626:540): 57 above the cap-trimmed heading, 40 below */}
             <div className="pb-[40px] pt-[57px]">
               <h2 className="tplpick-heading whitespace-nowrap text-center font-display text-[32px] font-semibold leading-none text-white">
@@ -190,17 +222,26 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             <div className="flex justify-center pb-8 pt-4">
               <CategoryChips value={filter} onChange={setFilter} />
             </div>
+          </div>
 
+          <ScrollArea axis="y" className="min-h-0 flex-1" innerClassName="px-8">
             {/* the grid (28626:591): 6 columns, 32px gaps both axes; card width
                 is an output of the column — (1560 − 5×32) / 6 = 233.333, the
-                dock's own formula over its 1592. 24px of drawn slack below. */}
+                dock's own formula over its 1592. 24px of drawn slack below.
+                Geometry and the wide-screen rule live in `.tplpick-grid`. */}
             {cards.length ? (
-              <div className="grid grid-cols-6 gap-8 pb-6">
+              <div className="tplpick-grid pb-6">
                 {cards.map(({ tpl, index }) => (
                   <TemplateCard
                     key={index}
                     template={tpl}
-                    className="h-[272px]"
+                    /* No height and no `home-card`: the column owns the width,
+                       the thumbnail's ratio owns the height (272 at the drawn
+                       233.333), and `home-card`'s 200px flex floor would fight
+                       a grid column that is legitimately narrower — the picker
+                       is 170 wide per card at 1280. */
+                    className=""
+                    thumbClassName="tplpick-thumb"
                     pickLabel={t({ en: `Pick ${tpl.name}`, uk: `Вибрати ${tpl.name}` })}
                     onPick={() => { picked.current = true; attach(index) }}
                   />
@@ -213,8 +254,8 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                 {t({ en: 'No templates in this category yet.', uk: 'У цій категорії ще немає шаблонів.' })}
               </p>
             )}
-          </motion.div>
-        </ScrollArea>
+          </ScrollArea>
+        </motion.div>
 
         {/* close (28633:14905): Black/500 + blur 16 + 12% rim; its blur is the
             sheet's single backdrop-filter — 40px square and static, as drawn */}
