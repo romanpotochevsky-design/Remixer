@@ -1,12 +1,14 @@
 /**
- * Website thumbnails for the Home page cards — drawn, not photographed.
+ * Website thumbnails for the Home page cards and the template picker — drawn, not
+ * photographed.
  *
- * Figma (28375:43006 "Templates", 28364:40053 "My projects") fills every card with a
- * screenshot of a real-looking website. We cannot ship those screenshots: the published
- * artifact runs under a CSP that blocks every external request, and the single-file
- * artifact build would have to carry six full-page JPEGs as base64. So each thumbnail is
- * recreated here as markup — the same dominant background, the same accent, the same
- * layout skeleton — a miniature that reads as the same site at a glance.
+ * Figma (28375:43006 "Templates", 28364:40053 "My projects", 28616:59168 — the
+ * fullscreen template picker) fills every card with a screenshot of a real-looking
+ * website. We cannot ship those screenshots: the published artifact runs under a CSP
+ * that blocks every external request, and the single-file artifact build would have to
+ * carry ten full-page JPEGs as base64. So each thumbnail is recreated here as markup —
+ * the same dominant background, the same accent, the same layout skeleton — a miniature
+ * that reads as the same site at a glance.
  *
  * THE SIZE CONTRACT. A card is 238×218 in the mockup, but the Home page will render these
  * at whatever size its grid resolves to, and one drawing has to survive all of them. So
@@ -20,9 +22,11 @@
  * their own is what breaks these layouts: a headline that reflows into one extra line
  * walks straight into the photo below it, and it does so only at some sizes.
  *
- * NO PEOPLE. Four of the six mockup thumbnails are built around a photograph of a person.
- * We never draw a person. Each becomes an abstract gradient block in the same position at
- * the same aspect — it carries the composition and reads as "image" without faking a face.
+ * NO PEOPLE. Four of the six home-board thumbnails are built around a photograph of a
+ * person; the picker's restaurant card is built around plates of food. We never draw a
+ * person, and we never draw a photo-real dish. Each becomes an abstract gradient block in
+ * the same position at the same aspect — it carries the composition and reads as "image"
+ * without faking a face.
  * Body copy is bars for the same reason: at 210px wide a real sentence is unreadable mush,
  * and a wireframe bar is the honest way to say "paragraph goes here".
  *
@@ -44,6 +48,10 @@ export type ThumbId =
   | 'media'         // WE MAKE MEDIA — dark editorial agency
   | 'architecture'  // ArchiForm — light architecture studio
   | 'wellness'      // Serena — pale sage mental-health site
+  | 'agency'        // Synco® Creative Agency — the same brand's full agency page
+  | 'saas'          // WorkPro — bright blue social-media SaaS landing
+  | 'restaurant'    // burgundy restaurant, its food photography drawn as discs
+  | 'crypto'        // MineMax — near-black crypto-mining landing with a violet orb
   | 'synco'         // synco.com — the customer's own store, on the project card
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ')
@@ -608,6 +616,385 @@ function Synco() {
   )
 }
 
+/* ──────────────── the template picker's four extra sites ────────────────
+   The fullscreen picker (Figma 28616:59168, "Pick a template. We'll remix it") fills
+   its 6×3 grid with the six sites above plus the four below, still under the dock's
+   recycled captions — `TEMPLATE_LIBRARY` in `src/data/templates.ts` records the
+   pairing card by card. Same contract as everything above: container units only,
+   no people, photography becomes gradient blocks.                                  */
+
+/**
+ * Synco® Creative Agency — the page behind the Synco brand (Figma "image 382" again,
+ * but the picker's row-1 crop: the whole landing page, where `campaign` crops the same
+ * screenshot down to its oversized-wordmark hero). Black ground, a glossy blue ribbon
+ * bleeding off the top-left corner, a light-weight three-line headline, a service rail
+ * down the right edge, and a white stats band whose 50+/100+ the card edge cuts
+ * mid-digit — the crop is the composition, so the numbers overflow on purpose.
+ */
+function Agency() {
+  return (
+    <div className="relative h-full w-full overflow-hidden font-sans" style={{ background: '#0a0a0a' }}>
+      {/* the service rail — a strip barely lighter than the page; its labels are bars */}
+      <div className="absolute" style={{ left: '81%', right: 0, top: 0, height: '72%', background: '#151517' }}>
+        <span className="absolute" style={{ left: '16%', right: '14%', top: '4.5%', height: '8%', background: '#3d3d42', borderRadius: '0.7cqw' }} />
+        {['24%', '39%', '54%', '69%'].map((top) => (
+          <span key={top} className="absolute" style={{ right: '14%', top, width: '8cqw', height: '1cqh', background: '#ffffff4d', borderRadius: '99em' }} />
+        ))}
+      </div>
+
+      {/* the blue ribbon: a base blob, a blurred sheen on its crest, a darker under-fold */}
+      <span
+        className="absolute"
+        style={{
+          left: '-11cqw', top: '-13cqh', width: '52cqw', height: '62%',
+          background: 'linear-gradient(148deg,#9dc0ff 0%,#4a7cf4 36%,#1f3ed6 64%,#0e1a7a 100%)',
+          borderRadius: '34% 66% 58% 42% / 52% 38% 62% 48%',
+        }}
+      />
+      <span
+        className="absolute"
+        style={{
+          left: '-7cqw', top: '-7cqh', width: '32cqw', height: '30%',
+          background: 'linear-gradient(160deg,#d5e3ff 0%,#7fa6ff 55%,#7fa6ff00 100%)',
+          borderRadius: '55% 45% 62% 38% / 45% 60% 40% 55%',
+          filter: 'blur(1.4cqw)',
+        }}
+      />
+      <span
+        className="absolute"
+        style={{
+          left: '-9cqw', top: '24%', width: '34cqw', height: '28%',
+          background: 'linear-gradient(150deg,#16247e 0%,#0a1250 60%,#0a125000 100%)',
+          borderRadius: '60% 40% 55% 45% / 55% 45% 60% 40%',
+          filter: 'blur(0.8cqw)',
+        }}
+      />
+
+      {/* nav, riding over the ribbon's crest */}
+      <div className="absolute top-0 z-10 flex items-center justify-between" style={{ left: '4cqw', right: '23cqw', height: '8%' }}>
+        <Wordmark color="#ffffff" size="2.8cqw">Synco</Wordmark>
+        <NavLinks n={3} color="#ffffff59" w="3.6cqw" gap="2.6cqw" />
+      </div>
+
+      {/* the headline is a REGULAR-weight grotesk on the board — no font-semibold here */}
+      <p
+        className="absolute z-10 whitespace-nowrap font-display text-white"
+        style={{ left: '19%', top: '11%', fontSize: '9.6cqw', lineHeight: 1.18, letterSpacing: '-0.015em' }}
+      >
+        Synco<span style={{ fontSize: '0.38em', verticalAlign: 'super' }}>®</span><br />Creative<br />Agency
+      </p>
+      <div className="absolute z-10" style={{ left: '19%', top: '58%' }}>
+        <Copy rows={2} color="#ffffff40" w="30cqw" h="0.95cqh" gap="1cqh" />
+      </div>
+
+      {/* the white stats band; the 50+/100+ run past the card edge and get clipped */}
+      <div className="absolute inset-x-0 bottom-0" style={{ height: '28%', background: '#f4f4f2' }}>
+        <div className="absolute flex flex-col" style={{ left: '4cqw', top: '22%', gap: '1cqh' }}>
+          <Bar w="8cqw" h="0.85cqh" color="#0a0a0a40" />
+          <Bar w="5.5cqw" h="0.85cqh" color="#0a0a0a26" />
+        </div>
+        <p className="absolute whitespace-nowrap" style={{ left: '42%', top: '12%', color: '#17181c', fontSize: '2.25cqw', lineHeight: 1.55 }}>
+          Synco isn&apos;t just about change — we&apos;re<br />
+          setting new standards with bold creativity and<br />
+          thinking innovation.
+        </p>
+        <p className="absolute whitespace-nowrap font-display font-semibold" style={{ left: '42%', top: '74%', color: '#101014', fontSize: '7cqw', letterSpacing: '-0.02em' }}>
+          50<span style={{ color: '#3d56f0' }}>+</span>
+          <span style={{ marginLeft: '9cqw' }}>100<span style={{ color: '#3d56f0' }}>+</span></span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * WorkPro — bright blue social-media SaaS landing (Figma "image 386").
+ * Centred headline with the mockup's white underline under "social media", then a big
+ * white app window: chrome dots, a sidebar of menu bars, stat cards and two number
+ * cards with blue mini-charts — wireframed, because a legible dashboard at this scale
+ * is a lie. Below, the white claim band and the first sliver of the next, dark section,
+ * exactly where the screenshot's crop catches them.
+ */
+function Saas() {
+  return (
+    <div className="relative h-full w-full overflow-hidden font-sans" style={{ background: '#306ef2' }}>
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between" style={{ height: '8%', paddingInline: '3.5cqw' }}>
+        <Wordmark color="#ffffff" size="3.2cqw">WorkPro</Wordmark>
+        <NavLinks n={4} color="#ffffff66" w="4cqw" gap="2.4cqw" />
+        <div className="flex items-center" style={{ gap: '2cqw' }}>
+          <Bar w="3.4cqw" h="1cqh" color="#ffffff8c" />
+          <Pill w="9.5cqw" h="4cqh" bg="#ffffff" label="#306ef259" />
+        </div>
+      </div>
+
+      <p
+        className="absolute inset-x-0 whitespace-nowrap text-center font-display font-semibold text-white"
+        style={{ top: '10%', fontSize: '4.9cqw', lineHeight: 1.3, letterSpacing: '-0.02em' }}
+      >
+        A powerful tool to automate<br />
+        your <span style={{ borderBottom: '0.45cqw solid #ffffff', paddingBottom: '0.2cqh' }}>social media</span>
+      </p>
+
+      <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: '25%', width: '46cqw', gap: '1.1cqh' }}>
+        <Bar w="100%" h="1cqh" color="#ffffff59" />
+        <Bar w="72%" h="1cqh" color="#ffffff59" />
+      </div>
+
+      <div className="absolute left-1/2 flex -translate-x-1/2 items-center" style={{ top: '32%', gap: '2cqw' }}>
+        <Pill w="17cqw" h="5cqh" bg="#ffffff" label="#306ef259" />
+        <Pill w="15cqw" h="5cqh" border="#ffffff73" label="#ffffffa6" />
+      </div>
+
+      {/* the app window; its bottom edge hides under the claim band, as in the crop */}
+      <div className="absolute overflow-hidden bg-white" style={{ left: '11%', right: '11%', top: '42%', height: '41%', borderRadius: '1.8cqw 1.8cqw 0 0' }}>
+        <div className="flex items-center" style={{ height: '9%', paddingInline: '1.8cqw', gap: '0.9cqw' }}>
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="block shrink-0 rounded-full" style={{ width: '1.1cqw', height: '1.1cqw', background: '#10182b2e' }} />
+          ))}
+        </div>
+        <div className="flex" style={{ height: '91%' }}>
+          {/* the menu column; the first item is the selected one, so it goes blue */}
+          <div className="flex shrink-0 flex-col" style={{ width: '15%', paddingTop: '1.2cqh', paddingLeft: '1.8cqw', paddingRight: '1.8cqw', gap: '1.5cqh' }}>
+            {['100%', '82%', '90%', '74%', '86%', '66%'].map((w, i) => (
+              <Bar key={i} w={w} h="0.8cqh" color={i ? '#10182b1f' : '#306ef2'} />
+            ))}
+          </div>
+          <div className="flex-1" style={{ background: '#edf1f8', padding: '1.6cqw' }}>
+            <div className="flex items-center justify-between">
+              <Bar w="9cqw" h="0.9cqh" color="#10182b40" />
+              <div className="flex items-center" style={{ gap: '1cqw' }}>
+                <Bar w="5cqw" h="1.8cqh" color="#ffffff" radius="0.5cqw" />
+                <Bar w="5cqw" h="1.8cqh" color="#306ef2" radius="0.5cqw" />
+              </div>
+            </div>
+            <div className="flex" style={{ marginTop: '1.4cqh', gap: '1.4cqw' }}>
+              <div className="flex-1 bg-white" style={{ padding: '1.2cqw', borderRadius: '0.8cqw' }}>
+                <Copy rows={2} color="#10182b1f" w="100%" h="0.75cqh" gap="0.8cqh" />
+              </div>
+              <div className="flex flex-1 items-center bg-white" style={{ padding: '1.2cqw', borderRadius: '0.8cqw' }}>
+                <Avatars size="2.6cqw" ring="#ffffff" />
+              </div>
+              <div className="flex-1 bg-white" style={{ padding: '1.2cqw', borderRadius: '0.8cqw' }}>
+                <Copy rows={2} color="#10182b1f" w="100%" h="0.75cqh" gap="0.8cqh" />
+              </div>
+            </div>
+            <div className="flex" style={{ marginTop: '1.4cqh', gap: '1.4cqw' }}>
+              <div className="bg-white" style={{ width: '58%', padding: '1.2cqw', borderRadius: '0.8cqw' }}>
+                <p className="font-display font-semibold tabular-nums" style={{ color: '#10182b', fontSize: '3.2cqw', letterSpacing: '-0.02em' }}>
+                  94,127
+                </p>
+                <div className="flex items-end" style={{ marginTop: '0.8cqh', gap: '0.9cqw' }}>
+                  {['2cqh', '3.2cqh', '2.6cqh', '4cqh', '3cqh', '4.6cqh'].map((h, i) => (
+                    <span key={i} className="block" style={{ width: '2cqw', height: h, background: i % 2 ? '#9db9f8' : '#306ef2', borderRadius: '0.4cqw 0.4cqw 0 0' }} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 bg-white" style={{ padding: '1.2cqw', borderRadius: '0.8cqw' }}>
+                <p className="font-display font-semibold tabular-nums" style={{ color: '#10182b', fontSize: '2.6cqw', letterSpacing: '-0.02em' }}>
+                  9,872
+                </p>
+                <div className="flex flex-col" style={{ marginTop: '0.9cqh', gap: '0.9cqh' }}>
+                  <Bar w="86%" h="0.6cqh" color="#306ef2" />
+                  <Bar w="100%" h="0.6cqh" color="#10182b1f" />
+                  <Bar w="64%" h="0.6cqh" color="#10182b1f" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 flex items-center justify-center" style={{ top: '83%', height: '14.5%', background: '#ffffff' }}>
+        <p className="whitespace-nowrap text-center font-display font-semibold" style={{ color: '#0f172c', fontSize: '3.6cqw', lineHeight: 1.32, letterSpacing: '-0.02em' }}>
+          Engage your audience<br />without wasting your time
+        </p>
+      </div>
+      <div className="absolute inset-x-0 bottom-0" style={{ height: '2.5%', background: '#0c0d12' }} />
+    </div>
+  )
+}
+
+/**
+ * Burgundy restaurant page (Figma "image 385"). Serif headline left, a big platter of
+ * food photographed from above on the right, a 2k/1k/99/10 stats band, a "Discover Our
+ * Complete Range" band, and a cream gallery strip the card edge cuts into. Every plate
+ * is a gradient disc — the same substitution the portrait cards make, because a
+ * photo-real dish is as off-limits as a face. The board sets the headline in a serif;
+ * the prototype ships none, so the display face stands in (the AURA card's precedent).
+ * The script logo in the top bar is illegible at any thumbnail size — an abstract gold
+ * pill carries its place.
+ */
+function Restaurant() {
+  return (
+    <div className="relative h-full w-full overflow-hidden font-sans" style={{ background: '#6b1613' }}>
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between" style={{ height: '7%', background: '#521010', paddingInline: '3.5cqw' }}>
+        <NavLinks n={4} color="#f2e0b866" w="4cqw" gap="2.2cqw" />
+        <Pill w="9cqw" h="3.2cqh" bg="#d9a94f" label="#52101080" />
+        <NavLinks n={3} color="#f2e0b866" w="4cqw" gap="2.2cqw" />
+      </div>
+
+      {/* hero copy */}
+      <p
+        className="absolute whitespace-nowrap font-display font-semibold"
+        style={{ left: '4.5cqw', top: '11.5%', color: '#f2e0b8', fontSize: '4.4cqw', lineHeight: 1.32, letterSpacing: '-0.01em' }}
+      >
+        A Taste of Tradition,<br />A Promise of Quality
+      </p>
+      <div className="absolute" style={{ left: '4.5cqw', top: '25%' }}>
+        <Copy rows={3} color="#f2e0b859" w="30cqw" h="1cqh" gap="1.2cqh" />
+      </div>
+      {/* the round quality stamp and a small CTA beside it */}
+      <div className="absolute flex items-center" style={{ left: '4.5cqw', top: '36.5%', gap: '2cqw' }}>
+        <span className="flex shrink-0 items-center justify-center rounded-full" style={{ width: '6.5cqw', height: '6.5cqw', boxShadow: 'inset 0 0 0 0.45cqw #d9a94f' }}>
+          <span className="block rounded-full" style={{ width: '2.2cqw', height: '2.2cqw', background: '#d9a94f' }} />
+        </span>
+        <Pill w="11cqw" h="4cqh" bg="#d9a94f" label="#52101073" />
+      </div>
+
+      {/* the food photography, as discs: a warm glow, the big platter (gold rim, brown
+          food), a second platter cut by the top-right corner, two side dishes */}
+      <span className="absolute" style={{ left: '42%', top: '2%', width: '56cqw', height: '52%', background: 'radial-gradient(50% 50% at 50% 50%,#8a2a1a4d 0%,#8a2a1a00 72%)' }} />
+      <Photo
+        className="absolute rounded-full"
+        style={{
+          left: '54%', top: '7%', width: '34cqw', height: '34cqw',
+          background: 'radial-gradient(circle at 38% 32%,#8a5524 0%,#5f3110 50%,#3f2008 57%,#e9b24c 59%,#d9963c 80%,#b57728 100%)',
+        }}
+      />
+      <Photo
+        className="absolute rounded-full"
+        style={{
+          right: '-6cqw', top: '2%', width: '17cqw', height: '17cqw',
+          background: 'radial-gradient(circle at 40% 35%,#a86a2a 0%,#7a4515 48%,#eab54e 54%,#cf8f35 100%)',
+        }}
+      />
+      <Photo className="absolute rounded-full" style={{ left: '46%', top: '40%', width: '8cqw', height: '8cqw', background: 'radial-gradient(circle at 40% 35%,#6f3a12 0%,#40200a 100%)' }} />
+      <Photo className="absolute rounded-full" style={{ left: '57%', top: '45%', width: '5.5cqw', height: '5.5cqw', background: 'radial-gradient(circle at 40% 35%,#d9a355 0%,#8a5a20 100%)' }} />
+
+      {/* the little dish carousel under the copy — thumbnails, so gradient tiles */}
+      <div className="absolute flex" style={{ left: '4.5cqw', top: '46%', gap: '1.6cqw' }}>
+        {['linear-gradient(150deg,#c98a3b,#7a4515)', 'linear-gradient(150deg,#8a2a1a,#4f1108)', 'linear-gradient(150deg,#e3b054,#a4652b)', 'linear-gradient(150deg,#a4652b,#5f3110)'].map((g, i) => (
+          <Photo key={i} style={{ width: '8.5cqw', height: '4.5cqh', borderRadius: '0.8cqw', background: g }} />
+        ))}
+      </div>
+
+      {/* the stats band — the numbers are the site's four proof points */}
+      <div className="absolute inset-x-0 flex" style={{ top: '54%', height: '20%', background: '#5a100d' }}>
+        {['2k', '1k', '99', '10'].map((n) => (
+          <div key={n} className="flex flex-1 flex-col items-center justify-center" style={{ gap: '1.2cqh' }}>
+            <p className="font-display font-semibold" style={{ color: '#f2e0b8', fontSize: '4.6cqw', letterSpacing: '-0.01em' }}>{n}</p>
+            <Bar w="10cqw" h="0.85cqh" color="#f2e0b84d" />
+          </div>
+        ))}
+      </div>
+
+      <div className="absolute inset-x-0 flex flex-col items-center" style={{ top: '77%', gap: '1.4cqh' }}>
+        <p className="whitespace-nowrap font-display font-semibold" style={{ color: '#f2e0b8', fontSize: '3.6cqw', letterSpacing: '-0.01em' }}>
+          Discover Our Complete Range
+        </p>
+        <Bar w="24cqw" h="0.9cqh" color="#f2e0b840" />
+      </div>
+
+      {/* the cream gallery strip, its tiles taller than the card leaves room for */}
+      <div className="absolute inset-x-0 bottom-0 flex" style={{ height: '11%', background: '#f2e8d4', paddingInline: '3cqw', paddingTop: '1.2cqh', gap: '2cqw' }}>
+        {[
+          'linear-gradient(150deg,#e8c07a,#a4652b)',
+          'linear-gradient(150deg,#d9a355,#8a4f1f)',
+          'linear-gradient(150deg,#c98a3b,#6f3a12)',
+          'linear-gradient(150deg,#e3b054,#96581f)',
+          'linear-gradient(150deg,#d0913f,#7a4515)',
+        ].map((g, i) => (
+          <Photo key={i} className="flex-1" style={{ height: '14cqh', borderRadius: '1cqw', background: g }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * MineMax — near-black crypto-mining landing (Figma "image 380").
+ * Centred headline over a mining-rig illustration: circuit traces running to a glowing
+ * violet orb with a crystal glyph, the ground under it lit purple. Two purple feature
+ * cards enter at the bottom and get cut by the card edge. The glow is two static radial
+ * gradients — paint-once, nothing animates, so the perf contract is untouched.
+ */
+function Crypto() {
+  return (
+    <div className="relative h-full w-full overflow-hidden font-sans" style={{ background: '#07060b' }}>
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between" style={{ height: '7%', paddingInline: '3.5cqw' }}>
+        <div className="flex items-center" style={{ gap: '1.2cqw' }}>
+          <span className="block shrink-0 rounded-full" style={{ width: '2.4cqw', height: '2.4cqw', background: '#7c57f2' }} />
+          <Wordmark color="#ffffff" size="3cqw">MineMax</Wordmark>
+        </div>
+        <NavLinks n={4} color="#ffffff4d" w="3.8cqw" gap="2.4cqw" />
+        <div className="flex items-center" style={{ gap: '1.6cqw' }}>
+          <Pill w="8cqw" h="3.6cqh" border="#ffffff33" label="#ffffff8c" />
+          <Pill w="9cqw" h="3.6cqh" bg="#7c57f2" label="#ffffffa6" />
+        </div>
+      </div>
+
+      {/* the little tag chip above the headline */}
+      <span className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full" style={{ top: '9.5%', width: '12cqw', height: '3.4cqh', boxShadow: 'inset 0 0 0 0.35cqw #7c57f259' }}>
+        <Bar w="55%" h="0.85cqh" color="#a98ef7" />
+      </span>
+
+      <p
+        className="absolute inset-x-0 whitespace-nowrap text-center font-display font-semibold"
+        style={{ top: '15%', color: '#eae6f8', fontSize: '5.4cqw', lineHeight: 1.24, letterSpacing: '-0.02em' }}
+      >
+        AI Revolutionizing<br />Crypto Mining
+      </p>
+
+      <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: '30%', width: '40cqw', gap: '1.1cqh' }}>
+        <Bar w="100%" h="1cqh" color="#ffffff38" />
+        <Bar w="66%" h="1cqh" color="#ffffff38" />
+      </div>
+
+      <div className="absolute left-1/2 flex -translate-x-1/2 items-center" style={{ top: '37%', gap: '1.8cqw' }}>
+        <Pill w="13cqw" h="4.6cqh" bg="#7c57f2" label="#ffffffa6" />
+        <Pill w="12cqw" h="4.6cqh" border="#ffffff2e" label="#ffffff8c" />
+      </div>
+
+      {/* the rig: ground glow, circuit traces brightening toward the centre,
+          two satellite nodes, then the orb with its halo and crystal glyph */}
+      <div className="absolute inset-x-0" style={{ top: '44%', height: '27%' }}>
+        <span className="absolute" style={{ left: '18%', right: '18%', top: '40%', bottom: '-34%', background: 'radial-gradient(50% 46% at 50% 58%,#6d3df059 0%,#6d3df000 72%)' }} />
+        <span className="absolute" style={{ left: 0, width: '34%', top: '48%', height: '0.35cqh', background: 'linear-gradient(90deg,#171226 0%,#3d3168 100%)' }} />
+        <span className="absolute" style={{ right: 0, width: '34%', top: '48%', height: '0.35cqh', background: 'linear-gradient(270deg,#171226 0%,#3d3168 100%)' }} />
+        <span className="absolute" style={{ left: '6%', width: '18%', top: '20%', height: '0.35cqh', background: '#221a3d' }} />
+        <span className="absolute" style={{ right: '6%', width: '18%', top: '76%', height: '0.35cqh', background: '#221a3d' }} />
+        <span className="absolute rounded-full" style={{ left: '21%', top: '34%', width: '4.6cqw', height: '4.6cqw', background: '#120c22', boxShadow: 'inset 0 0 0 0.35cqw #4a3f78' }} />
+        <span className="absolute rounded-full" style={{ right: '21%', top: '34%', width: '4.6cqw', height: '4.6cqw', background: '#120c22', boxShadow: 'inset 0 0 0 0.35cqw #4a3f78' }} />
+        <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '-18%', width: '44cqw', height: '136%', background: 'radial-gradient(50% 50% at 50% 50%,#7b4df04d 0%,#7b4df000 70%)' }} />
+        <span className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full" style={{ top: '8%', width: '15cqw', height: '15cqw', background: 'radial-gradient(circle at 50% 38%,#241946 0%,#0d0918 76%)', boxShadow: 'inset 0 0 0 0.45cqw #8b5cf6' }}>
+          <span className="block" style={{ width: '3.6cqw', height: '3.6cqw', boxShadow: 'inset 0 0 0 0.4cqw #cabdf8', transform: 'rotate(45deg)' }} />
+        </span>
+      </div>
+
+      <p className="absolute inset-x-0 text-center font-display font-semibold" style={{ top: '72%', color: '#ffffffd9', fontSize: '3cqw' }}>
+        Join MineMax
+      </p>
+
+      {/* the two purple feature cards, cut by the card's bottom edge */}
+      <div className="absolute flex" style={{ left: '3.5cqw', right: '3.5cqw', top: '79%', gap: '2.4cqw' }}>
+        <div className="relative flex-1 overflow-hidden" style={{ height: '30cqh', borderRadius: '2cqw', background: 'linear-gradient(150deg,#1a1130 0%,#241a3f 100%)' }}>
+          <span className="absolute rounded-full" style={{ left: '14%', top: '30%', width: '7cqw', height: '7cqw', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+          <span className="absolute rounded-full" style={{ left: '42%', top: '55%', width: '5.5cqw', height: '5.5cqw', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+          <span className="absolute rounded-full" style={{ left: '66%', top: '22%', width: '6cqw', height: '6cqw', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+        </div>
+        <div className="relative flex-1 overflow-hidden" style={{ height: '30cqh', borderRadius: '2cqw', background: 'linear-gradient(150deg,#191128 0%,#221739 100%)' }}>
+          <span className="absolute rounded-full" style={{ left: '8%', top: '18%', width: '4.6cqw', height: '4.6cqw', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+          <div className="absolute flex flex-col" style={{ left: '8%', top: '48%', right: '10%', gap: '1cqh' }}>
+            <Bar w="60%" h="1cqh" color="#ffffffbf" />
+            <Bar w="100%" h="0.8cqh" color="#ffffff33" />
+            <Bar w="78%" h="0.8cqh" color="#ffffff33" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ──────────────────────────────── the export ──────────────────────────────── */
 
 const SITES: Record<ThumbId, () => JSX.Element> = {
@@ -617,6 +1004,10 @@ const SITES: Record<ThumbId, () => JSX.Element> = {
   media: Media,
   architecture: Architecture,
   wellness: Wellness,
+  agency: Agency,
+  saas: Saas,
+  restaurant: Restaurant,
+  crypto: Crypto,
   synco: Synco,
 }
 
