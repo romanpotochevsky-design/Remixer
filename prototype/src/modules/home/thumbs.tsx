@@ -642,31 +642,36 @@ function Agency() {
         ))}
       </div>
 
-      {/* the blue ribbon: a base blob, a blurred sheen on its crest, a darker under-fold */}
+      {/* the blue ribbon: an elongated, tilted base blob, a bright sheen on its upper
+          crest, and a darker fold across its waist — three layers, or it reads as a
+          flat circle instead of folded silk */}
       <span
         className="absolute"
         style={{
-          left: '-11cqw', top: '-13cqh', width: '52cqw', height: '62%',
-          background: 'linear-gradient(148deg,#9dc0ff 0%,#4a7cf4 36%,#1f3ed6 64%,#0e1a7a 100%)',
-          borderRadius: '34% 66% 58% 42% / 52% 38% 62% 48%',
+          left: '-18cqw', top: '-12cqh', width: '58cqw', height: '58%',
+          background: 'linear-gradient(146deg,#7fa6ff 0%,#3a63ea 34%,#1b32c2 62%,#0c1670 100%)',
+          borderRadius: '74% 26% 62% 38% / 52% 68% 32% 48%',
+          transform: 'rotate(-14deg)',
         }}
       />
       <span
         className="absolute"
         style={{
-          left: '-7cqw', top: '-7cqh', width: '32cqw', height: '30%',
-          background: 'linear-gradient(160deg,#d5e3ff 0%,#7fa6ff 55%,#7fa6ff00 100%)',
-          borderRadius: '55% 45% 62% 38% / 45% 60% 40% 55%',
-          filter: 'blur(1.4cqw)',
+          left: '-10cqw', top: '-8cqh', width: '30cqw', height: '26%',
+          background: 'linear-gradient(158deg,#dbe7ff 0%,#8cb0ff 52%,#8cb0ff00 100%)',
+          borderRadius: '55% 45% 70% 30% / 48% 62% 38% 52%',
+          transform: 'rotate(-18deg)',
+          filter: 'blur(1.2cqw)',
         }}
       />
       <span
         className="absolute"
         style={{
-          left: '-9cqw', top: '24%', width: '34cqw', height: '28%',
-          background: 'linear-gradient(150deg,#16247e 0%,#0a1250 60%,#0a125000 100%)',
-          borderRadius: '60% 40% 55% 45% / 55% 45% 60% 40%',
-          filter: 'blur(0.8cqw)',
+          left: '-12cqw', top: '20%', width: '38cqw', height: '26%',
+          background: 'linear-gradient(150deg,#101f96 0%,#081048 55%,#08104800 100%)',
+          borderRadius: '30% 70% 55% 45% / 62% 38% 62% 38%',
+          transform: 'rotate(-10deg)',
+          filter: 'blur(0.9cqw)',
         }}
       />
 
@@ -698,7 +703,8 @@ function Agency() {
           setting new standards with bold creativity and<br />
           thinking innovation.
         </p>
-        <p className="absolute whitespace-nowrap font-display font-semibold" style={{ left: '42%', top: '74%', color: '#101014', fontSize: '7cqw', letterSpacing: '-0.02em' }}>
+        {/* top 84% pushes the digits past the card edge — the crop cuts them mid-glyph */}
+        <p className="absolute whitespace-nowrap font-display font-semibold" style={{ left: '42%', top: '84%', color: '#101014', fontSize: '7cqw', letterSpacing: '-0.02em' }}>
           50<span style={{ color: '#3d56f0' }}>+</span>
           <span style={{ marginLeft: '9cqw' }}>100<span style={{ color: '#3d56f0' }}>+</span></span>
         </p>
@@ -735,12 +741,14 @@ function Saas() {
         your <span style={{ borderBottom: '0.45cqw solid #ffffff', paddingBottom: '0.2cqh' }}>social media</span>
       </p>
 
-      <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: '25%', width: '46cqw', gap: '1.1cqh' }}>
+      {/* 28.5%, not 25 — at the wide 480×360 aspect the headline runs taller relative
+          to the box than at the popup's near-square crop, and 25% collides with it */}
+      <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: '28.5%', width: '46cqw', gap: '1.1cqh' }}>
         <Bar w="100%" h="1cqh" color="#ffffff59" />
         <Bar w="72%" h="1cqh" color="#ffffff59" />
       </div>
 
-      <div className="absolute left-1/2 flex -translate-x-1/2 items-center" style={{ top: '32%', gap: '2cqw' }}>
+      <div className="absolute left-1/2 flex -translate-x-1/2 items-center" style={{ top: '34%', gap: '2cqw' }}>
         <Pill w="17cqw" h="5cqh" bg="#ffffff" label="#306ef259" />
         <Pill w="15cqw" h="5cqh" border="#ffffff73" label="#ffffffa6" />
       </div>
@@ -800,6 +808,13 @@ function Saas() {
                 </div>
               </div>
             </div>
+            {/* a list card runs under the crop, so the window never ends in blank white */}
+            <div className="bg-white" style={{ marginTop: '1.4cqh', padding: '1.2cqw', borderRadius: '0.8cqw' }}>
+              <div className="flex items-center" style={{ gap: '1.4cqw' }}>
+                <Avatars size="2.2cqw" ring="#ffffff" />
+                <Copy rows={2} color="#10182b1f" w="40%" h="0.7cqh" gap="0.8cqh" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -840,7 +855,8 @@ function Restaurant() {
       >
         A Taste of Tradition,<br />A Promise of Quality
       </p>
-      <div className="absolute" style={{ left: '4.5cqw', top: '25%' }}>
+      {/* 28.5% clears the two-line headline even at the wide 480×360 aspect */}
+      <div className="absolute" style={{ left: '4.5cqw', top: '28.5%' }}>
         <Copy rows={3} color="#f2e0b859" w="30cqw" h="1cqh" gap="1.2cqh" />
       </div>
       {/* the round quality stamp and a small CTA beside it */}
@@ -858,14 +874,18 @@ function Restaurant() {
         className="absolute rounded-full"
         style={{
           left: '54%', top: '7%', width: '34cqw', height: '34cqw',
-          background: 'radial-gradient(circle at 38% 32%,#8a5524 0%,#5f3110 50%,#3f2008 57%,#e9b24c 59%,#d9963c 80%,#b57728 100%)',
+          // Concentric rings, food inside a gold rim. The rim must share the food's
+          // centre — an offset radial turns it into a crescent, not a plate.
+          background:
+            'radial-gradient(38% 38% at 42% 36%,#8a5524 0%,#8a552400 100%),' +
+            'radial-gradient(circle,#5f3110 0%,#5f3110 55%,#3f2008 58%,#e9b24c 61%,#d9963c 82%,#b57728 100%)',
         }}
       />
       <Photo
         className="absolute rounded-full"
         style={{
           right: '-6cqw', top: '2%', width: '17cqw', height: '17cqw',
-          background: 'radial-gradient(circle at 40% 35%,#a86a2a 0%,#7a4515 48%,#eab54e 54%,#cf8f35 100%)',
+          background: 'radial-gradient(circle,#7a4515 0%,#7a4515 52%,#eab54e 57%,#cf8f35 100%)',
         }}
       />
       <Photo className="absolute rounded-full" style={{ left: '46%', top: '40%', width: '8cqw', height: '8cqw', background: 'radial-gradient(circle at 40% 35%,#6f3a12 0%,#40200a 100%)' }} />
@@ -945,33 +965,34 @@ function Crypto() {
         AI Revolutionizing<br />Crypto Mining
       </p>
 
-      <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: '30%', width: '40cqw', gap: '1.1cqh' }}>
+      {/* anchored low enough to clear the headline at the wide 480×360 aspect too */}
+      <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: '33%', width: '40cqw', gap: '1.1cqh' }}>
         <Bar w="100%" h="1cqh" color="#ffffff38" />
         <Bar w="66%" h="1cqh" color="#ffffff38" />
       </div>
 
-      <div className="absolute left-1/2 flex -translate-x-1/2 items-center" style={{ top: '37%', gap: '1.8cqw' }}>
+      <div className="absolute left-1/2 flex -translate-x-1/2 items-center" style={{ top: '40.5%', gap: '1.8cqw' }}>
         <Pill w="13cqw" h="4.6cqh" bg="#7c57f2" label="#ffffffa6" />
         <Pill w="12cqw" h="4.6cqh" border="#ffffff2e" label="#ffffff8c" />
       </div>
 
       {/* the rig: ground glow, circuit traces brightening toward the centre,
           two satellite nodes, then the orb with its halo and crystal glyph */}
-      <div className="absolute inset-x-0" style={{ top: '44%', height: '27%' }}>
+      <div className="absolute inset-x-0" style={{ top: '46%', height: '27%' }}>
         <span className="absolute" style={{ left: '18%', right: '18%', top: '40%', bottom: '-34%', background: 'radial-gradient(50% 46% at 50% 58%,#6d3df059 0%,#6d3df000 72%)' }} />
-        <span className="absolute" style={{ left: 0, width: '34%', top: '48%', height: '0.35cqh', background: 'linear-gradient(90deg,#171226 0%,#3d3168 100%)' }} />
-        <span className="absolute" style={{ right: 0, width: '34%', top: '48%', height: '0.35cqh', background: 'linear-gradient(270deg,#171226 0%,#3d3168 100%)' }} />
+        <span className="absolute" style={{ left: 0, width: '34%', top: '48%', height: '0.35cqh', background: 'linear-gradient(90deg,#171226 0%,#5646a0 100%)' }} />
+        <span className="absolute" style={{ right: 0, width: '34%', top: '48%', height: '0.35cqh', background: 'linear-gradient(270deg,#171226 0%,#5646a0 100%)' }} />
         <span className="absolute" style={{ left: '6%', width: '18%', top: '20%', height: '0.35cqh', background: '#221a3d' }} />
         <span className="absolute" style={{ right: '6%', width: '18%', top: '76%', height: '0.35cqh', background: '#221a3d' }} />
         <span className="absolute rounded-full" style={{ left: '21%', top: '34%', width: '4.6cqw', height: '4.6cqw', background: '#120c22', boxShadow: 'inset 0 0 0 0.35cqw #4a3f78' }} />
         <span className="absolute rounded-full" style={{ right: '21%', top: '34%', width: '4.6cqw', height: '4.6cqw', background: '#120c22', boxShadow: 'inset 0 0 0 0.35cqw #4a3f78' }} />
-        <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '-18%', width: '44cqw', height: '136%', background: 'radial-gradient(50% 50% at 50% 50%,#7b4df04d 0%,#7b4df000 70%)' }} />
+        <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '-18%', width: '44cqw', height: '136%', background: 'radial-gradient(50% 50% at 50% 50%,#7b4df066 0%,#7b4df000 70%)' }} />
         <span className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full" style={{ top: '8%', width: '15cqw', height: '15cqw', background: 'radial-gradient(circle at 50% 38%,#241946 0%,#0d0918 76%)', boxShadow: 'inset 0 0 0 0.45cqw #8b5cf6' }}>
           <span className="block" style={{ width: '3.6cqw', height: '3.6cqw', boxShadow: 'inset 0 0 0 0.4cqw #cabdf8', transform: 'rotate(45deg)' }} />
         </span>
       </div>
 
-      <p className="absolute inset-x-0 text-center font-display font-semibold" style={{ top: '72%', color: '#ffffffd9', fontSize: '3cqw' }}>
+      <p className="absolute inset-x-0 text-center font-display font-semibold" style={{ top: '73.5%', color: '#ffffffd9', fontSize: '3cqw' }}>
         Join MineMax
       </p>
 
