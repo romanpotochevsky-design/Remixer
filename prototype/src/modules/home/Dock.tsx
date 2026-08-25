@@ -20,7 +20,10 @@
 import { hasProjects, useWorld, type HomeProject } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
-import { TEMPLATES, TEMPLATE_CATEGORIES, templatesIn, type Template } from '@/data/templates'
+import {
+  TEMPLATES, TEMPLATE_CATEGORIES, templatesIn,
+  type Template, type TemplateCategoryId,
+} from '@/data/templates'
 import { startBuild } from '@/modules/chat/send'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { IconMoreVertical } from '@/ui/icons'
@@ -72,17 +75,28 @@ function DockTabs() {
   )
 }
 
-/** `Tabs Alt` 28376:43912 — the category filter, right-aligned to the content width. */
-function FilterChips() {
-  const { templateFilter, setTemplateFilter } = useUI()
+/**
+ * The category chip row — `Tab Alt (Dark theme)`, one Figma component with two
+ * homes: right-aligned in the dock's title row (28376:43912) and centred under
+ * the template picker's heading (28626:583). Same chips, same order, same
+ * styles in both, so one React component too. Controlled, because the two
+ * homes keep different filter state: the dock's lives in the ui store, the
+ * picker's is per-open.
+ */
+export function CategoryChips({
+  value, onChange,
+}: {
+  value: TemplateCategoryId
+  onChange: (id: TemplateCategoryId) => void
+}) {
   return (
     <div className="flex h-9 flex-none items-center gap-2">
       {TEMPLATE_CATEGORIES.map((chip) => {
-        const active = templateFilter === chip.id
+        const active = value === chip.id
         return (
           <button
             key={chip.id}
-            onClick={() => setTemplateFilter(chip.id)}
+            onClick={() => onChange(chip.id)}
             className={`h-9 flex-none whitespace-nowrap rounded-full px-[18px] text-[13px] font-semibold leading-none transition-colors duration-[var(--dur-fast)] ease-std ${
               active
                 ? 'bg-[var(--gray-75)] text-[var(--gray-950)]'
@@ -96,6 +110,12 @@ function FilterChips() {
       })}
     </div>
   )
+}
+
+/** The dock's instance, wired to the ui store's filter. */
+function FilterChips() {
+  const { templateFilter, setTemplateFilter } = useUI()
+  return <CategoryChips value={templateFilter} onChange={setTemplateFilter} />
 }
 
 /* -------------------------------------------------------------------- cards */
@@ -184,8 +204,26 @@ function EmptySlot() {
   )
 }
 
-/** A template card (28375:43585 and siblings): name 16px, description under it. */
-function TemplateCard({ template }: { template: Template }) {
+/**
+ * A template card (28375:43585 and siblings; the picker's 18 at 28626:592+ are
+ * the same component, only narrower) — name 16px, description under it. One
+ * card, two homes: the dock seeds the builder from it, the template picker
+ * attaches it to the prompt instead, so the click action can come from the
+ * caller. The picker's ghost kebab (`opacity: 0` on all 18 cards) is simply
+ * not rendered — hidden as drawn, same as here.
+ */
+export function TemplateCard({
+  template, className = 'home-card', onPick, pickLabel,
+}: {
+  template: Template
+  /** Wrapper sizing. The dock's flex row sizes cards itself (`home-card`);
+   *  the picker's grid owns the width and fixes the drawn 272 height. */
+  className?: string
+  /** Overrides the default click — the picker attaches instead of building. */
+  onPick?: () => void
+  /** Accessible name for the overriding action. */
+  pickLabel?: string
+}) {
   const { t } = useT()
   const { openBuilder } = useUI()
 
@@ -201,7 +239,7 @@ function TemplateCard({ template }: { template: Template }) {
   }
 
   return (
-    <div className="home-card group relative flex flex-col">
+    <div className={`${className} group relative flex flex-col`}>
       {/* radius 8 here against the project card's 12 — as drawn on the two boards,
           flagged as probably accidental (spec §12.12) */}
       <div className="relative w-full flex-1 overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--dur-fast)] ease-std group-hover:ring-1">
@@ -216,8 +254,8 @@ function TemplateCard({ template }: { template: Template }) {
       </div>
 
       <button
-        onClick={open}
-        aria-label={t({ en: `Start from ${template.name}`, uk: `Почати з ${template.name}` })}
+        onClick={onPick ?? open}
+        aria-label={pickLabel ?? t({ en: `Start from ${template.name}`, uk: `Почати з ${template.name}` })}
         className="absolute inset-0 rounded-[16px]"
       />
     </div>

@@ -27,16 +27,19 @@
  * repaints per frame, and the only `backdrop-filter` on the page is the topbar's and
  * the composer's, both of which Figma draws.
  */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { startBuild } from '@/modules/chat/send'
+import { TEMPLATE_LIBRARY } from '@/data/templates'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
-import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight } from '@/ui/icons'
+import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight, IconClose } from '@/ui/icons'
 import { HomeDock } from './Dock'
+import { TemplatePicker } from './TemplatePicker'
+import { Thumb } from './thumbs'
 
 /* ------------------------------------------------------------------ backdrop */
 
@@ -182,13 +185,68 @@ const PROMPT_CHIPS = [
 /** How far one press of the end-cap chevron moves the chip row. */
 const CHIP_STEP = 320
 
+/**
+ * The attached-template chip — what stands in the "Add template" pill's place
+ * once a template is picked. ⚠️ OUR proposal, pending the designer: NO board
+ * draws the composer after a pick (spec §7.4, README §7 — the recorded idea is
+ * exactly this chip; its Build→"Remix" half is NOT implemented, the boards draw
+ * `Build` and only `Build`). Same 36px glass pill; the pill's hidden 24px
+ * leading-icon slot at (6, 6) is reused for a live mini-thumbnail.
+ */
+function AttachedChip({ index }: { index: number }) {
+  const { t } = useT()
+  const { openTemplatePicker, detachTemplate } = useUI()
+  const tpl = TEMPLATE_LIBRARY[index]
+  if (!tpl) return null
+  return (
+    <div
+      /* the picker's grow-from-trigger origin: with the pill replaced, the
+         chip is the trigger — same attribute, same spot */
+      data-template-trigger
+      className="liquid-glass liquid-glass--bright flex h-9 flex-none items-center rounded-full pl-1.5 pr-1"
+    >
+      {/* the body re-opens the picker: picking again replaces the attachment */}
+      <button
+        onClick={openTemplatePicker}
+        aria-label={t({ en: `Change template — ${tpl.name}`, uk: `Змінити шаблон — ${tpl.name}` })}
+        className="flex min-w-0 items-center gap-2"
+      >
+        <span className="relative h-6 w-6 flex-none overflow-hidden rounded-[6px]">
+          <Thumb id={tpl.id} className="absolute inset-0" />
+        </span>
+        <span className="max-w-[18ch] truncate text-[14px] leading-none text-[#ffffffcc]">
+          {tpl.name}
+        </span>
+      </button>
+      <button
+        onClick={detachTemplate}
+        aria-label={t({ en: 'Remove template', uk: 'Прибрати шаблон' })}
+        className="ml-1 grid h-6 w-6 flex-none place-items-center rounded-full text-[#ffffff8f] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+      >
+        <IconClose size={8} />
+      </button>
+    </div>
+  )
+}
+
 function Composer() {
   const { t } = useT()
-  const { openBuilder } = useUI()
+  const { openBuilder, openTemplatePicker } = useUI()
+  const attachedIndex = useUI((s) => s.attachedTemplate)
   const [draft, setDraft] = useState('')
   const field = useRef<HTMLInputElement>(null)
   const chipRow = useRef<HTMLDivElement | null>(null)
-  const armed = draft.trim().length > 0
+
+  const attached = attachedIndex != null ? TEMPLATE_LIBRARY[attachedIndex] : null
+  /* A template alone arms Build too — a lit chip beside a dead button would
+     read as broken. Undrawn either way (our call, same standing as the chip). */
+  const armed = draft.trim().length > 0 || attached != null
+
+  /* Back from the picker with a template attached: focus returns to the field
+     so typing — or a bare Enter — continues the flow without another click. */
+  useEffect(() => {
+    if (attachedIndex != null) field.current?.focus()
+  }, [attachedIndex])
 
   /*
    * The whole point of the page: the typed prompt becomes the builder's first
@@ -197,10 +255,23 @@ function Composer() {
    * restaging any of it here — the shell must not be able to tell which composer a
    * message came from. No send flash: the page is gone by the next frame, so there
    * is nothing left for the light to run around.
+   *
+   * With a template attached the seeded first message names it, so the
+   * transcript shows both inputs on one line. ⚠️ The wording is OURS and the
+   * real contract with generation (how prompt + template merge) is undecided —
+   * README §7 records the rule "the prompt wins, the template is the starting
+   * point", nothing more. `openBuilder` consumes the attachment.
    */
   function build() {
     if (!armed) return
-    startBuild(draft)
+    const text = draft.trim()
+    startBuild(
+      attached
+        ? text
+          ? `${text} — remix the “${attached.name}” template`
+          : `Remix the “${attached.name}” template`
+        : text,
+    )
     openBuilder()
   }
 
@@ -244,17 +315,43 @@ function Composer() {
         {/* button row 944 × 36, pl 16, space-between; the right group's edge lands
             16px inside the field, which is where the field's own padding puts it */}
         <div className="mt-[17px] flex h-9 items-center justify-between pl-4">
-          <button
-            aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
-            className="grid h-9 w-9 place-items-center rounded-full border border-[var(--white-100)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-          >
-            <IconPlus size={24} />
-          </button>
+          {/*
+           * `Left` 28616:58687 — the "+" and the template pill, gap 8. The
+           * 25.08.2026 restyle of board 28364:40053 moves all three round
+           * controls from ghost (no fill, 8% rim) to the builder-composer
+           * glass — Black/700 + blur 16 + the 24% rim (.liquid-glass--bright);
+           * the two composers now match, as CLAUDE.md always said they should.
+           */}
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
+              className="liquid-glass liquid-glass--bright grid h-9 w-9 flex-none place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+            >
+              <IconPlus size={24} />
+            </button>
+
+            {attachedIndex != null ? (
+              <AttachedChip index={attachedIndex} />
+            ) : (
+              /* "Add template" 28616:58682 — 123×36 r999 glass; label Proxima
+                 Nova REGULAR 14 at 80% white (not the Semibold the chips and
+                 Build wear). Width is the label's own (20px side padding), so
+                 the UK string fits without clipping; EN lands on the drawn 123
+                 to within the stand-in font's tolerance. */
+              <button
+                data-template-trigger
+                onClick={openTemplatePicker}
+                className="liquid-glass liquid-glass--bright flex h-9 flex-none items-center whitespace-nowrap rounded-full px-5 text-[14px] leading-none text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc] hover:text-white"
+              >
+                {t({ en: 'Add template', uk: 'Додати шаблон' })}
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-4">
             <button
               aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-              className="grid h-9 w-9 place-items-center rounded-full border border-[var(--white-100)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+              className="liquid-glass liquid-glass--bright grid h-9 w-9 place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
             >
               {/* 24px icon box, 20px leaf — the two are NOT the same in Figma */}
               <span className="grid h-6 w-6 place-items-center"><IconMic size={20} /></span>
@@ -405,6 +502,11 @@ export function HomePage() {
       </div>
 
       <HomeDock />
+
+      {/* The template picker is an APP-level overlay, like the builder's domain
+          modal: its 50% scrim covers the hero, the topbar and the dock alike,
+          so it mounts at the page root, not inside the composer. */}
+      <TemplatePicker />
 
       {/* Tooling, mounted per page: the console is how the designer switches the
           dock between "no projects yet" and "one site" without touching code. */}

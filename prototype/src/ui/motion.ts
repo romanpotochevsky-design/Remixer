@@ -113,6 +113,43 @@ export const modalSheet = {
 }
 
 /**
+ * Fullscreen sheet — the template picker (Figma 28616:59168): a 16px-inset
+ * surface that covers the whole page. Unlike the centred checkout sheet this
+ * one HAS a trigger, so rule 2 applies at full size: the caller sets
+ * `transform-origin` to the pill that opened it and the sheet grows out of
+ * that point. Scale starts much nearer 1 than a popover's — on a 1624px-wide
+ * surface 4% is already a ~65px sweep at the far corner; any more reads as a
+ * zoom, not as a surface arriving. Nothing here (or on the sheet) may carry a
+ * live backdrop blur: the sheet is the biggest thing the product ever moves.
+ */
+export const fullscreenSheet = {
+  initial: { opacity: 0, scale: 0.96 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    /* Opacity pulled forward on its own quick curve — the bubbleSend trick,
+       for the same reason: a surface that stays translucent through the whole
+       spring reads as gauze, not as a solid panel arriving. (It also shortens
+       the window in which a 1624px layer needs alpha-blending, though measured
+       on a software-rendered browser the open's cost is dominated by the
+       full-viewport composite itself, which any full-screen motion pays.) */
+    transition: { ...SPRING_SOFT, opacity: { duration: 0.15, ease: [0.2, 0, 0, 1] } },
+  },
+  exit: { opacity: 0, scale: 0.975, transition: EXIT },
+}
+
+/**
+ * Rule 3 for the fullscreen sheet: the content column, one beat behind the
+ * surface — and ONE block, never a stagger. Its grid is 18 cards; 18 springs
+ * is 18 layers of cost and pure noise, so the whole column lands together.
+ */
+export const fullscreenContent = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { ...SPRING_SOFT, delay: 0.06 } },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
+}
+
+/**
  * Content swapping UNDER something that stays — the domain lists changing while
  * the search header holds its place.
  *

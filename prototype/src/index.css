@@ -726,6 +726,24 @@
   }
 
   /*
+   * Brighter cut — the Home composer's controls: the "+", the "Add template"
+   * pill and the mic (Figma 28364:40227 / 28616:58682 / 28364:40236, the
+   * 25.08.2026 restyle of board 28364:40053), plus the attached-template chip
+   * that stands in the pill's place. This is the builder-composer recipe from
+   * CLAUDE.md — fill `Black/700` #09090ba3 + blur 16 — under the rim those
+   * boards draw at `Neutral Alpha/300`: 24% white, twice the chrome's 12%.
+   * The diagonal swings around 24% exactly as the base rim swings around 12%
+   * (31% → 20% → 18% → 27%): the distribution carries the glass, the average
+   * stays on the drawn token.
+   */
+  .liquid-glass--bright {
+    background: #09090ba3;
+  }
+  .liquid-glass--bright::before {
+    background: linear-gradient(150deg, #ffffff4f 0%, #ffffff33 32%, #ffffff2e 64%, #ffffff45 100%);
+  }
+
+  /*
    * Siri edge glow — the process indicator for the preview frame.
    *
    * On iOS the ENTIRE inner perimeter is lit at once: a continuous multi-hue band
@@ -1187,6 +1205,22 @@
    * tightest readable card; past that the row scrolls instead.
    */
   .home-card { flex: 1 0 0; min-width: 200px; }
+
+  /*
+   * ------------------------------------ template picker (Figma 28616:59168)
+   * The sheet's heading is cap-trimmed in Figma — a 22px box for 32px type —
+   * and the whole vertical rhythm (57 above it, 40 below) is measured to the
+   * CAP, not to the em box. `text-box-trim` reproduces exactly that in the
+   * browsers this prototype is actually reviewed in (Chromium — the claude.ai
+   * panel — and Safari 18.2+); where unsupported, the `leading-none` box on
+   * the element stands in, 10px taller, and the rhythm below shifts by that
+   * much — a soft landing, not a break. The same pairing the dock's heading
+   * would want; kept local until the designer confirms the popup copy (§10.1).
+   */
+  .tplpick-heading {
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+  }
 
   body {
     background: var(--gray-900);

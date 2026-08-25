@@ -162,3 +162,15 @@ export const templatesIn = (category: TemplateCategoryId): Template[] =>
   category === 'all' || category === 'more'
     ? TEMPLATES
     : TEMPLATES.filter((tpl) => tpl.category === category)
+
+/**
+ * The same rule over the picker's 18-card grid — but each row keeps its
+ * position in TEMPLATE_LIBRARY: sites repeat there, so the index is the only
+ * stable identity a card has, and it is what `ui.attachedTemplate` records.
+ */
+export const libraryIn = (
+  category: TemplateCategoryId,
+): { tpl: Template; index: number }[] =>
+  TEMPLATE_LIBRARY.map((tpl, index) => ({ tpl, index })).filter(
+    ({ tpl }) => category === 'all' || category === 'more' || tpl.category === category,
+  )

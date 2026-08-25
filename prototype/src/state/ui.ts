@@ -85,6 +85,22 @@ interface UIStore {
   dockTab: DockTab
   /** Which template category chip is active. `all` is the drawn default. */
   templateFilter: TemplateCategoryId
+  /** The fullscreen template picker over the Home page (Figma 28616:59168).
+   *  Reachable ONLY from the composer's "Add template" pill — the dock keeps
+   *  its own behaviour. Like the domain modal, an app-level overlay: its scrim
+   *  covers the hero, the topbar and the dock alike. */
+  templatePickerOpen: boolean
+  /**
+   * The template attached to the Home composer's prompt — an index into
+   * `TEMPLATE_LIBRARY` (the library repeats sites, so a position is the only
+   * stable identity a picked card has). Composer state, not product truth: it
+   * lives exactly as long as the draft it decorates — Build consumes it,
+   * leaving the page drops it — and no scenario axis records it (a scenario
+   * switch leaves it alone, the same way it leaves a half-typed draft alone).
+   * ⚠️ The attached state is OUR proposal (home README §7, spec §7.4): no
+   * board draws the composer after a pick. Pending the designer.
+   */
+  attachedTemplate: number | null
   surface: Surface
   domainScreen: DomainScreen
   /** The domain the user is acting on inside the domains surface. */
@@ -103,6 +119,11 @@ interface UIStore {
   openBuilder: () => void
   setDockTab: (tab: DockTab) => void
   setTemplateFilter: (id: TemplateCategoryId) => void
+  openTemplatePicker: () => void
+  closeTemplatePicker: () => void
+  /** Picking a card IS the close — one gesture, one state write. */
+  attachTemplate: (libIndex: number) => void
+  detachTemplate: () => void
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
   openSurface: (s: Surface) => void
@@ -123,6 +144,8 @@ export const useUI = create<UIStore>((set, get) => ({
   page: 'home',
   dockTab: 'projects',
   templateFilter: 'all',
+  templatePickerOpen: false,
+  attachedTemplate: null,
   surface: 'preview',
   domainScreen: 'home',
   activeDomain: null,
@@ -132,12 +155,18 @@ export const useUI = create<UIStore>((set, get) => ({
   chatWidth: CHAT_DEFAULT,
   reloading: false,
 
-  /* Leaving the builder closes what was open inside it: coming back to a half-open
-     publish popover from another page reads as a bug, not as continuity. */
-  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null }),
-  openBuilder: () => set({ page: 'builder' }),
+  /* Leaving a page closes what was open inside it: coming back to a half-open
+     publish popover — or to a stale attached-template chip over an empty field —
+     from another page reads as a bug, not as continuity. Build consumes the
+     attachment via `openBuilder`, which is exactly when it should die. */
+  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null, templatePickerOpen: false }),
+  openBuilder: () => set({ page: 'builder', templatePickerOpen: false, attachedTemplate: null }),
   setDockTab: (dockTab) => set({ dockTab }),
   setTemplateFilter: (templateFilter) => set({ templateFilter }),
+  openTemplatePicker: () => set({ templatePickerOpen: true }),
+  closeTemplatePicker: () => set({ templatePickerOpen: false }),
+  attachTemplate: (attachedTemplate) => set({ attachedTemplate, templatePickerOpen: false }),
+  detachTemplate: () => set({ attachedTemplate: null }),
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
   openSurface: (surface) => set({ surface, publishOpen: false }),
