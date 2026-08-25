@@ -565,3 +565,166 @@ grid `28626:591` · rows `28626:592/702/812` · close `28633:14905` · new thumb
 Composer (canonical board): row `28364:40224` · Left `28616:58687` · pill
 `28616:58682` · pill label `28616:58693` · `+` `28364:40227` · mic `28364:40234` ·
 Build idle/enabled/third `28364:40242/40238/40246`.
+
+---
+
+## 12. § Detail view — board `28637:42088`
+
+Captured **25 Aug 2026** (a later session than §§1–11), same toolchain: `get_metadata`,
+`get_design_context`, `get_variable_defs`, `get_screenshot enableBase64Response` — the
+proxy still 403-blocks every direct figma.com fetch, so the two icon SVGs (back arrow,
+the pill's `Add` glyph) could not be exported and are redrawn by hand in the prototype's
+icon set, like every other icon (`CLAUDE.md`).
+
+| Board | id | Size | Canvas x, y | What it shows |
+|---|---|---|---|---|
+| Template detail | **`28637:42088`** | 1656 × 1196 | −2370, 2610 — same row as the picker board (`28616:59168` at −4385, 2610), 2015 px to its right | The same 16 px-inset sheet, now showing ONE template: a 72 px header strip (back ← · template name · white `Choose a template` pill · the usual ✕) over a full-bleed site preview cropped by the sheet's bottom edge |
+
+Also named **“Domain-Only Customer”**. Under-scrim page: same stale-intermediate composer
+as the picker board (§7.3) — not a source. The popup layer is `28637:42853` → sheet
+**`28637:42854`** (16, 16) 1624 × 1164, radius 16, `Gray/900` `#18181b` — byte-identical
+sheet spec to §1.2. Scrim `28637:42852`: 1656 × **1197**, 50 % black — the same 1 px
+overshoot accident as §1.1.
+
+The drawn template is the **AURA** asset (`image 381`) under its list caption
+**`Homeware store website template`** — i.e. the picker's card 1·2 opened. One board
+covers one card; the per-card generalization (same layout, any template) is ours.
+
+### 12.1 Header strip — `Buttons` `28637:43245`
+
+(0, 0) **1624 × 72** on the sheet's own ground (no fill, no hairline, no shadow —
+the board draws **no visible bar**). Layout: `flex; gap: 16px; padding: 16px 16px 16px 0;
+justify-content: flex-end` — three zones:
+
+| Zone | Node | Geometry (sheet-local) | Spec |
+|---|---|---|---|
+| Back | wrapper `28640:43368` (0, 16) 48 × 40, `pl 16` → `Icon button` **`28640:43362`** | **32 × 32 at (16, 20)** — vertically centred in the 72 | Component `Style=Standard, Shape=Square, Size=Small` (`889:7322`): container **radius 8**, state-layer `padding 4`, icon **24 × 24**. No fill until interaction (per the component's own doc: “Until the button is interacted with, its container isn’t visible”). Glyph: a plain **←**; colour `Icon/Default/Default` → **`#ffffff`** |
+| Title + CTA | flex-1 container `28641:43374` (64, 16) 1488 × 40 → group `Name + Category` `28640:43353` (497, 0) **494 × 40**, `gap: 32` | group centred in the container | see below |
+| Close | `Close M` `28640:43357` → state-layer `28640:43358` | **40 × 40 at (1568, 16)** — 16 from top, 16 from right | **identical to §2**: radius 12, `Black/500` `#09090b7a`, `backdrop-blur 16`, 1 px `Neutral Alpha/200` → **`#ffffff1f`** (the reference code's `rgba(9,9,11,.16)` is the light trap again), white ✕ 24-box |
+
+**Title** `28640:43354` — box 284 × 13 at group (0, 13.5):
+
+| Property | Value |
+|---|---|
+| String | the template's name — here verbatim **`Homeware store website template`** |
+| Font | **Gilroy Medium, 18 px**, line-height normal, `text-box-trim: trim-both / cap alphabetic` (→ the 13 px cap box), `white-space: nowrap` **+ `text-overflow: ellipsis`** (truncation is drawn in!), centred |
+| Colour | `Text/Default/Default` → **`#ffffff`** (dark; the reference code's `#09090b` is the light trap) |
+
+A new type tier: the card name is Gilroy Medium 16, the sheet heading Gilroy SemiBold 32 —
+this title sits between them at Medium 18. Hidden right of it: the template's
+*description* (`28640:43355`, `Dual-image cards with saved wishlist`, squashed 193 × 4) —
+parked off; the header carries the name only.
+
+**`Choose a template` pill** `28641:43375` — **178 × 40** at group (316, 0), i.e. **32 px
+right of the title**:
+
+| Property | Value |
+|---|---|
+| Component | `Style=Filled, Icon=Right, Size=Medium, Color=Dark, Shape=Square` (`70:448`) — the high-emphasis “final action” button of the kit |
+| Box / radius | height **40**, **radius 10** (not the pill-999 of the composer, not the r12 of Build/✕) |
+| Fill | `Background/Neutral/950` → **`#fafafa`** (dark) — **the Build-enabled recipe** (§7.2) |
+| State-layer | `padding: 10px 8px 10px 20px; gap: 8` → label then icon |
+| Label (verbatim) | **`Choose a template`** — `Label Medium Strong`: **Proxima Nova Semibold 14 px**, line-height 100 %, `Text/Default/On Default` → **`#09090b`**; drawn label box 118 × 14 |
+| Icon | `Add` — a **+** in a 24 × 24 box right of the label, `Icon/Default/On Default` → `#09090b` (SVG proxy-blocked; redrawn) |
+| Hover/pressed | **not drawn** — no other state of this button exists on the board |
+
+⚠️ **The title+pill group is 4 px left of true sheet centre**: the flex row gives the
+centre container 64 px on the left (48 back-zone + 16 gap) but 72 on the right (16 gap +
+40 close + 16 padding), so the group centre lands at sheet x 808 vs the sheet's 812.
+Same accident family as the chip row's 4 px drift (§4/§10.4) — shipped **truly centred**,
+flagged (§12.6-Q1).
+
+Hidden in the header, same parked alternates as §2: `28637:43246` (icon button + 148 × 40
+white CTA `Add an object`) and a 32 × 32 `Close M` `28637:43249`.
+
+### 12.2 The stage (site preview)
+
+`Sections` `28637:42857` (0, **72**) 1624 × 1092 → `Webites` `28637:42858` (4, 0)
+1616 × 1092 → `Conteiner` `28637:42911` (0, 0) 1616 × 1092 → `List` `28637:42912` (1, 1)
+1614 × 1090 → `Website` `28637:42926` → `Image` `28637:42927` (0, 0) 1614 × 1090 →
+**`image 381`** `28637:42930` (0, 0) **1614 × 1631.008** (the AURA raster at its intrinsic
+1898/1918 aspect, `object-fit: cover`, top-anchored).
+
+Net drawn geometry, sheet-local:
+
+| Property | Value |
+|---|---|
+| Stage box | **(4, 72) → (1620, 1164)**: side margins **4 px** (the `Sections` `px-4`), top edge at **72** (the header height), bottom edge **flush with the sheet's bottom** — NOT ≈20 px margins; the 16 px-radius sheet clip is all that shapes the bottom corners |
+| Rim | `Conteiner` is a `Gray/800` → **`#27272a`** plate with **`padding: 1px`** — reads as a 1 px hairline around the preview |
+| Clip radius | **8, top corners only** (`Webites` `overflow-clip; border-radius 8 8 0 0`); the inner `Image` frame clips at radius 8 all round, and the `Website` wrapper still carries the card's vestigial 8/8/16/16 |
+| The site | width 100 % of the stage (1614), height its own aspect (1631 here) → **cropped by the bottom edge: 541 px of the site is below the fold**. No scrollbar, no fade is drawn — that it scrolls is inference, same as §10.3 |
+| Site border | 1 px `Background/Neutral/900` → **`#f7f7f7`** in dark — this is the AURA asset's own near-white hairline from the dock cards (§5.1) following the asset into the detail view, not a stage rule. The prototype draws no per-asset hairlines on cards (§10.7 open) and none here — the `#27272a` rim is the stage's frame |
+
+⚠️ **Vestigial paint on `Sections`, not copied:** it carries `backdrop-blur 16` and
+`border-radius 16 16 0 0` — there is nothing to blur (the sheet behind it is opaque) and
+nothing that shows the radius (`Webites` clips tighter inside). A live 1624 px
+backdrop-filter is exactly what the perf contract forbids; treated as leftovers.
+
+⚠️ Hidden INSIDE the stage: a 72 px meta bar `28637:42931` (32 px icon button · name +
+description · second 32 px icon button — an alternate in-preview header, off), alternate
+image rects (`382`, `383`) under the visible `381`, and the dock's parked `Website` card
+sizes (640 × 469 ×3, 374 × 256 — one captioned `synco.com · Updated 15 minutes ago`).
+The list board's whole `Title` block (heading + chips) is also here, **hidden**
+(`28637:42859`) — evidence this board is the picker board mutated in place, i.e. the
+detail view replaces the list inside the SAME sheet, which is how the prototype builds it.
+
+### 12.3 Dark-theme variable values used on this board
+
+From `get_variable_defs` on `28637:43245` / `28637:42857` (the authority; reference-code
+fallbacks are light-theme): `Text/Default/Default #ffffff` · `Icon/Default/Default
+#ffffff` · `Text/Default/On Default #09090b` · `Icon/Default/On Default #09090b` ·
+`Background/Neutral/950 #fafafa` · `Background/Neutral/900 #f7f7f7` · `Black/500
+#09090b7a` · `Neutral Alpha/200 #ffffff1f` · `Gray/800 #27272a` · `Gray/850 #1f1f22` ·
+`Label/Size Base 14` · `Label/Font Family Proxima Nova` · `Label/Font Weight Strong 600`.
+
+### 12.4 What the transition does (not drawn — ours)
+
+The board draws zero motion (one static frame, no variants, no smart-animate). The
+implemented choreography — card → detail as one FLIP morph with a nested counter-scale,
+the ✕-plate unrolling into the header band, the +60 ms header beat, the reverse flight
+landing in the card's current slot — is the designer-briefed spec recorded in
+`prototype/src/modules/home/TemplatePicker.tsx` (see the DETAIL VIEW comment block there);
+numbers live in code, board-sourced geometry above.
+
+### 12.5 Behaviour wired in the prototype (board-silent, decided by us)
+
+* Clicking a card now opens the detail view; **attach moved to the `Choose a template`
+  pill** (the board draws a detail step between card and attach — deliberate change).
+* The preview scrolls inside the stage via the house `ScrollArea` (tone `auto`), enabled
+  after the entrance lands. The stage content keeps the CARD's drawn aspect
+  (233.333 / 218), so the enlarged render is the same drawing the card showed — and at
+  every tested viewport it is taller than the stage, so it always scrolls.
+* Esc in detail = back to the list; Esc in the list closes the picker. ✕ and scrim-click
+  close the whole picker from either view (the sheet exits showing whatever is on screen).
+* Focus: opening detail lands on the back arrow; back returns focus to the opened card;
+  Choose runs the existing attach path (focus → composer field).
+
+### 12.6 Open questions for the designer (detail view)
+
+1. **The title+pill group is 4 px left of sheet centre** (asymmetric 64/72 flex zones) —
+   accident? Shipped truly centred, same call as the chip row.
+2. **No hover/pressed states** are drawn for the back arrow or the `Choose a template`
+   pill. Shipped with the house quiet hovers (icon-button `NA/100` wash; pill darkens a
+   step like Build). Confirm.
+3. **The stage's site border** resolves to near-white `#f7f7f7` in dark — the AURA
+   asset's own hairline (§10.7) riding along. One rule for asset hairlines still needed;
+   the stage ships with the drawn `#27272a` rim only.
+4. **`Sections` carries a 1624 px `backdrop-blur 16`** with an opaque sheet behind it —
+   vestigial? Not copied (perf contract).
+5. **The hidden in-stage meta bar** (`28637:42931`: name + two icon buttons INSIDE the
+   preview top edge) — dead layer, or a planned overlay state?
+6. **Does the preview scroll?** Still not drawn (no bar, no fade, bottom-cropped site
+   implies yes). Shipped scrolling, house indicator.
+7. **Title overflow**: ellipsis is drawn on the title itself, but at what width does the
+   pill/back/✕ collision resolve on narrow sheets? Shipped: title truncates first, pill
+   never shrinks.
+8. **What does `Choose a template` lead to?** Shipped: the attach-to-composer proposal
+   (§7.4/§10.2) — still pending your after-state drawing.
+
+### 12.7 Node-id quick reference (detail board)
+
+Board `28637:42088` · scrim `28637:42852` · sheet `28637:42854` · header `28637:43245` ·
+back `28640:43362` (wrapper `28640:43368`) · title `28640:43354` · hidden description
+`28640:43355` · pill `28641:43375` · close `28640:43357/43358/43359` · stage chain
+`28637:42857` → `42858` → `42911` → `42912` → `42926` → `42927` → image `28637:42930` ·
+hidden meta bar `28637:42931` · hidden list-Title `28637:42859`.

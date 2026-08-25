@@ -314,6 +314,14 @@ export const IconArrowRight = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/** ← back, the template-detail header (Figma 28640:43362 — SVG proxy-blocked,
+ *  redrawn as the mirror of IconArrowRight on the same grid and stroke). */
+export const IconArrowLeft = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path d="M16.5 10h-12M9 4.5 3.5 10 9 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
 export const IconGlobe = ({ size = 20, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
     <circle cx="10" cy="10" r="7.2" stroke="currentColor" strokeWidth="1.5" />

@@ -220,7 +220,7 @@ export function TemplateCard({
   template,
   className = 'home-card',
   thumbClassName = 'home-thumb home-thumb--template',
-  onPick, pickLabel,
+  onPick, pickLabel, dataKey,
 }: {
   template: Template
   /** Wrapper sizing. The dock's flex row sizes cards itself (`home-card`);
@@ -231,10 +231,15 @@ export function TemplateCard({
    *  picker (`tplpick-thumb`). Both land on the drawn 272 card at the drawn
    *  width; see the note beside them in index.css. */
   thumbClassName?: string
-  /** Overrides the default click — the picker attaches instead of building. */
+  /** Overrides the default click — the picker opens its detail view instead
+   *  of building. */
   onPick?: () => void
   /** Accessible name for the overriding action. */
   pickLabel?: string
+  /** Rendered as `data-tpl-card` on the card root. The picker's detail view
+   *  finds the clicked card by it — to fly the preview out of the thumbnail's
+   *  measured rect, and back into its CURRENT rect on the way out. */
+  dataKey?: number
 }) {
   const { t } = useT()
   const { openBuilder } = useUI()
@@ -251,7 +256,7 @@ export function TemplateCard({
   }
 
   return (
-    <div className={`${className} group relative flex flex-col`}>
+    <div className={`${className} group relative flex flex-col`} data-tpl-card={dataKey}>
       {/* radius 8 here against the project card's 12 — as drawn on the two boards,
           flagged as probably accidental (spec §12.12)
 

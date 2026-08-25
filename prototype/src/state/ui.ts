@@ -91,6 +91,16 @@ interface UIStore {
    *  covers the hero, the topbar and the dock alike. */
   templatePickerOpen: boolean
   /**
+   * The picker's detail view (Figma 28637:42088): which template's site
+   * preview fills the sheet, as an index into `TEMPLATE_LIBRARY`, or null for
+   * the card grid. Navigation, exactly like `domainScreen` — a step INSIDE an
+   * open surface, not product truth. Clicking a card now opens this instead of
+   * attaching (deliberate change: the board draws a detail step between the
+   * card and the attach — attaching moved to the detail's "Choose a template"
+   * button, see `attachTemplate`).
+   */
+  pickerDetail: number | null
+  /**
    * The template attached to the Home composer's prompt — an index into
    * `TEMPLATE_LIBRARY` (the library repeats sites, so a position is the only
    * stable identity a picked card has). Composer state, not product truth: it
@@ -121,7 +131,12 @@ interface UIStore {
   setTemplateFilter: (id: TemplateCategoryId) => void
   openTemplatePicker: () => void
   closeTemplatePicker: () => void
-  /** Picking a card IS the close — one gesture, one state write. */
+  /** A card was clicked — the detail view opens over the grid. */
+  openTemplateDetail: (libIndex: number) => void
+  /** ← or Esc inside the detail view — back to the grid, picker stays open. */
+  closeTemplateDetail: () => void
+  /** "Choose a template" in the detail header (was: picking a card). One
+   *  gesture, one state write — choosing closes the whole picker. */
   attachTemplate: (libIndex: number) => void
   detachTemplate: () => void
   setDevice: (d: Device) => void
@@ -145,6 +160,7 @@ export const useUI = create<UIStore>((set, get) => ({
   dockTab: 'projects',
   templateFilter: 'all',
   templatePickerOpen: false,
+  pickerDetail: null,
   attachedTemplate: null,
   surface: 'preview',
   domainScreen: 'home',
@@ -163,8 +179,16 @@ export const useUI = create<UIStore>((set, get) => ({
   openBuilder: () => set({ page: 'builder', templatePickerOpen: false, attachedTemplate: null }),
   setDockTab: (dockTab) => set({ dockTab }),
   setTemplateFilter: (templateFilter) => set({ templateFilter }),
-  openTemplatePicker: () => set({ templatePickerOpen: true }),
+  /* Every open starts on the grid, like the board draws it. The reset happens
+     HERE and not when the picker closes: `pickerDetail` must survive the close
+     so a picker dismissed (or chosen) from the detail view exits showing the
+     detail view — clearing it at close time would fly the preview back into
+     the grid underneath a sheet that is already leaving. */
+  openTemplatePicker: () => set({ templatePickerOpen: true, pickerDetail: null }),
   closeTemplatePicker: () => set({ templatePickerOpen: false }),
+  openTemplateDetail: (pickerDetail) => set({ pickerDetail }),
+  closeTemplateDetail: () => set({ pickerDetail: null }),
+  /* Leaves `pickerDetail` alone on purpose — see openTemplatePicker. */
   attachTemplate: (attachedTemplate) => set({ attachedTemplate, templatePickerOpen: false }),
   detachTemplate: () => set({ attachedTemplate: null }),
   setDevice: (device) => set({ device }),
