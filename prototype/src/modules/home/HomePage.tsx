@@ -28,6 +28,7 @@
  * the composer's, both of which Figma draws.
  */
 import { useEffect, useRef, useState } from 'react'
+import type { AnimationEvent } from 'react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
@@ -37,9 +38,45 @@ import { ScrollArea } from '@/ui/ScrollArea'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight, IconClose } from '@/ui/icons'
+import { LogoRemixerAnimated } from '@/ui/LogoRemixerAnimated'
 import { HomeDock } from './Dock'
 import { TemplatePicker } from './TemplatePicker'
 import { Thumb } from './thumbs'
+
+/* ----------------------------------------------------------------- entrance */
+
+/**
+ * The load-time entrance — the choreography the LIVE product's home page plays,
+ * read frame-by-frame off a recording of it (50ms burst frames; the timeline
+ * lives with the keyframes in index.css, section HOME ENTRANCE). Three phases:
+ * the colour glows breathe in over the black panel, the logo assembles itself
+ * (the designer's SVGator asset) while the copy and composer rise in, and the
+ * dot lattice + rings reveal as an aperture opening from the logo.
+ *
+ *  - 'full'  — the whole ~4.8s theatre. Plays ONCE per app session, on boot.
+ *  - 'quick' — a plain 300ms fade of the already-settled page. What a RETURN
+ *              from the builder gets: the demo bounces between pages, and
+ *              re-running a 4.8s curtain-raiser on every bounce would make the
+ *              Home page feel broken, not cinematic.
+ *  - 'none'  — the settled page, byte-identical to the signed-off markup. Also
+ *              the ONLY state reduced-motion users ever see (the static logo,
+ *              no glow fade, no aperture, no stagger — CSS guards the same
+ *              classes as a second engine, per the project's both-engines rule).
+ *
+ * State drives one root attribute (`data-home-entrance`); every animation lives
+ * in CSS as a one-shot scoped under it. When the LAST one-shot ends (the
+ * aperture; the quick fade in 'quick') the attribute comes OFF, taking every
+ * animation declaration and the finished-frame masks with it — so the settled
+ * page is not "an animation parked on its last frame", it is the exact static
+ * paint QA measured at 61fps idle with zero per-frame repaint.
+ */
+type Entrance = 'full' | 'quick' | 'none'
+
+/**
+ * Module-level on purpose: it must survive the component (page bounces) but die
+ * with the page load (a reload replays the theatre, like the product's own).
+ */
+let theatrePlayed = false
 
 /* ------------------------------------------------------------------ backdrop */
 
@@ -64,9 +101,20 @@ const RING_RADII = [830.252, 652.763, 400, 350.282, 118.209]
  * blend the MCP does not expose, so the order here is the RENDERED one: field, rings,
  * plate, then the lattice on top of everything.
  */
-function HeroBackdrop() {
+function HeroBackdrop({ curtain }: { curtain: boolean }) {
   return (
     <>
+      {/*
+       * The entrance's curtain — a ground-coloured cover the theatre fades OUT
+       * to bring the colour field up (the production page's first beat).
+       * Mounted only while the full entrance runs and gone when it ends: the
+       * settled panel keeps its committed single-element paint, byte-identical
+       * to the QA render (index.css has the two measured alternatives this
+       * replaced). First child, so every other backdrop layer stays above it
+       * in the same order as always.
+       */}
+      {curtain && <div className="home-hero-curtain pointer-events-none" aria-hidden />}
+
       {/*
        * `Circles` 28364:40178 — five 1px circles, and they are CONCENTRIC: every one
        * of them shares the logo mark's centre, hero (820, 208.25). On the board they
@@ -126,7 +174,8 @@ function HomeTopbar() {
     <header
       /* 1640 × 72 at the panel's top-left, no fill, blur 16, pl 24 / pr 20.
          The blur is the ONE thing this bar does to the hero behind it. */
-      className="absolute left-0 right-0 top-0 z-20 flex h-[72px] items-center justify-between pl-6 pr-5 backdrop-blur-[16px]"
+      /* `he-bar` is inert chrome until the entrance root attribute arms it. */
+      className="he-bar absolute left-0 right-0 top-0 z-20 flex h-[72px] items-center justify-between pl-6 pr-5 backdrop-blur-[16px]"
     >
       {/* Wordmark 28364:40747 — Gilroy SemiBold 28/1.4, cap-trimmed to a 20px box,
           so it is the CAP height that is centred in the 72px bar. Figma renders it
@@ -279,7 +328,7 @@ function Composer() {
     <>
       {/* ------------------------------------------- the field (28364:40219) */}
       <div
-        className="relative w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
+        className="he-composer relative w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
         /* Figma's padding is 17/16/16/0 on a 138-tall box whose 1px stroke sits
            INSIDE the geometry. A CSS `border` does not: it eats a pixel of the
            content box, which put the text row, the `+` button and the caret 1px
@@ -387,7 +436,7 @@ function Composer() {
       <div className="flex-none" style={{ height: 'var(--home-gap-chips)' }} aria-hidden />
 
       {/* --------------------------------------- prompt chips (28364:40319) */}
-      <div className="flex h-[42px] w-[960px] max-w-full flex-none items-center">
+      <div className="he-chips flex h-[42px] w-[960px] max-w-full flex-none items-center">
         <ScrollArea
           axis="x"
           className="home-chip-scroller h-[42px] min-w-0 flex-1"
@@ -432,8 +481,63 @@ export function HomePage() {
   const { t } = useT()
   const lang = useWorld((s) => s.world.lang)
 
+  /*
+   * Resolved once per MOUNT, before the first paint, so nothing flashes settled
+   * and then restarts. Reduced motion wins outright — the page appears settled
+   * immediately, static logo included (the maintenance page's doctrine for the
+   * same SVGator pair). The flag is written in an effect, not in the
+   * initializer: StrictMode calls initializers twice per mount to expose
+   * exactly that impurity (the second call would have seen its own footprint
+   * and downgraded the boot to 'quick').
+   */
+  const [entrance, setEntrance] = useState<Entrance>(() =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'none'
+      : theatrePlayed
+        ? 'quick'
+        : 'full',
+  )
+  useEffect(() => {
+    theatrePlayed = true
+    /*
+     * Reduce Motion flipped ON mid-theatre: the CSS guard kills the one-shots
+     * where they stand, but a KILLED animation fires `animationcancel`, not
+     * `animationend` — the curtain call below would never come and the stage
+     * props (the attribute, the curtain, the SVGator logo) would linger. So the
+     * setting change itself strikes the set.
+     */
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = () => {
+      if (mq.matches) setEntrance('none')
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  /*
+   * The curtain call. Animation events BUBBLE, so one listener on the page root
+   * hears every one-shot finish; keying on the animation NAME (not the target)
+   * means nothing else that ever animates on this page — the picker's springs
+   * are JS-driven and fire no CSS events — can end the entrance early. The
+   * aperture is the theatre's last runner; the quick path has only itself. Both
+   * aperture layers fire the same name and the second write of 'none' is a
+   * no-op.
+   */
+  const onEntranceEnd =
+    entrance === 'none'
+      ? undefined
+      : (e: AnimationEvent) => {
+          if (e.animationName === 'home-aperture' || e.animationName === 'home-quick-in') {
+            setEntrance('none')
+          }
+        }
+
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]">
+    <div
+      className="flex h-full flex-col overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]"
+      data-home-entrance={entrance === 'none' ? undefined : entrance}
+      onAnimationEnd={onEntranceEnd}
+    >
       {/*
        * The hero band. 8px on the left, top and right; nothing at the bottom, so the
        * panel's rounded bottom corners meet the dock and the page ground shows
@@ -445,7 +549,7 @@ export function HomePage() {
        */}
       <div className="flex min-h-[488px] flex-1 basis-0 px-2 pt-2">
         <div className="home-hero relative w-full overflow-hidden rounded-[20px]">
-          <HeroBackdrop />
+          <HeroBackdrop curtain={entrance === 'full'} />
           <HomeTopbar />
 
           {/* content column: 1608 inside the 1640 panel, capped there on wider
@@ -458,9 +562,28 @@ export function HomePage() {
                 slides under it comes out smeared rather than clipped. */}
             <div style={{ flex: '160 1 0', minHeight: 76 }} aria-hidden />
 
-            {/* logo 96 × 96, horizontally centred (28364:40192) */}
-            <div className="flex-none" style={{ height: 'var(--home-logo)', width: 'var(--home-logo)' }}>
-              <LogoRemixer size={96} className="h-full w-full" />
+            {/* logo 96 × 96, horizontally centred (28364:40192).
+                During the full entrance the slot stacks two marks: the SVGator
+                assembly underneath (its shapes start at opacity 0 — the slot is
+                EMPTY until the player's 300ms beat), and the board mark on top,
+                cross-faded in by `.he-logo-static` right after the assembly's
+                final bounce (1.55s). The two differ only in sparkle size and
+                grey tone, so the fade reads as the logo settling — and the
+                settled DOM keeps only the board mark QA signed off. `relative`
+                on the static copy is what puts it ABOVE the absolutely
+                positioned assembly (positioned beats non-positioned in paint
+                order); both extras vanish with the entrance state. */}
+            <div
+              className={entrance === 'full' ? 'relative flex-none' : 'flex-none'}
+              style={{ height: 'var(--home-logo)', width: 'var(--home-logo)' }}
+            >
+              {entrance === 'full' && (
+                <LogoRemixerAnimated delay={300} className="home-logo-anim absolute inset-0" />
+              )}
+              <LogoRemixer
+                size={96}
+                className={entrance === 'full' ? 'he-logo-static relative h-full w-full' : 'h-full w-full'}
+              />
             </div>
 
             <div className="flex-none" style={{ height: 'var(--home-gap-logo)' }} aria-hidden />
@@ -468,7 +591,7 @@ export function HomePage() {
             {/* Headline 28364:40207 — TWO text nodes 8px apart, not one string with a
                 space: the drawn gap is tighter than the font's own word space. */}
             <h1
-              className="flex flex-none flex-wrap items-start justify-center gap-2 whitespace-nowrap text-center font-display font-semibold leading-[1.2] text-white"
+              className="he-head flex flex-none flex-wrap items-start justify-center gap-2 whitespace-nowrap text-center font-display font-semibold leading-[1.2] text-white"
               style={{ fontSize: 'var(--home-h1)' }}
             >
               <span>{t({ en: 'Describe it.', uk: 'Опишіть.' })}</span>
@@ -479,7 +602,7 @@ export function HomePage() {
 
             {/* Proxima Nova Regular 20/1.4 at White/800 — 72% white, written out
                 rather than taken from `--white-500`, which is 70% (spec §9). */}
-            <p className="flex-none text-center text-[20px] leading-[1.4] text-[#ffffffb8]">
+            <p className="he-sub flex-none text-center text-[20px] leading-[1.4] text-[#ffffffb8]">
               {t({
                 en: 'Create stunning apps & websites by chatting with AI.',
                 uk: 'Створюйте чудові застосунки та сайти у розмові з AI.',

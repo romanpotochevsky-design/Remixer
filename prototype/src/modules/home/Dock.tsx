@@ -318,7 +318,11 @@ export function HomeDock() {
        * It may be squeezed on a short viewport, and when it is the cards give up
        * picture height instead of the page growing a scrollbar.
        */
-      className={`flex flex-none flex-col px-8 pb-6 ${owned ? 'min-h-[236px]' : 'min-h-[244px]'}`}
+      /* `he-dock`: the Home entrance's hook — the whole dock rises as ONE block
+         on the composer beat (index.css, HOME ENTRANCE). The production page
+         has no dock at all, so this is ours: same fade/rise as the chips, kept
+         subtle. Inert until the page root carries `data-home-entrance`. */
+      className={`he-dock flex flex-none flex-col px-8 pb-6 ${owned ? 'min-h-[236px]' : 'min-h-[244px]'}`}
       style={{ flex: owned ? '0 1 376px' : '0 1 384px' }}
     >
       {/* title row 1592 × 80 (tabs) / × 88 (heading) */}

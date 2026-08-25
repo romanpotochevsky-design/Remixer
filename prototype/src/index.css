@@ -977,6 +977,17 @@
      * through the whole middle band. Handing the vertical ramp to a plain linear veil
      * fixes all of it: both glows can then be far bigger than the panel (no boundary
      * anywhere near it), and the veil has no shape to leak.
+     *
+     * ⚠️ The load ENTRANCE does not touch this stack. It fades out an opaque
+     * ground-coloured CURTAIN child instead (`.home-hero-curtain`, below):
+     * over the same black, curtain-out and colour-in are the same composite
+     * at every opacity, but the curtain leaves the DOM when the theatre ends,
+     * so the settled panel is THIS exact single-element paint. Splitting the
+     * stack onto an animatable child was tried twice and measured against the
+     * committed render: glows-on-child drifted ±1/255 across ~946k pixels
+     * (the composite quantizes at the element boundary), whole-stack-on-child
+     * still left 219 corner pixels (double-rounded corner antialiasing, then
+     * clip-vs-background coverage). Zero requires zero elements added.
      */
     background:
       /* the ambient lift — the board's top band is #0d0d13…#101018, not #09090b */
@@ -1037,6 +1048,30 @@
     --home-h1: 56px;
     /* centre of the concentric ring set = centre of the logo mark */
     --home-rings-y: 208.25px;
+    /* the same centre as a FRACTION of the panel (208.25 / 812) — the entrance
+       aperture's origin. A percentage, not the px var, because the aperture is
+       a clip-path ellipse whose position and radii are element percentages —
+       the origin holds at every animated size with no keyframe arithmetic.
+       Exact at the design height; a few px adrift on odd viewports, invisible
+       in a travelling 2.8s front. */
+    --home-aperture-y: 25.646%;
+  }
+
+  /*
+   * The entrance's curtain — an opaque, ground-coloured cover over the colour
+   * field, faded OUT on load (HOME ENTRANCE below) and unmounted when the
+   * theatre ends. Fading a black curtain out over the stack is the same
+   * composite, at every opacity, as fading the stack in over black — but the
+   * curtain approach leaves the settled panel's paint untouched (see the
+   * measurement note on `.home-hero`'s background). Square on purpose: the
+   * panel's rounded overflow clips it, and at the corners the ~1px fringe of
+   * colour that can peek past the clip during the fade is invisible on the
+   * near-black field the corners have at that moment.
+   */
+  .home-hero-curtain {
+    position: absolute;
+    inset: 0;
+    background: var(--gray-950);
   }
   /* The headline is `whitespace-nowrap` at 56px, i.e. 735px wide and unable to
      wrap — so below roughly 800px of column it has to come down in size instead of
@@ -1058,6 +1093,8 @@
       --home-gap-chips: 18px;
       /* the top spacer is at its 76px floor here, so 76 + 64/2 */
       --home-rings-y: 108px;
+      /* 108 over a ~576 panel (960 − 8 inset − 376 dock) */
+      --home-aperture-y: 18.75%;
     }
   }
   @media (max-height: 820px) {
@@ -1068,6 +1105,8 @@
       --home-gap-chips: 12px;
       /* 76 + 52/2 */
       --home-rings-y: 102px;
+      /* 102 over a ~436 panel */
+      --home-aperture-y: 23.4%;
     }
   }
 
@@ -1183,6 +1222,226 @@
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
+  }
+
+  /*
+   * ------------------------------------------------------------ HOME ENTRANCE
+   * The load-time theatre — what the LIVE product's home page plays, read
+   * frame-by-frame off a screen recording of it (50ms burst frames). Everything
+   * here is a ONE-SHOT: it runs once, ends, and then `HomePage` drops the
+   * `data-home-entrance` root attribute, which removes every declaration below
+   * from the computed styles — the settled page is the same static paint QA
+   * measured at 61fps idle with zero per-frame repaint, not an animation parked
+   * on its last frame. (The finished masks resolve to alpha-1 over the whole
+   * panel anyway; dropping them is belt and braces plus one fewer thing for the
+   * compositor to hold.)
+   *
+   * The timeline, t=0 = the page's first render (production's own, ±50ms):
+   *   250ms  colour field arrives — the black curtain over it fades out, 500ms
+   *   300ms  the logo starts assembling — SVGator player, 1550ms one-shot
+   *   850ms  topbar fades, headline rises · 1000ms subtitle · 1250ms composer ·
+   *          1400ms chips and dock — fade + 12px rise, expo-out, no bounce
+   *  1900ms  the board mark cross-fades in over the assembled logo (240ms):
+   *          the SVGator asset settles on a slightly bigger sparkle and lighter
+   *          greys than the signed-off mark, so the fade IS the final settle
+   *  2000ms  the dot lattice and the rings reveal as an APERTURE opening from
+   *          the logo — 2800ms: a composited clip-path on the dots, a radius-
+   *          ordered stagger of plain fades on the five rings
+   *  4800ms  the aperture ends; HomePage hears its animationend and strikes the
+   *          set. Total theatre ≈ 4.8s, interactive throughout.
+   *
+   * Paint budget: NOTHING here repaints per frame. The curtain fade, every
+   * rise, both logo fades and the five ring fades are compositor-only
+   * (opacity/transform), and the aperture itself is an animated CLIP-PATH,
+   * which Chromium runs on the compositor too — the dots texture rasterizes
+   * once and only the clip moves (see the aperture note for the measured
+   * alternatives this beat). The composer/topbar rises drag their
+   * backdrop-blur along for ~800ms — one-shot, accepted.
+   *
+   * The three easings: the maintenance page's `--ease-expo` for the rises (the
+   * house translation of the production's soft landings), its gridBloom curve
+   * for the aperture, and a plain m3-standard for the fades.
+   */
+
+  /* The colour field arrives — by the CURTAIN fading out over it. Production:
+     black panel until ~250ms, glows up by ~750ms. Opacity on an already-painted
+     layer — nothing moves, nothing repaints. `both` is what holds the curtain
+     opaque through the 250ms of black before the fade begins. */
+  [data-home-entrance='full'] .home-hero-curtain {
+    animation: home-curtain-out 0.5s cubic-bezier(0.33, 0, 0.2, 1) 0.25s both;
+  }
+
+  /* The copy and controls. One class per drawn block, whole blocks only — the
+     chips row rises as a row, the dock as a section; per-item staggers are
+     noise at this size (same rule as the picker's fullscreenContent). */
+  [data-home-entrance='full'] .he-bar {
+    animation: home-fade-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.85s both;
+  }
+  [data-home-entrance='full'] .he-head {
+    animation: home-rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.85s both;
+  }
+  [data-home-entrance='full'] .he-sub {
+    animation: home-rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1s both;
+  }
+  [data-home-entrance='full'] .he-composer {
+    animation: home-rise-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.25s both;
+  }
+  [data-home-entrance='full'] .he-chips,
+  [data-home-entrance='full'] .he-dock {
+    animation: home-rise-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.4s both;
+  }
+
+  /* The board mark settles over the finished assembly (see HomePage's logo
+     slot). Delay = the player's 300ms beat + its 1550ms run + a 50ms breath. */
+  [data-home-entrance='full'] .he-logo-static {
+    animation: home-fade-in 0.24s cubic-bezier(0.33, 0, 0.2, 1) 1.9s both;
+  }
+
+  /* The SVGator host: the inner svg fills the logo slot; overflow stays
+     visible because the assembly overshoots its box for a few frames, exactly
+     as the maintenance page lets it. */
+  .home-logo-anim svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /*
+   * THE APERTURE — the maintenance page's gridBloom idea, adapted to the hero:
+   * a circle of existence opening from the logo, the dots simply being there
+   * wherever it has passed (the rings surface on their own stagger just
+   * below, timed to the same front). The origin is pinned to the logo with
+   * `ellipse(… at 50% var(--home-aperture-y))` — percentages of the element,
+   * so the centre holds at every animated size with no keyframe arithmetic.
+   * (The dots layer starts 22px below the panel, so its origin sits ~17px
+   * above the true centre — invisible in a travelling front.)
+   *
+   * ⚠️ CLIP-PATH, not the maintenance page's animated mask — measured, twice:
+   *   · gridBloom verbatim (mask-size on dots AND the rings container, its
+   *     front-loaded bezier): the five ring spans — boxes up to 1660px square,
+   *     each already carrying its own XOR ring mask — re-rasterized every
+   *     frame, 15.5fps through the whole beat on the software-rendered
+   *     harness (the claude.ai preview panel's budget class), and the wave
+   *     crossed the panel in its first 500ms and then idled for 2.3s.
+   *   · mask on dots only, rings on the opacity stagger: 21fps.
+   *   · clip-path on dots (isolated A/B, same box, same ease): 58.5fps vs
+   *     the mask construction's 50.5 — Chromium runs clip-path animations on
+   *     the COMPOSITOR, so the lattice rasterizes once and only the clip
+   *     moves; no per-frame paint at all, which is this page's law.
+   * The mask's one advantage was a feathered front, but on a 6%-alpha lattice
+   * a hard front and a soft one are indistinguishable — a dot pops 15/255
+   * either way — so the feather bought nothing and cost the frame budget.
+   *
+   * What remains on the harness (~21fps through the beat) is not paint: it is
+   * SwiftShader ALPHA-BLENDING the layers the animations promote — the
+   * panel-sized dots layer plus everything stacked above it — and no
+   * construction of a travelling reveal avoids that on a machine with no GPU.
+   * On anything with a GPU the same compositing is the cheap path. One-shot,
+   * at load, nothing else competing; the settled page pays none of it.
+   *
+   * The ease is near-linear and the final radii put the far corner at ~0.79
+   * of the ellipse, so the front is still travelling until ~t+2.1s of its
+   * 2.8s — matching the production wave, which is visibly moving for ~1.4s —
+   * and the tail settles quietly. A fully-covering clip is the identity, so
+   * the last frame is exactly the unclipped static paint and dropping the
+   * attribute changes nothing. The clip exists ONLY inside the keyframes:
+   * with the animation gone (curtain call, reduced motion) there is no
+   * clip-path property left on the element at all.
+   */
+  [data-home-entrance='full'] .home-hero-dots {
+    animation: home-aperture 2.8s cubic-bezier(0.4, 0.15, 0.6, 1) 2s both;
+  }
+
+  /* The rings surface as the front reaches each radius — the spans are drawn
+     largest FIRST (HomePage RING_RADII: 830 · 653 · 400 · 350 · 118), so the
+     stagger runs BACKWARDS through the children: the innermost ring first,
+     right at the aperture's own start, the outermost as the front nears the
+     panel edge. Pure opacity — the ring masks themselves never repaint. */
+  [data-home-entrance='full'] .home-hero-ring {
+    animation: home-fade-in 0.6s cubic-bezier(0.33, 0, 0.2, 1) both;
+  }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(1) { animation-delay: 2.8s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(2) { animation-delay: 2.6s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(3) { animation-delay: 2.35s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(4) { animation-delay: 2.25s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(5) { animation-delay: 2s; }
+
+  /* Return from the builder: no theatre, just the settled page fading up in
+     one 300ms breath on the page root. The demo bounces between pages; a 4.8s
+     curtain-raiser on every bounce would read as the page being broken. */
+  [data-home-entrance='quick'] {
+    animation: home-quick-in 0.3s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  @keyframes home-curtain-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes home-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes home-rise-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes home-quick-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  /* Opacity reaches 1 inside the first 30% — near the logo the dots pop in
+     with the passing front rather than the whole field pre-glowing — and the
+     clip does the rest of the travelling. Radii are percentages of the dots
+     box (rx of its width, ry of its height): 90% × 134% puts the panel's far
+     corner at ~0.79 of the ellipse — covered with margin at the end, still
+     being crossed until ~75% of the run. */
+  @keyframes home-aperture {
+    0% {
+      opacity: 0;
+      clip-path: ellipse(0% 0% at 50% var(--home-aperture-y));
+    }
+    30% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+      clip-path: ellipse(90% 134% at 50% var(--home-aperture-y));
+    }
+  }
+
+  /*
+   * Reduced motion: the page appears settled immediately — static logo, no glow
+   * fade, no aperture, no stagger. `HomePage` already resolves the entrance to
+   * 'none' (which also swaps the SVGator logo out for the static mark, the
+   * maintenance page's own fallback doctrine), so this block is the second
+   * engine's guarantee for the same classes: if the attribute is ever present
+   * under reduced motion, every one-shot is dead and the masks are gone.
+   * `animation: none`, never the .01ms idiom (CLAUDE.md: the near-zero duration
+   * leaves live transitions that lie to layout reads).
+   */
+  @media (prefers-reduced-motion: reduce) {
+    /* the curtain would sit opaque forever with its animation dead, so it goes
+       entirely — the colour field is simply there, settled */
+    [data-home-entrance] .home-hero-curtain {
+      display: none;
+    }
+    [data-home-entrance] .he-bar,
+    [data-home-entrance] .he-head,
+    [data-home-entrance] .he-sub,
+    [data-home-entrance] .he-composer,
+    [data-home-entrance] .he-chips,
+    [data-home-entrance] .he-dock,
+    [data-home-entrance] .he-logo-static,
+    [data-home-entrance='quick'] {
+      animation: none;
+    }
+    /* animation: none is the whole cure for the aperture too — the clip-path
+       lives only inside its keyframes, so a dead animation leaves no clip */
+    [data-home-entrance] .home-hero-ring,
+    [data-home-entrance] .home-hero-dots {
+      animation: none;
+    }
   }
 
   /*
