@@ -32,6 +32,15 @@
  * and on a wide one, where the taller cards outgrow the sheet. At the drawn
  * 1656 × 1196 nothing scrolls, as drawn.
  *
+ * …AND WHEN IT DOES SCROLL, THE HEADER COMPACTS — board 28734:65603, drawn
+ * 26.08.2026: 215 → 146, the heading 48 → 32 with its cap-top 57 → 40, the chip
+ * row 131 → 78, a 1px hairline lit under the chips, and the grid following the
+ * header's foot up the same 69. The law, the trigger and every measurement live
+ * in `design-system.md` §5 «Шапка, которая сжимается при скролле»; the geometry
+ * is spec §14; the machinery is `useHeadCompact` below. The same read found the
+ * REST board edited too (48px, two-tone, a trailing period at last) — spec
+ * §14.0/§14.1, and the reason §3 above is now history.
+ *
  * MOTION (nothing is drawn — spec §9; house language from motion.ts): the
  * sheet springs in with its transform-origin at the "Add template" pill, so
  * the surface visibly grows out of the control that summoned it; the scrim
