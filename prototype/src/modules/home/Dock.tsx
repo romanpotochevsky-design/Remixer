@@ -50,6 +50,9 @@ const SLOTS = 6
  */
 const SEAT_PAD = 6
 const SEAT_GAP = 6
+const SEAT_H = 32
+/** A 999-radius box this tall has 16px caps — the number the capsule maths needs. */
+const SEAT_R = SEAT_H / 2
 const SEATS: { id: DockTab; label: Text; w: number }[] = [
   { id: 'projects', label: { en: 'My projects', uk: 'Мої проєкти' }, w: 101 },
   { id: 'templates', label: { en: 'Templates', uk: 'Шаблони' }, w: 92 },
@@ -57,8 +60,18 @@ const SEATS: { id: DockTab; label: Text; w: number }[] = [
 /** Left / right edge of seat i in the track's padding-box coordinates. */
 const seatL = (i: number) => SEAT_PAD + SEATS.slice(0, i).reduce((s, t) => s + t.w + SEAT_GAP, 0)
 const seatR = (i: number) => seatL(i) + SEATS[i].w
-/** The travelling pill's own width: the NARROWEST seat (see the capsule below). */
-const CAP_W = Math.min(...SEATS.map((s) => s.w))
+/**
+ * Each half of the travelling capsule: the NARROW seat minus one cap radius.
+ *
+ * ⚠️ This number is not a taste call, it is the one that keeps the seam
+ * invisible — see `TabPill`. The two halves overlap by `seat − CAP_W`, and that
+ * overlap has to stay inside `[R, CAP_W − 2R]` = [16, 44] at BOTH seats and
+ * everywhere in between: 16 so each buried cap lands inside the other half's
+ * full-height run (below 16 the two arcs come within a pixel of each other and
+ * Chrome composites both AA edges, which is exactly the artifact this replaced),
+ * 44 so the two straight runs still touch. Overlap here is 25 and 16.
+ */
+const CAP_W = Math.min(...SEATS.map((s) => s.w)) - SEAT_R
 
 /**
  * The travelling pill — the designer's order, 26.08.2026: "a smooth, great
@@ -70,13 +83,16 @@ const CAP_W = Math.min(...SEATS.map((s) => s.w))
  * 14.6 horizontal), which means the SETTLED pill is no longer the drawn one —
  * and pixel-QA'd geometry is not something an animation gets to spend.
  *
- * So the pill is two identical 92-wide capsules, one pinned to the active
+ * So the pill is two identical 76-wide capsules, one pinned to the active
  * seat's LEFT edge and one to its RIGHT edge, each animating `x` and nothing
  * else. The union of two equal-height capsules is always a capsule, so the
- * ends stay exactly round at every width in between; both bodies are opaque
- * white, so the seam inside the union does not exist. Nothing scales, nothing
- * repaints, and at rest the two coincide (on `Templates`, both seats being 92
- * apart) or overlap by 83px (on `My projects`) into the drawn 101.
+ * ends stay exactly round at every width in between, and both bodies are
+ * opaque white, so the seam inside the union does not exist. Nothing scales,
+ * nothing repaints, and each half's OWN caps are buried in the other half's
+ * full-height run — which is what `CAP_W` above is chosen for, and what a
+ * first cut at this got wrong: two 92-wide halves land exactly on top of each
+ * other on `Templates`, Chrome composites both antialiased cap arcs, and the
+ * settled pill came out 333 subpixels heavier than the one QA signed off.
  *
  * Why the two halves stay in phase: a spring is a linear system, so two
  * springs with the same parameters trace the same NORMALIZED curve whatever
@@ -93,8 +109,8 @@ function TabPill({ active }: { active: number }) {
       {([0, 1] as const).map((end) => (
         <motion.div
           key={end}
-          className="absolute top-[6px] h-8 w-[92px] rounded-full bg-white"
-          style={{ left: end ? seatR(0) - CAP_W : seatL(0) }}
+          className="absolute top-[6px] h-8 rounded-full bg-white"
+          style={{ width: CAP_W, left: end ? seatR(0) - CAP_W : seatL(0) }}
           /* `initial={false}`: on mount the pill IS at its seat. Without this
              it would spring in from x:0 during the Home entrance, which already
              animates the whole dock as one block (`he-dock`). */
@@ -191,13 +207,28 @@ function DockTabs() {
  * picker's is per-open.
  */
 export function CategoryChips({
-  value, onChange,
+  value, onChange, swap = false,
 }: {
   value: TemplateCategoryId
   onChange: (id: TemplateCategoryId) => void
+  /**
+   * The dock's instance is half of the segmented-control conveyor and has to
+   * arrive and leave with the shelf. It rides on the ROW ITSELF rather than in
+   * a wrapper around it, and that is measured, not tidiness: an extra box here
+   * — same class, same measured position to 1/64 px — still moved the chips'
+   * corner antialiasing by 1–2/255 on 102 pixels against the signed-off build.
+   * The picker's instance leaves this off and renders exactly as before (a
+   * `motion.div` with no animation props adds nothing to the DOM).
+   */
+  swap?: boolean
 }) {
   return (
-    <div className="flex h-9 flex-none items-center gap-2">
+    <motion.div
+      className="flex h-9 flex-none items-center gap-2"
+      {...(swap
+        ? { variants: listSwapBehind, initial: 'initial', animate: 'animate', exit: 'exit' }
+        : {})}
+    >
       {TEMPLATE_CATEGORIES.map((chip) => {
         const active = value === chip.id
         return (
@@ -215,14 +246,14 @@ export function CategoryChips({
           </button>
         )
       })}
-    </div>
+    </motion.div>
   )
 }
 
-/** The dock's instance, wired to the ui store's filter. */
+/** The dock's instance, wired to the ui store's filter — and on the conveyor. */
 function FilterChips() {
   const { templateFilter, setTemplateFilter } = useUI()
-  return <CategoryChips value={templateFilter} onChange={setTemplateFilter} />
+  return <CategoryChips value={templateFilter} onChange={setTemplateFilter} swap />
 }
 
 /* -------------------------------------------------------------------- cards */
@@ -448,18 +479,7 @@ export function HomeDock() {
             arrive and leave with the shelf, on the same beat, so the switch is
             ONE gesture and not a control plus two unrelated fades. */}
         <AnimatePresence mode="wait" initial={false}>
-          {showTemplates && (
-            <motion.div
-              key="chips"
-              variants={listSwapBehind}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="flex-none"
-            >
-              <FilterChips />
-            </motion.div>
-          )}
+          {showTemplates && <FilterChips key="chips" />}
         </AnimatePresence>
       </div>
 

@@ -205,9 +205,12 @@ export const listSwapBehind = {
  * between them ends its life with elliptical caps — 16px vertical radius
  * against 14.6 horizontal — i.e. a settled state that is no longer the
  * drawn one. So the travelling shape is a CAPSULE OF TWO: two identical
- * 92-wide pills, one pinned to each end of the active seat, translating only.
+ * pills, one pinned to each end of the active seat, translating only.
  * The union of two equal-height capsules is always a capsule, so the ends
  * stay perfectly round at every width, and the seam is white-on-white.
+ * (Their width is derived, not chosen — `CAP_W` in Dock.tsx: overlap them
+ * too far and Chrome composites both antialiased cap arcs, which shows up as
+ * a heavier pill in the settled pixel diff.)
  * Because a spring is a linear system, two springs with identical parameters
  * follow the same NORMALIZED curve whatever distance they cover — so the two
  * ends stay in phase, including when a click interrupts a flight already in

@@ -1764,12 +1764,20 @@
    * the leading), so this reproduces the button's own UA centring exactly while
    * letting two inks share one box.
    *
-   * ⚠️ THE FADE IS LATE ON PURPOSE. The pill is halfway across in ~60ms and
-   * settled by ~250ms (measured, house SPRING over the 107px hop). Ink that
-   * changed on the click — the old `transition-colors` at 0ms — would turn the
-   * destination label dark while the pill was still two thirds away, i.e. dark
-   * text on the dark track for three or four frames. 70ms of hold, then 130ms
-   * of fade, puts the cross-over under the moving pill.
+   * ⚠️ THE CROSS-OVER IS TIMED TO THE PILL, and the number that matters is
+   * WHEN the fade passes 50%, not how long it lasts. Both bad states are
+   * equally invisible — near-black ink on the 4%-white track, and 48%-white
+   * ink on the white pill — so the ink has to be mid-grey exactly while the
+   * pill is between the seats: mid-grey is the one value that reads on both.
+   * Measured: the pill covers half of its 107px hop in ~57ms, and `--ease-std`
+   * reaches 50% at 20% of its duration (it is a decelerate curve, so it leaves
+   * the committed state fast and creeps into the new one). 30ms of hold + 120ms
+   * of `--ease-std` therefore crosses at 30 + 24 = 54ms, with only ~40ms —
+   * two and a half frames — spent anywhere near 50/50.
+   *
+   * Delaying the arriving ink instead (the first cut: 70ms hold) is worse, not
+   * better: it leaves the destination label muted-white while the white pill
+   * slides in underneath it, which washes out just as badly as dark-on-dark.
    */
   .home-tab-ink {
     position: absolute;
@@ -1778,7 +1786,7 @@
     place-items: center;
     white-space: nowrap;
     transition:
-      opacity 130ms var(--ease-std) 70ms,
+      opacity var(--dur-fast) var(--ease-std) 30ms,
       color var(--dur-fast) var(--ease-std);
   }
 
