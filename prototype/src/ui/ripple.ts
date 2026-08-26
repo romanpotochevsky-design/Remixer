@@ -14,6 +14,34 @@
  * blooming the whole chip you are about to remove would celebrate the wrong
  * thing.
  *
+ * TWO HOSTS, ONE BLOOM (designer's order, 26.08.2026 evening — "наш красивый
+ * эффект клика" on the filter chips, the detail view's back arrow and the blue
+ * `Choose a template`):
+ *   · `.glass-interactive` — the glass family: hover wash + press bloom.
+ *   · `.press-bloom`       — the SOLID-fill member: press bloom only. A filled
+ *     button already owns its hover and pressed paint (--action-hover /
+ *     --action-pressed, the house convention shared with PublishPanel and
+ *     DomainModal), so adding the 8% wash on top would give it two hovers.
+ * This is a DELIBERATE break with the canon as written this morning, which said
+ * the wash and the bloom belong to glass and explicitly not to a solid CTA. The
+ * designer asked for the click effect on a solid blue button, so the rule moved;
+ * design-system.md §5 «Интерактивные состояния» carries the dated amendment.
+ *
+ * THE INK IS UNCHANGED ON BLUE, and that is measured rather than assumed
+ * (scratchpad/wp2/02-ink.mjs, 03-ink-alt.mjs — real elements, pixels read back
+ * off the screenshot, scored as CIE-Lab ΔE):
+ *   glass control at rest (12,10,16) + 12% white → ΔE 13.13  ← the approved look
+ *   --action-pressed  #0073ec        + 12% white → ΔE 12.42  (95% of it)
+ *   --action          #1587ff        + 12% white → ΔE 10.58
+ * The bloom lives over the PRESSED fill — the button darkens to #0073ec under
+ * the finger — so the family's own 12% is already as legible on blue as it is on
+ * glass, and no second ink is needed. White cannot lift the blue channel (it is
+ * already 255), so the bloom desaturates rather than brightens: 100% → 86%
+ * saturation, hue held to 1°, which is what a white highlight physically does.
+ * The louder alternative was built and measured too — `--action-hover` at 60%
+ * (ΔE 13.61, saturation 93%) — and rejected: 10% more visible for a second,
+ * hue-locked recipe in a family that has exactly one ink.
+ *
  * Mechanics, and why they satisfy the performance contract:
  *  - pointerdown → the pointer's coordinates are mapped into the control's
  *    LAYOUT space (gBCR ÷ offsetWidth, so a press during the picker sheet's
@@ -46,7 +74,7 @@
  * over the bloom passing under it.
  */
 
-const HOST_SELECTOR = '.glass-interactive'
+const HOST_SELECTOR = '.glass-interactive, .press-bloom'
 const OPT_OUT_SELECTOR = '[data-no-ripple]'
 
 /** Expansion: the house standard-decelerate curve, Material's tempo. */

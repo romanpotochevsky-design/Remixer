@@ -301,6 +301,54 @@ export const listSwapFade = {
 }
 
 /**
+ * ─────────── THE FILTERED GALLERY: the cards answer the chip, one by one
+ *
+ * A filter change is the same conveyor as everything else — old shelf out, new
+ * shelf in on `listSwapBehind`'s 60ms beat behind the pill — with the per-item
+ * stagger the house `listSwap` already carries. What the ITEM does is the one
+ * thing that had to be different: **it pops, it does not slide.**
+ *
+ * WHY NOT `listSwapItem`'s 14px rise: the dock's shelf lives inside a horizontal
+ * ScrollArea, and `overflow-x: auto` forces the other axis to `auto` too — the
+ * box clips vertically, and it has no slack to clip into (the cards are
+ * `items-stretch` in a 272px band, so card height IS scroller height). A 14px
+ * rise there cuts 14px off every card's bottom edge and opens a 14px band of
+ * ground above it for the length of the animation. Scale is the one displacement
+ * a clipping box cannot cut: 3.5% of a 238px card is ~8px of travel on all four
+ * edges, entirely inside the box. The picker's grid has room for a rise, but it
+ * gets the same variant on purpose — one dialect for "the gallery was filtered",
+ * whichever home you are looking at.
+ *
+ * The stagger is sized to the count, because the tail is what you feel: 6 dock
+ * cards × 55ms = 275ms, but the picker's 18 × 55ms would be 935ms of cards still
+ * arriving long after the press. `gridSwapBehind` tightens it to 22ms (18 × 22 =
+ * 396ms), which is the same cascade at the same total length.
+ */
+export const listSwapPop = {
+  initial: { opacity: 0, scale: 0.965 },
+  animate: { opacity: 1, scale: 1, transition: SPRING_SOFT },
+} as const
+
+/**
+ * The same item under `prefers-reduced-motion` — opacity only.
+ *
+ * ⚠️ Third instance of the same trap (`listSwapFade`, `cardAddFade`): the root
+ * `MotionConfig reducedMotion="user"` does not cancel a transform target, it
+ * JUMPS to it, so `listSwapPop` under the setting would park every card at
+ * 0.965 and snap it to 1 — a pop where the user asked for none.
+ */
+export const listSwapPopFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: SPRING_SOFT },
+} as const
+
+/** `listSwapBehind` with the stagger sized for the picker's 18 cards. */
+export const gridSwapBehind = {
+  ...listSwapBehind,
+  animate: { ...listSwapBehind.animate, transition: { ...SPRING_SOFT, staggerChildren: 0.022 } },
+}
+
+/**
  * A segmented control's pill changing seats — one object travelling, never a
  * cut. Only the LAW lives here; the seat geometry belongs to the control
  * (`DockTabs` in modules/home/Dock.tsx).
@@ -330,6 +378,37 @@ export const listSwapFade = {
  * progress (both carry velocity proportional to their own distance).
  */
 export const segmentedPill = { transition: SPRING } as const
+
+/**
+ * ONE LAW, TWO CONTROLS — and on the second one the capsule of two becomes a
+ * CAPSULE OF THREE (the filter chips, designer's order 26.08.2026: make the
+ * filter switch a gesture, not a swap).
+ *
+ * `CategoryChips` in modules/home/Dock.tsx flies the same white pill between
+ * chips on the same `SPRING`, for the same reason and with the same proof of
+ * phase (a spring is a linear system, so the normalized curve — half-way at
+ * ~62ms — is the same whether the hop is 122px or 762px; only the velocity
+ * scales, and so does the overshoot: 1.84% analytic, +13px measured on the long
+ * one). What does NOT transfer is the ink timing: this control's pill crosses up
+ * to five labels on its way, so their ink is driven by the pill's POSITION
+ * rather than by a tuned delay (`.home-chip-ink`, index.css).
+ *
+ * What does NOT transfer is the two-capsule trick, and the arithmetic says so
+ * before any eye does. Two halves of width C at seats of width W hold a seamless
+ * union only while `W − C ∈ [R, C − 2R]`, i.e. `C ∈ [Wmax/2 + R, Wmin − R]`.
+ * The dock's two seats (101, 92 at R 16) leave a wide window. The chips, measured
+ * off the built page, run 68.53…152.39 wide at R 18 — window `[94.20, 50.53]`,
+ * EMPTY, and it is empty for a structural reason: the trick needs every seat to
+ * be at least twice its own height, and `More` is 1.9×.
+ *
+ * So the third layer is a plain RECTANGLE between the two cap centres, scaled on
+ * X. It costs one more layer and buys exactness: with the pill expressed as two
+ * motion values (left edge, right edge) the bar's right end is
+ * `(L + R_cap) + REF · sx = R − R_cap` = the right cap's centre ALGEBRAICALLY, on
+ * every frame and under interruption, instead of by two springs happening to
+ * agree. A rectangle has no corner radius to distort under `scaleX`, which is
+ * the whole reason the pill was never allowed to scale.
+ */
 
 /**
  * THE TEMPLATE CARD'S HOVER AFFORDANCE — the blue `+` that offers a card

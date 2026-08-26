@@ -806,6 +806,22 @@
    *     only — zero per-frame paint, and nothing survives the gesture.
    *   The rim stays OVER both washes (z-index:1 below): the gradient edge is
    *   the glass itself — light blooms through it, never on top of it.
+   *
+   * THE BLOOM LEFT GLASS (designer's order, 26.08.2026 evening). He asked for
+   * "наш красивый эффект клика" on the template filter chips, the detail view's
+   * back arrow and the blue `Choose a template` — so the press bloom is no
+   * longer glass-only, and the line that used to stand here ("the wash and the
+   * ripple belong to glass, never to a solid CTA") is retired. Two hosts now:
+   *   `.glass-interactive` — glass: wash + bloom (unchanged).
+   *   `.press-bloom`       — a SOLID fill: bloom only. A filled button already
+   *     owns its hover and pressed paint (--action-hover / --action-pressed),
+   *     so the 8% wash on top would be a second hover.
+   * Same ink, and that is measured, not assumed (scratchpad/wp2/02-ink.mjs):
+   * 12% white over `--action-pressed` #0073ec — the fill actually under the
+   * finger — is ΔE 12.42 in CIE-Lab against ΔE 13.13 for the same 12% over a
+   * glass control at rest, i.e. 95% of the visibility the designer approved.
+   * (Over the idle #1587ff it is 10.58; a lighter-blue ink, `--action-hover` at
+   * 60%, scored 13.61 and was rejected — 10% louder for a second recipe.)
    */
   .liquid-glass--control,
   .liquid-glass--pill {
@@ -826,7 +842,11 @@
 
   /* ---- interaction states (see the block comment above) ---- */
 
-  .glass-interactive {
+  .glass-interactive,
+  /* The solid-fill member: it needs nothing but a containing block for the
+     ripple layer. Utilities beat @layer base, so a host that is already
+     `absolute` (the card's blue `+`) keeps its own positioning. */
+  .press-bloom {
     position: relative;
   }
   /* The hover wash: a composited overlay whose OPACITY transitions — the
@@ -1795,12 +1815,125 @@
   }
 
   /*
+   * ------------------- THE FILTER CHIP'S INK FOLLOWS ITS GROUND (26.08.2026)
+   *
+   * The travelling pill slides a white fill under white labels, and the first cut
+   * of it did exactly what rule 4б says an inverted pair does: on a long hop the
+   * pill crossed five chips and erased each label for two to four frames (white
+   * on white measures **1.07 : 1**), while the two ends had the mirror problem —
+   * the destination's ink finished crossing to near-black at ~150ms but the pill
+   * only reached it at ~190ms, so it sat at **1.00 : 1** on the page's own black
+   * for two and a half frames. Timing cannot fix either: at peak speed the pill
+   * covers ~84px per frame, i.e. more than a whole chip.
+   *
+   * So the ink is not a function of the SELECTION any more, it is a function of
+   * WHAT IS BEHIND THE GLYPHS — which makes it geometry, and geometry is exact:
+   *
+   *   fully over the pill  → `--gray-950`, the drawn active ink (18.57 : 1)
+   *   partly over the pill → `--gray-500`, the readable middle
+   *   clear of the pill    → white, the drawn inactive ink (19.90 : 1 on the dock)
+   *
+   * `--gray-500` #71717a is the one step on the ramp that reads on EVERY ground
+   * this row is ever drawn on — 4.51 : 1 on the pill, 4.12 : 1 on the dock's
+   * #09090b, 3.67 : 1 on the picker sheet's #18181b — so the frame where the
+   * pill's edge bisects a word has no bad half. The theoretical optimum for the
+   * pill/dock pair is #757575 (4.30 / 4.32) and it is not worth a literal off the
+   * ramp for 0.18 of contrast.
+   *
+   * Written by ONE subscription to the pill's two motion values (`CategoryChips`
+   * in modules/home/Dock.tsx): a discrete `data-ink` per chip, two to four
+   * attribute writes per crossed label per hop, ZERO per-frame work — the
+   * subscriber fires in the same frame that writes the transform, so the ink is
+   * never a frame behind the fill.
+   *
+   * ⚠️ `[data-ink]` states carry `transition: none` ON PURPOSE. A 120ms tween is
+   * 500px of pill travel at peak speed, i.e. the tween would land long after the
+   * ground under the label had changed. The flip boundary is the CHIP's edge, 18px
+   * of padding away from the nearest glyph, so the change always happens while
+   * the pill is over dead space — and both inks either side of it are legible on
+   * both grounds anyway. Coming OUT of a flight the attributes are removed, the
+   * base rule's transition comes back, and the ink eases home over `--dur-fast`.
+   * ⚠️ The ink lives HERE, not in `text-*` utilities on the button: the
+   * `[data-ink]` states have to out-specify the selected state, and a utility on
+   * the element would out-specify both. Do not add `text-…` to a chip.
+   */
+  .home-chip-ink {
+    color: #fff;
+    transition: color var(--dur-fast) var(--ease-std);
+  }
+  .home-chip-ink[data-chip-on] { color: var(--gray-950); }
+  /* geometry beats state — these three must stay AFTER the rule above */
+  .home-chip-ink[data-ink='off'] { color: #fff; transition: none; }
+  .home-chip-ink[data-ink='mid'] { color: var(--gray-500); transition: none; }
+  .home-chip-ink[data-ink='on'] { color: var(--gray-950); transition: none; }
+
+  /*
    * The card row. Cards are `flex: 1 0 0` in Figma, so their width is an OUTPUT
    * (238.667 at six-up in a 1592 column) — never a fixed size. They stop
    * shrinking at 200px, which is what the 7-up board already showed as the
    * tightest readable card; past that the row scrolls instead.
    */
   .home-card { flex: 1 0 0; min-width: 200px; }
+
+  /*
+   * ------------------- A FILTERED SHELF IS NOT A WIDER SHELF (26.08.2026)
+   *
+   * Designer's bug, and it is the flip side of "card width is an OUTPUT": with
+   * `flex: 1 0 0` the row divides itself between HOWEVER MANY cards it holds, so
+   * a chip that returns one card blew that card up to the full 1592 (measured
+   * before the fix: `[{x:32,w:1592}]` against six-up's `w:238.672`) and its
+   * drawing scaled up and cropped. Four of the seven chips return one dock card
+   * today. That reads as a broken page, not as a filter.
+   *
+   * No board draws a filtered shelf, so this rule is ours, and it is written to
+   * be UNREACHABLE in the drawn case: the class is only put on the row when it
+   * holds fewer cards than the drawn six (`HomeDock`), so the six-up path keeps
+   * `flex: 1 0 0` untouched and cannot move by a subpixel — pixel-identity by
+   * construction, not by measurement (verified anyway: 0 differing pixels of
+   * 622 656, scratchpad/wp2).
+   *
+   * A sparse card keeps the width it HAS at six-up — the same formula the flex
+   * row resolves to, stated explicitly — and the row's default `justify-content:
+   * normal` leaves the short shelf left-aligned, as a filtered list should be.
+   * `flex-shrink` stays 0 and `min-width: 200px` still wins on a narrow window,
+   * so nothing about the scrolling case changes.
+   */
+  .home-shelf--sparse .home-card {
+    flex-grow: 0;
+    flex-basis: calc((100% - 5 * 32px) / 6);
+  }
+
+  /*
+   * ------------------- A CARD IS A PICTURE, NOT A DOCUMENT (26.08.2026)
+   *
+   * Designer's bug: «в списке темплейтов текст мешает нажать на кнопку, вместо
+   * линка ты просто текст выделяешь». The card's stretched button really is the
+   * topmost box at the card's centre and a clean click really does open it — but
+   * every text node in the drawing and the caption was selectable, so a press
+   * that drifted a few pixels (or started in the 32px grid gap, where no button
+   * covers) selected text straight through the card and the press read as
+   * "nothing happened".
+   *
+   * Two rules, both scoped to the cards — the page at large stays selectable:
+   *   · the card's FACE is unselectable, which is what a template gallery does:
+   *     nothing on it is prose. Both the drawing's labels and the caption.
+   *   · the thumbnail is DEAF, so no drag can ever anchor inside the drawing and
+   *     the card's own button always takes the press. (It was already the top
+   *     hit target — this makes the hit test independent of what the drawing
+   *     happens to put in that corner.) Hover still works: the pointer lands on
+   *     the stretched button, which is inside the card's `group`.
+   * Only the two card thumbnails carry these classes; the composer's attached
+   * tile and the detail view's stage draw the same picture through their own
+   * boxes and are untouched here.
+   */
+  .home-card-face {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .home-thumb,
+  .tplpick-thumb {
+    pointer-events: none;
+  }
 
   /*
    * THUMBNAIL PROPORTION — the other half of "card width is an output".

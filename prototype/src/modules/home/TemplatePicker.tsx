@@ -149,7 +149,7 @@ import { useT } from '@/i18n'
 import { libraryIn, TEMPLATE_LIBRARY, type TemplateCategoryId } from '@/data/templates'
 import { ScrollArea, type ScrollMetrics } from '@/ui/ScrollArea'
 import { IconArrowLeft, IconClose, IconPlus } from '@/ui/icons'
-import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, HEADER_COMPACT, SPRING_SOFT } from '@/ui/motion'
+import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, gridSwapBehind, HEADER_COMPACT, SPRING_SOFT } from '@/ui/motion'
 import { CategoryChips, TemplateCard } from './Dock'
 import { Thumb } from './thumbs'
 import { rectOf } from './attachment'
@@ -666,6 +666,27 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
   const cards = libraryIn(filter)
   const detailTpl = detail !== null ? TEMPLATE_LIBRARY[detail] : null
 
+  /*
+   * A NEW FILTER PARKS THE GRID AT THE TOP — decided, not inherited.
+   *
+   * Three reasons, in order of weight. (1) A filter is a new question, and the
+   * answer's first card is the one that matters; keeping the old offset shows
+   * the middle of a list the customer has never seen. (2) The scrolled state is
+   * not free here: it holds the header COMPACT, which is the drawn state for
+   * "you are deep in a list", and every new list starts shallow. (3) The clamp.
+   * A shorter list cannot honour the old offset anyway — the browser clips
+   * scrollTop and `useHeadCompact`'s own guard then has to un-compact, i.e. the
+   * page would answer a chip press with a 69px header spring it did not ask for.
+   * Resetting first makes that one predictable event instead of a conditional
+   * one. The write is instant, not animated: the old position has no meaning in
+   * the new list, so there is nothing to travel between.
+   */
+  function pickFilter(id: TemplateCategoryId) {
+    if (id === filter) return
+    if (scroller.current) scroller.current.scrollTop = 0
+    setFilter(id)
+  }
+
   /* Hidden only after the fade AND only while the detail is up — the moment
      the back flight starts (`detail` → null) the list is interactive again. */
   const listHidden = listParked && detail !== null
@@ -856,7 +877,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                 under it and why every chip is guaranteed a non-empty grid. */}
             <div className="tplpick-head-chips" ref={head.chips as React.RefObject<HTMLDivElement>}>
               <div className="flex justify-center">
-                <CategoryChips value={filter} onChange={setFilter} />
+                <CategoryChips value={filter} onChange={pickFilter} />
               </div>
               {/* the scrolled state's hairline (28734:66416's inside stroke) */}
               <span aria-hidden className="tplpick-head-rule" ref={head.rule as React.RefObject<HTMLSpanElement>} />
@@ -887,6 +908,24 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                   carries no styles of its own and, once the spring lands, no
                   inline transform either. */}
               <div ref={head.body as React.RefObject<HTMLDivElement>}>
+              {/*
+                * THE GRID ANSWERS THE CHIP, one card at a time (designer's
+                * order, 26.08.2026 evening). Same conveyor as the dock's shelf,
+                * one beat behind the travelling pill, with the stagger sized to
+                * eighteen cards instead of six (`gridSwapBehind`, ui/motion.ts).
+                * `mode="wait"` so two filters' worth of cards never overlap
+                * mid-flight, and `initial={false}` so the FIRST grid does not
+                * animate in — the sheet's own entrance already brings it, and a
+                * second entrance under it would double the arrival.
+                */}
+              <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={filter}
+                variants={gridSwapBehind}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
               {cards.length ? (
                 <div className="tplpick-grid pb-6">
                   {cards.map(({ tpl, index }) => (
@@ -910,6 +949,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                          arrives under a parked cursor shows its `+` rather than
                          springing it in over the entrance. */
                       instant={entering}
+                      item
                     />
                   ))}
                 </div>
@@ -920,6 +960,8 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                   {t({ en: 'No templates in this category yet.', uk: 'У цій категорії ще немає шаблонів.' })}
                 </p>
               )}
+              </motion.div>
+              </AnimatePresence>
               </div>
             </ScrollArea>
           </motion.div>
@@ -1172,7 +1214,13 @@ function DetailView({
        stage width the box is taller than the stage at every viewport we ship
        (h ≈ 0.934 × w), so the preview always crops at the bottom, as drawn,
        and always has somewhere to scroll. */
-    <div className="relative w-full aspect-[233.333/218]">
+    /* `select-none`: the stage is a PICTURE of a website, not copy anybody reads
+       — same reasoning as the card's face (index.css, «a card is a picture, not a
+       document»). Without it a drag across the preview selected the fake site's
+       text (measured: `$1,799,980`), which is the designer's original complaint
+       one screen later. Scrolling is untouched — the scroller takes the wheel,
+       and there is no drag-to-scroll here. */
+    <div className="relative w-full select-none aspect-[233.333/218]">
       <Thumb id={tpl.id} className="absolute inset-0" />
     </div>
   )
@@ -1215,8 +1263,15 @@ function DetailView({
           aria-label={t({ en: 'Back to all templates', uk: 'Назад до всіх шаблонів' })}
           /* 32×32 at (16, 16), container radius 8, 24-box glyph (28640:43362).
              y is 16 now, not 20: a 32-high child centred in the py-12 row.
-             No fill until interaction — the component's own rule. */
-          className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-[8px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+             No fill until interaction — the component's own rule.
+
+             `glass-interactive` (designer's order, 26.08.2026 evening — the
+             click effect on this arrow by name): the wash IS the old
+             `hover:bg-[var(--white-100)]`, the same 8% white, moved onto its own
+             composited layer so hovering no longer repaints the button's
+             background; the press adds the positional bloom. The bloom clips to
+             this button's own drawn radius 8, not the family's pill shape. */
+          className="glass-interactive absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-[8px] text-white transition-colors duration-[var(--dur-fast)] ease-std"
         >
           <IconArrowLeft size={20} />
         </motion.button>
@@ -1265,10 +1320,19 @@ function DetailView({
                no hover/pressed/focus layer anywhere), so this is the house
                convention for a solid action button, the same one PublishPanel,
                DomainModal and DomainsSurface use — wash to --action-hover, and
-               press to the already-defined --action-pressed. The Liquid Glass
-               hover/ripple belongs to glass controls; a filled blue button is
-               not one. */
-            className="flex h-10 flex-none items-center gap-[7px] rounded-[10px] bg-[var(--action)] pl-5 pr-2 text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
+               press to the already-defined --action-pressed.
+
+               `press-bloom`: the press ripple, by the designer's name, 26.08.2026
+               evening. This is the button that moved the canon — it used to say
+               here that the Liquid Glass hover and ripple belong to glass and a
+               filled blue button is not one; he asked for the click effect on
+               it, so the bloom left glass. Bloom only, no 8% wash: the two
+               colour steps above are already this button's hover and press. The
+               ink stays the family's 12% white, and that is measured rather than
+               assumed — over `--action-pressed`, the fill actually under the
+               finger, it is ΔE 12.42 in CIE-Lab against 13.13 for the same ink
+               on a glass control (index.css has the whole table). */
+            className="press-bloom flex h-10 flex-none items-center gap-[7px] rounded-[10px] bg-[var(--action)] pl-5 pr-2 text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
           >
             {t({ en: 'Choose a template', uk: 'Обрати шаблон' })}
             <span className="grid h-6 w-6 place-items-center"><IconPlus size={20} /></span>
