@@ -503,7 +503,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
         <button
           onClick={onClose}
           aria-label={t({ en: 'Close', uk: 'Закрити' })}
-          className="liquid-glass liquid-glass--dim absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-[12px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+          className="liquid-glass liquid-glass--dim glass-interactive absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-[12px] text-white"
         >
           <IconClose size={14} />
         </button>

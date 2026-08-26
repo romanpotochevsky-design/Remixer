@@ -780,8 +780,25 @@
    * draws the same construction at 12% → 4% → 12%; the shell keeps its QA'd
    * `.liquid-glass` recipe above — see design-system.md for the kinship.)
    *
-   * Hover never touches the rim: only the fill changes (Tailwind utilities
-   * override these backgrounds; the ::before ring stays put).
+   * INTERACTION STATES (designer's order, 26.08.2026) — `.glass-interactive`:
+   *   hover/focus-visible — the FILL brightens under a translucent white wash:
+   *     a dedicated ::after layer filled with --white-100 (8% white), opacity
+   *     0 → 1 over --dur-fast (120ms). An opacity transition on a composited
+   *     layer, never a background-color repaint of the control. Focus keeps
+   *     the UA focus-visible ring (the codebase's convention) and adds the
+   *     same wash for parity; a host whose focusable is a child (the attached
+   *     chip div) matches via :has(:focus-visible).
+   *   press — a Material ripple restyled as light through glass: a soft bloom
+   *     (12% → 10% → 0 radial, painted once) expanding scale(0→1) from the
+   *     EXACT press point over 500ms on --ease-std; radius 1.25 × the
+   *     distance to the farthest corner, so the lit core always covers the
+   *     control; release fades it 200ms and removes the element. Engine and
+   *     the full recipe (layout-space mapping, MIN_HOLD, keyboard = centre,
+   *     reduced-motion = static pulse): src/ui/ripple.ts, canon:
+   *     design-system.md §5 «Интерактивные состояния». transform/opacity
+   *     only — zero per-frame paint, and nothing survives the gesture.
+   *   The rim stays OVER both washes (z-index:1 below): the gradient edge is
+   *   the glass itself — light blooms through it, never on top of it.
    */
   .liquid-glass--control,
   .liquid-glass--pill {
@@ -798,6 +815,55 @@
   }
   .liquid-glass--dim::before {
     background: linear-gradient(to bottom right, #ffffff1f 0%, #ffffff0a 50%, #ffffff14 100%);
+  }
+
+  /* ---- interaction states (see the block comment above) ---- */
+
+  .glass-interactive {
+    position: relative;
+  }
+  /* The hover wash: a composited overlay whose OPACITY transitions — the
+     control's own background never changes, so nothing repaints. 8% white
+     (--white-100), the same step the shell's utilitarian hovers use. */
+  .glass-interactive::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--white-100);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-std);
+    pointer-events: none;
+  }
+  .glass-interactive:hover::after,
+  .glass-interactive:focus-visible::after,
+  .glass-interactive:has(:focus-visible)::after {
+    opacity: 1;
+  }
+  /* The rim rides OVER wash and ripple — the edge is the glass, the light
+     blooms through it. Scoped to the interactive family: the shell's own
+     glass keeps its QA'd stacking untouched. */
+  .glass-interactive.liquid-glass::before {
+    z-index: 1;
+  }
+  /* The ripple clip: radius-faithful, appended once per control by
+     src/ui/ripple.ts, inert to pointers and the accessibility tree. */
+  .glass-ripples {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  /* One bloom. The gradient is painted ONCE at spawn; scale/opacity do all
+     the animating (Web Animations API, from ripple.ts). Core 12% white
+     dying to nothing — light through glass, not a grey disc. Base opacity 0:
+     the animations own it, and a spawn frame can never flash. */
+  .glass-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, #ffffff1f 0%, #ffffff1a 55%, #ffffff00 100%);
+    opacity: 0;
   }
 
   /*

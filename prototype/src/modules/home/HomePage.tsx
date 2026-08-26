@@ -261,9 +261,12 @@ function AttachedChip({ index }: { index: number }) {
   return (
     <div
       /* the picker's grow-from-trigger origin: with the pill replaced, the
-         chip is the trigger — same attribute, same spot */
+         chip is the trigger — same attribute, same spot. `glass-interactive`
+         on the DIV: the chip is ONE glass surface, so the hover wash and the
+         press ripple light (and clip to) the whole pill — the ✕ inside opts
+         out of the ripple and washes only itself. */
       data-template-trigger
-      className="liquid-glass liquid-glass--pill flex h-9 flex-none items-center rounded-full pl-1.5 pr-1"
+      className="liquid-glass liquid-glass--pill glass-interactive flex h-9 flex-none items-center rounded-full pl-1.5 pr-1"
     >
       {/* the body re-opens the picker: picking again replaces the attachment */}
       <button
@@ -281,7 +284,11 @@ function AttachedChip({ index }: { index: number }) {
       <button
         onClick={detachTemplate}
         aria-label={t({ en: 'Remove template', uk: 'Прибрати шаблон' })}
-        className="ml-1 grid h-6 w-6 flex-none place-items-center rounded-full text-[#ffffff8f] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+        /* same wash as the family (its old hover:bg was the same 8% white,
+           now on the composited layer); NO ripple — blooming the chip you
+           are removing would celebrate the wrong thing */
+        data-no-ripple
+        className="glass-interactive ml-1 grid h-6 w-6 flex-none place-items-center rounded-full text-[#ffffff8f] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
       >
         <IconClose size={8} />
       </button>
@@ -387,7 +394,10 @@ function Composer() {
           <div className="flex min-w-0 items-center gap-2">
             <button
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
-              className="liquid-glass liquid-glass--control grid h-9 w-9 flex-none place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+              /* hover/press live on `glass-interactive` (wash + click-point
+                 ripple, index.css canon block + src/ui/ripple.ts) — the old
+                 darkening hover:bg is superseded by the designer's 26.08 order */
+              className="liquid-glass liquid-glass--control glass-interactive grid h-9 w-9 flex-none place-items-center rounded-full text-white"
             >
               <IconPlus size={24} />
             </button>
@@ -403,7 +413,7 @@ function Composer() {
               <button
                 data-template-trigger
                 onClick={openTemplatePicker}
-                className="liquid-glass liquid-glass--pill flex h-9 flex-none items-center whitespace-nowrap rounded-full px-5 text-[14px] leading-none text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc] hover:text-white"
+                className="liquid-glass liquid-glass--pill glass-interactive flex h-9 flex-none items-center whitespace-nowrap rounded-full px-5 text-[14px] leading-none text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
               >
                 {t({ en: 'Add template', uk: 'Додати шаблон' })}
               </button>
@@ -413,7 +423,7 @@ function Composer() {
           <div className="flex items-center gap-4">
             <button
               aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-              className="liquid-glass liquid-glass--control grid h-9 w-9 place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+              className="liquid-glass liquid-glass--control glass-interactive grid h-9 w-9 place-items-center rounded-full text-white"
             >
               {/* 24px icon box, 20px leaf — the two are NOT the same in Figma */}
               <span className="grid h-6 w-6 place-items-center"><IconMic size={20} /></span>
