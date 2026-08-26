@@ -211,6 +211,27 @@ export const FIELD_GROW = { type: 'spring', duration: 0.5, bounce: 0.12 } as con
 export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
 
 /**
+ * THE SCROLL-COMPACTING HEADER — the template picker's title block collapsing
+ * as the grid scrolls under it (board 28734:65603 against 28616:59168).
+ *
+ * SAME LAW AS FIELD_GROW, one size up: the header's layout snaps 215 → 146 in a
+ * single commit and everything that moved is put back with a transform and
+ * sprung home (the heading owes 17px and a 48 → 32 type size, the chip row 53,
+ * the divider and the grid 69). Springing the paddings instead would relayout
+ * the sheet on every frame of a SCROLL handler — the worst possible place in
+ * this codebase to break the no-per-frame-layout contract.
+ *
+ * WHY BOUNCE 0, against the house habit of a little overshoot on arrival: this
+ * is not an arrival, it is a response to a gesture the user is still making.
+ * The grid is being dragged by the wheel at the same moment the spring pulls it
+ * up 69px, and an overshoot on top of live scrolling reads as the list
+ * rubber-banding — i.e. as a bug in the scroller, not as physics. Same reason
+ * `FLIGHT_OPEN` and `FIELD_CLOSE` are flat. Duration is a shade longer than
+ * FIELD_GROW's because the distance is larger and the surface is bigger.
+ */
+export const HEADER_COMPACT = { type: 'spring', duration: 0.44, bounce: 0 } as const
+
+/**
  * Rule 3 for the fullscreen sheet: the content column, one beat behind the
  * surface — and ONE block, never a stagger. Its grid is 18 cards; 18 springs
  * is 18 layers of cost and pure noise, so the whole column lands together.

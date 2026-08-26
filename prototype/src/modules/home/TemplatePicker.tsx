@@ -123,13 +123,13 @@
  * Everything else in both directions is transform/opacity.
  */
 import { AnimatePresence, animate, motion, useMotionValue, usePresence, useReducedMotion, useTransform, type Variants } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { libraryIn, TEMPLATE_LIBRARY, type TemplateCategoryId } from '@/data/templates'
-import { ScrollArea } from '@/ui/ScrollArea'
+import { ScrollArea, type ScrollMetrics } from '@/ui/ScrollArea'
 import { IconArrowLeft, IconClose, IconPlus } from '@/ui/icons'
-import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, SPRING_SOFT } from '@/ui/motion'
+import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, HEADER_COMPACT, SPRING_SOFT } from '@/ui/motion'
 import { CategoryChips, TemplateCard } from './Dock'
 import { Thumb } from './thumbs'
 import { rectOf } from './attachment'
@@ -172,6 +172,178 @@ const PLATE_INSET_X = 12
 
 /** Everything the browser lets you Tab to inside the sheet. */
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+
+/* ────────────────── THE HEADER THAT COMPACTS AS THE GRID SCROLLS ──────────────────
+ *
+ * Board **28734:65603** (26.08.2026) is the same sheet, scrolled: the title
+ * block has collapsed 215 → 146 and a hairline has appeared under the filter
+ * chips. Everything below is that diff, and every number is a tool read — see
+ * `figma-spec-add-template.md` §14.
+ *
+ *          rest (28626:539)                    scrolled (28734:66372)
+ *   57  above the heading's cap          40
+ *   48px Gilroy SemiBold, two-tone       32px, same copy, same two tones
+ *   40  below                            16 (4 here + the 12 of unused cap box)
+ *   16 / 36 / 32  the chip row           16 / 36 / 16, + a 1px rule at its foot
+ *   ── 215 ──                            ── 146 ──
+ *
+ * WHAT MOVES, AND BY HOW MUCH — all four are differences of drawn numbers, so
+ * nothing is measured at runtime and nothing can drift:
+ */
+/** The heading's cap-top: sheet y 57 → 40. */
+const D_TITLE = 17
+/** The chip row's top edge: 131 → 78. */
+const D_CHIPS = 53
+/** The chip row's own bottom padding, 32 → 16 — the rule's travel ON TOP of the
+ *  row's, which adds up to the 69 of the header's bottom edge. */
+const D_RULE = 16
+/** The header's bottom edge, 215 → 146 — and with it the grid's top. */
+const D_BODY = 69
+/** …and the two heights themselves, which the plate needs to turn 69px of
+ *  travel into a scale of its own box. */
+const HEAD_H = 215
+const HEAD_H_COMPACT = 146
+/** The two type sizes the heading hands off between (48 → 32, cap-trimmed). */
+const TITLE_LG = 48
+const TITLE_SM = 32
+
+/**
+ * THE TRIGGER, and its hysteresis.
+ *
+ * The board is drawn with the grid's first row 21px above the compact header's
+ * foot — i.e. at scrollTop 21, "just after you start scrolling", which is how
+ * the designer described it. So compact engages at **20**, one pixel below the
+ * frame he drew, and stands back up only at **4**, which is as good as the top.
+ *
+ * The 16px band is what makes a slow scroll unable to flicker. It could not
+ * oscillate on its own even without it — compacting changes no scroll offset,
+ * so there is no feedback loop — but a hand jiggling on a trackpad is a real
+ * source of a 2px reversal, and 16 is far more than any of those.
+ */
+const COMPACT_AT = 20
+const EXPAND_AT = 4
+
+/** Written per frame by `useHeadCompact` — one element, its transform and,
+ *  where it has one, its opacity. */
+type Part = React.MutableRefObject<HTMLElement | null>
+
+/**
+ * The flip, as a SNAP plus a cover — the `FIELD_GROW` law from the composer,
+ * one size up (motion.ts, `HEADER_COMPACT`).
+ *
+ * The paddings above are a class swap, so the layout moves in exactly one
+ * commit; this hook then puts every part that moved back where it was, in a
+ * transform, and springs it home. Nothing here touches layout again, and the
+ * inline styles are REMOVED when the spring lands, so a settled header is the
+ * same DOM in both states as it was before this existed.
+ *
+ * INTERRUPTION IS FREE, and that matters on a scroll: flipping mid-flight
+ * mirrors the progress (`1 − t`) instead of restarting it. The geometry is
+ * symmetric — a part sits at `layout(state) + sign·d·(1 − t)` and the two
+ * layouts differ by exactly `d` — so `t' = 1 − t` is the same pixel, and the
+ * heading's size ramp is continuous through the swap too.
+ */
+function useHeadCompact(
+  compact: boolean,
+  parts: { plate: Part; title: Part; lg: Part; sm: Part; chips: Part; rule: Part; body: Part },
+  scroller: React.MutableRefObject<HTMLDivElement | null>,
+  posBefore: React.MutableRefObject<number>,
+) {
+  const reduced = useReducedMotion()
+  const mv = useMotionValue(1)
+  const was = useRef(compact)
+
+  useLayoutEffect(() => {
+    if (was.current === compact) return
+    was.current = compact
+    /* Reduced motion: the class pair has already done the whole job in one
+       commit. Sliding three rows and morphing a type size is precisely the
+       movement the setting asks us not to make. */
+    if (reduced) return
+
+    const sign = compact ? 1 : -1
+    /* The plate's own box, i.e. what its scale is measured against. */
+    const plateH = compact ? HEAD_H_COMPACT : HEAD_H
+    /*
+     * HOW FAR THE GRID ACTUALLY MOVED, which is not always the 69.
+     *
+     * Compacting hands 69px of viewport to the scroller, so its scrollable
+     * range shrinks by 69 and the browser clamps an offset that no longer fits.
+     * Read at the bottom of a short list that is the WHOLE 69: the content then
+     * does not move at all — the header simply retreats off the top of it and
+     * uncovers what it was hiding. Anywhere else the clamp is zero and the grid
+     * travels the full 69. One read, in the commit, of a number the browser has
+     * already decided; the cover has to be the truth or the grid jumps.
+     */
+    const clamp = Math.max(0, posBefore.current - (scroller.current?.scrollTop ?? posBefore.current))
+    const bodyD = D_BODY - clamp
+    const els = [parts.plate, parts.title, parts.lg, parts.sm, parts.chips, parts.rule, parts.body]
+    for (const r of els) if (r.current) r.current.style.willChange = 'transform'
+
+    const write = (t: number) => {
+      /* How much of the OTHER state's geometry is still showing. */
+      const k = sign * (1 - t)
+      /* …and how far along the compact APPEARANCE we are, which is the same
+         number counted from the compact end (so it survives a mirror). */
+      const u = compact ? t : 1 - t
+      /*
+       * The type size, GEOMETRICALLY: 48 · (32/48)^u. At this 1.5 : 1 ratio a
+       * linear ramp would look the same, but the house rule for a scale that
+       * crosses sizes is the multiplicative one (see the flight's note in
+       * TemplateFlight.tsx), and it also guarantees the identity below at every
+       * frame: the 48 ink at `shrink` and the 32 ink at `shrink · 1.5` are the
+       * SAME size on screen, which is why the hand-off shows no ghost.
+       */
+      const shrink = Math.pow(TITLE_SM / TITLE_LG, u)
+      /* The plate reads the height the header HAD, all the way down: its bottom
+         edge is the one the divider and the grid's top are glued to. */
+      if (parts.plate.current) {
+        parts.plate.current.style.transform = `scaleY(${(plateH + sign * D_BODY * (1 - t)) / plateH})`
+      }
+      move(parts.title, D_TITLE * k)
+      paint(parts.lg, `scale(${shrink})`, ramp(1 - u))
+      paint(parts.sm, `scale(${(shrink * TITLE_LG) / TITLE_SM})`, ramp(u))
+      move(parts.chips, D_CHIPS * k)
+      paint(parts.rule, `translateY(${D_RULE * k}px)`, u)
+      move(parts.body, bodyD * k)
+    }
+
+    /* The first painted frame must already show the OLD geometry: this runs in
+       a layout effect, before paint, on the same commit as the class swap. */
+    mv.jump(1 - mv.get())
+    write(mv.get())
+    const stop = mv.on('change', write)
+    const run = animate(mv, 1, {
+      ...HEADER_COMPACT,
+      onComplete: () => {
+        /* Leave nothing behind — no transform, no opacity, no compositing hint.
+           The endpoint values are what the class pair already says, so dropping
+           them cannot show a seam. */
+        for (const r of els) {
+          if (!r.current) continue
+          r.current.style.removeProperty('transform')
+          r.current.style.removeProperty('opacity')
+          r.current.style.removeProperty('will-change')
+        }
+      },
+    })
+    return () => { stop(); run.stop() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compact])
+}
+
+/** Each ink is fully opaque for half the flight, so the two together always
+ *  cover the glyphs completely — a plain linear cross-fade would dip the text
+ *  to 75% coverage in the middle and read as a flicker of weight. */
+const ramp = (x: number) => Math.min(1, Math.max(0, x * 2))
+const move = (r: Part, y: number) => {
+  if (r.current) r.current.style.transform = `translateY(${y}px)`
+}
+const paint = (r: Part, transform: string, opacity: number) => {
+  if (!r.current) return
+  r.current.style.transform = transform
+  r.current.style.opacity = String(opacity)
+}
 
 /**
  * Leaving the ATTACHMENT'S OWN PREVIEW (`pickerSource === 'tile'`): every way
@@ -344,6 +516,53 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
   const [entering, setEntering] = useState(true)
 
   /*
+   * THE HEADER'S TWO STATES (board 28734:65603). Per-open state, like the
+   * filter: every open starts at the top of the grid, so it starts tall.
+   *
+   * Driven by the scroller the house already has, through the three numbers its
+   * indicator reads anyway (`ScrollArea`'s `onMetrics`) — no second listener,
+   * and no layout read of our own.
+   */
+  const [compact, setCompact] = useState(false)
+  /* The scrollport itself (the house `ScrollArea` hands it out) and the offset
+     the last metrics report saw — both only read at a flip, to work out how far
+     the grid really moved. */
+  const scroller = useRef<HTMLDivElement | null>(null)
+  const posBefore = useRef(0)
+  const head = {
+    plate: useRef<HTMLElement | null>(null),
+    title: useRef<HTMLElement | null>(null),
+    lg: useRef<HTMLElement | null>(null),
+    sm: useRef<HTMLElement | null>(null),
+    chips: useRef<HTMLElement | null>(null),
+    rule: useRef<HTMLElement | null>(null),
+    body: useRef<HTMLElement | null>(null),
+  }
+  useHeadCompact(compact, head, scroller, posBefore)
+
+  const onMetrics = useCallback(({ pos, extent, visible }: ScrollMetrics) => {
+    posBefore.current = pos
+    setCompact((was) =>
+      was
+        ? pos > EXPAND_AT
+        /*
+         * …and the one guard that keeps this honest. Compacting hands 69px of
+         * viewport to the scroller, so its scrollable range shrinks by 69, and
+         * on a list whose whole range is SMALLER than that the browser would
+         * clamp the offset to 0 — under the release threshold — and stand the
+         * header straight back up. That is a flicker with a cause, once per
+         * scroll gesture, and it is the only case the guard is for: unless the
+         * compact state can hold a position clear of the release line, do not
+         * compact at all. A list with under ~73px of overflow has nothing to
+         * gain from it anyway. (Being clamped PARTWAY, at the foot of a longer
+         * list, is fine and needs no guard — the flip's own cover measures the
+         * clamp and moves the grid by what actually moved.)
+         */
+        : pos >= COMPACT_AT && extent - visible - D_BODY > EXPAND_AT,
+    )
+  }, [])
+
+  /*
    * FOCUS. This is `aria-modal` over the whole page, which makes a screen
    * reader hide everything behind it — so leaving the keyboard out there is
    * worse than not claiming to be modal at all. Measured before this existed:
@@ -445,6 +664,22 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
     attach(index, stage ? rectOf(stage) : null)
   }
 
+  /*
+   * The card's blue `+` — the same hand-off as `Choose a template`, one step
+   * earlier, so it runs the same path: the object flies out of the CARD'S
+   * THUMBNAIL instead of out of the detail stage, and the sheet dissolves under
+   * it. Nothing in the flight needs teaching: its clone lays the drawing out at
+   * the source's width and the card's thumbnail is already the ratio it draws
+   * (233.333 / 218), so a card is a cheaper source than the stage, not a
+   * stranger one.
+   */
+  function onCardAdd(index: number) {
+    const thumb = sheet.current?.querySelector(`[data-tpl-card="${index}"] .tplpick-thumb`)
+    picked.current = true
+    setDissolving(true)
+    attach(index, thumb ? rectOf(thumb) : null)
+  }
+
   return (
     <div
       className="fixed inset-0 z-[70]"
@@ -535,25 +770,57 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             variants={listHead}
             initial={false}
             animate={detail !== null ? 'detail' : 'list'}
-            className={`flex-none px-8 ${listHidden ? 'invisible' : ''}`}
+            className={`tplpick-head ${compact ? 'tplpick-head--compact' : ''} flex-none px-8 ${listHidden ? 'invisible' : ''}`}
           >
-            {/* header 119 (28626:540): 57 above the cap-trimmed heading, 40 below */}
-            <div className="pb-[40px] pt-[57px]">
-              <h2 className="tplpick-heading whitespace-nowrap text-center font-display text-[32px] font-semibold leading-none text-white">
-                {/* Verbatim from 28626:542 — a straight ' and NO trailing
-                    period, where the README's candidate had one and the hero
-                    pattern closes both halves. Both look like accidents;
-                    flagged to the designer (spec §10.1), shipped as drawn. */}
-                {"Pick a template. We'll remix it"}
+            {/* the opaque ground, and the only part of the header whose height
+                is visible while the flip runs — see `.tplpick-head-plate` */}
+            <span aria-hidden className="tplpick-head-plate" ref={head.plate as React.RefObject<HTMLSpanElement>} />
+
+            {/* Header 131 at rest (28626:540), 78 scrolled (28734:66373): 57/40
+                above the heading's CAP, 40/16 below. The paddings are the class
+                pair in index.css; this box only holds the two inks. */}
+            <div className="tplpick-head-title">
+              <h2 className="tplpick-title" ref={head.title as React.RefObject<HTMLHeadingElement>}>
+                {/*
+                 * ⚠️ RE-READ 26.08.2026, and it changed twice over: the heading
+                 * is TWO-TONE and it now DOES end in a period — `Pick a
+                 * template.` in white (Neutral Alpha/1000) then a plain space
+                 * then `We'll remix it.` at Neutral Alpha/600 (#ffffff8f, 56%).
+                 * Both boards agree; our §10.1 note about a missing period is
+                 * answered, the straight ' (U+0027) still stands. And the REST
+                 * board's size went 32 → 48 while this scrolled one keeps 32 —
+                 * which is what the compaction actually is.
+                 *
+                 * Two real texts, superimposed, each crisp at its own end. The
+                 * 48 carries the accessible copy; the 32 is `aria-hidden`
+                 * FOREVER (not "whichever is invisible"), or the dialog would
+                 * announce its heading twice and the name would flicker on
+                 * every scroll — the segmented control's lesson.
+                 */}
+                <span className="tplpick-title-ink tplpick-title-ink--lg" ref={head.lg as React.RefObject<HTMLSpanElement>}>
+                  Pick a template. <span className="tplpick-title-tail">{"We'll remix it."}</span>
+                </span>
+                <span aria-hidden className="tplpick-title-ink tplpick-title-ink--sm" ref={head.sm as React.RefObject<HTMLSpanElement>}>
+                  Pick a template. <span className="tplpick-title-tail">{"We'll remix it."}</span>
+                </span>
               </h2>
             </div>
 
             {/* The dock's chip row (same Figma component), centred this time.
                 TRULY centred: the board's group sits 4px right of centre only
                 because the dock component's asymmetric 16/8 padding leaks
-                through — an accident, per spec §4/§10.4. */}
-            <div className="flex justify-center pb-8 pt-4">
-              <CategoryChips value={filter} onChange={setFilter} />
+                through — an accident, per spec §4/§10.4.
+
+                ⚠️ SEVEN chips since 26.08.2026 on both boards, and the third is
+                a second `Ecommerce` (28734:65599 / 28734:66420) — a duplicated
+                instance, flagged §14.5, NOT shipped: a filter row with the same
+                category twice is a bug on screen even when it is on the board. */}
+            <div className="tplpick-head-chips" ref={head.chips as React.RefObject<HTMLDivElement>}>
+              <div className="flex justify-center">
+                <CategoryChips value={filter} onChange={setFilter} />
+              </div>
+              {/* the scrolled state's hairline (28734:66416's inside stroke) */}
+              <span aria-hidden className="tplpick-head-rule" ref={head.rule as React.RefObject<HTMLSpanElement>} />
             </div>
           </motion.div>
 
@@ -566,11 +833,21 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             onAnimationComplete={(v) => { if (v === 'detail') setListParked(true) }}
             className={`min-h-0 flex-1 ${listHidden ? 'invisible' : ''}`}
           >
-            <ScrollArea axis="y" className="h-full" innerClassName="px-8">
-              {/* the grid (28626:591): 6 columns, 32px gaps both axes; card width
-                  is an output of the column — (1560 − 5×32) / 6 = 233.333, the
-                  dock's own formula over its 1592. 24px of drawn slack below.
-                  Geometry and the wide-screen rule live in `.tplpick-grid`. */}
+            <ScrollArea axis="y" className="h-full" innerClassName="px-8" onMetrics={onMetrics} viewportRef={scroller}>
+              {/* the grid (28626:591 → 28734:66425): 6 columns, 32px gaps both
+                  axes; card width is an output of the column — (1560 − 5×32) / 6
+                  = 233.333, the dock's own formula over its 1592. 24px of drawn
+                  slack below. Geometry and the wide-screen rule live in
+                  `.tplpick-grid`.
+
+                  The wrapper exists for ONE reason: when the header compacts,
+                  the scroller's box grows 69px upward in a single commit, so the
+                  content would jump 69px up with it. This box is put back down
+                  and sprung home on the same spring as the header — the eye sees
+                  the grid follow the header up, the browser sees one reflow. It
+                  carries no styles of its own and, once the spring lands, no
+                  inline transform either. */}
+              <div ref={head.body as React.RefObject<HTMLDivElement>}>
               {cards.length ? (
                 <div className="tplpick-grid pb-6">
                   {cards.map(({ tpl, index }) => (
@@ -587,6 +864,8 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                       dataKey={index}
                       pickLabel={t({ en: `Open ${tpl.name}`, uk: `Відкрити ${tpl.name}` })}
                       onPick={() => onCardPick(index)}
+                      onAdd={() => onCardAdd(index)}
+                      addLabel={t({ en: `Use ${tpl.name}`, uk: `Взяти ${tpl.name}` })}
                     />
                   ))}
                 </div>
@@ -597,6 +876,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                   {t({ en: 'No templates in this category yet.', uk: 'У цій категорії ще немає шаблонів.' })}
                 </p>
               )}
+              </div>
             </ScrollArea>
           </motion.div>
         </motion.div>

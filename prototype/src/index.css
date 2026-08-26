@@ -159,6 +159,10 @@
     /* 48% — Figma Text/Default/Secondary. The Home page leans on it for card meta,
        the inactive tab label and the kebab; the ladder's 40% and 70% both miss. */
     --white-480: #ffffff7a;
+    /* 56% — Figma Neutral Alpha/600. The muted half of the picker's two-tone
+       heading (`We'll remix it.`, boards 28626:542 / 28734:66375); 48% and 70%
+       both miss it, and this is a real step in the kit. */
+    --white-560: #ffffff8f;
     --white-900: #fffffff2;
 
     /* action — one hue, all steps */
@@ -1932,19 +1936,142 @@
 
   /*
    * ------------------------------------ template picker (Figma 28616:59168)
-   * The sheet's heading is cap-trimmed in Figma — a 22px box for 32px type —
-   * and the whole vertical rhythm (57 above it, 40 below) is measured to the
-   * CAP, not to the em box. `text-box-trim` reproduces exactly that in the
-   * browsers this prototype is actually reviewed in (Chromium — the claude.ai
-   * panel — and Safari 18.2+); where unsupported, the `leading-none` box on
-   * the element stands in, 10px taller, and the rhythm below shifts by that
-   * much — a soft landing, not a break. The same pairing the dock's heading
-   * would want; kept local until the designer confirms the popup copy (§10.1).
+   *
+   * THE HEADER HAS TWO DRAWN STATES, and this block is the whole of the
+   * difference between them. At rest (`28626:539`, re-read 26.08.2026) the
+   * title block is 215 tall: 57 above a 48px heading's CAP, 34 of cap, 40
+   * below, then the chip row's 16 / 36 / 32. Scrolled (`28734:66372`) it is
+   * 146: 40 above a 32px heading, the same 34 box, then 16 / 36 / 16 — and the
+   * chip row's bottom edge gains a 1px hairline. Nothing else changes: same
+   * copy, same colours, same chips, same centring.
+   *
+   * Every number here is a PADDING, i.e. layout — which is exactly why the
+   * class pair is all there is, and why it flips in ONE commit with the moves
+   * covered by transforms (`useHeadCompact` in TemplatePicker.tsx, spring
+   * `HEADER_COMPACT`). A scroll handler is the last place in this codebase that
+   * may animate a padding.
+   *
+   * The heading is cap-trimmed in Figma — a 34px box for 48px type, 22 for 32 —
+   * and the whole rhythm is measured to the CAP, not to the em box.
+   * `text-box-trim` reproduces exactly that in the browsers this prototype is
+   * actually reviewed in (Chromium — the claude.ai panel — and Safari 18.2+);
+   * where unsupported the `line-height: 1` box stands in, taller, and the two
+   * inks' cap-tops part company by a pixel or two mid-flight — a soft landing,
+   * not a break.
+   */
+  /*
+   * Cap-trim on its own, for the one other place in this sheet that is measured
+   * to the CAP: the detail bar's template name (spec §12.0). It was the whole of
+   * this class before the header gained two states — the heading's own trim now
+   * lives on `.tplpick-title-ink` — and removing it cost the detail bar 763px of
+   * pixel diff before QA caught it.
    */
   .tplpick-heading {
     text-box-trim: trim-both;
     text-box-edge: cap alphabetic;
   }
+
+  .tplpick-head {
+    position: relative;
+    /* Above the grid, explicitly: the cards are `position: relative` too, so
+       leaving both on `z-index: auto` would decide who covers whom by DOM
+       order alone — and the header must win in every state. */
+    z-index: 1;
+    isolation: isolate;
+  }
+  /*
+   * THE PLATE — Gray/900, the fill the scrolled board's `Title` gains
+   * (28734:66372) so the cards it now sits over are cut dead at its edge: no
+   * fade, no mask, an opaque ground. Ours is the same colour as the sheet it
+   * lies on, so it is invisible in both settled states.
+   *
+   * It is a LAYER rather than the header's own background because it is the one
+   * part of the header whose HEIGHT is what you see: while the flip is running
+   * the heading and the chips are still down at their old positions, and a plate
+   * that had already snapped to 146 would leave them standing outside it with
+   * cards showing between them (measured — it was the first cut of this
+   * transition). Being its own box it can carry the height as a `scaleY` of a
+   * solid colour, which costs a composite and nothing else, and it stays under
+   * the header's content on `z-index: -1` inside the header's own stacking
+   * context — so it can never reach the sheet behind it.
+   */
+  .tplpick-head-plate {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--gray-900);
+    transform-origin: 50% 0;
+    pointer-events: none;
+  }
+  .tplpick-head-title { padding-top: 57px; padding-bottom: 40px; }
+  .tplpick-head--compact .tplpick-head-title { padding-top: 40px; padding-bottom: 4px; }
+
+  /*
+   * ONE HEADING, TWO INKS — and they are superimposed at every frame, not
+   * cross-dissolved between two positions.
+   *
+   * The box is the REST cap height (34) in both states, because a fixed box
+   * plus the padding pair above lands the drawn cap-top (57 → 40) and the
+   * drawn chip-row top (131 → 78) exactly, with one property fewer changing.
+   * Inside it live two real texts, 48px and 32px, both anchored at the cap-top
+   * and both centred; the flip scales each so that its EFFECTIVE size is the
+   * same value at every instant (48·s and 32·1.5s), which is what makes the
+   * hand-off from one raster to the other invisible — no ghost, no doubling,
+   * because the two are geometrically identical mid-flight. A single scaled
+   * text would land soft at one end; two crisp ends is the whole reason there
+   * are two.
+   */
+  .tplpick-title { position: relative; height: 34px; }
+  .tplpick-title-ink {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    font-family: theme(fontFamily.display);
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    color: #ffffff;
+    transform-origin: 50% 0;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+  }
+  .tplpick-title-ink--lg { font-size: 48px; }
+  .tplpick-title-ink--sm { font-size: 32px; opacity: 0; }
+  .tplpick-head--compact .tplpick-title-ink--lg { opacity: 0; }
+  .tplpick-head--compact .tplpick-title-ink--sm { opacity: 1; }
+  /* `We'll remix it.` — Neutral Alpha/600, both boards. The leading space stays
+     outside it, unstyled, as drawn. */
+  .tplpick-title-tail { color: var(--white-560); }
+
+  .tplpick-head-chips { position: relative; padding-top: 16px; padding-bottom: 32px; }
+  .tplpick-head--compact .tplpick-head-chips { padding-bottom: 16px; }
+
+  /*
+   * THE DIVIDER — 1px `Neutral Alpha/100` (#ffffff14) across the content
+   * column, drawn ONLY in the scrolled state, as a stroke sitting INSIDE the
+   * chip row's 68px box (28734:66416). So it is a positioned hairline and never
+   * a `border`: a CSS border would add its pixel to the header and push the
+   * whole grid down one (the standing rule in CLAUDE.md).
+   *
+   * It rides the chip row (which owns the 1560 column) and carries 16px of its
+   * own travel on top of the row's 53 — 69 in total, i.e. exactly the header's
+   * bottom edge, and therefore exactly the grid's top edge. The two move as one
+   * and the hairline is glued to the boundary it describes the whole way.
+   */
+  .tplpick-head-rule {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--white-100);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .tplpick-head--compact .tplpick-head-rule { opacity: 1; }
+
 
   /*
    * THE GRID. Six `1fr` columns with the drawn 32px gaps, filling the sheet

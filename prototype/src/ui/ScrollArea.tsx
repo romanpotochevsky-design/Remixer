@@ -49,6 +49,25 @@ const SCROLLER_CLASS: Record<Axis, string> = {
 const PAD = 4
 const MIN = 28
 
+/**
+ * What the indicator already had to read to place itself — handed out for
+ * callers whose CHROME reacts to the scroll (the template picker's header
+ * compacts once the grid has moved a little).
+ *
+ * Reusing this read is the point: `sync` runs on every scroll event and on
+ * every resize, and it takes these three numbers off the scroller anyway, so a
+ * caller that subscribes here adds NO layout read of its own — and above all
+ * does not go and put a second listener on the window.
+ */
+export interface ScrollMetrics {
+  /** scrollTop, or scrollLeft on the x axis. */
+  pos: number
+  /** scrollHeight / scrollWidth. */
+  extent: number
+  /** clientHeight / clientWidth. */
+  visible: number
+}
+
 interface Props extends React.HTMLAttributes<HTMLDivElement> {
   /** Classes for the outer box — sizing and flex behaviour live here. */
   className?: string
@@ -56,6 +75,10 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
   innerClassName?: string
   thumb?: Thumb
   axis?: Axis
+  /** Called with the scroll geometry on every scroll and every resize — see
+   *  `ScrollMetrics`. Kept in a ref, so passing an inline function costs
+   *  nothing and never re-arms the observer. */
+  onMetrics?: (m: ScrollMetrics) => void
   /** Hands the scrollport out, for callers that need to drive the scroll
    *  themselves (the chat parks a new message at the top of the view; the Home
    *  page's chip row and card row are stepped by a button). */
@@ -65,12 +88,16 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
 
 export function ScrollArea({
   className = '', innerClassName = '', thumb = 'light', axis = 'y',
-  viewportRef, children, onScroll, ...rest
+  viewportRef, onMetrics, children, onScroll, ...rest
 }: Props) {
   const scroller = useRef<HTMLDivElement | null>(null)
   const bar = useRef<HTMLDivElement>(null)
   const hideTimer = useRef<number | undefined>(undefined)
   const lastSize = useRef(-1)
+  /* A ref, not a dep: `sync` must stay stable or the ResizeObserver below
+     re-arms on every render of the caller. */
+  const report = useRef(onMetrics)
+  report.current = onMetrics
 
   const sync = useCallback((reveal: boolean) => {
     const el = scroller.current
@@ -84,6 +111,10 @@ export function ScrollArea({
     const extent = horizontal ? el.scrollWidth : el.scrollHeight
     const visible = horizontal ? el.clientWidth : el.clientHeight
     const overflow = extent - visible
+    /* Before the early return: a caller watching the scroll needs to hear about
+       the frame where the content STOPPED overflowing too (filter the grid down
+       to one card and the compact header has to stand back up). */
+    report.current?.({ pos, extent, visible })
     if (overflow < 2) {
       el2.setAttribute('data-off', '')
       return

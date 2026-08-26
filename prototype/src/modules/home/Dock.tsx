@@ -28,7 +28,7 @@ import {
 } from '@/data/templates'
 import { startBuild } from '@/modules/chat/send'
 import { ScrollArea } from '@/ui/ScrollArea'
-import { IconMoreVertical } from '@/ui/icons'
+import { IconMoreVertical, IconPlus } from '@/ui/icons'
 import { Thumb } from './thumbs'
 
 /** How many slots the shelf shows. Six is what the canonical board draws. */
@@ -376,7 +376,7 @@ export function TemplateCard({
   template,
   className = 'home-card',
   thumbClassName = 'home-thumb home-thumb--template',
-  onPick, pickLabel, dataKey,
+  onPick, pickLabel, dataKey, onAdd, addLabel,
 }: {
   template: Template
   /** Wrapper sizing. The dock's flex row sizes cards itself (`home-card`);
@@ -396,6 +396,23 @@ export function TemplateCard({
    *  finds the clicked card by it — to fly the preview out of the thumbnail's
    *  measured rect, and back into its CURRENT rect on the way out. */
   dataKey?: number
+  /**
+   * THE BLUE `+`, drawn 26.08.2026 on ONE of the picker's eighteen cards —
+   * `28637:42070` on the rest board, `28734:66455` on the scrolled one — in the
+   * exact slot where the other seventeen park their transparent kebab, and with
+   * that card's kebab switched OFF. One card of eighteen, in the state slot,
+   * carrying the detail view's own glyph and the kit's Filled/Blue/Small icon
+   * button: this file's idiom for "this is the hovered card". So it ships as the
+   * card's hover affordance, and it does what a blue filled `+` on a template
+   * says — attaches that template, the same action as `Choose a template` one
+   * step earlier. Flagged to the designer (§14.6): the boards label no state and
+   * say nothing about what it does.
+   *
+   * Passed only by the picker; the dock's cards are drawn without it.
+   */
+  onAdd?: () => void
+  /** Accessible name for the `+`. */
+  addLabel?: string
 }) {
   const { t } = useT()
   const { openBuilder } = useUI()
@@ -432,11 +449,39 @@ export function TemplateCard({
         <Thumb id={template.id} className="absolute inset-0" />
       </div>
 
-      <div className="flex h-[54px] w-full flex-none flex-col gap-[5px] pb-px pl-1 pt-3">
+      {/* `pr-12` ONLY while the `+` is showing: 32 for the button and the drawn
+          16 gap, which is exactly the 185.333 the board measures on the card
+          that has it (233.333 − 4 − 48) — and the reason that card's caption is
+          the one drawn with ellipses while its seventeen neighbours are not. So
+          the room is made on hover, as drawn, and not reserved at rest, where it
+          would truncate every description on the sheet against the board.
+          It is a padding, i.e. one reflow per hover — a pointer event, never a
+          frame — and the caption is left-aligned and already clipped, so nothing
+          moves: the ellipsis walks left under the button that is fading in. */}
+      <div className={`relative flex h-[54px] w-full flex-none flex-col gap-[5px] pb-px pl-1 pt-3 ${onAdd ? 'group-hover:pr-12 group-focus-within:pr-12' : ''}`}>
         {/* verbatim from the board; the captions do not describe their own
             screenshots and two of the six repeat — see data/templates.ts */}
         <p className="truncate font-display text-[16px] font-medium leading-[1.2] text-white">{template.name}</p>
         <p className="truncate text-[12px] leading-[1.4] text-[var(--white-480)]">{template.description}</p>
+
+        {/* 32 × 32, radius 10, Background/Blue/Default #1587ff (the export's
+            #0073ec is the light-theme trap), 24-box white glyph on 4px of
+            padding, flush with the card's right edge at meta-local y 16 — all
+            drawn. `z-10` puts it over the card's own stretched button, the same
+            way the project card's kebab sits over it. Its fade borrows
+            `--card-hover-dur` from the thumbnail ring: a sheet arriving under a
+            parked cursor must not announce itself. Colours on hover/press are
+            the house convention for a filled blue button (PublishPanel,
+            DomainModal, the detail bar's own pill) — the boards draw no states. */}
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            aria-label={addLabel}
+            className="absolute right-0 top-4 z-10 grid h-8 w-8 place-items-center overflow-hidden rounded-[10px] bg-[var(--action)] text-white opacity-0 transition-[opacity,background-color] duration-[var(--card-hover-dur,var(--dur-fast))] ease-std hover:bg-[var(--action-hover)] focus-visible:opacity-100 active:bg-[var(--action-pressed)] group-hover:opacity-100"
+          >
+            <IconPlus size={20} />
+          </button>
+        )}
       </div>
 
       <button
