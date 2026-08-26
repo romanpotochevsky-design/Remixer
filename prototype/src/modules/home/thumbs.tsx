@@ -52,6 +52,16 @@ export type ThumbId =
   | 'saas'          // WorkPro — bright blue social-media SaaS landing
   | 'restaurant'    // burgundy restaurant, its food photography drawn as discs
   | 'crypto'        // MineMax — near-black crypto-mining landing with a violet orb
+  // Eight more brands, added so the picker's grid stops repeating itself — one per
+  // vertical the filter chips promise, each with its own dominant colour.
+  | 'coffee'        // MERIDIAN — cream-over-espresso coffee roaster store
+  | 'fashion'       // ODEON — black-on-white editorial lookbook store
+  | 'devtools'      // forge — blue-black developer-tools landing, monospace accents
+  | 'analytics'     // Lumen — light, chart-led AI analytics product page
+  | 'photography'   // KORE STUDIO — near-black portfolio, image mosaic, no copy
+  | 'lawfirm'       // HALE & MARCH — deep-navy law firm, type only, no images at all
+  | 'yoga'          // Still — warm-sand yoga studio, one tone, big calm type
+  | 'barbershop'    // IRONSIDE — charcoal barbershop with a single vermilion accent
   | 'synco'         // synco.com — the customer's own store, on the project card
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ')
@@ -1020,6 +1030,794 @@ function Crypto() {
   )
 }
 
+/* ─────────────── eight more sites: variety for the picker grid ───────────────
+   The picker's eighteen rows were drawn from ten sites, so scrolling the grid kept
+   meeting the same page. These eight are new brands — one per vertical the filter
+   chips promise (two Ecommerce, two Tech & SaaS, one Portfolio, one Business &
+   services, two Health And Beauty) — and each owns a different dominant colour, so
+   the grid reads as a library: cream over espresso, white, blue-black, lavender
+   white, near-black, navy, sand, charcoal.
+
+   All eight are laid out as a FLOW column (nav / hero / band), not as absolute
+   percentage tops like the boards above. The reason is the size contract: type is
+   sized in `cqw`, so at the wide end (1600×880) a headline eats roughly 1.7× the
+   vertical fraction it eats at 233×218 — an absolutely-positioned block below it
+   collides at one size and not the other, which is exactly the bug the `28.5%, not
+   25` comments upstream are patching. In flow, a taller headline pushes its
+   neighbours instead of landing on them. Objects whose SHAPE matters (a coffee bag,
+   an arch, a photo panel) get `aspect-ratio` with a percentage height for the same
+   reason — cqw × cqh would squash them at one end.
+   ⚠️ Every line of REAL text here carries an explicit `lineHeight`. Left at
+   `normal`, the display face resolves to ~1.5, so a single-line price in a
+   fixed-height row is half a line taller than the row it sits in: measured at
+   1600×880, barbershop's four price rows were 68px each while each `$35` claimed a
+   72px line box, and by the fourth row the drift had put the digits 31px under the
+   footer band. Nothing overflowed the card, so it looked like a mystery — it is the
+   line box, not the layout.
+   Same contract otherwise: container units only, no people, no photo-real food,
+   photography is a gradient block.                                              */
+
+/**
+ * A proof number over its label. `label` is a COLOUR, like `Pill`'s: the label text
+ * itself is a wireframe bar, because a real caption under a stat is unreadable here.
+ */
+function Stat({
+  value, color, label, size = '5cqw', labelW = '9cqw', center,
+}: { value: string; color: string; label: string; size?: string; labelW?: string; center?: boolean }) {
+  return (
+    <div className={cx('flex flex-col', center && 'items-center')} style={{ gap: '1.2cqh' }}>
+      <p
+        className="whitespace-nowrap font-display font-semibold tabular-nums"
+        style={{ color, fontSize: size, lineHeight: 1, letterSpacing: '-0.02em' }}
+      >
+        {value}
+      </p>
+      <Bar w={labelW} h="0.9cqh" color={label} />
+    </div>
+  )
+}
+
+/**
+ * MERIDIAN — coffee roaster store (Ecommerce). Dominant colour is the cream page
+ * `#f7ece0`; espresso `#2e1b10` is a band, not the hero, and terracotta `#c2551f`
+ * is the only accent.
+ * Composition decision: this is the one site in the library whose hero does NOT own
+ * the card. A roaster sells the shelf, so the four-bag grid is the mass and the hero
+ * is a strip above it — which is also what makes the card readable as a STORE at
+ * 233px, where a hero-led page reads as "a landing page, colour unknown".
+ * The bags are products, not photographs, so they are drawn (fold, body, label) and
+ * held to shape by `aspect-ratio`.
+ */
+function Coffee() {
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#f7ece0' }}>
+      {/* the espresso band: nav + hero, 44% of the card */}
+      <div className="relative flex shrink-0 flex-col overflow-hidden" style={{ height: '44%', background: '#2e1b10' }}>
+        <span
+          className="absolute"
+          style={{ right: '-10cqw', top: '-40%', width: '54cqw', height: '180%', background: 'radial-gradient(50% 50% at 50% 50%,#c2551f4d 0%,#c2551f00 70%)' }}
+        />
+        <div className="flex shrink-0 items-center justify-between" style={{ height: '24%', paddingInline: '4cqw' }}>
+          <Wordmark color="#f7ece0" size="3.6cqw">MERIDIAN</Wordmark>
+          <NavLinks n={4} color="#f7ece066" w="4cqw" gap="2.6cqw" />
+          <div className="flex items-center" style={{ gap: '1.8cqw' }}>
+            <Bar w="3cqw" h="1cqh" color="#f7ece08c" />
+            <Pill w="8.5cqw" h="3.6cqh" bg="#c2551f" label="#ffffffa6" />
+          </div>
+        </div>
+        <div className="relative flex flex-1 items-start justify-between" style={{ paddingInline: '4cqw' }}>
+          <div className="flex flex-col" style={{ gap: '2.6cqh' }}>
+            <p
+              className="whitespace-nowrap font-display font-semibold"
+              style={{ color: '#f7ece0', fontSize: '4.2cqw', lineHeight: 1.14, letterSpacing: '-0.025em' }}
+            >
+              Roasted Monday.<br />On your shelf Wednesday.
+            </p>
+            <Copy rows={2} color="#f7ece033" w="28cqw" h="1.1cqh" gap="1.2cqh" />
+            <Pill w="17cqw" h="5cqh" bg="#c2551f" label="#2e1b1080" />
+          </div>
+          {/* the hero bag, shape held by aspect-ratio */}
+          <div className="relative shrink-0" style={{ height: '86%', aspectRatio: '0.66', alignSelf: 'flex-end' }}>
+            <span
+              className="absolute inset-x-0 top-0"
+              style={{ height: '12%', background: '#f0d7ba', borderRadius: '0.6cqw 0.6cqw 0.2cqw 0.2cqw' }}
+            />
+            <span
+              className="absolute inset-x-0"
+              style={{
+                top: '9%', bottom: 0, borderRadius: '0.8cqw',
+                background: 'linear-gradient(102deg,#ffffff26 0%,#ffffff00 26%),linear-gradient(168deg,#4a3121 0%,#33200f 52%,#1b1008 100%)',
+              }}
+            />
+            <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '40%', width: '72%', height: '26%', background: '#c2551f', borderRadius: '0.5cqw' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* the shelf: section head, four bags, then the footer strip */}
+      <div className="flex shrink-0 items-end justify-between" style={{ height: '9%', paddingInline: '4cqw' }}>
+        <p className="whitespace-nowrap font-display font-semibold" style={{ color: '#2e1b10', fontSize: '3.2cqw', lineHeight: 1, letterSpacing: '-0.02em' }}>
+          Single origin
+        </p>
+        <Bar w="8cqw" h="1cqh" color="#2e1b1040" />
+      </div>
+      <div className="flex flex-1 items-stretch" style={{ paddingInline: '4cqw', paddingTop: '2cqh', paddingBottom: '2cqh', gap: '2.4cqw' }}>
+        {[
+          { bag: 'linear-gradient(166deg,#4a3121,#1d120b)', price: '$18' },
+          { bag: 'linear-gradient(166deg,#8a4a24,#4a2412)', price: '$22' },
+          { bag: 'linear-gradient(166deg,#c2551f,#7a3210)', price: '$16' },
+          { bag: 'linear-gradient(166deg,#5d6b4a,#2c3423)', price: '$24' },
+        ].map((p) => (
+          <div key={p.price} className="flex flex-1 flex-col" style={{ gap: '1.4cqh' }}>
+            <div className="relative flex flex-1 items-end justify-center overflow-hidden" style={{ background: '#efe0cd', borderRadius: '1.2cqw' }}>
+              <div className="relative" style={{ height: '74%', aspectRatio: '0.66', background: p.bag, borderRadius: '0.7cqw 0.7cqw 0.4cqw 0.4cqw' }}>
+                <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '38%', width: '70%', height: '22%', background: '#f7ece0a6', borderRadius: '0.3cqw' }} />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <Bar w="58%" h="1cqh" color="#2e1b1033" />
+              <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#2e1b10', fontSize: '2.7cqw', lineHeight: 1 }}>{p.price}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex shrink-0 items-center justify-between" style={{ height: '13%', background: '#2e1b10', paddingInline: '4cqw' }}>
+        <Wordmark color="#f7ece0" size="2.8cqw">MERIDIAN</Wordmark>
+        <div className="flex items-center" style={{ gap: '3cqw' }}>
+          <NavLinks n={3} color="#f7ece040" w="5cqw" gap="3cqw" />
+          <Pill w="10cqw" h="3.4cqh" border="#f7ece033" label="#f7ece073" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * ODEON — fashion lookbook store (Ecommerce). Dominant colour is paper white with
+ * `#0a0a0a` type; the only chroma on the card is one vermilion `#e5321a` tag.
+ * Composition decision: a hard vertical split, type left and one full-bleed image
+ * column right that runs past the top and bottom edges — the editorial device, and
+ * the opposite of every centred-hero card in the library. The nav spans only the type
+ * side, which is why it looks like a magazine spread rather than a website chrome.
+ * The three tiles under the headline are colour swatches, the shop's actual content.
+ */
+function Fashion() {
+  return (
+    <div className="relative h-full w-full overflow-hidden font-sans" style={{ background: '#ffffff' }}>
+      {/* the image column: two panels, full bleed, a white gutter between them */}
+      <Photo
+        className="absolute"
+        style={{ right: 0, top: 0, width: '42%', height: '68%', background: 'linear-gradient(196deg,#54565c 0%,#2b2c30 44%,#111114 100%)' }}
+      >
+        <span className="absolute" style={{ left: '-6%', top: '18%', width: '58%', height: '64%', background: 'radial-gradient(50% 50% at 50% 50%,#c9bfae4d 0%,#c9bfae00 72%)' }} />
+        {/* The one piece of colour on the card, wholly INSIDE the panel. Straddling the
+            panel's edge (or anchoring it to the card) put it half over white and clipped
+            it against the panel's overflow at one size or the other. */}
+        <div
+          className="absolute flex items-center justify-center"
+          style={{ left: '7%', top: '9%', width: '11cqw', height: '5cqh', background: '#e5321a', transform: 'rotate(-6deg)', borderRadius: '0.4cqw' }}
+        >
+          <Bar w="62%" h="1cqh" color="#ffffffd9" />
+        </div>
+        {/* the price tag the board floats over the shot */}
+        <div className="absolute flex items-center bg-white" style={{ left: '10%', bottom: '9%', padding: '1cqw', gap: '1.2cqw', borderRadius: '0.6cqw' }}>
+          <Bar w="7cqw" h="0.9cqh" color="#0a0a0a33" />
+          <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#0a0a0a', fontSize: '2.4cqw', lineHeight: 1 }}>$240</p>
+        </div>
+      </Photo>
+      <Photo
+        className="absolute"
+        style={{ right: 0, top: '69%', bottom: 0, width: '42%', background: 'linear-gradient(20deg,#d8d2c8 0%,#a79c8d 58%,#6f665c 100%)' }}
+      />
+      {/* the type side */}
+      <div className="absolute flex flex-col" style={{ left: 0, top: 0, bottom: 0, width: '58%' }}>
+        <div className="flex shrink-0 items-center justify-between" style={{ height: '13%', paddingInline: '4cqw' }}>
+          <NavLinks n={3} color="#0a0a0a59" w="3.6cqw" gap="2.4cqw" />
+          <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#0a0a0a', fontSize: '3.4cqw', lineHeight: 1, letterSpacing: '0.26em' }}>
+            ODEON
+          </span>
+          <div className="flex items-center" style={{ gap: '1.4cqw' }}>
+            <Bar w="3cqw" h="1cqh" color="#0a0a0a59" />
+            <span className="block rounded-full" style={{ width: '2.4cqw', height: '2.4cqw', background: '#0a0a0a' }} />
+          </div>
+        </div>
+        <span className="shrink-0" style={{ marginInline: '4cqw', height: '0.25cqw', background: '#0a0a0a1f' }} />
+
+        <div className="flex flex-1 flex-col justify-center" style={{ paddingInline: '4cqw', gap: '3cqh' }}>
+          <p
+            className="whitespace-nowrap font-display font-semibold"
+            style={{ color: '#0a0a0a', fontSize: '9.6cqw', lineHeight: 0.94, letterSpacing: '-0.045em' }}
+          >
+            SPRING<br />SUMMER<br />26
+          </p>
+          <Copy rows={2} color="#0a0a0a26" w="26cqw" h="1.1cqh" gap="1.2cqh" />
+          <div className="flex items-center" style={{ gap: '2cqw' }}>
+            <Pill w="20cqw" h="5.4cqh" bg="#0a0a0a" label="#ffffffa6" />
+            <div className="flex items-center" style={{ gap: '1.2cqw' }}>
+              {['#1c1c1e', '#b9a288', '#7d8a76'].map((c) => (
+                <span key={c} className="block" style={{ width: '4cqw', height: '4cqw', background: c, borderRadius: '0.4cqw' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* the lookbook index the crop catches at the bottom */}
+        <div className="flex shrink-0 items-center justify-between" style={{ height: '13%', paddingInline: '4cqw', borderTop: '0.25cqw solid #0a0a0a1f' }}>
+          <p className="whitespace-nowrap tabular-nums" style={{ color: '#0a0a0a', fontSize: '2.5cqw', lineHeight: 1, letterSpacing: '0.1em' }}>
+            LOOKBOOK 01
+          </p>
+          <NavLinks n={2} color="#0a0a0a33" w="5cqw" gap="2cqw" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * forge — developer-tools landing page (Tech & SaaS). Dominant colour is blue-black
+ * `#0b1016`, accent cyan `#3ddbd9`; the syntax palette in the editor is the only
+ * other chroma. Distinct from `crypto`, the library's other near-black page, by hue
+ * (blue rather than violet) and by subject: an editor window instead of a glowing orb.
+ * Monospace is real here — the wordmark, the `$` in the install line and the build
+ * time — but the code itself is token BARS: nine rows of real 5px code would be mush,
+ * and indent plus token colour is what makes a pane read as code anyway.
+ */
+function Devtools() {
+  const code: { pad: string; toks: [string, string][] }[] = [
+    { pad: '0cqw', toks: [['4cqw', '#c792ea'], ['7cqw', '#82aaff'], ['3cqw', '#59708a']] },
+    { pad: '2.4cqw', toks: [['3cqw', '#3ddbd9'], ['8cqw', '#ecc48d']] },
+    { pad: '2.4cqw', toks: [['5cqw', '#c792ea'], ['4cqw', '#e6e6ea'], ['6cqw', '#82aaff']] },
+    { pad: '4.8cqw', toks: [['6cqw', '#ecc48d'], ['3cqw', '#59708a']] },
+    { pad: '4.8cqw', toks: [['4cqw', '#3ddbd9'], ['5cqw', '#e6e6ea'], ['3cqw', '#c792ea']] },
+    { pad: '2.4cqw', toks: [['3cqw', '#e6e6ea']] },
+    { pad: '0cqw', toks: [['5cqw', '#c792ea'], ['6cqw', '#82aaff'], ['4cqw', '#ecc48d']] },
+    { pad: '2.4cqw', toks: [['7cqw', '#3ddbd9'], ['4cqw', '#e6e6ea']] },
+  ]
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#0b1016' }}>
+      <span
+        className="absolute"
+        style={{ left: '18%', top: '-30%', width: '70cqw', height: '110%', background: 'radial-gradient(50% 50% at 50% 50%,#3ddbd91f 0%,#3ddbd900 70%)' }}
+      />
+      <div className="relative flex shrink-0 items-center justify-between" style={{ height: '9%', paddingInline: '3.5cqw' }}>
+        <div className="flex items-center" style={{ gap: '1.4cqw' }}>
+          <span className="block" style={{ width: '2.6cqw', height: '2.6cqw', background: '#3ddbd9', borderRadius: '0.5cqw', transform: 'rotate(45deg)' }} />
+          <span className="whitespace-nowrap font-mono" style={{ color: '#ffffff', fontSize: '3cqw', lineHeight: 1, letterSpacing: '-0.02em' }}>forge</span>
+        </div>
+        <NavLinks n={4} color="#ffffff4d" w="3.8cqw" gap="2.4cqw" />
+        <div className="flex items-center" style={{ gap: '1.6cqw' }}>
+          <span className="whitespace-nowrap font-mono" style={{ color: '#ffffff59', fontSize: '2.2cqw', lineHeight: 1 }}>v2.4</span>
+          <Pill w="9cqw" h="3.6cqh" bg="#3ddbd9" label="#06222699" />
+        </div>
+      </div>
+
+      <div className="relative flex flex-1" style={{ paddingInline: '3.5cqw', paddingTop: '3cqh', gap: '3cqw' }}>
+        {/* left: the pitch */}
+        <div className="flex flex-col justify-center" style={{ width: '38%', gap: '2.4cqh' }}>
+          <span className="flex items-center self-start rounded-full" style={{ padding: '1cqw', gap: '1.2cqw', boxShadow: 'inset 0 0 0 0.3cqw #3ddbd93d' }}>
+            <span className="block rounded-full" style={{ width: '1.4cqw', height: '1.4cqw', background: '#3ddbd9' }} />
+            <Bar w="8cqw" h="0.9cqh" color="#3ddbd9a6" />
+          </span>
+          <p
+            className="whitespace-nowrap font-display font-semibold"
+            style={{ color: '#eef4f7', fontSize: '4.6cqw', lineHeight: 1.16, letterSpacing: '-0.03em' }}
+          >
+            Ship your backend<br />in <span style={{ color: '#3ddbd9' }}>one command</span>
+          </p>
+          <Copy rows={2} color="#ffffff33" w="100%" h="1.1cqh" gap="1.2cqh" />
+          {/* the install line: a real mono $, then bars — the command is texture, not text */}
+          <div
+            className="flex items-center justify-between"
+            style={{ height: '6cqh', paddingInline: '1.4cqw', background: '#111a24', borderRadius: '0.8cqw', boxShadow: 'inset 0 0 0 0.25cqw #ffffff14' }}
+          >
+            <div className="flex items-center" style={{ gap: '1.2cqw' }}>
+              <span className="whitespace-nowrap font-mono" style={{ color: '#3ddbd9', fontSize: '2.4cqw', lineHeight: 1 }}>$</span>
+              <Bar w="7cqw" h="1cqh" color="#ffffff59" />
+              <Bar w="4cqw" h="1cqh" color="#ffffff2e" />
+            </div>
+            <span className="block shrink-0" style={{ width: '2cqw', height: '2cqw', boxShadow: 'inset 0 0 0 0.25cqw #ffffff3d', borderRadius: '0.3cqw' }} />
+          </div>
+          <div className="flex items-center" style={{ gap: '1.8cqw' }}>
+            <Pill w="14cqw" h="5cqh" bg="#3ddbd9" label="#06222699" />
+            <Pill w="12cqw" h="5cqh" border="#ffffff26" label="#ffffff8c" />
+          </div>
+        </div>
+
+        {/* right: the editor window, cut by the bottom band */}
+        <div className="relative flex flex-1 flex-col overflow-hidden" style={{ background: '#0f1621', borderRadius: '1.4cqw 1.4cqw 0 0', boxShadow: 'inset 0 0 0 0.25cqw #ffffff14' }}>
+          <div className="flex shrink-0 items-center" style={{ height: '13%', paddingInline: '1.6cqw', gap: '1cqw', borderBottom: '0.25cqw solid #ffffff0f' }}>
+            {['#ffffff26', '#ffffff1f', '#ffffff1f'].map((c, i) => (
+              <span key={i} className="block shrink-0 rounded-full" style={{ width: '1.2cqw', height: '1.2cqw', background: c }} />
+            ))}
+            <Bar w="7cqw" h="1.6cqh" color="#ffffff0f" radius="0.4cqw" />
+            <Bar w="5cqw" h="1.6cqh" color="#ffffff08" radius="0.4cqw" />
+          </div>
+          <div className="flex flex-1 flex-col" style={{ paddingTop: '1.2cqh', paddingBottom: '1.2cqh', paddingRight: '2cqw' }}>
+            {code.map((row, i) => (
+              <div key={i} className="flex flex-1 items-center">
+                <span className="flex shrink-0 justify-end" style={{ width: '10%', paddingRight: '1cqw' }}>
+                  <Bar w="1.6cqw" h="0.85cqh" color="#ffffff1f" />
+                </span>
+                <div className="flex items-center" style={{ paddingLeft: row.pad, gap: '1.2cqw' }}>
+                  {row.toks.map(([w, c], j) => <Bar key={j} w={w} h="0.85cqh" color={c} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* the build panel, pinned to the pane's bottom-right */}
+          <div className="absolute flex items-center" style={{ right: '2cqw', bottom: '2cqh', padding: '1.2cqw', gap: '1.4cqw', background: '#070c12', borderRadius: '0.8cqw', boxShadow: 'inset 0 0 0 0.25cqw #ffffff14' }}>
+            <span className="block rounded-full" style={{ width: '1.6cqw', height: '1.6cqw', background: '#4ade80' }} />
+            <Bar w="6cqw" h="0.9cqh" color="#ffffff59" />
+            <span className="whitespace-nowrap font-mono tabular-nums" style={{ color: '#4ade80', fontSize: '2.2cqw', lineHeight: 1 }}>1.4s</span>
+          </div>
+        </div>
+      </div>
+
+      {/* the "trusted by" strip */}
+      <div className="relative flex shrink-0 items-center justify-center" style={{ height: '12%', background: '#080d13', gap: '4cqw', borderTop: '0.25cqw solid #ffffff0f' }}>
+        {['9cqw', '7cqw', '10cqw', '7cqw', '8cqw'].map((w, i) => <Bar key={i} w={w} h="1.5cqh" color="#ffffff26" />)}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Lumen — AI analytics product page (Tech & SaaS). Dominant colour is a cool near-white
+ * `#f4f5fb` with indigo `#4f46e5`; teal `#14b8a6` is the second series.
+ * Distinct from `saas`, the library's other product page, on every axis that reads at
+ * thumbnail size: light ground instead of saturated blue, left-aligned hero instead of
+ * centred, and a chart card instead of an app window.
+ * The chart is a `clip-path` polygon of nine samples — percentages, so it scales — and
+ * its "line" is the same ridge walked back 6% lower, i.e. a band. An SVG stroke would
+ * need a pixel width, and pixels are what this file does not have.
+ */
+function Analytics() {
+  const series = [70, 56, 62, 41, 47, 27, 34, 15, 22]
+  const back = [88, 79, 84, 68, 74, 60, 65, 48, 55]
+  const at = (i: number) => `${(i / (series.length - 1)) * 100}%`
+  const ridge = series.map((y, i) => `${at(i)} ${y}%`)
+  const area = `polygon(${ridge.join(',')},100% 100%,0% 100%)`
+  const line = `polygon(${ridge.join(',')},${series.map((y, i) => `${at(i)} ${y + 6}%`).reverse().join(',')})`
+  const areaBack = `polygon(${back.map((y, i) => `${at(i)} ${y}%`).join(',')},100% 100%,0% 100%)`
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#f4f5fb' }}>
+      <div className="flex shrink-0 items-center justify-between bg-white" style={{ height: '10%', paddingInline: '3.5cqw', borderBottom: '0.25cqw solid #171a2b0f' }}>
+        <div className="flex items-center" style={{ gap: '1.4cqw' }}>
+          <span className="block" style={{ width: '2.8cqw', height: '2.8cqw', background: 'linear-gradient(140deg,#6366f1,#4f46e5)', borderRadius: '0.7cqw' }} />
+          <Wordmark color="#171a2b" size="3.2cqw">Lumen</Wordmark>
+        </div>
+        <NavLinks n={4} color="#171a2b59" w="4cqw" gap="2.6cqw" />
+        <div className="flex items-center" style={{ gap: '1.8cqw' }}>
+          <Bar w="3.4cqw" h="1cqh" color="#171a2b73" />
+          <Pill w="9.5cqw" h="3.8cqh" bg="#4f46e5" label="#ffffffa6" />
+        </div>
+      </div>
+
+      <div className="flex flex-1" style={{ paddingInline: '3.5cqw', paddingTop: '3.5cqh', gap: '3cqw' }}>
+        {/* the pitch */}
+        <div className="flex flex-col" style={{ width: '35%', gap: '2.4cqh' }}>
+          <span className="flex items-center self-start rounded-full bg-white" style={{ padding: '1cqw', gap: '1.2cqw', boxShadow: 'inset 0 0 0 0.25cqw #4f46e526' }}>
+            <span className="block rounded-full" style={{ width: '1.4cqw', height: '1.4cqw', background: '#4f46e5' }} />
+            <Bar w="8cqw" h="0.9cqh" color="#4f46e58c" />
+          </span>
+          <p
+            className="whitespace-nowrap font-display font-semibold"
+            style={{ color: '#171a2b', fontSize: '4.6cqw', lineHeight: 1.16, letterSpacing: '-0.03em' }}
+          >
+            Every metric,<br />explained by <span style={{ color: '#4f46e5' }}>AI</span>
+          </p>
+          <Copy rows={2} color="#171a2b26" w="100%" h="1.1cqh" gap="1.2cqh" />
+          <div className="flex items-center" style={{ gap: '1.8cqw' }}>
+            <Pill w="15cqw" h="5cqh" bg="#4f46e5" label="#ffffffa6" />
+            <Bar w="8cqw" h="1.1cqh" color="#171a2b40" />
+          </div>
+        </div>
+
+        {/* the chart card */}
+        <div className="relative flex flex-1 flex-col overflow-hidden bg-white" style={{ padding: '2cqw', gap: '1.6cqh', borderRadius: '1.6cqw', boxShadow: '0 1.4cqh 3cqw #171a2b14' }}>
+          <div className="flex shrink-0 items-center justify-between">
+            <div className="flex flex-col" style={{ gap: '1cqh' }}>
+              <Bar w="12cqw" h="1.2cqh" color="#171a2b40" />
+              <p
+                className="whitespace-nowrap font-display font-semibold tabular-nums"
+                style={{ color: '#171a2b', fontSize: '3.6cqw', lineHeight: 1, letterSpacing: '-0.02em' }}
+              >
+                48.2k
+              </p>
+            </div>
+            <div className="flex items-center" style={{ gap: '1cqw' }}>
+              <Bar w="5cqw" h="2cqh" color="#4f46e5" radius="0.5cqw" />
+              <Bar w="5cqw" h="2cqh" color="#171a2b0f" radius="0.5cqw" />
+            </div>
+          </div>
+          {/* the plot: gridlines, the teal series behind, the indigo series in front */}
+          <div className="relative flex-1">
+            {['22%', '48%', '74%'].map((top) => (
+              <span key={top} className="absolute inset-x-0" style={{ top, height: '0.2cqw', background: '#171a2b14' }} />
+            ))}
+            <span className="absolute inset-0" style={{ clipPath: areaBack, background: 'linear-gradient(180deg,#14b8a640 0%,#14b8a600 78%)' }} />
+            <span className="absolute inset-0" style={{ clipPath: area, background: 'linear-gradient(180deg,#4f46e559 0%,#4f46e500 82%)' }} />
+            <span className="absolute inset-0" style={{ clipPath: line, background: '#4f46e5' }} />
+          </div>
+          <div className="flex shrink-0 items-center justify-between">
+            {['4cqw', '4cqw', '4cqw', '4cqw', '4cqw', '4cqw', '4cqw'].map((w, i) => <Bar key={i} w={w} h="0.8cqh" color="#171a2b1f" />)}
+          </div>
+        </div>
+      </div>
+
+      {/* the three metric tiles; the middle one carries the only column chart */}
+      <div className="flex shrink-0" style={{ paddingInline: '3.5cqw', paddingTop: '2.5cqh', paddingBottom: '3cqh', height: '30%', gap: '2.4cqw' }}>
+        <div className="flex flex-1 items-center justify-between bg-white" style={{ padding: '1.8cqw', borderRadius: '1.2cqw' }}>
+          <Stat value="+38%" color="#171a2b" label="#171a2b26" size="4cqw" labelW="11cqw" />
+          <span className="block rounded-full" style={{ width: '4.6cqw', height: '4.6cqw', background: '#4f46e514' }} />
+        </div>
+        <div className="flex flex-1 flex-col justify-between bg-white" style={{ padding: '1.8cqw', borderRadius: '1.2cqw' }}>
+          <Bar w="9cqw" h="1cqh" color="#171a2b26" />
+          {/* Bars measured as percentages of their own row, not in cqh: the tile's
+              height is a percentage of the card, so cqh bars would drift against the
+              tile as the aspect changes. Inline rather than a primitive — one site
+              needs a column chart, and this file only promotes a part on the second
+              caller. */}
+          <div className="flex w-full items-end" style={{ height: '52%', gap: '0.9cqw' }}>
+            {[38, 62, 44, 78, 56, 92, 70].map((v, i) => (
+              <span
+                key={i}
+                className="block flex-1"
+                style={{ height: `${v}%`, background: i === 5 ? '#4f46e5' : '#c7c9f5', borderRadius: '0.4cqw 0.4cqw 0 0' }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-1 items-center justify-between bg-white" style={{ padding: '1.8cqw', borderRadius: '1.2cqw' }}>
+          <Stat value="0.9s" color="#171a2b" label="#171a2b26" size="4cqw" labelW="9cqw" />
+          {/* the donut: a conic gradient with a white plug — no arithmetic, no repaint */}
+          <span className="relative block rounded-full" style={{ width: '6.4cqw', height: '6.4cqw', background: 'conic-gradient(#4f46e5 0turn 0.62turn,#14b8a6 0.62turn 0.84turn,#171a2b14 0.84turn 1turn)' }}>
+            <span className="absolute left-1/2 top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" style={{ width: '54%', height: '54%' }} />
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * KORE STUDIO — photographer's portfolio (Portfolio). Dominant colour is near-black
+ * `#0b0b0c`; there is no accent hue at all, only one amber "available" dot.
+ * Composition decision: the work is the page. Four columns of gradient panels fill
+ * everything between a big wordmark row and a thin index footer — no hero copy, no
+ * buttons, no CTA. That absence is what separates it from `media` and `agency`, the
+ * library's other dark pages, both of which are type-led. Panel heights use flex
+ * ratios, so the mosaic keeps its rhythm at any aspect.
+ */
+function Photography() {
+  const panels: [string, number][][] = [
+    [['linear-gradient(196deg,#7c8794 0%,#2c333b 62%,#14181d 100%)', 1]],
+    [['linear-gradient(166deg,#d3bb98 0%,#8a6f4d 60%,#40311f 100%)', 3], ['linear-gradient(200deg,#5b6b6a 0%,#1c2422 100%)', 2]],
+    [['linear-gradient(180deg,#4c5a6b 0%,#1a2028 58%,#0d1014 100%)', 2], ['linear-gradient(150deg,#b5a3ad 0%,#4a3d46 62%,#221c22 100%)', 3]],
+    [['linear-gradient(210deg,#9aa3a8 0%,#3c4348 56%,#171a1c 100%)', 1]],
+  ]
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#0b0b0c' }}>
+      <div className="flex shrink-0 items-center justify-between" style={{ height: '16%', paddingInline: '3.5cqw' }}>
+        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#f4f2ee', fontSize: '6.2cqw', lineHeight: 1, letterSpacing: '0.02em' }}>
+          KORE
+        </span>
+        <div className="flex items-center" style={{ gap: '2.6cqw' }}>
+          <span className="flex items-center" style={{ gap: '1.2cqw' }}>
+            <span className="block rounded-full" style={{ width: '1.4cqw', height: '1.4cqw', background: '#d8a35c' }} />
+            <Bar w="7cqw" h="1cqh" color="#f4f2ee59" />
+          </span>
+          <NavLinks n={3} color="#f4f2ee59" w="4cqw" gap="2.4cqw" />
+          <Pill w="11cqw" h="4cqh" border="#f4f2ee33" label="#f4f2eea6" />
+        </div>
+      </div>
+
+      {/* the mosaic */}
+      <div className="flex flex-1" style={{ paddingInline: '3.5cqw', gap: '1.6cqw' }}>
+        {panels.map((col, ci) => (
+          <div key={ci} className="flex flex-1 flex-col" style={{ gap: '1.6cqw' }}>
+            {col.map(([g, grow], ri) => (
+              <Photo key={ri} className="relative" style={{ flex: grow, background: g, borderRadius: '0.8cqw' }}>
+                {/* one panel carries a caption, so the mosaic reads as captioned work */}
+                {ci === 1 && ri === 0 ? (
+                  <div className="absolute flex flex-col" style={{ left: '9%', bottom: '8%', gap: '0.9cqh' }}>
+                    <Bar w="9cqw" h="1cqh" color="#f4f2eecc" />
+                    <Bar w="6cqw" h="0.85cqh" color="#f4f2ee73" />
+                  </div>
+                ) : null}
+              </Photo>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* the index footer */}
+      <div className="flex shrink-0 items-center justify-between" style={{ height: '15%', paddingInline: '3.5cqw' }}>
+        <p className="whitespace-nowrap tabular-nums" style={{ color: '#f4f2ee', fontSize: '2.6cqw', lineHeight: 1, letterSpacing: '0.14em' }}>
+          01 / 24
+        </p>
+        <p className="whitespace-nowrap" style={{ color: '#f4f2ee73', fontSize: '2.5cqw', lineHeight: 1, letterSpacing: '0.18em' }}>
+          SELECTED WORK
+        </p>
+        <span className="block" style={{ width: '3cqw', height: '3cqw', borderTop: '0.3cqw solid #f4f2ee', borderRight: '0.3cqw solid #f4f2ee', transform: 'rotate(45deg)' }} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * HALE &amp; MARCH — law firm (Business &amp; services). Dominant colour is deep navy
+ * `#0e1c38` with gold `#c8a35c`.
+ * Composition decision: NO IMAGE ANYWHERE — not even a gradient panel. Authority on a
+ * law-firm page comes from symmetry, rules and tracked capitals, and a stand-in photo
+ * block would be the first thing to cheapen it. That makes this the only card in the
+ * library built entirely from type, hairlines and one metal accent, which is exactly
+ * why it is legible as "professional services" at 233px.
+ * The board asks for a serif; the prototype ships none, so this follows the AURA
+ * precedent — display face, wide tracking, small caps rhythm.
+ */
+function Lawfirm() {
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#0e1c38' }}>
+      <div className="flex shrink-0 items-center justify-between" style={{ height: '11%', paddingInline: '4cqw', borderBottom: '0.25cqw solid #ffffff14' }}>
+        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#eef1f7', fontSize: '3.2cqw', lineHeight: 1, letterSpacing: '0.14em' }}>
+          HALE &amp; MARCH
+        </span>
+        <NavLinks n={4} color="#eef1f759" w="4cqw" gap="2.6cqw" />
+        <Pill w="13cqw" h="4cqh" border="#c8a35c73" label="#c8a35c" />
+      </div>
+
+      {/* the centred hero — flex-1, so a taller headline squeezes the air, not the band below */}
+      <div className="flex flex-1 flex-col items-center justify-center" style={{ paddingInline: '8cqw', gap: '2.6cqh' }}>
+        <Bar w="8cqw" h="0.4cqw" color="#c8a35c" radius="0" />
+        <p
+          className="whitespace-nowrap text-center font-display font-semibold"
+          style={{ color: '#eef1f7', fontSize: '4.9cqw', lineHeight: 1.2, letterSpacing: '-0.01em' }}
+        >
+          Counsel that holds<br />under pressure
+        </p>
+        <Copy rows={2} color="#eef1f733" w="40cqw" h="1.1cqh" gap="1.2cqh" center />
+        <div className="flex items-center" style={{ gap: '2cqw' }}>
+          <Pill w="17cqw" h="5.2cqh" bg="#c8a35c" label="#0e1c3899" />
+          <Pill w="15cqw" h="5.2cqh" border="#eef1f733" label="#eef1f7a6" />
+        </div>
+      </div>
+
+      {/* practice areas, divided by gold rules */}
+      <div className="flex shrink-0" style={{ height: '25%', paddingInline: '4cqw', borderTop: '0.25cqw solid #ffffff14' }}>
+        {['01', '02', '03'].map((n, i) => (
+          <div
+            key={n}
+            className="flex flex-1 flex-col justify-center"
+            style={{ paddingInline: '2.4cqw', gap: '1.4cqh', borderLeft: i ? '0.25cqw solid #c8a35c3d' : undefined }}
+          >
+            <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#c8a35c', fontSize: '2.8cqw', lineHeight: 1, letterSpacing: '0.08em' }}>
+              {n}
+            </p>
+            <Bar w="62%" h="1.2cqh" color="#eef1f7a6" />
+            <Copy rows={2} color="#eef1f726" w="100%" h="0.9cqh" gap="0.9cqh" />
+          </div>
+        ))}
+      </div>
+
+      {/* the proof band */}
+      <div className="flex shrink-0 items-center justify-around" style={{ height: '20%', background: '#0a1428', borderTop: '0.25cqw solid #c8a35c3d' }}>
+        <Stat value="40+" color="#c8a35c" label="#eef1f733" size="4.6cqw" labelW="10cqw" center />
+        <Stat value="$1.2B" color="#c8a35c" label="#eef1f733" size="4.6cqw" labelW="12cqw" center />
+        <Stat value="98%" color="#c8a35c" label="#eef1f733" size="4.6cqw" labelW="9cqw" center />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Still — yoga studio (Health And Beauty). Dominant colour is warm sand `#e7ddcc`
+ * with stone ink `#3d372e` and one clay accent `#a2603f`.
+ * Composition decision: the whole card stays ONE tone. Every other light page in the
+ * library breaks into a contrasting band (AURA's green strip, ArchiForm's white
+ * footer, Serena's photo); here the only tonal event is the arch, so calm is the
+ * thing the thumbnail communicates before you read a word. Type carries it instead:
+ * the headline is 6.4cqw, the largest in the library outside the wordmark cards.
+ * The arch is the mockup's studio interior — a gradient, per NO PEOPLE, its shape
+ * held by `aspect-ratio` so it stays an arch and not a lozenge at 1600×880.
+ */
+function Yoga() {
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#e7ddcc' }}>
+      <div className="flex shrink-0 items-center justify-between" style={{ height: '10%', paddingInline: '4.5cqw' }}>
+        <Wordmark color="#3d372e" size="4cqw">Still</Wordmark>
+        <NavLinks n={4} color="#3d372e59" w="4cqw" gap="2.6cqw" />
+        <Pill w="13cqw" h="4cqh" bg="#a2603f" label="#ffffffa6" />
+      </div>
+
+      <div className="flex flex-1 items-center" style={{ paddingInline: '4.5cqw', gap: '3cqw' }}>
+        <div className="flex flex-1 flex-col" style={{ gap: '3cqh' }}>
+          <p
+            className="whitespace-nowrap font-display font-semibold"
+            style={{ color: '#3d372e', fontSize: '6.4cqw', lineHeight: 1.1, letterSpacing: '-0.03em' }}
+          >
+            Slow flow,<br />every morning.
+          </p>
+          <Copy rows={2} color="#3d372e2e" w="80%" h="1.1cqh" gap="1.2cqh" />
+          <div className="flex items-center" style={{ gap: '2cqw' }}>
+            <Pill w="17cqw" h="5.2cqh" bg="#3d372e" label="#e7ddccbf" />
+            <Bar w="8cqw" h="1.1cqh" color="#3d372e59" />
+          </div>
+        </div>
+        {/* the arch */}
+        <Photo
+          className="relative shrink-0"
+          style={{
+            height: '88%', aspectRatio: '0.62',
+            borderRadius: '50% 50% 1.2cqw 1.2cqw / 34% 34% 1.2cqw 1.2cqw',
+            background: 'linear-gradient(168deg,#efe7d8 0%,#c9c3ac 42%,#98a086 74%,#6f7861 100%)',
+          }}
+        >
+          <span className="absolute" style={{ left: '18%', top: '12%', width: '54%', height: '46%', background: 'radial-gradient(50% 50% at 50% 50%,#fff6e099 0%,#fff6e000 72%)' }} />
+        </Photo>
+      </div>
+
+      {/* the timetable — three rows, hairline-ruled, no band and no colour change */}
+      <div className="flex shrink-0 flex-col" style={{ height: '34%', paddingInline: '4.5cqw', paddingBottom: '2cqh' }}>
+        {[
+          { t: '7:00', w: '22cqw' },
+          { t: '9:30', w: '18cqw' },
+          { t: '18:00', w: '24cqw' },
+        ].map((r) => (
+          <div key={r.t} className="flex flex-1 items-center" style={{ gap: '2.4cqw', borderTop: '0.25cqw solid #3d372e26' }}>
+            <p className="shrink-0 whitespace-nowrap font-display font-semibold tabular-nums" style={{ width: '14%', color: '#3d372e', fontSize: '3cqw', lineHeight: 1 }}>
+              {r.t}
+            </p>
+            <Bar w={r.w} h="1.2cqh" color="#3d372e73" />
+            <span className="flex-1" />
+            <Bar w="6cqw" h="1cqh" color="#3d372e40" />
+            <Pill w="9cqw" h="3.6cqh" border="#3d372e33" label="#3d372e8c" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * IRONSIDE — barbershop (Health And Beauty). Dominant colour is warm charcoal
+ * `#171413`, and vermilion `#ff4d24` is the single accent — nothing else on the card
+ * carries chroma, which is the brief and also what keeps it apart from `restaurant`
+ * (burgundy + gold) and `photography` (near-black, no accent at all).
+ * Composition decision: brutal three-line capitals left, the shop's own facts in the
+ * middle, one interior panel right, and then the thing an actual barbershop site
+ * lives on — a price list.
+ * ⚠️ Three things here are the way they are because of the WIDE end of the size
+ * contract, and all three looked fine at 233px:
+ *  · The middle hours column exists because a two-column hero (type left, photo
+ *    right) left ~40% of a 1600×880 frame as empty near-black — a page with a
+ *    missing column. The fill has to be content the shop would really publish.
+ *  · The price list is TWO columns. One column put the label hard left and the price
+ *    hard right with ~1000px of leader between them: a void with two ends.
+ *  · The footer is a dark band with a vermilion RULE, not a vermilion band. Full
+ *    bleed, the accent stopped reading as a footer and started reading as a raw
+ *    slab or a progress bar; the other dark sites here all end on a darker band.
+ *    The accent survives as the rule plus one small control.
+ */
+function Barbershop() {
+  return (
+    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#171413' }}>
+      <div className="flex shrink-0 items-center justify-between" style={{ height: '10%', paddingInline: '4cqw' }}>
+        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#f3efe9', fontSize: '3.2cqw', lineHeight: 1, letterSpacing: '0.16em' }}>
+          IRONSIDE
+        </span>
+        <NavLinks n={4} color="#f3efe959" w="4cqw" gap="2.6cqw" />
+        <Pill w="11cqw" h="4cqh" bg="#ff4d24" label="#ffffffbf" />
+      </div>
+
+      {/* justify-between, and the type column is shrink-0 rather than flex-1: with a
+          flex-1 headline every pixel of slack pooled into one gap beside it, which is
+          the void again in a smaller size. Spread between three blocks it reads as
+          margin. */}
+      <div className="flex flex-1 items-center justify-between" style={{ paddingInline: '4cqw', gap: '3cqw' }}>
+        <div className="flex shrink-0 flex-col" style={{ gap: '3cqh' }}>
+          <p
+            className="whitespace-nowrap font-display font-semibold"
+            style={{ color: '#f3efe9', fontSize: '7cqw', lineHeight: 0.96, letterSpacing: '-0.03em' }}
+          >
+            SHARP<br />EVERY<br /><span style={{ color: '#ff4d24' }}>TIME</span>
+          </p>
+          <div className="flex items-center" style={{ gap: '2cqw' }}>
+            <Pill w="16cqw" h="5.2cqh" bg="#ff4d24" label="#ffffffbf" />
+            <Pill w="13cqw" h="5.2cqh" border="#f3efe926" label="#f3efe98c" />
+          </div>
+        </div>
+
+        {/* the opening hours, ruled off the headline. The divider stretches with the
+            hero, so it is `self-stretch` inside a padded wrapper rather than a
+            percentage height against an auto-height parent (which collapses) */}
+        <div className="flex shrink-0 self-stretch items-center" style={{ gap: '2.4cqw', paddingTop: '7cqh', paddingBottom: '7cqh' }}>
+          <span className="block self-stretch shrink-0" style={{ width: '0.25cqw', background: '#f3efe91f' }} />
+          <div className="flex flex-col justify-center" style={{ width: '21cqw', gap: '1.5cqh' }}>
+            <div className="flex items-center" style={{ gap: '1.2cqw' }}>
+              <span className="block shrink-0 rounded-full" style={{ width: '1.5cqw', height: '1.5cqw', background: '#ff4d24' }} />
+              <Bar w="12cqw" h="1cqh" color="#f3efe9a6" />
+            </div>
+            {[['8cqw', '5cqw'], ['6.5cqw', '5cqw'], ['7cqw', '4cqw']].map(([day, hrs], i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between"
+                style={{ paddingTop: '1.2cqh', borderTop: '0.25cqw solid #f3efe914' }}
+              >
+                <Bar w={day} h="0.9cqh" color="#f3efe973" />
+                <Bar w={hrs} h="0.9cqh" color="#f3efe94d" />
+              </div>
+            ))}
+            <Pill w="14cqw" h="4cqh" border="#f3efe926" label="#f3efe98c" />
+          </div>
+        </div>
+
+        {/* The shop interior. A PHOTO may follow the card's aspect — panels are cropped
+            in real life — so this one is sized in percentages, unlike the coffee bag or
+            the yoga arch, which are objects and need `aspect-ratio` to keep their shape.
+            Held to aspect it went narrow at 1600×880 and left a dead zone mid-hero. */}
+        <Photo
+          className="relative shrink-0"
+          style={{
+            width: '30%', height: '92%', borderRadius: '1.2cqw',
+            background: 'linear-gradient(202deg,#6b5140 0%,#3a2b22 46%,#171110 100%)',
+          }}
+        >
+          <span className="absolute" style={{ left: '14%', top: '10%', width: '46%', height: '38%', background: 'radial-gradient(50% 50% at 50% 50%,#ffd9a666 0%,#ffd9a600 74%)' }} />
+          {/* A rating badge, INSIDE the panel and legible as a badge: dark chip,
+              vermilion mark, a real number. The bare orange square that used to hang
+              off this corner read as a stray artifact rather than an accent. */}
+          <span
+            className="absolute flex items-center"
+            style={{
+              left: '8%', bottom: '8%', height: '5cqh', paddingInline: '1.2cqw', gap: '1cqw',
+              background: '#0f0d0ce6', borderRadius: '0.5cqw', boxShadow: 'inset 0 0 0 0.25cqw #f3efe91f',
+            }}
+          >
+            <span className="block shrink-0" style={{ width: '1.6cqw', height: '1.6cqw', background: '#ff4d24', transform: 'rotate(45deg)' }} />
+            <span className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#f3efe9', fontSize: '2.4cqw', lineHeight: 1 }}>
+              4.9
+            </span>
+          </span>
+        </Photo>
+      </div>
+
+      {/* the price list, two columns */}
+      <div
+        className="grid shrink-0"
+        style={{ height: '31%', paddingInline: '4cqw', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', columnGap: '7cqw' }}
+      >
+        {[
+          { w: '20cqw', p: '$35' },
+          { w: '16cqw', p: '$28' },
+          { w: '24cqw', p: '$45' },
+          { w: '18cqw', p: '$22' },
+        ].map((r) => (
+          <div key={r.p} className="flex items-center" style={{ gap: '2cqw', borderTop: '0.25cqw solid #f3efe91a' }}>
+            <Bar w={r.w} h="1.2cqh" color="#f3efe999" />
+            <span className="flex-1" style={{ height: '0.2cqw', background: '#f3efe914' }} />
+            <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#f3efe9', fontSize: '3cqw', lineHeight: 1 }}>{r.p}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* the footer: a darker band under a vermilion rule */}
+      <div
+        className="flex shrink-0 items-center justify-between"
+        style={{ height: '12%', background: '#0f0d0c', paddingInline: '4cqw', borderTop: '0.35cqw solid #ff4d24' }}
+      >
+        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#f3efe9', fontSize: '2.6cqw', lineHeight: 1, letterSpacing: '0.16em' }}>
+          IRONSIDE
+        </span>
+        <div className="flex items-center" style={{ gap: '2.6cqw' }}>
+          <NavLinks n={3} color="#f3efe940" w="5cqw" gap="2.6cqw" />
+          <Pill w="10cqw" h="3.6cqh" bg="#ff4d24" label="#2b0f06bf" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ──────────────────────────────── the export ──────────────────────────────── */
 
 const SITES: Record<ThumbId, () => JSX.Element> = {
@@ -1033,6 +1831,14 @@ const SITES: Record<ThumbId, () => JSX.Element> = {
   saas: Saas,
   restaurant: Restaurant,
   crypto: Crypto,
+  coffee: Coffee,
+  fashion: Fashion,
+  devtools: Devtools,
+  analytics: Analytics,
+  photography: Photography,
+  lawfirm: Lawfirm,
+  yoga: Yoga,
+  barbershop: Barbershop,
   synco: Synco,
 }
 
