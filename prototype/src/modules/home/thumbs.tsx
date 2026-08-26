@@ -18,13 +18,34 @@
  * vertical rhythm. No px, no rem, no Tailwind spacing utilities: any of those would freeze
  * the drawing at one size. Verified at 210×160 and 480×360.
  *
- * TWO HOMES, ONE DRAWING. Every one of these has to hold at ~233×218 in a card AND at
- * the detail preview's box, which is far wider than it is tall. Those two are not the same
- * picture scaled: type is sized in `cqw`, so a headline that eats 13% of the card's height
- * eats ~25% of a 1616×804 box. An element at an absolute `top: 28.5%` therefore agrees
- * with the headline above it at exactly ONE aspect — which is what the hand-patched
- * `28.5%, not 25` offsets in this file's history were papering over.
- * So: LAY SITES OUT IN FLOW (nav / hero / band), and let each block push the next.
+ * TWO HOMES, ONE PICTURE — AND THE ONLY THING THAT DIFFERS IS THE CROP.
+ * ⚠️ MEASURED IN THE BUILT APP, in the window the boards are drawn at (1656×1196): the
+ * detail preview lays this drawing out at **1616 × 1510** and SCROLLS it — the visible
+ * viewport is 1616 × 1100, `scrollHeight` 1510, and a shorter window (1656×900) changes
+ * only how much of it you see, never the box. 1510 is 1616 ÷ 1.0702, i.e. THE CARD'S OWN
+ * ASPECT (233.333 / 218 = 1.0688) blown up to full width. There is no 2:1 box, and the
+ * `1616×804` this file used to name is a box the app never renders.
+ * The consequence runs through everything below. Since both homes share an aspect to
+ * within 0.13%, cq units make the layout scale-invariant: the drawing at 1616×1510 is the
+ * card at 233×218 times 6.94, and a rect-by-rect check finds no element off a pure 6.94×
+ * scale by more than 0.4% of the box (only the 27cqw `Synco` wordmark deviates, 89px on a
+ * 1300px line box, from font-metric rounding). So THE CARD AND THE STAGE CANNOT BE TUNED
+ * INDEPENDENTLY: every composition change is a change to both, and "keep the card
+ * byte-identical" is only achievable while a change is a pure refactor.
+ * What DOES differ is the fold. The card shows all 218px; the stage shows the top 72.8%
+ * and scrolls the rest. That is the one real design question in this file — which sections
+ * fall below 1100px — and the boards answer it: 28637:42088 draws the AURA page in this
+ * stage and the green partner band's title and logos are INSIDE the crop, so the band
+ * belongs at ~56–60% of the page, not at 70%. The board's own card node (28626:607) agrees
+ * from the other side: a 233.333×218 card frame holding a 233.333×235.79 page image, i.e.
+ * the same picture with its last 7.5% cropped, band at 60.6% of what you see.
+ * A note for the next pass: capping display type with a height term — `min(10.8cqw,
+ * 13cqh)` — was proposed when this box was thought to be 2:1. At an aspect of 1.07 the
+ * height term never engages: 13cqh = 12.15cqw, and it only wins below H/W = 0.8308, i.e.
+ * on a box wider than 1.204:1. Dropped; do not re-add it without a box that shape.
+ * LAY SITES OUT IN FLOW anyway (nav / hero / band), and let each block push the next: it
+ * is what makes the vertical rhythm editable in one place, and it is what keeps a drawing
+ * honest if the card's aspect is ever changed.
  *   · Structural insets keep their old numbers by switching `top: 14%` for a `cqh` margin —
  *     `cqh` is 1% of the CONTAINER's height at any nesting depth, so the card lands on the
  *     same pixel while the block below is free to move.
@@ -38,10 +59,11 @@
  *   · An object whose SHAPE matters (a jar, an arch, a plate, a phone) gets `aspect-ratio`
  *     with ONE percentage dimension. Sized in both axes it squashes; sized off `cqw` alone
  *     it outgrows a short box — e.g. crypto's orb, 15cqw, was 242px inside a 217px band.
- *   · Six of these pages are taller than a 1616×804 box even in flow. That is the fold:
- *     the sections the boards already describe as "cut by the card edge" simply show less
- *     of themselves. It is not a layout error, and it is a design question — see the
- *     handoff note in the session log.
+ *   · Sections below ~72.8% of the page are below the stage's fold. That is not a layout
+ *     error — the boards' own page images are 1.5–1.9× taller than the frames they sit in,
+ *     so a template preview IS a page taller than its window. But it IS a design question,
+ *     and the answer is per site: what a person must see before scrolling has to be inside
+ *     the top 1100px. AURA's partner band was outside it and is now inside.
  * ⚠️ Two Chromium facts, both learnt the expensive way, both about keeping the CARD
  * byte-identical while the markup changes underneath it:
  *   · A `transform` on an element re-rasterises its gradient/blur on its own pixel grid.
@@ -296,8 +318,15 @@ function Payments() {
 function Homeware() {
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#f0ebdf' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: '9cqh', paddingInline: '4.5cqw' }}>
+      <div className="relative flex shrink-0 items-center justify-between" style={{ height: '9cqh', paddingInline: '4.5cqw' }}>
         <Wordmark color="#22331f" size="4.2cqw">AURA</Wordmark>
+        {/* Home · Shop · Products · Benefits · Ingredients · Packages. Centred on the PAGE,
+            not between the wordmark and the pill: `justify-between` would push the cluster
+            38px right of centre because the pill is wider than the wordmark. 6×4 + 5×2.4 =
+            36cqw wide, so (100 − 36) / 2 = 32cqw centres it exactly, with no transform. */}
+        <div className="absolute inset-y-0 flex items-center" style={{ left: '32cqw' }}>
+          <NavLinks n={6} color="#22331f59" w="4cqw" gap="2.4cqw" />
+        </div>
         <Pill w="12cqw" h="4.2cqh" bg="#3f6b3a" label="#ffffff8c" />
       </div>
 
@@ -308,32 +337,45 @@ function Homeware() {
         Fuel Sustainable Growth. Power<br />Exceptional Performance.
       </p>
 
-      {/* THE PRODUCT BAND. Everything in it used to hang off the card at absolute tops
-          (32 / 28 / 33 / 24 %), under a centred headline whose two `cqw` lines take 12.8%
-          of the card's height but 27% of a 1616×804 box — so at the wide end the headline
-          printed straight through the jar and through VITAMINS. The band is a flow item
-          now: it starts wherever the headline ends. Its own height stays 45.17cqh (the
-          98.5px it had on the card) rather than taking the slack, because its contents are
-          type and a product shot that grow with `cqw` too; the sections below it drop below
-          the fold instead, the way a real page in a short window does.
-          The four blocks stay absolute INSIDE the band — the dots overlap the headline's
-          line, and the jar has to sit at a measured 38cqw, not at a flex position. */}
-      <div className="relative shrink-0" style={{ height: '45.1723cqh' }}>
+      {/* THE PRODUCT BAND — and the one number on this page that decides what a person
+          sees. THE BOX THE APP RENDERS IS THE CARD'S OWN ASPECT: 1616×1510 against the
+          card's 233×218 is 1.0702 against 1.0688, so this drawing is ONE composition at
+          two scales (6.94×) — see the aspect note at the top of the file. The only
+          asymmetry between its two homes is the CROP: the card shows all 218px, the detail
+          stage shows the top 1100 of 1510 and scrolls the rest.
+          The board (28637:42088) draws this page in that stage, and its green band's title
+          and logo row are INSIDE the crop — the band starts 55.7% down the page. At 45.17
+          cqh this band pushed the green one to 70%, i.e. 43px of green under a 1100px fold:
+          the jar filled the stage and the social proof the page is built on was gone. At
+          35.2cqh the green band lands at 60% and the crop ends on its logos, as drawn.
+          The four blocks stay absolute INSIDE the band: the avatars hang off the headline's
+          baseline and the jar is centred on the page, not on a flex position. */}
+      <div className="relative shrink-0" style={{ height: '35.2cqh' }}>
         {/* left column: "VITAMINS" + copy + CTA */}
         <div className="absolute" style={{ left: '4.5cqw', top: '7.1723cqh', width: '23cqw' }}>
-          <p className="font-display font-semibold" style={{ color: '#22331f', fontSize: '4cqw', letterSpacing: '0.02em' }}>
+          {/* line-height explicit: left at `normal` the display face resolves near 1.5,
+              which put 26px of air under this word at the size the app renders */}
+          <p className="font-display font-semibold" style={{ color: '#22331f', fontSize: '4cqw', lineHeight: 1.1, letterSpacing: '0.02em' }}>
             VITAMINS
           </p>
           <div style={{ marginTop: '2.4cqh' }}><Copy rows={3} color="#22331f33" w="100%" h="1.1cqh" gap="1.3cqh" /></div>
           <div style={{ marginTop: '3cqh' }}><Pill w="14cqw" h="4.4cqh" bg="#3f6b3a" label="#ffffff8c" /></div>
         </div>
 
-        {/* The hero jar — a product, so it can be drawn: neck, body, label. Its height is
-            90.78% of the band and its width follows by `aspect-ratio`: at 22cqw × 41cqh it
-            came out almost square at the wide end, which reads as a tin, not a jar. */}
-        <div className="absolute" style={{ left: '38cqw', top: '3.1723cqh', height: '90.78%', aspectRatio: '0.57345' }}>
-          {/* lid */}
-          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: 0, width: '46%', height: '9%', background: '#b9cbab', borderRadius: '0.6cqw 0.6cqw 0.2cqw 0.2cqw' }} />
+        {/* The hero jar — a product, so it can be drawn: lid, body, label. Sized off the
+            board: 359 × 519 in a 1614 × 1631 page, i.e. 22.2% of the width and 31.8% of the
+            height. Our page is the same width and 121px shorter, so holding BOTH of those
+            fractions (88.5% of a 35.2cqh band = 31.2% of the page; × 0.7481 = 21.8cqw)
+            makes the jar 8% squatter than the photograph — still a wide-mouth jar, and it
+            is the placement, not the 8%, that the eye reads. It was 90.78% of a 45.17cqh
+            band before: 41% of the page, half the stage, and everything else pushed out.
+            The wrapper exists only to centre it: `translateX(-50%)` on a box holding a
+            gradient re-rasterises that gradient on a half-pixel grid (see the header). */}
+        <div className="absolute inset-x-0 flex justify-center" style={{ top: '3.1723cqh', height: '88.5%' }}>
+        <div className="relative h-full" style={{ aspectRatio: '0.7481' }}>
+          {/* lid — 78% of the jar's width, as on the board: at 46% the jar read as a
+              bottle neck, and a supplement jar is wide-mouthed */}
+          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: 0, width: '78%', height: '9%', background: '#b9cbab', borderRadius: '0.6cqw 0.6cqw 0.2cqw 0.2cqw' }} />
           {/* glass body — the sheen lives in the gradient so the silhouette stays clean */}
           <span
             className="absolute inset-x-0"
@@ -344,19 +386,35 @@ function Homeware() {
                 'linear-gradient(168deg,#e6eee0 0%,#c2d6b4 34%,#9cbb89 74%,#7b9d6b 100%)',
             }}
           />
-          {/* label */}
-          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '42%', width: '74%', height: '27%', background: '#ffffff66', borderRadius: '0.7cqw' }} />
+          {/* label — the board sets the wordmark across the jar's lower half (56–77% of
+              its height), not across its middle */}
+          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '52%', width: '64%', height: '22%', background: '#ffffff66', borderRadius: '0.7cqw' }} />
+        </div>
         </div>
 
-        {/* the small product card the mockup pins near the right edge */}
-        <div className="absolute bg-white" style={{ right: '7cqw', top: '8.1769cqh', width: '13cqw', padding: '1.3cqw', borderRadius: '1.2cqw' }}>
+        {/* The small product card the mockup pins near the right edge. Top is the board's
+            own 34.0% of the page (10.6cqh into a band that starts at 24.8%) — at 8.18cqh
+            it sat under the review line above it and the two collided at every size. */}
+        <div className="absolute bg-white" style={{ right: '7cqw', top: '10.6cqh', width: '13cqw', padding: '1.3cqw', borderRadius: '1.2cqw' }}>
           <span className="block" style={{ height: '8cqh', background: 'linear-gradient(150deg,#dfe8d6,#9fbc8e)', borderRadius: '0.8cqw' }} />
           <div style={{ marginTop: '1.3cqh' }}><Copy rows={2} color="#22331f26" w="100%" h="0.85cqh" gap="0.8cqh" /></div>
         </div>
-        <div className="absolute flex flex-col" style={{ right: '2.5cqw', top: '-0.8349cqh', gap: '1.2cqh' }}>
-          {[0, 1, 2, 3].map((i) => (
-            <span key={i} className="block rounded-full" style={{ width: '2.2cqw', height: '2.2cqw', background: '#22331f' }} />
-          ))}
+        {/* Social proof, where the board puts it: four faces in a ROW at the hero's
+            top-right with the review count under them. On the board the row spans
+            1347–1534 of 1614 (right inset 5cqw), each face 45px across (2.8cqw), and it
+            sits 2.8% of the page below the headline — so it hangs off the headline here
+            too, at 2.8cqh into the band. What stood here was the same four circles in a
+            COLUMN: 5px of noise on the card, and at the size the app renders, four stray
+            black discs against the right edge at mid-height, reading as an artefact. */}
+        <div className="absolute flex flex-col items-end" style={{ right: '5cqw', top: '2.8cqh', gap: '1.2cqh' }}>
+          <Avatars size="2.8cqw" ring="#f0ebdf" tones={['#5c7350', '#22331f', '#7d8f6e', '#3f6b3a']} />
+          {/* "24.5k+  Reviews" — two words, so two bars, and the second is the link */}
+          <div className="flex items-end" style={{ gap: '1.2cqw' }}>
+            <Bar w="3.6cqw" h="1.1cqh" color="#22331f59" />
+            <div className="flex" style={{ borderBottom: '0.2cqw solid #22331f59', paddingBottom: '0.4cqh' }}>
+              <Bar w="4.2cqw" h="1.1cqh" color="#22331f99" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -368,10 +426,11 @@ function Homeware() {
         </div>
       </div>
 
-      {/* The white section below, cut off by the card edge. Height is its own type plus
-          the 1.4cqh the 14%-tall band had spare on the card — fixed, its second line fell
-          out of the bottom at the wide end. */}
-      <div className="relative flex shrink-0 items-center bg-white" style={{ paddingBlock: '1.3991cqh', paddingInline: '4.5cqw', gap: '4cqw' }}>
+      {/* The white section below — the one the fold cuts, and therefore the right place
+          for the page's slack: `flex-1`, so shortening the product band lands its 10cqh
+          here instead of leaving a cream strip along the card's bottom edge. The padding
+          stays as a floor for the day the slack collapses. */}
+      <div className="relative flex flex-1 items-center bg-white" style={{ paddingBlock: '1.3991cqh', paddingInline: '4.5cqw', gap: '4cqw' }}>
         <Photo style={{ width: '24cqw', aspectRatio: '2.40943', borderRadius: '1.2cqw', background: 'linear-gradient(150deg,#d9e2ea,#8f9aa4)' }} />
         <p className="whitespace-nowrap font-display font-semibold" style={{ color: '#22331f', fontSize: '4.6cqw', lineHeight: 1.14, letterSpacing: '-0.02em' }}>
           Pure Power. Zero<br />Compromise.
@@ -791,11 +850,24 @@ function Agency() {
       {/* The rail and the ribbon stay absolute children of the CARD, not of the hero
           below: they are the page's background, their percentages are percentages of the
           card, and leaving them alone is also what keeps the card pixel-identical. */}
-      {/* the service rail — a strip barely lighter than the page; its labels are bars */}
+      {/* The service rail — a strip barely lighter than the page. Each item is a LABEL
+          OVER A RULE, which is how the board draws it (28626:621: the rules span the rail
+          and the labels sit just above them). Four bare bars stood here before, and at the
+          size the app renders — 1616 × 1510, this drawing's real box — four 10px dashes
+          165px apart in a 307px column read as debris, not as a list; the rule is the whole
+          difference. Their tops also stopped at 50% of the page, leaving the rail's bottom
+          third bare: 34/52/70/88% of the rail spaces them by the board's own 18% and takes
+          the list down to the rail's foot, all four inside the 1100px fold. */}
       <div className="absolute" style={{ left: '81%', right: 0, top: 0, height: '72%', background: '#151517' }}>
         <span className="absolute" style={{ left: '16%', right: '14%', top: '4.5%', height: '8%', background: '#3d3d42', borderRadius: '0.7cqw' }} />
-        {['24%', '39%', '54%', '69%'].map((top) => (
-          <span key={top} className="absolute" style={{ right: '14%', top, width: '8cqw', height: '1cqh', background: '#ffffff4d', borderRadius: '99em' }} />
+        {['34%', '52%', '70%', '88%'].map((top) => (
+          <div
+            key={top}
+            className="absolute flex justify-end"
+            style={{ left: '10%', right: '14%', top, paddingBottom: '1.5cqh', borderBottom: '0.15cqh solid #ffffff1f' }}
+          >
+            <Bar w="8cqw" h="1cqh" color="#ffffff4d" />
+          </div>
         ))}
       </div>
 
