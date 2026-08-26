@@ -331,14 +331,21 @@ export const IconGlobe = ({ size = 20, className }: IconProps) => (
 
 /**
  * The `Preview` pill's glyph on a template card's hover (ours — no board draws
- * this affordance). Two diagonal arrows breaking out of opposite corners: the
- * universal "make this bigger", which is literally what the click does. Drawn on
- * the 20-box like its neighbours, 1.8px strokes.
+ * this affordance): four corner brackets, the video-player "full screen" mark.
+ *
+ * ⚠️ IT WAS TWO DIAGONAL ARROWS AND THEY READ AS AN ARROW (manager's review,
+ * 26.08.2026 night — confirmed on a 3× crop of the real pill, `wp3/glyph-a-*`).
+ * At the shipped 14px the two arrowheads fuse into ONE double-headed arrow, which
+ * is the "resize" mark, and beside the word `Preview` an arrow says "go
+ * somewhere" rather than "make this fill the screen". The brackets carry no
+ * arrowhead at all, so nothing about them can be read as direction; they are
+ * also what every video player on the market puts on this exact action. Arms of
+ * 5 on the 20-box (≈3.5px at 14), 1.8px strokes like every other glyph here.
  */
-export const IconExpand = ({ size = 20, className }: IconProps) => (
+export const IconFullscreen = ({ size = 20, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
     <path
-      d="M11.5 3.5h5v5M8.5 16.5h-5v-5M16.5 3.5 11 9M3.5 16.5 9 11"
+      d="M3.5 8.5V3.5h5M11.5 3.5h5v5M16.5 11.5v5h-5M8.5 16.5h-5v-5"
       stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
     />
   </svg>

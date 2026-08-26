@@ -1993,12 +1993,33 @@
    *     distribution. `to bottom right` is exact here (a near-square box puts the
    *     two off-corners at 50% of the run, which is what the canon's button
    *     family draws) — the pixel-diagonal form belongs to the tabs track alone.
-   *  3. A FROSTED `Preview` PILL FADES IN AT THE BOTTOM-LEFT, on the family's
-   *     `.liquid-glass--pill` recipe (Black/700 + blur 16 + the 20 → 5 → 15% rim).
+   *  3. A FROSTED `Preview` PILL FADES IN, on the family's `.liquid-glass--pill`
+   *     recipe (Black/700 + blur 16 + the 20 → 5 → 15% rim).
    *     ⚠️ The thumbnail clips with `overflow`, which is SAFE for
    *     `backdrop-filter`; a MASK anywhere above it would kill the blur silently
    *     (the prompt-chip lesson, `design-system.md` §5), and a radius over ~16px
    *     makes the artefact worse rather than softer. 16 it is.
+   *
+   * ⚠️ WHERE THE PILL SITS IS AN OPEN DESIGN CALL — two variants, one switch
+   * (`PEEK_VARIANT` in Dock.tsx), frames in `scratchpad/wp3/A-*` and `B-*` for the
+   * designer to choose from. The first cut had the pill in the corner with NO
+   * ground of its own, and on a light drawing it sat straight on the site's own
+   * copy and cut it mid-word: a sticker on the screenshot rather than a layer over
+   * it (manager's review of `02-picker-card-hover.png`).
+   *
+   *   · `peek-corner` — bottom-left, over a short bottom VEIL: the designer's own
+   *     device, borrowed rather than reinvented. He introduced exactly this plate
+   *     for the caption/`+` collision («плашка, которая выглядит как тень и не даёт
+   *     тексту лезть в кнопку»), so the veil is the same recipe — a plate of the
+   *     GROUND colour through `--card-ground`, ramping to transparent — turned 90°
+   *     and given an alpha cap, because this one lies over a PICTURE and an opaque
+   *     third of the drawing would read as a banner. Numbers below.
+   *   · `peek-centre` — the gallery convention: no veil, the pill as the
+   *     thumbnail's focal point.
+   *
+   * The veil stays MOUNTED in both variants (opacity 0, nothing painted) so one
+   * build can be filmed both ways; when the designer picks, the loser's rules and
+   * the switch go.
    *
    * TIMING — house ramp, out faster than in, and the pill one beat behind the
    * zoom (overlay rule 3, "the contents lag the container"):
@@ -2043,18 +2064,67 @@
     transition: opacity 140ms cubic-bezier(0.4, 0, 1, 1);
     pointer-events: none;
   }
+  /*
+   * THE VEIL (variant `peek-corner`) — the designer's caption plate, turned 90°.
+   *
+   * Same construction as `.home-card-scrim`: a plate of the GROUND colour ramping
+   * to `transparent`, inheriting `--card-ground` so it is the page's black in the
+   * dock (#09090b) and the sheet's in the picker (#18181b) — one recipe, not two.
+   * Two departures, both because this plate lies over a PICTURE rather than over
+   * the page's own surface:
+   *
+   *  1. ITS ALPHA IS CAPPED. The caption plate is fully opaque where it covers the
+   *     `+`, because there it IS the page continuing. Opaque here would delete the
+   *     bottom third of the drawing and read as a banner, so the ramp tops out at
+   *     84% and the pill's own band sits on ~60%. MEASURED on the busiest crops in
+   *     the library (see `design-system.md` §5): the label holds 8.4 : 1 on cream
+   *     AURA and 12.5 : 1 on near-black KORE, and the detail around the pill
+   *     (std-dev of luminance in its band) drops by 62% on AURA — which is the
+   *     mechanism that stops it reading as a sticker.
+   *  2. IT IS 88 TALL, NOT A THIRD (72). The pill's box is 12…44 from the bottom
+   *     edge, so at 88 the pill's top lands at exactly 50% of the veil and the
+   *     whole upper half is falloff. At 72 the ramp above the pill is 28px and the
+   *     veil reads as a bar with an edge; the falloff IS the shadow.
+   *
+   * `to top` with three stops rather than two: a single linear ramp put its
+   * half-strength point at 44px — right across the pill — so the pill sat visibly
+   * inside a gradient. Pushing 60% down to the pill's own band leaves the pill on
+   * an even wash and spends the gradient above it.
+   */
+  .home-thumb-veil {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 88px;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--card-ground, var(--gray-950)) 84%, transparent) 0%,
+      color-mix(in srgb, var(--card-ground, var(--gray-950)) 60%, transparent) 50%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity 140ms cubic-bezier(0.4, 0, 1, 1);
+    pointer-events: none;
+  }
+  /* The centred variant has no ground of its own by design — the rule below is
+     what keeps one build filmable both ways. */
+  .peek-centre .home-thumb-veil { display: none; }
+
   /* 32 tall = the design system's Small (the only legal sizes are 32/40/48 —
      the designer's own rule, 26.08.2026), radius 999 like the rest of the pill
-     family, 12px in from the thumbnail's bottom-left corner. Label PN Semibold
-     13 in full white rather than the family's 14 at 80%: it sits on a
-     PHOTOGRAPH, not on flat chrome, and needs the extra weight to survive a
-     busy crop. It is `aria-hidden` and deaf to the pointer — the card's own
-     stretched button is the action, and its accessible name already says
-     "Open …"; a second control here would put two names on one gesture. */
+     family. Label PN Semibold 13 in full white rather than the family's 14 at
+     80%: it sits on a PHOTOGRAPH, not on flat chrome, and needs the extra weight
+     to survive a busy crop. It is `aria-hidden` and deaf to the pointer — the
+     card's own stretched button is the action, and its accessible name already
+     says "Open …"; a second control here would put two names on one gesture.
+     WHERE it sits is the open call: `.peek-corner` / `.peek-centre` below.
+     ⚠️ The rise is a VARIABLE, not a hard-coded translate, because the centred
+     variant's transform also carries its centring: one property, two jobs, and
+     reduced motion has to drop the rise WITHOUT dropping the centring. */
   .home-thumb-peek {
+    --peek-rise: 4px;
     position: absolute;
-    left: 12px;
-    bottom: 12px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -2070,11 +2140,20 @@
     line-height: 1;
     white-space: nowrap;
     opacity: 0;
-    transform: translateY(4px);
     transition:
       opacity 140ms cubic-bezier(0.4, 0, 1, 1),
       transform 140ms cubic-bezier(0.4, 0, 1, 1);
     pointer-events: none;
+  }
+  .peek-corner .home-thumb-peek {
+    left: 12px;
+    bottom: 12px;
+    transform: translateY(var(--peek-rise));
+  }
+  .peek-centre .home-thumb-peek {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, calc(-50% + var(--peek-rise)));
   }
   /* the pill's own gradient rim — `.liquid-glass--pill`'s stops, drawn through
      the same ring mask so it never owns layout */
@@ -2093,9 +2172,12 @@
   }
 
   /* ---- the hot state. Focus-within is unconditional (keyboard parity); the
-     pointer half is gated on a real hovering device. ---- */
+     pointer half is gated on a real hovering device. The veil rides the pill's
+     own timing minus the beat: the ground has to be there BEFORE the thing that
+     stands on it, never after. ---- */
   .home-card-face:focus-within .home-thumb-zoom,
   .home-card-face:focus-within .home-thumb-rim,
+  .home-card-face:focus-within .home-thumb-veil,
   .home-card-face:focus-within .home-thumb-peek {
     transition-duration: var(--card-hover-dur, var(--dur-fast));
     transition-timing-function: var(--ease-std);
@@ -2105,15 +2187,17 @@
     transition-duration: var(--card-hover-dur, 240ms);
   }
   .home-card-face:focus-within .home-thumb-rim { opacity: 1; }
+  .home-card-face:focus-within .home-thumb-veil { opacity: 1; }
   .home-card-face:focus-within .home-thumb-peek {
+    --peek-rise: 0px;
     opacity: 1;
-    transform: translateY(0);
     transition-delay: var(--card-hover-dur, 60ms);
   }
 
   @media (hover: hover) {
     .home-card-face:hover .home-thumb-zoom,
     .home-card-face:hover .home-thumb-rim,
+    .home-card-face:hover .home-thumb-veil,
     .home-card-face:hover .home-thumb-peek {
       transition-duration: var(--card-hover-dur, var(--dur-fast));
       transition-timing-function: var(--ease-std);
@@ -2123,9 +2207,10 @@
       transition-duration: var(--card-hover-dur, 240ms);
     }
     .home-card-face:hover .home-thumb-rim { opacity: 1; }
+    .home-card-face:hover .home-thumb-veil { opacity: 1; }
     .home-card-face:hover .home-thumb-peek {
+      --peek-rise: 0px;
       opacity: 1;
-      transform: translateY(0);
       transition-delay: var(--card-hover-dur, 60ms);
     }
   }
@@ -2138,10 +2223,14 @@
    * pill JUMPING 4px up: a hop is not less motion than a slide. So under the
    * setting the picture does not zoom and the pill does not rise — they only
    * appear, which is what the setting is actually asking for.
+   * ⚠️ And it is the RISE that has to go, not the transform: the centred variant
+   * carries its centring in the same property, so `transform: none` here would
+   * park that pill in the thumbnail's top-left corner. Zeroing `--peek-rise` is
+   * the only form of this rule that survives both variants.
    */
   @media (prefers-reduced-motion: reduce) {
     .home-card-face .home-thumb-zoom { transform: none !important; }
-    .home-card-face .home-thumb-peek { transform: none !important; }
+    .home-card-face .home-thumb-peek { --peek-rise: 0px; }
   }
 
   /*
@@ -2350,11 +2439,14 @@
    * chip row's bottom edge gains a 1px hairline. Nothing else changes: same
    * copy, same colours, same chips, same centring.
    *
-   * Every number here is a PADDING, i.e. layout — which is exactly why the
-   * class pair is all there is, and why it flips in ONE commit with the moves
-   * covered by transforms (`useHeadCompact` in TemplatePicker.tsx, spring
-   * `HEADER_COMPACT`). A scroll handler is the last place in this codebase that
-   * may animate a padding.
+   * ⚠️ ONLY THE REST STATE IS LAYOUT HERE (26.08.2026 night). The compact numbers
+   * used to be a second set of paddings, swapped in one commit with the moves
+   * covered by transforms — and that snap moved the grid 69px the reader never
+   * asked for, which is the jerk the designer reported. Now the paddings below are
+   * the rest state and nothing else, and the 69px of difference is carried as
+   * transforms by a RAMP tied to the scroll offset (`useHeadRamp` in
+   * TemplatePicker.tsx). A scroll handler is the last place in this codebase that
+   * may animate a padding — and now it does not animate one at all.
    *
    * The heading is cap-trimmed in Figma — a 34px box for 48px type, 22 for 32 —
    * and the whole rhythm is measured to the CAP, not to the em box.
@@ -2376,6 +2468,13 @@
     text-box-edge: cap alphabetic;
   }
 
+  /*
+   * THE HEADER IS AN OVERLAY (26.08.2026 night — the designer's scroll jerk).
+   * Its box is the REST height in both states and never changes, so the scroller
+   * underneath never resizes and the grid can only move with the scroll; what
+   * reads as 146 is the plate's `scaleY`. Positioning and the deaf pointer live
+   * on the element (TemplatePicker.tsx) — the law is in the RAMP note there.
+   */
   .tplpick-head {
     position: relative;
     /* Above the grid, explicitly: the cards are `position: relative` too, so
@@ -2407,9 +2506,23 @@
     background: var(--gray-900);
     transform-origin: 50% 0;
     pointer-events: none;
+    /*
+     * ⚠️ PERMANENTLY PROMOTED, and it is the one place in this file where that is
+     * bought with a measurement rather than a habit. As an overlay the plate now
+     * sits over a grid that MOVES on every scroll frame, and un-promoted it was
+     * re-rasterised against it: 60 frames of deep scrolling ran 37.9/38.7/39.1 fps
+     * with it in the flow and 41.1/43.5/44.1 with `will-change: transform` — the
+     * same as removing the plate (41.6/42.2/43.9) or the whole header
+     * (41.8/41.7/43) from the page. One opaque box in its own layer, whose
+     * transform IS the ramp. The other five parts keep the dynamic toggle: a
+     * permanent layer for two texts and a chip row would be paid for at rest.
+     */
+    will-change: transform;
   }
+  /* ONE layout, the rest state's: 57 above the cap and 40 below (28626:540).
+     The compact pair (40 / 4) is not a second set of paddings any more — the
+     ramp carries the 17px difference as a transform, so no layout ever moves. */
   .tplpick-head-title { padding-top: 57px; padding-bottom: 40px; }
-  .tplpick-head--compact .tplpick-head-title { padding-top: 40px; padding-bottom: 4px; }
 
   /*
    * ONE HEADING, TWO INKS — and they are superimposed at every frame, not
@@ -2444,14 +2557,13 @@
   }
   .tplpick-title-ink--lg { font-size: 48px; }
   .tplpick-title-ink--sm { font-size: 32px; opacity: 0; }
-  .tplpick-head--compact .tplpick-title-ink--lg { opacity: 0; }
-  .tplpick-head--compact .tplpick-title-ink--sm { opacity: 1; }
   /* `We'll remix it.` — Neutral Alpha/600, both boards. The leading space stays
      outside it, unstyled, as drawn. */
   .tplpick-title-tail { color: var(--white-560); }
 
+  /* Likewise: the rest state's 16 / 32. The compact 16 is the ramp's −53 on the
+     row plus the hairline's own −16, not a padding swap. */
   .tplpick-head-chips { position: relative; padding-top: 16px; padding-bottom: 32px; }
-  .tplpick-head--compact .tplpick-head-chips { padding-bottom: 16px; }
 
   /*
    * THE DIVIDER — 1px `Neutral Alpha/100` (#ffffff14) across the content
@@ -2475,7 +2587,6 @@
     opacity: 0;
     pointer-events: none;
   }
-  .tplpick-head--compact .tplpick-head-rule { opacity: 1; }
 
 
   /*

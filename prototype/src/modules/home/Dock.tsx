@@ -34,7 +34,7 @@ import {
   type Template, type TemplateCategoryId,
 } from '@/data/templates'
 import { ScrollArea } from '@/ui/ScrollArea'
-import { IconExpand, IconMoreVertical, IconPlus } from '@/ui/icons'
+import { IconFullscreen, IconMoreVertical, IconPlus } from '@/ui/icons'
 import { Thumb } from './thumbs'
 import { rectOf } from './attachment'
 
@@ -43,6 +43,25 @@ const SLOTS = 6
 
 /** No animation at all — see `instant` on TemplateCard. */
 const NO_TIME = { duration: 0 } as const
+
+/**
+ * WHERE THE HOVER'S `Preview` PILL SITS — an open design call, two variants, one
+ * switch (manager's review, 26.08.2026 night). The first cut put the pill in the
+ * corner with no ground of its own, and on a light drawing it sat straight on the
+ * site's own copy and cut it mid-word: a sticker on the screenshot rather than a
+ * layer over it.
+ *
+ *   `corner` — bottom-left over a short bottom VEIL, which is the designer's own
+ *              caption plate turned 90° (same recipe, same `--card-ground` rule)
+ *   `centre` — the gallery convention: no veil, the pill as the focal point
+ *
+ * Frames for the choice: `scratchpad/wp3/A-*` (corner) and `B-*` (centre). Both
+ * class names are written out as literals below because Tailwind tree-shakes
+ * `@layer` by the literals it can see, and the veil stays mounted in both so one
+ * build can be filmed both ways. When the designer picks, the loser's rules, this
+ * constant and the ternary all go.
+ */
+const PEEK_VARIANT: 'corner' | 'centre' = 'corner'
 
 /**
  * Which conveyor the tab switch's content rides — the house one, or the same
@@ -811,7 +830,7 @@ export function TemplateCard({
           card). Unset everywhere else. */}
       <div
         ref={thumb}
-        className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px]`}
+        className={`${thumbClassName} ${PEEK_VARIANT === 'corner' ? 'peek-corner' : 'peek-centre'} relative w-full overflow-hidden rounded-[8px]`}
       >
         {/* the drawing, on its own layer so the 1.03 lean cannot touch layout */}
         <div className="home-thumb-zoom">
@@ -819,13 +838,18 @@ export function TemplateCard({
         </div>
         {/* the glass edge (gradient rim, opacity only) */}
         <span aria-hidden className="home-thumb-rim" />
-        {/* bottom-LEFT = look. The top-right corner belongs to the picker's blue
-            `+` = take, so the two affordances never share a pixel. Deaf and
-            `aria-hidden`: the card's stretched button is the action and already
-            carries the name. */}
+        {/* the pill's ground in the `corner` variant — the designer's caption
+            plate, turned 90°; inert in `centre` (see PEEK_VARIANT) */}
+        <span aria-hidden className="home-thumb-veil" />
+        {/* LOOK. In `corner` it sits bottom-left, so it can never share a pixel
+            with the picker's blue `+` = TAKE (which lives in the meta row's
+            top-right); in `centre` it is the thumbnail's focal point — still a
+            different BOX from the `+`, so still no collision at any card width.
+            Deaf and `aria-hidden`: the card's stretched button is the action and
+            already carries the name. */}
         <span aria-hidden className="home-thumb-peek">
           {t({ en: 'Preview', uk: 'Перегляд' })}
-          <IconExpand size={14} />
+          <IconFullscreen size={14} />
         </span>
       </div>
 

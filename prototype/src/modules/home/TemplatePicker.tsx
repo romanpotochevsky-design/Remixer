@@ -37,11 +37,14 @@
  *
  * …AND WHEN IT DOES SCROLL, THE HEADER COMPACTS — board 28734:65603, drawn
  * 26.08.2026: 215 → 146, the heading 48 → 32 with its cap-top 57 → 40, the chip
- * row 131 → 78, a 1px hairline lit under the chips, and the grid following the
- * header's foot up the same 69. The law, the trigger and every measurement live
- * in `design-system.md` §5 «Шапка, которая сжимается при скролле»; the geometry
- * is spec §14; the machinery is `useHeadCompact` below. The same read found the
- * REST board edited too (48px, two-tone, a trailing period at last) — spec
+ * row 131 → 78, a 1px hairline lit under the chips. ⚠️ Since 26.08.2026 (night)
+ * that is a RAMP driven straight by the scroll offset, not a snap plus a spring:
+ * the snap moved the grid 69px the reader never asked for and the designer filmed
+ * it as «список дергается резко». The law, the arithmetic that ruled out
+ * absorbing the jump, and the slip numbers for four input methods live in
+ * `design-system.md` §5 «Шапка, которая сжимается при скролле»; the geometry is
+ * spec §14; the machinery is `useHeadRamp` below. The same read found the REST
+ * board edited too (48px, two-tone, a trailing period at last) — spec
  * §14.0/§14.1, and the reason §3 above is now history.
  *
  * MOTION (nothing is drawn — spec §9; house language from motion.ts): the
@@ -175,7 +178,7 @@
  * Everything else in both directions is transform/opacity.
  */
 import { AnimatePresence, animate, motion, useMotionValue, usePresence, useReducedMotion, useTransform, type Variants } from 'motion/react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import {
@@ -185,7 +188,7 @@ import {
 import { startBuild } from '@/modules/chat/send'
 import { ScrollArea, type ScrollMetrics } from '@/ui/ScrollArea'
 import { IconArrowLeft, IconClose, IconPlus } from '@/ui/icons'
-import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, gridSwapBehind, HEADER_COMPACT, SPRING_SOFT } from '@/ui/motion'
+import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, gridSwapBehind, SPRING_SOFT } from '@/ui/motion'
 import { CategoryChips, TemplateCard } from './Dock'
 import { Thumb } from './thumbs'
 import { rectOf } from './attachment'
@@ -268,7 +271,9 @@ const D_CHIPS = 53
 /** The chip row's own bottom padding, 32 → 16 — the rule's travel ON TOP of the
  *  row's, which adds up to the 69 of the header's bottom edge. */
 const D_RULE = 16
-/** The header's bottom edge, 215 → 146 — and with it the grid's top. */
+/** The header's bottom edge, 215 → 146 — and with it the ramp's only possible
+ *  length (`RAMP` below is this number, and that is not a coincidence: the foot
+ *  can only track the first card row if the two are equal). */
 const D_BODY = 69
 /** …and the two heights themselves, which the plate needs to turn 69px of
  *  travel into a scale of its own box. */
@@ -279,128 +284,131 @@ const TITLE_LG = 48
 const TITLE_SM = 32
 
 /**
- * THE TRIGGER, and its hysteresis.
+ * ⚠️ THERE IS NO TRIGGER ANY MORE, AND THAT IS THE BUG FIX (26.08.2026 night).
  *
- * The board is drawn with the grid's first row 21px above the compact header's
- * foot — i.e. at scrollTop 21, "just after you start scrolling", which is how
- * the designer described it. So compact engages at **20**, one pixel below the
- * frame he drew, and stands back up only at **4**, which is as good as the top.
+ * Designer: «есть баг при прокрутке этого списка, когда скролишь, список дергается
+ * резко». The first cut of this header was a SNAP plus a cover: `compact` flipped
+ * at scrollTop 20 (released at 4), the paddings changed in one commit, and every
+ * part that moved was put back with a transform and sprung home over 440ms. That
+ * hides the snap from the HEADER — and says nothing about the GRID, which is the
+ * half a reader actually feels. Compacting hands 69px of viewport to the scroller,
+ * so at an unchanged scrollTop every card moves 69px UP; the spring only spread
+ * that over five frames. Measured on the shipped build (wheel, 24 × 18px, per-frame
+ * samples of `scrollTop` and the first card's viewport y): worst frame **16.6px of
+ * content movement with `ΔscrollTop` exactly 0**, six frames over 3px, content
+ * travelling 31.1px against 18px of scroll. Under a finger that is a lurch.
  *
- * The 16px band is what makes a slow scroll unable to flicker. It could not
- * oscillate on its own even without it — compacting changes no scroll offset,
- * so there is no feedback loop — but a hand jiggling on a trackpad is a real
- * source of a 2px reversal, and 16 is far more than any of those.
+ * ABSORBING IT (move `scrollTop` by what the header gave back) cannot work here,
+ * and the arithmetic says so before any code does: cancelling a 69px jump needs
+ * 69px of scroll to give back, and at the flip there are **36** — of which only
+ * 32 can be spent before dropping under the release line and un-compacting.
+ * Measured ceiling: **46 %** of the displacement, with the rest still lurching and
+ * the spent 32px being itself a silent scroll the user did not ask for.
+ *
+ * So the header's height is now a CONTINUOUS FUNCTION OF THE SCROLL, and the
+ * ramp's length is forced by geometry rather than chosen:
+ *
+ *   header foot(S) = 215 − 69 · min(S / R, 1)        first row's y(S) = 215 − S
+ *
+ * The foot rides exactly on the first row's top edge for every S ≤ R **iff
+ * R = 69** — shorter and the foot outruns the content, opening a gap under the
+ * header; longer and the plate eats into the row. So the collapse is paid for,
+ * pixel for pixel, by the scroll that uncovers the content it gives up, and the
+ * content itself only ever moves with the scroll: no snap, no spring, no clamp
+ * to read, and nothing to flap at a threshold.
  */
-const COMPACT_AT = 20
-const EXPAND_AT = 4
+/** The ramp: the header's own travel (`D_BODY`), which is the only length at
+ *  which the foot tracks the first card row — see the derivation above. */
+const RAMP = D_BODY
 
-/** Written per frame by `useHeadCompact` — one element, its transform and,
+/** Written per frame by `useHeadRamp` — one element, its transform and,
  *  where it has one, its opacity. */
 type Part = React.MutableRefObject<HTMLElement | null>
 
 /**
- * The flip, as a SNAP plus a cover — the `FIELD_GROW` law from the composer,
- * one size up (motion.ts, `HEADER_COMPACT`).
+ * THE RAMP — one function of the scroll offset, written imperatively.
  *
- * The paddings above are a class swap, so the layout moves in exactly one
- * commit; this hook then puts every part that moved back where it was, in a
- * transform, and springs it home. Nothing here touches layout again, and the
- * inline styles are REMOVED when the spring lands, so a settled header is the
- * same DOM in both states as it was before this existed.
+ * Nothing here changes layout, and nothing here is a spring: every part of the
+ * header carries the difference between its two drawn positions as a transform
+ * scaled by `u = min(scrollTop / RAMP, 1)`. The header's LAYOUT box stays at its
+ * rest height 215 in both states — what you see as 146 is the plate's `scaleY` —
+ * so the scroller's box never resizes, and the grid therefore never moves for any
+ * reason except the scroll itself. That is the whole fix (see RAMP above).
  *
- * INTERRUPTION IS FREE, and that matters on a scroll: flipping mid-flight
- * mirrors the progress (`1 − t`) instead of restarting it. The geometry is
- * symmetric — a part sits at `layout(state) + sign·d·(1 − t)` and the two
- * layouts differ by exactly `d` — so `t' = 1 − t` is the same pixel, and the
- * heading's size ramp is continuous through the swap too.
+ * It is called from the scroller's own metrics callback, i.e. once per scroll
+ * event (the browser coalesces those to one per frame) and once per resize.
+ * Transform and opacity only; at `u === 0` every inline style is REMOVED, so a
+ * header sitting at the top of the list is byte-identical to the DOM this feature
+ * never touched.
+ *
+ * ⚠️ The parts move UP here (negative), where the old snap-and-cover moved them
+ * DOWN: there the layout had already jumped to the compact geometry and the
+ * transform put each part back where it had been. Same distances, opposite sign,
+ * because the layout no longer moves at all.
  */
-function useHeadCompact(
-  compact: boolean,
-  parts: { plate: Part; title: Part; lg: Part; sm: Part; chips: Part; rule: Part; body: Part },
-  scroller: React.MutableRefObject<HTMLDivElement | null>,
-  posBefore: React.MutableRefObject<number>,
-) {
-  const reduced = useReducedMotion()
-  const mv = useMotionValue(1)
-  const was = useRef(compact)
-
-  useLayoutEffect(() => {
-    if (was.current === compact) return
-    was.current = compact
-    /* Reduced motion: the class pair has already done the whole job in one
-       commit. Sliding three rows and morphing a type size is precisely the
-       movement the setting asks us not to make. */
-    if (reduced) return
-
-    const sign = compact ? 1 : -1
-    /* The plate's own box, i.e. what its scale is measured against. */
-    const plateH = compact ? HEAD_H_COMPACT : HEAD_H
-    /*
-     * HOW FAR THE GRID ACTUALLY MOVED, which is not always the 69.
-     *
-     * Compacting hands 69px of viewport to the scroller, so its scrollable
-     * range shrinks by 69 and the browser clamps an offset that no longer fits.
-     * Read at the bottom of a short list that is the WHOLE 69: the content then
-     * does not move at all — the header simply retreats off the top of it and
-     * uncovers what it was hiding. Anywhere else the clamp is zero and the grid
-     * travels the full 69. One read, in the commit, of a number the browser has
-     * already decided; the cover has to be the truth or the grid jumps.
-     */
-    const clamp = Math.max(0, posBefore.current - (scroller.current?.scrollTop ?? posBefore.current))
-    const bodyD = D_BODY - clamp
-    const els = [parts.plate, parts.title, parts.lg, parts.sm, parts.chips, parts.rule, parts.body]
-    for (const r of els) if (r.current) r.current.style.willChange = 'transform'
-
-    const write = (t: number) => {
-      /* How much of the OTHER state's geometry is still showing. */
-      const k = sign * (1 - t)
-      /* …and how far along the compact APPEARANCE we are, which is the same
-         number counted from the compact end (so it survives a mirror). */
-      const u = compact ? t : 1 - t
-      /*
-       * The type size, GEOMETRICALLY: 48 · (32/48)^u. At this 1.5 : 1 ratio a
-       * linear ramp would look the same, but the house rule for a scale that
-       * crosses sizes is the multiplicative one (see the flight's note in
-       * TemplateFlight.tsx), and it also guarantees the identity below at every
-       * frame: the 48 ink at `shrink` and the 32 ink at `shrink · 1.5` are the
-       * SAME size on screen, which is why the hand-off shows no ghost.
-       */
-      const shrink = Math.pow(TITLE_SM / TITLE_LG, u)
-      /* The plate reads the height the header HAD, all the way down: its bottom
-         edge is the one the divider and the grid's top are glued to. */
-      if (parts.plate.current) {
-        parts.plate.current.style.transform = `scaleY(${(plateH + sign * D_BODY * (1 - t)) / plateH})`
+function useHeadRamp(parts: {
+  plate: Part; title: Part; lg: Part; sm: Part; chips: Part
+  rule: Part
+}) {
+  /* Whether the parts are currently promoted. Toggled at most twice per gesture
+     (on leaving the top, and on landing on either end) rather than per frame:
+     `will-change` written every frame is worse than not writing it at all. */
+  const hot = useRef(false)
+  /* The last u written. Scrolling DEEP in the list reports a new offset every
+     frame while u has been pinned at 1 for hundreds of pixels — and re-writing
+     six identical transforms per frame is exactly the per-frame work this file's
+     contract is about. Measured on the built app, a scroll loop crossing the band:
+     35.8 → 45.5 fps with this guard, against 40.8 for the snap-and-spring design
+     it replaces. */
+  const wrote = useRef(-1)
+  return useCallback((pos: number) => {
+    const u = Math.min(1, Math.max(0, pos / RAMP))
+    if (u === wrote.current) return
+    wrote.current = u
+    const els = [parts.plate, parts.title, parts.lg, parts.sm, parts.chips, parts.rule]
+    /* The plate is promoted in CSS for a measured reason (index.css); these are
+       the ones that only need a layer while the ramp is actually moving. */
+    const promote = [parts.title, parts.lg, parts.sm, parts.chips, parts.rule]
+    const mid = u > 0 && u < 1
+    if (mid !== hot.current) {
+      hot.current = mid
+      for (const r of promote) if (r.current) {
+        if (mid) r.current.style.willChange = 'transform'
+        else r.current.style.removeProperty('will-change')
       }
-      move(parts.title, D_TITLE * k)
-      paint(parts.lg, `scale(${shrink})`, ramp(1 - u))
-      paint(parts.sm, `scale(${(shrink * TITLE_LG) / TITLE_SM})`, ramp(u))
-      move(parts.chips, D_CHIPS * k)
-      paint(parts.rule, `translateY(${D_RULE * k}px)`, u)
-      move(parts.body, bodyD * k)
     }
-
-    /* The first painted frame must already show the OLD geometry: this runs in
-       a layout effect, before paint, on the same commit as the class swap. */
-    mv.jump(1 - mv.get())
-    write(mv.get())
-    const stop = mv.on('change', write)
-    const run = animate(mv, 1, {
-      ...HEADER_COMPACT,
-      onComplete: () => {
-        /* Leave nothing behind — no transform, no opacity, no compositing hint.
-           The endpoint values are what the class pair already says, so dropping
-           them cannot show a seam. */
-        for (const r of els) {
-          if (!r.current) continue
-          r.current.style.removeProperty('transform')
-          r.current.style.removeProperty('opacity')
-          r.current.style.removeProperty('will-change')
-        }
-      },
-    })
-    return () => { stop(); run.stop() }
+    if (u === 0) {
+      /* Home. Leave nothing behind — the CSS already says every rest value. */
+      for (const r of els) if (r.current) {
+        r.current.style.removeProperty('transform')
+        r.current.style.removeProperty('opacity')
+      }
+      return
+    }
+    /*
+     * The type size, GEOMETRICALLY: 48 · (32/48)^u. At this 1.5 : 1 ratio a linear
+     * ramp would look much the same, but the house rule for a scale that crosses
+     * sizes is the multiplicative one (the flight's note in TemplateFlight.tsx),
+     * and it is what guarantees the identity the two inks are built on: the 48
+     * ink at `shrink` and the 32 ink at `shrink · 1.5` are the SAME size on
+     * screen at every value of u, which is why the hand-off shows no ghost.
+     */
+    const shrink = Math.pow(TITLE_SM / TITLE_LG, u)
+    if (parts.plate.current) {
+      /* The plate IS the header's visible height, and it is written as the two
+         DRAWN heights rather than as their difference: 215 → 146, top-anchored.
+         (They agree by construction — D_BODY is HEAD_H − HEAD_H_COMPACT.) */
+      parts.plate.current.style.transform = `scaleY(${1 - (1 - HEAD_H_COMPACT / HEAD_H) * u})`
+    }
+    move(parts.title, -D_TITLE * u)
+    paint(parts.lg, `scale(${shrink})`, ramp(1 - u))
+    paint(parts.sm, `scale(${(shrink * TITLE_LG) / TITLE_SM})`, ramp(u))
+    move(parts.chips, -D_CHIPS * u)
+    /* The hairline travels its own 16 on top of the row's 53 — 69 in total, i.e.
+       exactly the foot — and fades in with the state it belongs to. */
+    paint(parts.rule, `translateY(${-D_RULE * u}px)`, u)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compact])
+  }, [])
 }
 
 /** Each ink is fully opaque for half the flight, so the two together always
@@ -612,19 +620,17 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
   const [entering, setEntering] = useState(true)
 
   /*
-   * THE HEADER'S TWO STATES (board 28734:65603). Per-open state, like the
-   * filter: every open starts at the top of the grid, so it starts tall.
+   * THE HEADER'S HEIGHT IS A FUNCTION OF THE SCROLL (board 28734:65603 is its
+   * u = 1 end; the rest board is u = 0). No state, no threshold, no spring — see
+   * the RAMP note above for the bug this replaced and the arithmetic that ruled
+   * out absorbing it instead.
    *
-   * Driven by the scroller the house already has, through the three numbers its
-   * indicator reads anyway (`ScrollArea`'s `onMetrics`) — no second listener,
-   * and no layout read of our own.
+   * Driven by the scroller the house already has, through the offset its own
+   * indicator reads anyway (`ScrollArea`'s `onMetrics`) — no second listener, no
+   * layout read of ours, and nothing re-rendered: the ramp writes transforms
+   * straight to six elements.
    */
-  const [compact, setCompact] = useState(false)
-  /* The scrollport itself (the house `ScrollArea` hands it out) and the offset
-     the last metrics report saw — both only read at a flip, to work out how far
-     the grid really moved. */
   const scroller = useRef<HTMLDivElement | null>(null)
-  const posBefore = useRef(0)
   const head = {
     plate: useRef<HTMLElement | null>(null),
     title: useRef<HTMLElement | null>(null),
@@ -632,31 +638,9 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
     sm: useRef<HTMLElement | null>(null),
     chips: useRef<HTMLElement | null>(null),
     rule: useRef<HTMLElement | null>(null),
-    body: useRef<HTMLElement | null>(null),
   }
-  useHeadCompact(compact, head, scroller, posBefore)
-
-  const onMetrics = useCallback(({ pos, extent, visible }: ScrollMetrics) => {
-    posBefore.current = pos
-    setCompact((was) =>
-      was
-        ? pos > EXPAND_AT
-        /*
-         * …and the one guard that keeps this honest. Compacting hands 69px of
-         * viewport to the scroller, so its scrollable range shrinks by 69, and
-         * on a list whose whole range is SMALLER than that the browser would
-         * clamp the offset to 0 — under the release threshold — and stand the
-         * header straight back up. That is a flicker with a cause, once per
-         * scroll gesture, and it is the only case the guard is for: unless the
-         * compact state can hold a position clear of the release line, do not
-         * compact at all. A list with under ~73px of overflow has nothing to
-         * gain from it anyway. (Being clamped PARTWAY, at the foot of a longer
-         * list, is fine and needs no guard — the flip's own cover measures the
-         * clamp and moves the grid by what actually moved.)
-         */
-        : pos >= COMPACT_AT && extent - visible - D_BODY > EXPAND_AT,
-    )
-  }, [])
+  const writeRamp = useHeadRamp(head)
+  const onMetrics = useCallback(({ pos }: ScrollMetrics) => { writeRamp(pos) }, [writeRamp])
 
   /*
    * FOCUS. This is `aria-modal` over the whole page, which makes a screen
@@ -923,12 +907,23 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
              monitor. At the drawn 1656 this is the board's 1560 exactly. The
              heading and the chip row centre in the same box, which at 1656 is
              the same centre they had inside the capped column. */
-          className="flex h-full flex-col"
+          className="relative flex h-full flex-col"
         >
           {/*
-           * HEADER — outside the scroller, so the title and the filter chips
-           * hold still while the grid moves under them (the close button always
-           * did, being absolute on the sheet).
+           * HEADER — an OVERLAY over the scroller, not a box above it, and that
+           * is the fix for the designer's scroll jerk (see the RAMP note at the
+           * top of this file). As a flex sibling its height was the grid's top
+           * edge, so collapsing it moved every card 69px that nobody asked for;
+           * as an overlay its box never changes and the scroller's never resizes,
+           * so the grid can only move with the scroll. What used to be its layout
+           * height is now the scroller's own `padding-top` (the two are the same
+           * 215, so the drawn rhythm is untouched) and what you SEE as 146 is the
+           * plate's scaleY.
+           *
+           * It is rendered AFTER the scroller so it paints over the cards, and it
+           * is deaf to the pointer except where it has something to click: with a
+           * 215px box over a 146px plate, the 69px it no longer paints must belong
+           * to the cards sliding under it.
            *
            * ⚠️ OURS, not drawn: the board has one column and no scroll state at
            * all (spec §10.3), so nothing says which parts of it are fixed. It
@@ -944,7 +939,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             variants={listHead}
             initial={false}
             animate={detail !== null ? 'detail' : 'list'}
-            className={`tplpick-head ${compact ? 'tplpick-head--compact' : ''} flex-none px-8 ${listHidden ? 'invisible' : ''}`}
+            className={`tplpick-head pointer-events-none absolute inset-x-0 top-0 px-8 ${listHidden ? 'invisible' : ''}`}
           >
             {/* the opaque ground, and the only part of the header whose height
                 is visible while the flip runs — see `.tplpick-head-plate` */}
@@ -993,8 +988,15 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                 The slot now carries `Tech & SaaS`, our label, in the drawn
                 position — see note 3 in `data/templates.ts` for what is filed
                 under it and why every chip is guaranteed a non-empty grid. */}
+            {/* ⚠️ `pointer-events-auto` goes on the CHIPS, not on the row: the
+                row's box carries 32px of bottom padding (the hairline's home), and
+                with the row transformed up 53 that padding reached 16px BELOW the
+                compact plate — a strip of card you could see and not click
+                (measured with `elementFromPoint` 8px under the foot: it hit the
+                row). The header's box is deaf so the grid keeps every pixel it
+                shows; only what you actually press takes the pointer back. */}
             <div className="tplpick-head-chips" ref={head.chips as React.RefObject<HTMLDivElement>}>
-              <div className="flex justify-center">
+              <div className="pointer-events-auto flex justify-center">
                 <CategoryChips value={filter} onChange={pickFilter} />
               </div>
               {/* the scrolled state's hairline (28734:66416's inside stroke) */}
@@ -1011,21 +1013,31 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             onAnimationComplete={(v) => { if (v === 'detail') setListParked(true) }}
             className={`min-h-0 flex-1 ${listHidden ? 'invisible' : ''}`}
           >
-            <ScrollArea axis="y" className="h-full" innerClassName="px-8" onMetrics={onMetrics} viewportRef={scroller}>
+            {/*
+              * `pt-[215px]` IS THE HEADER, as layout: the overlay above paints on
+              * top of this padding at rest, so the first card row still starts at
+              * the drawn 215 and the scrollable range is exactly what it was when
+              * the header was a flex sibling (`grid + 24 − (sheet − 215)` either
+              * way). Literals, because Tailwind tree-shakes what it cannot see.
+              *
+              * `scroll-pt-[146px]`: the compact foot is the highest line that is
+              * ever uncovered, so `scrollIntoView` — which the detail view's back
+              * flight uses to bring a card into range — must not park a card under
+              * the plate. It only affects programmatic scrolling.
+              */}
+            <ScrollArea axis="y" className="h-full" innerClassName="px-8 pt-[215px] scroll-pt-[146px]" onMetrics={onMetrics} viewportRef={scroller}>
               {/* the grid (28626:591 → 28734:66425): 6 columns, 32px gaps both
                   axes; card width is an output of the column — (1560 − 5×32) / 6
                   = 233.333, the dock's own formula over its 1592. 24px of drawn
                   slack below. Geometry and the wide-screen rule live in
                   `.tplpick-grid`.
 
-                  The wrapper exists for ONE reason: when the header compacts,
-                  the scroller's box grows 69px upward in a single commit, so the
-                  content would jump 69px up with it. This box is put back down
-                  and sprung home on the same spring as the header — the eye sees
-                  the grid follow the header up, the browser sees one reflow. It
-                  carries no styles of its own and, once the spring lands, no
-                  inline transform either. */}
-              <div ref={head.body as React.RefObject<HTMLDivElement>}>
+                  ⚠️ This wrapper used to exist to COVER the compaction: the
+                  scroller's box grew 69px upward in one commit and the grid was
+                  put back down and sprung home. That cover is gone with the snap
+                  it was covering (see the RAMP note) — the grid now only ever
+                  moves with the scroll, and this box carries nothing at all. */}
+              <div>
               {/*
                 * THE GRID ANSWERS THE CHIP, one card at a time (designer's
                 * order, 26.08.2026 evening). Same conveyor as the dock's shelf,
