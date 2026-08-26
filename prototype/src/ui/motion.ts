@@ -188,6 +188,26 @@ export const listSwapBehind = {
 }
 
 /**
+ * The conveyor with the movement taken out — what it becomes under
+ * `prefers-reduced-motion`. Pick it with `useReducedMotion()`.
+ *
+ * ⚠️ THIS IS NOT REDUNDANT WITH `MotionConfig reducedMotion="user"`, and that
+ * is the trap. The flag DISABLES transform animations, and "disabled" means the
+ * value SNAPS to its target — so an exit whose target is `y: -12` does not stop
+ * moving, it HOPS 12px, at ~90% opacity, and only then fades. A hop is not less
+ * motion than a slide; it is worse motion, and it is the one thing the setting
+ * exists to prevent. Measured on the dock's shelf: y = 0 → −12 in one frame at
+ * opacity .906. The flag is still doing its job — nothing INTERPOLATES — but a
+ * variant whose exit target is a displacement has to drop the displacement
+ * itself, not just its animation.
+ */
+export const listSwapFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { ...SPRING_SOFT, staggerChildren: 0.055 } },
+  exit: { opacity: 0, transition: { ...EXIT, delay: 0.06 } },
+}
+
+/**
  * A segmented control's pill changing seats — one object travelling, never a
  * cut. Only the LAW lives here; the seat geometry belongs to the control
  * (`DockTabs` in modules/home/Dock.tsx).

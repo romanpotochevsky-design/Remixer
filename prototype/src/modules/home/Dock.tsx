@@ -17,11 +17,11 @@
  * board reports. There is no fill, no hairline and no shadow on this band: the hero's
  * rounded bottom corners are the entire separation.
  */
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { hasProjects, useWorld, type HomeProject } from '@/state/world'
 import { useUI, type DockTab } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
-import { listSwapBehind, segmentedPill } from '@/ui/motion'
+import { listSwapBehind, listSwapFade, segmentedPill } from '@/ui/motion'
 import {
   TEMPLATES, TEMPLATE_CATEGORIES, templatesIn,
   type Template, type TemplateCategoryId,
@@ -33,6 +33,21 @@ import { Thumb } from './thumbs'
 
 /** How many slots the shelf shows. Six is what the canonical board draws. */
 const SLOTS = 6
+
+/**
+ * Which conveyor the tab switch's content rides — the house one, or the same
+ * one with the movement taken out when the OS asks for less motion.
+ *
+ * ⚠️ `<MotionConfig reducedMotion="user">` at the root is NOT enough here, and
+ * that is worth knowing: it disables transform animations, and "disabled" means
+ * the value SNAPS to its target, so the conveyor's `exit: { y: -12 }` turned
+ * into a 12px HOP at 90% opacity instead of a slide (measured). A hop is not
+ * less motion than a slide. `listSwapFade` drops the displacement itself, which
+ * is what the setting is actually asking for; see the note on it in ui/motion.ts.
+ */
+function useConveyor() {
+  return useReducedMotion() ? listSwapFade : listSwapBehind
+}
 
 /* ------------------------------------------------------------------- header */
 
@@ -171,9 +186,11 @@ function DockTabs() {
              * box and only their opacity moves: no glyph travels, no glyph
              * scales, and the ink never snaps.
              *
-             * The fade is deliberately late (see `.home-tab-ink`): the pill is
-             * halfway across in ~60ms, so ink that changed on the click would
-             * leave dark text sitting on the dark track for a few frames.
+             * What is tuned is WHEN the fade passes 50%, not how long it takes:
+             * both bad states are equally invisible (near-black on the track,
+             * 48%-white on the pill), so the ink has to be mid-grey exactly
+             * while the pill is between the seats. See `.home-tab-ink` in
+             * index.css for the measured numbers.
              */}
             {/* ⚠️ One of the two carries the accessible name and the other is
                 `aria-hidden` UNCONDITIONALLY — not "whichever is visible".
@@ -222,11 +239,12 @@ export function CategoryChips({
    */
   swap?: boolean
 }) {
+  const conveyor = useConveyor()
   return (
     <motion.div
       className="flex h-9 flex-none items-center gap-2"
       {...(swap
-        ? { variants: listSwapBehind, initial: 'initial', animate: 'animate', exit: 'exit' }
+        ? { variants: conveyor, initial: 'initial', animate: 'animate', exit: 'exit' }
         : {})}
     >
       {TEMPLATE_CATEGORIES.map((chip) => {
@@ -436,6 +454,7 @@ export function HomeDock() {
   const { t } = useT()
   const { world } = useWorld()
   const { dockTab, templateFilter } = useUI()
+  const conveyor = useConveyor()
 
   const owned = hasProjects(world)
   /* No projects means no tabs to pick from — templates are all there is. */
@@ -510,7 +529,7 @@ export function HomeDock() {
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={showTemplates ? 'templates' : 'projects'}
-          variants={listSwapBehind}
+          variants={conveyor}
           initial="initial"
           animate="animate"
           exit="exit"
