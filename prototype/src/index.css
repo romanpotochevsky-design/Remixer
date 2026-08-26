@@ -1828,6 +1828,109 @@
   .tplpick-thumb { flex: 1 1 auto; min-height: 0; aspect-ratio: 233.333 / 218; }
 
   /*
+   * ------------------------- the attached template (Figma 28726:64760)
+   *
+   * The composer's attachment: a 56px preview tile in the field's new top row
+   * with an 18px ✕ badge on its corner. Geometry and node ids live in
+   * modules/home/attachment.ts; this block is only the paint.
+   *
+   * WHAT IS GLASS HERE AND WHAT IS NOT. The badge is a glass control and wears
+   * the canon (`.liquid-glass--pill`: Black/700 + blur 16 + the top-lit 20 → 5
+   * → 15% gradient rim, which is exactly the family stop the board's flattened
+   * "1px 20% white" read points at). The TILE is a photograph: it gets a rim
+   * and nothing else — no wash, no ripple and above all NO travelling sheen.
+   * A sheen is light raking across transparent glass; this designer rolled one
+   * back off the Publish panel for decorating an opaque surface with it
+   * (CLAUDE.md, 17.08.2026), and a thumbnail is as opaque as it gets.
+   */
+  .attach-tile-face {
+    border-radius: 16px 8px 16px 16px; /* the board's tr 8 — the badge's corner */
+    /* the drawn 10% white edge, as an inset shadow: a CSS border would eat a
+       pixel of the 56 box and shrink the drawing inside it (the standing rule
+       for every rim in this project) */
+    box-shadow: inset 0 0 0 1px #ffffff1a;
+  }
+  /* Hover/focus: the EDGE brightens, which is the one feedback a photograph can
+     take without being painted over. Opacity on a composited overlay, so the
+     tile's own paint never changes. */
+  .attach-tile-face::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px #ffffff40;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-std);
+    pointer-events: none;
+  }
+  .attach-tile-face:hover::after,
+  .attach-tile-face:focus-visible::after { opacity: 1; }
+
+  /* `Close` 28734:65594 — 18 × 18 at tile-local (48, −8): its centre sits 1px
+     outside the tile's corner, diagonally, which is what makes it read as riding
+     the corner rather than sitting inside it. */
+  .attach-badge {
+    left: 48px;
+    top: -8px;
+    width: 18px;
+    height: 18px;
+    /*
+     * ⚠️ THE ONE OPAQUE MEMBER OF THE GLASS FAMILY, and by function, not taste:
+     * ~40% of this badge lies ON the thumbnail (its footprint IS the tile's
+     * top-right corner), and a translucent control over a photograph loses its
+     * glyph. The board draws it opaque and reads `#1a1222` — a raw eyedropped
+     * value, not a token: `get_variable_defs` on the whole attachment subtree
+     * comes back EMPTY, so nothing here was built from the token system.
+     * Measured: the composed field beside it is (21,14,28) on our paint, so this
+     * value keeps the drawn relationship — a hair LIGHTER than the surface it
+     * sits on, which is what makes it read as a chip on top rather than a hole.
+     * The rim stays the family's (`--pill`, 20 → 5 → 15%, and the board's
+     * flattened "1px 20% white" is exactly that gradient's first stop); the
+     * blur goes, because there is nothing to see through an opaque fill.
+     */
+    background: #1a1222;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  /* The tile folds into its own ✕ when that ✕ is pressed (HomePage's `remove`):
+     the origin is the badge's centre — tile-local (57, 1) of a 56 box. */
+  .attach-tile { transform-origin: 101.8% 1.8%; }
+
+  /*
+   * THE FIELD ACKNOWLEDGES THE CATCH — ours, undrawn, ~220ms, and the reason it
+   * is here rather than on the field's own rim: the drawn rim is a static inset
+   * shadow, and brightening it in place would repaint a 960px box every frame.
+   * This is a second rim on its own layer whose OPACITY animates.
+   */
+  .composer-ack {
+    box-shadow: inset 0 0 0 1px #ffffff4d;
+    opacity: 0;
+    animation: composer-ack 0.22s var(--ease-std) both;
+  }
+  @keyframes composer-ack {
+    0% { opacity: 0; }
+    35% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  /*
+   * …and one bloom of light pours out from under the tile as it seats — the
+   * ripple family's own paint (the same radial recipe as `.glass-ripple`), not
+   * a new effect. Restrained on purpose: it lights the glass around the tile
+   * and dies before the placeholder line.
+   */
+  .composer-seat-bloom {
+    border-radius: 50%;
+    background: radial-gradient(closest-side, #ffffff1f 0%, #ffffff14 55%, #ffffff00 100%);
+    opacity: 0;
+    animation: composer-seat-bloom 0.62s var(--ease-std) both;
+  }
+  @keyframes composer-seat-bloom {
+    0% { opacity: 0; transform: scale(0.35); }
+    22% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1); }
+  }
+
+  /*
    * ------------------------------------ template picker (Figma 28616:59168)
    * The sheet's heading is cap-trimmed in Figma — a 22px box for 32px type —
    * and the whole vertical rhythm (57 above it, 40 below) is measured to the

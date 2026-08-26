@@ -72,6 +72,40 @@ export const CHAT_DEFAULT = 432
 export const CHAT_MIN = 340
 export const CHAT_MAX = 760
 
+/**
+ * A rect in viewport coordinates — the currency of the template's flights.
+ *
+ * The template is ONE physical object across three homes (a card in the grid, the
+ * full-screen stage, the composer's attachment tile), and every hand-off between
+ * them is a FLIP: measure where the object is, mount it where it belongs, fly the
+ * difference. The two flights that cross a surface boundary (stage ⇄ tile) cannot
+ * be measured inside either surface, because the picker is unmounting or mounting
+ * in the very commit the flight starts — so the source rect travels through the
+ * store as plain viewport numbers and the flight layer (modules/home/
+ * TemplateFlight.tsx) does the arithmetic.
+ */
+export interface FlightRect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+/**
+ * A template in the air between the picker's stage and the composer's tile.
+ *
+ * `to` names the DESTINATION, which is also who owns the landing: `'tile'` after
+ * a pick (or after closing the attachment's preview), `'stage'` when the tile is
+ * clicked to blow it back up. Null the rest of the time; cleared by the flight
+ * layer the moment the spring lands, which is the same commit that reveals the
+ * real destination — the two are pixel-identical there, so the swap is invisible.
+ */
+export interface TemplateFlight {
+  index: number
+  from: FlightRect
+  to: 'tile' | 'stage'
+}
+
 export type Device = 'desktop' | 'mobile'
 /** iPhone 14/15 logical size. A fixed device, not a full-height column —
  *  measured off a Lovable screen recording: their phone frame keeps a wide
@@ -101,16 +135,32 @@ interface UIStore {
    */
   pickerDetail: number | null
   /**
+   * WHO opened the picker, because it changes what the sheet is.
+   *
+   *  - `'pill'` — the composer's "Add template": the library. The sheet grows
+   *    out of the pill, the grid is the content, a card opens the detail view.
+   *  - `'tile'` — the composer's attachment tile: a PREVIEW of what is already
+   *    attached. No grid at all (the library is not part of this path), the
+   *    sheet materialises with a plain fade, and the object flies from the tile
+   *    into the stage and back into the tile on the way out.
+   */
+  pickerSource: 'pill' | 'tile'
+  /**
    * The template attached to the Home composer's prompt — an index into
    * `TEMPLATE_LIBRARY` (the library repeats sites, so a position is the only
    * stable identity a picked card has). Composer state, not product truth: it
    * lives exactly as long as the draft it decorates — Build consumes it,
    * leaving the page drops it — and no scenario axis records it (a scenario
    * switch leaves it alone, the same way it leaves a half-typed draft alone).
-   * ⚠️ The attached state is OUR proposal (home README §7, spec §7.4): no
-   * board draws the composer after a pick. Pending the designer.
+   *
+   * DRAWN, since 26.08.2026 — board `28726:64760`: a 56px preview tile in the
+   * field's new top row, the "Add template" pill staying exactly where it was.
+   * (Our earlier chip-in-the-pill's-place proposal is gone; the record of it
+   * lives in figma-spec-add-template.md §7.4.)
    */
   attachedTemplate: number | null
+  /** The template mid-flight between the stage and the tile — see TemplateFlight. */
+  tplFlight: TemplateFlight | null
   surface: Surface
   domainScreen: DomainScreen
   /** The domain the user is acting on inside the domains surface. */
@@ -135,10 +185,21 @@ interface UIStore {
   openTemplateDetail: (libIndex: number) => void
   /** ← or Esc inside the detail view — back to the grid, picker stays open. */
   closeTemplateDetail: () => void
-  /** "Choose a template" in the detail header (was: picking a card). One
-   *  gesture, one state write — choosing closes the whole picker. */
-  attachTemplate: (libIndex: number) => void
+  /**
+   * "Choose a template" in the detail header. Attaches, and puts the stage in
+   * the air toward the tile; it does NOT close the picker — the overlay
+   * dissolves itself on its own beat and closes when that lands, so the flying
+   * object is never racing a surface that has already left.
+   */
+  attachTemplate: (libIndex: number, from: FlightRect | null) => void
   detachTemplate: () => void
+  /** The attachment tile was clicked: the picker opens on that template alone
+   *  and the object flies out of the tile into the stage. */
+  openAttachedPreview: (libIndex: number, from: FlightRect) => void
+  /** ←, Esc, ✕ or the scrim inside that preview: the object flies home. */
+  closeAttachedPreview: (libIndex: number, from: FlightRect) => void
+  /** The flight landed — the destination is real from this commit on. */
+  endTemplateFlight: () => void
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
   openSurface: (s: Surface) => void
@@ -161,7 +222,9 @@ export const useUI = create<UIStore>((set, get) => ({
   templateFilter: 'all',
   templatePickerOpen: false,
   pickerDetail: null,
+  pickerSource: 'pill',
   attachedTemplate: null,
+  tplFlight: null,
   surface: 'preview',
   domainScreen: 'home',
   activeDomain: null,
@@ -175,8 +238,8 @@ export const useUI = create<UIStore>((set, get) => ({
      publish popover — or to a stale attached-template chip over an empty field —
      from another page reads as a bug, not as continuity. Build consumes the
      attachment via `openBuilder`, which is exactly when it should die. */
-  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null, templatePickerOpen: false }),
-  openBuilder: () => set({ page: 'builder', templatePickerOpen: false, attachedTemplate: null }),
+  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null, templatePickerOpen: false, tplFlight: null }),
+  openBuilder: () => set({ page: 'builder', templatePickerOpen: false, attachedTemplate: null, tplFlight: null }),
   setDockTab: (dockTab) => set({ dockTab }),
   setTemplateFilter: (templateFilter) => set({ templateFilter }),
   /* Every open starts on the grid, like the board draws it. The reset happens
@@ -184,13 +247,39 @@ export const useUI = create<UIStore>((set, get) => ({
      so a picker dismissed (or chosen) from the detail view exits showing the
      detail view — clearing it at close time would fly the preview back into
      the grid underneath a sheet that is already leaving. */
-  openTemplatePicker: () => set({ templatePickerOpen: true, pickerDetail: null }),
+  openTemplatePicker: () => set({ templatePickerOpen: true, pickerDetail: null, pickerSource: 'pill' }),
   closeTemplatePicker: () => set({ templatePickerOpen: false }),
   openTemplateDetail: (pickerDetail) => set({ pickerDetail }),
   closeTemplateDetail: () => set({ pickerDetail: null }),
-  /* Leaves `pickerDetail` alone on purpose — see openTemplatePicker. */
-  attachTemplate: (attachedTemplate) => set({ attachedTemplate, templatePickerOpen: false }),
-  detachTemplate: () => set({ attachedTemplate: null }),
+  /*
+   * Leaves `pickerDetail` alone on purpose — see openTemplatePicker. Leaves
+   * `templatePickerOpen` alone too, which is newer: the overlay dissolves in
+   * place under the flying stage and calls `closeTemplatePicker` itself when
+   * that fade lands. Attaching and closing in one write made the sheet's exit
+   * spring compete with the flight for the eye.
+   */
+  attachTemplate: (attachedTemplate, from) =>
+    set({
+      attachedTemplate,
+      tplFlight: from ? { index: attachedTemplate, from, to: 'tile' } : null,
+    }),
+  detachTemplate: () => set({ attachedTemplate: null, tplFlight: null }),
+  openAttachedPreview: (index, from) =>
+    set({
+      templatePickerOpen: true,
+      pickerSource: 'tile',
+      pickerDetail: index,
+      tplFlight: { index, from, to: 'stage' },
+    }),
+  /* One write: the sheet starts dissolving, the detail view stands down (so it
+     cannot double the clone), and the object is in the air toward the tile. */
+  closeAttachedPreview: (index, from) =>
+    set({
+      templatePickerOpen: false,
+      pickerDetail: null,
+      tplFlight: { index, from, to: 'tile' },
+    }),
+  endTemplateFlight: () => set({ tplFlight: null }),
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
   openSurface: (surface) => set({ surface, publishOpen: false }),

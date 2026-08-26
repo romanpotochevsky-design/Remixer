@@ -46,8 +46,9 @@
  * production-analysis.md; the board-matched paint this replaced is in git
  * history (07093ac).
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AnimationEvent } from 'react'
+import { animate, useMotionValue, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
@@ -60,7 +61,12 @@ import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight, IconClose 
 import { LogoRemixerAnimated } from '@/ui/LogoRemixerAnimated'
 import { HomeDock } from './Dock'
 import { TemplatePicker } from './TemplatePicker'
+import { TemplateFlight } from './TemplateFlight'
 import { Thumb } from './thumbs'
+import { FIELD_CLOSE, FIELD_GROW } from '@/ui/motion'
+import {
+  rectOf, SEAT_ACK_DELAY, SEAT_BLOOM_R, SHIFT_ROW, SHIFT_TEXT, TILE, TILE_INSET,
+} from './attachment'
 
 /* ----------------------------------------------------------------- entrance */
 
@@ -324,54 +330,166 @@ function useChipEdgeFade(viewport: React.MutableRefObject<HTMLDivElement | null>
 }
 
 /**
- * The attached-template chip — what stands in the "Add template" pill's place
- * once a template is picked. ⚠️ OUR proposal, pending the designer: NO board
- * draws the composer after a pick (spec §7.4, README §7 — the recorded idea is
- * exactly this chip; its Build→"Remix" half is NOT implemented, the boards draw
- * `Build` and only `Build`). Same 36px glass pill; the pill's hidden 24px
- * leading-icon slot at (6, 6) is reused for a live mini-thumbnail.
+ * ─────────────────── THE ATTACHED TEMPLATE — board 28726:64760 ───────────────────
+ *
+ * The tile, as drawn: 56 × 56 at (16, 16) inside the field, radius 16 with the
+ * top-right cut to 8, a 10%-white rim, the template's own drawing clipped to it,
+ * and an 18px ✕ badge riding that corner (centre 1px OUTSIDE the tile,
+ * diagonally). The "Add template" pill does NOT move or disappear — it stays in
+ * the button row exactly where it was. Numbers and node ids: ./attachment.ts.
+ *
+ * ⚠️ This REPLACES our own earlier proposal (a chip with a mini-thumbnail in the
+ * pill's place, shipped 25.08.2026 while no board drew this state). The designer
+ * has now drawn it: an attachment behaves like an image attachment, above the
+ * prompt, and the pill stays live. The proposal's record is kept in
+ * figma-spec-add-template.md §7.4 as history.
+ *
+ * OURS, still undrawn and marked as such:
+ *   · clicking the tile opens the template's full preview (the picker's detail
+ *     view, flown out of the tile) — a 56px thumbnail is not something you can
+ *     check a template by;
+ *   · the pill, with an attachment already there, re-opens the library and the
+ *     next pick REPLACES the attachment — the drawn bar is 88 wide, i.e. sized
+ *     for exactly one tile, and nothing anywhere draws a second one;
+ *   · Build stays "Build" (no board draws a "Remix" label anywhere).
  */
-function AttachedChip({ index }: { index: number }) {
+function AttachedTile({ index }: { index: number }) {
   const { t } = useT()
-  const { openTemplatePicker, detachTemplate } = useUI()
+  const { detachTemplate, openAttachedPreview } = useUI()
+  const reduced = useReducedMotion()
   const tpl = TEMPLATE_LIBRARY[index]
+  const box = useRef<HTMLDivElement>(null)
+  const face = useRef<HTMLButtonElement>(null)
+  /** Set while the collapse plays, so a second ✕ press cannot start it twice. */
+  const leaving = useRef(false)
   if (!tpl) return null
+
+  /* Click the tile → the object grows back into the stage it came from. The
+     tile's rect is measured HERE, before the picker exists. */
+  function preview() {
+    const el = face.current
+    if (!el || leaving.current) return
+    openAttachedPreview(index, rectOf(el))
+  }
+
+  /*
+   * REMOVE. The tile collapses toward its own ✕ — scale to 0.85 with the
+   * transform-origin ON the badge, faster than the entry and with no bounce
+   * (house exit doctrine) — and only when that has played does the layout
+   * change, so the field's close-up follows the tile leaving instead of
+   * yanking the ground out from under it. Reduced motion: a plain fade.
+   *
+   * WAAPI, not a CSS class: the global reduced-motion block kills CSS
+   * animations outright (`animation: none`), and this is the one place that has
+   * to still *complete* under that setting — its completion is what detaches.
+   */
+  function remove() {
+    const el = box.current
+    if (!el || leaving.current) return
+    leaving.current = true
+    const anim = el.animate(
+      reduced
+        ? { opacity: [1, 0] }
+        : { transform: ['scale(1)', 'scale(0.85)'], opacity: [1, 1, 0] },
+      { duration: reduced ? 140 : 190, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
+    )
+    anim.onfinish = () => {
+      /* Focus would otherwise fall to <body>: the button the keyboard was on has
+         just been deleted. The field is where the flow continues. */
+      const input = el.closest('.he-composer')?.querySelector('input')
+      detachTemplate()
+      if (input instanceof HTMLElement) input.focus()
+    }
+  }
+
   return (
     <div
-      /* the picker's grow-from-trigger origin: with the pill replaced, the
-         chip is the trigger — same attribute, same spot. `glass-interactive`
-         on the DIV: the chip is ONE glass surface, so the hover wash and the
-         press ripple light (and clip to) the whole pill — the ✕ inside opts
-         out of the ripple and washes only itself. */
-      data-template-trigger
-      className="liquid-glass liquid-glass--pill glass-interactive flex h-9 flex-none items-center rounded-full pl-1.5 pr-1"
+      ref={box}
+      /* The collapse's origin: the badge's centre, at tile-local (57, 1) — the
+         gesture folds the object into the control that dismissed it. */
+      className="attach-tile relative flex-none"
+      style={{ width: TILE, height: TILE }}
     >
-      {/* the body re-opens the picker: picking again replaces the attachment */}
       <button
-        onClick={openTemplatePicker}
-        aria-label={t({ en: `Change template — ${tpl.name}`, uk: `Змінити шаблон — ${tpl.name}` })}
-        className="flex min-w-0 items-center gap-2"
+        ref={face}
+        data-attach-tile
+        onClick={preview}
+        aria-label={t({ en: `Preview the ${tpl.name} template`, uk: `Переглянути шаблон ${tpl.name}` })}
+        className="attach-tile-face absolute inset-0 block overflow-hidden"
       >
-        <span className="relative h-6 w-6 flex-none overflow-hidden rounded-[6px]">
+        {/* the SAME drawing the card and the stage show, HEIGHT-driven so a
+            1.07:1 site fills a square (the board's own image overflows its box
+            the same way, being 1898/1918 in a 56 box) */}
+        <span className="absolute left-0 top-0 block aspect-[233.333/218] h-full">
           <Thumb id={tpl.id} className="absolute inset-0" />
         </span>
-        <span className="max-w-[18ch] truncate text-[14px] leading-none text-[#ffffffcc]">
-          {tpl.name}
-        </span>
       </button>
+
       <button
-        onClick={detachTemplate}
+        onClick={remove}
         aria-label={t({ en: 'Remove template', uk: 'Прибрати шаблон' })}
-        /* same wash as the family (its old hover:bg was the same 8% white,
-           now on the composited layer); NO ripple — blooming the chip you
-           are removing would celebrate the wrong thing */
+        /*
+         * `Close` 28734:65594 — 18px pill on the tile's corner. Glass, so it
+         * takes the family's hover wash; NO ripple (`data-no-ripple`), which is
+         * the standing call from the chip it replaces: blooming light through a
+         * control whose whole job is to delete the thing under it celebrates
+         * the wrong event. At 18px a ripple could not read as positional
+         * anyway — its own radius rule would cover the control in ~2 frames.
+         */
         data-no-ripple
-        className="glass-interactive ml-1 grid h-6 w-6 flex-none place-items-center rounded-full text-[#ffffff8f] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+        className="attach-badge liquid-glass liquid-glass--pill glass-interactive absolute grid place-items-center rounded-full text-white"
       >
-        <IconClose size={8} />
+        {/* The board's glyph box is 16 (`Frame` 28734:65595 at (1,1) inside the
+            18px badge) but the ✕'s own stroke geometry is NOT recoverable — the
+            icon's SVG asset URL is proxy-blocked, like every asset in this file.
+            10 puts our cross at 7.5px, matched by eye against the 1 : 1 board
+            render of the whole field. */}
+        <IconClose size={10} />
       </button>
     </div>
   )
+}
+
+/**
+ * THE SNAP-ONCE COVER (motion.ts, `FIELD_GROW`). The field's height changes in
+ * ONE commit; every row that moved is put back where it was with a transform
+ * and sprung home, so the eye sees a field growing while the browser reflows
+ * once. Distances are the board's constants (72 for the text line, 46 for the
+ * button row and the chip row) — nothing is measured, so nothing can drift.
+ *
+ * The inline transform is written in a LAYOUT effect, i.e. after the commit
+ * that changed the layout and before the browser paints it — that is what makes
+ * the first painted frame the OLD position rather than a flash of the new one.
+ * The spring then drives one motion value and writes the same property.
+ */
+function useSnapSlide(ref: React.RefObject<HTMLElement>, distance: number, attached: boolean) {
+  const reduced = useReducedMotion()
+  const mv = useMotionValue(0)
+  const was = useRef(attached)
+
+  useLayoutEffect(() => {
+    const from = was.current === attached ? null : attached ? -distance : distance
+    was.current = attached
+    const el = ref.current
+    /* Reduced motion: the field just snaps. A row sliding is exactly the
+       movement the setting asks us not to make. */
+    if (from === null || !el || reduced) return
+
+    el.style.transform = `translateY(${from}px)`
+    el.style.willChange = 'transform'
+    mv.jump(from)
+    const write = mv.on('change', (v) => { el.style.transform = `translateY(${v}px)` })
+    const run = animate(mv, 0, {
+      ...(attached ? FIELD_GROW : FIELD_CLOSE),
+      onComplete: () => {
+        /* Leave nothing behind: no transform, no compositing hint. */
+        el.style.removeProperty('transform')
+        el.style.removeProperty('will-change')
+      },
+    })
+    return () => { write(); run.stop() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attached])
 }
 
 function Composer() {
@@ -384,9 +502,60 @@ function Composer() {
   const syncChipFade = useChipEdgeFade(chipRow)
 
   const attached = attachedIndex != null ? TEMPLATE_LIBRARY[attachedIndex] : null
-  /* A template alone arms Build too — a lit chip beside a dead button would
-     read as broken. Undrawn either way (our call, same standing as the chip). */
+  const hasTile = attachedIndex != null
+  /* A template alone arms Build too — a lit tile beside a dead button would
+     read as broken. Undrawn either way (our call, same standing as the tile). */
   const armed = draft.trim().length > 0 || attached != null
+
+  /*
+   * THE SNAP-ONCE COVER. The field's box goes 138 → 184 in one commit
+   * (board 28726:64760 against 28364:40219); these three put the rows that
+   * moved back where they were and spring them home, so nothing animates
+   * layout. Distances are the board's: the placeholder line drops 72, the
+   * button row and the chip row 46.
+   */
+  const textRow = useRef<HTMLDivElement>(null)
+  const buttonRow = useRef<HTMLDivElement>(null)
+  const chipsRow = useRef<HTMLDivElement>(null)
+  useSnapSlide(textRow, SHIFT_TEXT, hasTile)
+  useSnapSlide(buttonRow, SHIFT_ROW, hasTile)
+  useSnapSlide(chipsRow, SHIFT_ROW, hasTile)
+
+  /*
+   * THE FIELD ACKNOWLEDGES RECEIVING IT. When the flying template lands, the
+   * field's own rim lifts and releases (~220ms) and one restrained bloom of the
+   * ripple family's light pours out from under the tile as it seats. Both are
+   * composited opacity/transform one-shots that unmount when they end — the
+   * settled field is byte-identical to before.
+   *
+   * ⚠️ NO travelling sheen across the tile. A sheen is light raking over
+   * transparent glass; this designer rolled one back off the Publish panel for
+   * exactly that reason (CLAUDE.md, 17.08.2026), and the tile is a photograph.
+   * The glass in this gesture is the FIELD and the BADGE.
+   */
+  const [seated, setSeated] = useState(false)
+  const beat = useMotionValue(0)
+  const flight = useUI((s) => s.tplFlight)
+  useEffect(() => {
+    if (flight?.to !== 'tile') return
+    /*
+     * Fired on a timer from the flight's START, not on its completion, and the
+     * reason is in the frames: the seat spring is 620ms long but the object is
+     * visually home at ~300 — the rest is a 2% settle nobody watches. Hanging
+     * the acknowledgment off `onComplete` put the field's flash a third of a
+     * second after the catch, which read as an unrelated blink.
+     */
+    /* Scheduled on motion's own clock, not `setTimeout`: the beat belongs to
+       the flight's timeline, so it stays in step if the animation clock is ever
+       scaled (which is exactly how QA films this — a wall timer filmed at 1/24
+       speed fired while the object was still the size of the screen). */
+    const run = animate(beat, 1, {
+      duration: 0.001,
+      delay: SEAT_ACK_DELAY / 1000,
+      onComplete: () => setSeated(true),
+    })
+    return () => run.stop()
+  }, [flight])
 
   /* Back from the picker with a template attached: focus returns to the field
      so typing — or a bare Enter — continues the flow without another click. */
@@ -432,17 +601,57 @@ function Composer() {
            right of the drawn x and made the two inner rows 943 instead of 944.
            So the rim is an INSET shadow — no layout, follows the 32px radius, one
            static paint — and the padding is Figma's, unmodified. Same reason the
-           shell's glass rims are drawn rather than bordered (CLAUDE.md). */
+           shell's glass rims are drawn rather than bordered (CLAUDE.md).
+
+           WITH AN ATTACHMENT (28726:64923) the box is 184: the top padding goes
+           17 → 16 and the tile's 56px row opens above the text. The box grows
+           DOWNWARD — the board keeps the composer container's own y (453.9998 on
+           both boards), so everything above the field holds still and the chip
+           row below it moves 46. */
         style={{
           boxShadow: '0 16px 80px 0 rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--white-100)',
-          padding: '17px 16px 16px 0',
+          padding: hasTile ? '16px 16px 16px 0' : '17px 16px 16px 0',
         }}
       >
+        {/* THE ATTACHMENTS ROW (`Attachments bar` 28734:65591): the tile 16px in
+            from the field's left edge, 56 tall, and nothing else — the row's own
+            16px of padding-top is the field's, above. */}
+        {attachedIndex != null && (
+          <div className="flex items-start pl-4" style={{ height: TILE }}>
+            <AttachedTile index={attachedIndex} />
+          </div>
+        )}
+
+        {/* The seating light and the rim's acknowledgment, mounted only while
+            they play. The clip is what keeps the bloom inside the field's own
+            32px radius; both children animate transform/opacity only. */}
+        {seated && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]"
+            onAnimationEnd={(e) => { if (e.animationName === 'composer-ack') setSeated(false) }}
+          >
+            <span className="composer-ack absolute inset-0 rounded-[32px]" />
+            <span
+              className="composer-seat-bloom absolute"
+              style={{
+                left: TILE_INSET + TILE / 2 - SEAT_BLOOM_R,
+                top: TILE_INSET + TILE / 2 - SEAT_BLOOM_R,
+                width: SEAT_BLOOM_R * 2,
+                height: SEAT_BLOOM_R * 2,
+              }}
+            />
+          </span>
+        )}
+
         {/* text row 944 × 52, pl 24 / pr 8. The row is 52 because Figma's
             placeholder carries a second, EMPTY paragraph (2 × 26); the empty line
             is not reproduced, but the space it occupies is — drop it and the whole
-            composer shrinks 26px away from where the board draws it. */}
-        <div className="flex h-[52px] items-start pl-6 pr-2">
+            composer shrinks 26px away from where the board draws it. With an
+            attachment the board drops that phantom line and pads the single line
+            17/17 instead (a 60 box, `Text` 28726:64925) — which is why the line
+            travels 72 while the row below it travels 46. */}
+        <div ref={textRow} className={hasTile ? 'mt-[17px] flex h-[26px] items-start pl-6 pr-2' : 'flex h-[52px] items-start pl-6 pr-2'}>
           <input
             ref={field}
             value={draft}
@@ -460,7 +669,7 @@ function Composer() {
 
         {/* button row 944 × 36, pl 16, space-between; the right group's edge lands
             16px inside the field, which is where the field's own padding puts it */}
-        <div className="mt-[17px] flex h-9 items-center justify-between pl-4">
+        <div ref={buttonRow} className="mt-[17px] flex h-9 items-center justify-between pl-4">
           {/*
            * `Left` 28616:58687 — the "+" and the template pill, gap 8. The
            * 25.08.2026 restyle of board 28364:40053 moves all three round
@@ -481,22 +690,25 @@ function Composer() {
               <IconPlus size={24} />
             </button>
 
-            {attachedIndex != null ? (
-              <AttachedChip index={attachedIndex} />
-            ) : (
-              /* "Add template" 28616:58682 — 123×36 r999 glass; label Proxima
-                 Nova REGULAR 14 at 80% white (not the Semibold the chips and
-                 Build wear). Width is the label's own (20px side padding), so
-                 the UK string fits without clipping; EN lands on the drawn 123
-                 to within the stand-in font's tolerance. */
-              <button
-                data-template-trigger
-                onClick={openTemplatePicker}
-                className="liquid-glass liquid-glass--pill glass-interactive flex h-9 flex-none items-center whitespace-nowrap rounded-full px-5 text-[14px] leading-none text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
-              >
-                {t({ en: 'Add template', uk: 'Додати шаблон' })}
-              </button>
-            )}
+            {/* "Add template" 28616:58682 — 123×36 r999 glass; label Proxima
+                Nova REGULAR 14 at 80% white (not the Semibold the chips and
+                Build wear). Width is the label's own (20px side padding), so
+                the UK string fits without clipping; EN lands on the drawn 123
+                to within the stand-in font's tolerance.
+
+                IT STAYS WITH AN ATTACHMENT — board 28726:64760 draws the pill
+                untouched in the button row while the tile sits above. (Our
+                earlier chip replaced it here; that was a guess made before this
+                board existed.) Pressing it with a template already attached
+                re-opens the library and the next pick swaps the attachment —
+                ours, and the only reading the drawn 88px one-tile bar allows. */}
+            <button
+              data-template-trigger
+              onClick={openTemplatePicker}
+              className="liquid-glass liquid-glass--pill glass-interactive flex h-9 flex-none items-center whitespace-nowrap rounded-full px-5 text-[14px] leading-none text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+            >
+              {t({ en: 'Add template', uk: 'Додати шаблон' })}
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -538,7 +750,21 @@ function Composer() {
       <div className="flex-none" style={{ height: 'var(--home-gap-chips)' }} aria-hidden />
 
       {/* --------------------------------------- prompt chips (28364:40319) */}
-      <div className="he-chips flex h-[42px] w-[960px] max-w-full flex-none items-center">
+      <div
+        ref={chipsRow}
+        className="he-chips flex h-[42px] w-[960px] max-w-full flex-none items-center"
+        /*
+         * The 46px the field grew comes out of the hero's BOTTOM slack, not out
+         * of the column's proportional spacers — a negative bottom margin keeps
+         * the column's used height constant, so the logo, headline and subtitle
+         * do not move a pixel when a template lands. That is what the board
+         * says: the composer container's y is 453.9998 on both boards, the chip
+         * row inside it moves 162 → 208, and the slack under it goes 118 → 72.
+         * Without this the shared spacers would have taken 26px off the top and
+         * shifted the whole hero up.
+         */
+        style={hasTile ? { marginBottom: -SHIFT_ROW } : undefined}
+      >
         <ScrollArea
           axis="x"
           className="home-chip-scroller h-[42px] min-w-0 flex-1"
@@ -743,6 +969,13 @@ export function HomePage() {
           modal: its 50% scrim covers the hero, the topbar and the dock alike,
           so it mounts at the page root, not inside the composer. */}
       <TemplatePicker />
+
+      {/* The template in the air between the picker's stage and the composer's
+          tile — a page-level layer ABOVE the picker's scrim, because the flight
+          outlives the surface it leaves. Mounted AFTER the picker on purpose:
+          its layout effect measures the detail view's stage, which has to exist
+          in the same commit. */}
+      <TemplateFlight />
 
       {/* Tooling, mounted per page: the console is how the designer switches the
           dock between "no projects yet" and "one site" without touching code. */}

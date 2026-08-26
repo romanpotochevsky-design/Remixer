@@ -104,6 +104,10 @@ export const modalScrim = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.18, ease: [0.2, 0, 0, 1] } },
   exit: { opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+  /* Leaving UNDER something that is still flying (the picked template on its
+     way into the composer): a shade longer than the plain exit, so the page is
+     not fully lit before the object has landed on it. */
+  dissolve: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
 }
 
 export const modalSheet = {
@@ -136,7 +140,75 @@ export const fullscreenSheet = {
     transition: { ...SPRING_SOFT, opacity: { duration: 0.15, ease: [0.2, 0, 0, 1] } },
   },
   exit: { opacity: 0, scale: 0.975, transition: EXIT },
+  /*
+   * DISSOLVE — the sheet after "Choose a template". It leaves by fading where
+   * it stands, and deliberately does NOT shrink back toward the pill: the
+   * chosen template is at that moment flying across the whole screen into the
+   * composer, and a surface collapsing toward one corner while an object flies
+   * to another is two gestures fighting for one pair of eyes. The flying object
+   * owns the eye; the ground it leaves behind only gets out of the way.
+   */
+  dissolve: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
 }
+
+/**
+ * The fullscreen sheet when it is NOT the thing you are watching — the picker
+ * opened on the template that is already attached (the tile's preview).
+ *
+ * Rule 2 does not apply, and applying it anyway would be wrong: on that path
+ * the object flying out of the tile is the gesture, and a 1624px surface
+ * inflating from the same point at the same time gives the eye two things to
+ * follow. So the ground simply materialises under the flight and dissolves out
+ * from under it — a fade, nothing else moves.
+ */
+export const fullscreenSheetFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18, ease: [0.2, 0, 0, 1] } },
+  dissolve: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
+}
+
+/**
+ * ───────────────────── THE ATTACHMENT'S CHOREOGRAPHY ─────────────────────
+ *
+ * ONE OBJECT DOCTRINE. A template is a single physical thing: a card in the
+ * picker's grid, the full-screen stage it grows into, and the 56px tile in the
+ * composer. Every hand-off between those homes is the same FLIP morph with the
+ * nested counter-scale — never a fade-out here plus a fade-in there. The
+ * geometry lives in modules/home/TemplateFlight.tsx; the springs are here.
+ *
+ * WHY A BOUNCE ON ARRIVAL AND NONE ON DEPARTURE: rule 4. The attach is the
+ * object being handed to you — it seats with one small overshoot, which is what
+ * makes a 1600px stage collapsing into a 56px tile read as "caught" rather than
+ * "shrunk". The way back up is a plain settle: nothing is being received.
+ */
+
+/** Stage → tile. Duration-based so the whole distance is covered in one beat
+ *  whatever the viewport; bounce 0.16 = the tile dips ~1px past its box and
+ *  seats. */
+export const FLIGHT_SEAT = { type: 'spring', duration: 0.62, bounce: 0.16 } as const
+
+/** Tile → stage. Slightly longer and flat: a surface arriving, not a catch. */
+export const FLIGHT_OPEN = { type: 'spring', duration: 0.56, bounce: 0 } as const
+
+/**
+ * THE SNAP-ONCE RULE, and it is a performance rule before it is a taste one.
+ *
+ * The composer's field grows 46px when a template lands in it (138 → 184, board
+ * 28726:64760). Transitioning its `height` would relayout the hero column on
+ * every frame of the spring — the exact per-frame layout this project's contract
+ * forbids. So the layout SNAPS in the one commit that adds the tile, and the
+ * rows that moved are put back where they were with a transform and sprung home:
+ * the eye sees a field growing, the browser sees one reflow. `useSnapSlide` in
+ * modules/home/HomePage.tsx applies it; the distances are drawn constants (the
+ * text row moves 72, the button row and the chip row 46), so nothing is measured
+ * and nothing can drift.
+ *
+ * Growing is a spring with a hair of overshoot — it is opening WITH the tile
+ * that is landing. Closing is flat and quicker (rule 4).
+ */
+export const FIELD_GROW = { type: 'spring', duration: 0.5, bounce: 0.12 } as const
+export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
 
 /**
  * Rule 3 for the fullscreen sheet: the content column, one beat behind the

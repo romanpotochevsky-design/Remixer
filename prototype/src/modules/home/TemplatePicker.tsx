@@ -129,22 +129,23 @@ import { useT } from '@/i18n'
 import { libraryIn, TEMPLATE_LIBRARY, type TemplateCategoryId } from '@/data/templates'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { IconArrowLeft, IconClose, IconPlus } from '@/ui/icons'
-import { modalScrim, fullscreenSheet, fullscreenContent, SPRING_SOFT } from '@/ui/motion'
+import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, SPRING_SOFT } from '@/ui/motion'
 import { CategoryChips, TemplateCard } from './Dock'
 import { Thumb } from './thumbs'
+import { rectOf } from './attachment'
 
 /** The sheet's inset from every viewport edge (board: (16, 16) 1624 × 1164). */
-const SHEET_INSET = 16
+export const SHEET_INSET = 16
 /**
  * Detail header strip — `Buttons` 28637:43245. **64 tall since the designer's
  * 26.08.2026 pass** (was 72): the row's padding went `16 16 16 0` → `12 12 12 0`,
  * so 12 + 40 (the tallest child, the title+pill group) + 12 = 64.
  */
-const DETAIL_HEADER_H = 64
+export const DETAIL_HEADER_H = 64
 /** The stage's side margins — the drawn `Sections` px-4 (spec §12.2). */
-const STAGE_MARGIN_X = 4
+export const STAGE_MARGIN_X = 4
 /** The stage's drawn clip radius (top corners; the bottom runs off the sheet). */
-const STAGE_RADIUS = 8
+export const STAGE_RADIUS = 8
 /**
  * The ✕ plate — the box the header band unrolls from, and the box the band's
  * right edge stays glued to. **36 × 36 at (right 12, top 14) since 26.08.2026**
@@ -171,6 +172,27 @@ const PLATE_INSET_X = 12
 
 /** Everything the browser lets you Tab to inside the sheet. */
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+
+/**
+ * Leaving the ATTACHMENT'S OWN PREVIEW (`pickerSource === 'tile'`): every way
+ * out — ←, Esc, ✕, the scrim — is the same gesture, because on this path the
+ * grid does not exist to go back to. The stage leaves the way it came: it flies
+ * home into the tile through the page-level flight layer, while the sheet and
+ * the scrim dissolve out from under it.
+ *
+ * One state write does all of it (`closeAttachedPreview`), so the detail view
+ * stands down in the same commit the clone takes over — nothing is ever drawn
+ * twice. If either end has gone missing (never expected), fall back to a plain
+ * close rather than flying into nothing.
+ */
+function returnToTile(index: number) {
+  const ui = useUI.getState()
+  const stage =
+    document.querySelector('[data-detail-stage]') ?? document.querySelector('[data-detail-clone]')
+  const tile = document.querySelector('[data-attach-tile]')
+  if (!stage || !tile) { ui.closeTemplatePicker(); return }
+  ui.closeAttachedPreview(index, rectOf(stage))
+}
 
 /**
  * The FLIP flight, precomputed: where the stage must fly from, as deltas in
@@ -255,7 +277,10 @@ export function TemplatePicker() {
       /* Esc peels one layer, like the domain surface: detail → grid → closed.
          Read at event time — the picker stays mounted across both. */
       const s = useUI.getState()
-      if (s.pickerDetail !== null) s.closeTemplateDetail()
+      /* …except on the tile's own preview, where there is no grid underneath:
+         one Esc flies the object home and closes the whole thing. */
+      if (s.pickerSource === 'tile' && s.pickerDetail !== null) returnToTile(s.pickerDetail)
+      else if (s.pickerDetail !== null) s.closeTemplateDetail()
       else s.closeTemplatePicker()
     }
     document.addEventListener('keydown', onKey)
@@ -270,7 +295,22 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
   const attach = useUI((s) => s.attachTemplate)
   const detail = useUI((s) => s.pickerDetail)
   const openDetail = useUI((s) => s.openTemplateDetail)
+  const backToGrid = useUI((s) => s.closeTemplateDetail)
+  /* Which surface this is: the library (opened by the pill) or one attachment's
+     own preview (opened by the tile). See `ui.pickerSource`. */
+  const source = useUI((s) => s.pickerSource)
+  const fromTile = source === 'tile'
   const sheet = useRef<HTMLDivElement>(null)
+  /*
+   * True from "Choose a template" until the sheet has faded: the surface is
+   * leaving in place while the chosen template flies out of it into the
+   * composer. It is NOT `closeTemplatePicker` — that would hand the exit to
+   * AnimatePresence, whose variant shrinks the sheet back toward the pill, and
+   * a sheet collapsing toward one corner while the object flies to another is
+   * two gestures for one pair of eyes (motion.ts, `dissolve`). The overlay
+   * closes itself when the fade lands.
+   */
+  const [dissolving, setDissolving] = useState(false)
   /* Set the moment a template is chosen, so the focus restore below knows to
      stand down: the composer's own effect puts the caret back in the field
      after a pick, and two owners fighting over focus 200ms apart reads as a
@@ -318,11 +358,18 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
    * the trigger is safe to touch again.
    */
   useEffect(() => {
-    const trigger = document.querySelector<HTMLElement>('[data-template-trigger]')
+    /* Whichever control summoned this: the pill, or the tile whose preview this
+       is. Two attributes rather than one, because with an attachment BOTH are on
+       screen and the tile comes first in the DOM — a single shared hook would
+       silently re-aim the pill's own grow-from-trigger at the tile. */
+    const trigger = document.querySelector<HTMLElement>(
+      fromTile ? '[data-attach-tile]' : '[data-template-trigger]',
+    )
     sheet.current?.focus()
     return () => {
       if (!picked.current && trigger?.isConnected) trigger.focus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function trapTab(e: React.KeyboardEvent) {
@@ -376,12 +423,37 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
     openDetail(index)
   }
 
+  /*
+   * "Choose a template" — the hand-off. The stage's rect is measured HERE,
+   * before any state changes, because one commit later this surface is already
+   * dissolving; from that rect the page-level flight layer flies the object
+   * into the composer's tile (which the same store write brings into existence).
+   */
+  /* The ✕ and the scrim. On the library path they close; on one attachment's
+     preview they are the same gesture as ← — the object flies home. */
+  function dismiss() {
+    if (fromTile && detail !== null) returnToTile(detail)
+    else onClose()
+  }
+
+  function onChoose(index: number) {
+    picked.current = true
+    const stage =
+      sheet.current?.querySelector('[data-detail-stage]') ??
+      sheet.current?.querySelector('[data-detail-clone]')
+    setDissolving(true)
+    attach(index, stage ? rectOf(stage) : null)
+  }
+
   return (
     <div
       className="fixed inset-0 z-[70]"
       role="dialog"
       aria-modal="true"
       aria-label={detailTpl ? detailTpl.name : t({ en: 'Pick a template', uk: 'Вибрати шаблон' })}
+      /* Once the surface is only fading out it must stop taking clicks — the
+         page underneath is already the live one. */
+      style={dissolving ? { pointerEvents: 'none' } : undefined}
     >
       {/* 50% black (28616:59963) — raw value on the board, not a token.
           In the detail view it still closes the WHOLE picker: the ✕ stays on
@@ -389,9 +461,9 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
       <motion.div
         variants={modalScrim}
         initial="initial"
-        animate="animate"
-        exit="exit"
-        onClick={onClose}
+        animate={dissolving ? 'dissolve' : 'animate'}
+        exit={fromTile ? 'dissolve' : 'exit'}
+        onClick={dismiss}
         className="absolute inset-0 bg-[rgba(0,0,0,0.5)]"
       />
 
@@ -406,11 +478,18 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
            thing being announced is the dialog, not a control. */
         tabIndex={-1}
         onKeyDown={trapTab}
-        variants={fullscreenSheet}
+        /* The library grows out of the pill (rule 2); one attachment's preview
+           only fades, because there the flying object is the gesture. */
+        variants={fromTile ? fullscreenSheetFade : fullscreenSheet}
         initial="initial"
-        animate="animate"
+        animate={dissolving ? 'dissolve' : 'animate'}
         exit="exit"
-        onAnimationComplete={() => setEntering(false)}
+        onAnimationComplete={(v) => {
+          /* The dissolve's own landing is where the picker actually closes —
+             see `dissolving`. Everything else means the entrance has settled. */
+          if (v === 'dissolve') onClose()
+          else setEntering(false)
+        }}
         style={{
           transformOrigin: origin,
           ...(entering ? { '--card-hover-dur': '0s' } : null),
@@ -418,7 +497,12 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
         className="absolute inset-4 overflow-hidden rounded-[16px] bg-[var(--gray-900)] focus:outline-none"
       >
         {/* One motion block over both boxes, so the content still lands as the
-            single ~60ms-later beat the sheet's motion note describes. */}
+            single ~60ms-later beat the sheet's motion note describes.
+            NOT RENDERED AT ALL on the attachment tile's own preview: the library
+            is not part of that path (nothing to go "back" to, nothing to fade
+            under the detail view), and an 18-card grid mounted invisibly would
+            be 18 thumbnails of cost for a surface that never shows them. */}
+        {!fromTile && (
         <motion.div
           variants={fullscreenContent}
           initial="initial"
@@ -516,6 +600,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             </ScrollArea>
           </motion.div>
         </motion.div>
+        )}
 
         {/* THE DETAIL VIEW — kept by AnimatePresence through its own back
             flight (usePresence inside), and through the whole picker's exit:
@@ -528,7 +613,13 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
               index={detail}
               sheetRef={sheet}
               geom0={flightFrom.current}
-              onChoose={(i) => { picked.current = true; attach(i) }}
+              /* On the tile's own preview the flight is not the picker's: a
+                 page-level clone carries the object across the surface boundary
+                 (TemplateFlight.tsx), so this view holds still and only hides
+                 its stage until that clone lands. */
+              external={fromTile}
+              onChoose={onChoose}
+              onBack={fromTile ? () => returnToTile(detail) : backToGrid}
             />
           )}
         </AnimatePresence>
@@ -544,7 +635,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             separate clone that unrolls out from UNDER this button (z below it).
             The 24-box glyph is unchanged on both boards, so IconClose stays 14. */}
         <button
-          onClick={onClose}
+          onClick={dismiss}
           aria-label={t({ en: 'Close', uk: 'Закрити' })}
           className="liquid-glass liquid-glass--dim glass-interactive absolute right-3 top-[14px] z-10 grid h-9 w-9 place-items-center rounded-[10px] text-white"
         >
@@ -565,25 +656,42 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
  * card's re-measured rect on exit, and restores thumbnail + focus when done.
  */
 function DetailView({
-  index, sheetRef, geom0, onChoose,
+  index, sheetRef, geom0, external = false, onChoose, onBack,
 }: {
   index: number
   sheetRef: React.RefObject<HTMLDivElement>
   /** Measured in the card's click handler, before this mounts — so the first
    *  painted frame already sits on the card. Null only defensively. */
   geom0: FlightGeom | null
+  /**
+   * The flight is somebody else's: on the attachment tile's own preview a
+   * page-level clone carries the object between the tile and this stage
+   * (TemplateFlight.tsx), because neither end is inside this sheet's lifetime.
+   * So this view mounts already landed and simply keeps its stage INVISIBLE
+   * while that clone is in the air — the two are the same rect, so the reveal is
+   * a hard swap of identical pixels. No internal flight, no plate unroll (there
+   * is no grid to unroll away from), no thumbnail to hide.
+   */
+  external?: boolean
   onChoose: (index: number) => void
+  /** ← : back to the grid on the library path, home to the tile on the other. */
+  onBack: () => void
 }) {
   const { t } = useT()
   const tpl = TEMPLATE_LIBRARY[index]
-  const back = useUI((s) => s.closeTemplateDetail)
+  const back = onBack
+  /** True while the page-level clone is standing in for this stage. */
+  const externalFlying = useUI((s) => external && s.tplFlight !== null)
   const [isPresent, safeToRemove] = usePresence()
   const reduced = useReducedMotion()
   const backBtn = useRef<HTMLButtonElement>(null)
 
   /** false = the flight clone is on screen; true = the real ScrollArea stage.
-   *  The two are pixel-identical at the swap, which happens in one commit. */
-  const [landed, setLanded] = useState(false)
+   *  The two are pixel-identical at the swap, which happens in one commit.
+   *  Starts LANDED when the flight is external: the real stage has to be in the
+   *  DOM from the first commit, both because the outside clone measures its rect
+   *  and because there is no internal clone to stand in for it. */
+  const [landed, setLanded] = useState(external)
 
   /* One springed progress for the stage flight, one for the plate — every
      transform on both is derived from these, so the counter-scale ratio is
@@ -664,6 +772,16 @@ function DetailView({
     const sheetEl = sheetRef.current
     if (!sheetEl) return
 
+    /* Somebody else is flying this one: sit still at the settled geometry. The
+       plate is parked unrolled, where its fill maps to 0 — i.e. invisible, as
+       the board draws it (no visible bar). */
+    if (external) {
+      p.jump(1)
+      pp.jump(1)
+      if (!isPresent) safeToRemove?.()
+      return
+    }
+
     /* Reduced motion: no flight, no plate, no thumbnail games — the detail
        fades in place over the (opacity-faded) list, and out again. */
     if (reduced) {
@@ -708,7 +826,7 @@ function DetailView({
     const plate = animate(pp, 0, { type: 'spring', duration: 0.26, bounce: 0 })
     return () => { flight.stop(); plate.stop() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPresent, reduced, index])
+  }, [isPresent, reduced, index, external])
 
   /* Opening the detail moves focus to the back arrow (the trap keeps covering
      the whole sheet; the hidden list filtered out by visibility). */
@@ -833,7 +951,14 @@ function DetailView({
           overflow visible inside, the outer clip does all the cropping; after,
           the real scroller, pixel-identical, swapped in one commit. */}
       {landed ? (
-        <div data-detail-stage className={`${stageBox} overflow-hidden rounded-t-[8px]`}>
+        <div
+          data-detail-stage
+          className={`${stageBox} overflow-hidden rounded-t-[8px]`}
+          /* Hidden, not unmounted, while the page-level clone is in the air:
+             the clone needs this box's rect to aim at, and the reveal has to be
+             a swap of identical pixels rather than anything that animates. */
+          style={externalFlying ? { opacity: 0 } : undefined}
+        >
           <ScrollArea axis="y" thumb="auto" className="h-full">
             {site}
           </ScrollArea>
