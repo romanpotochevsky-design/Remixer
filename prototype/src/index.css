@@ -101,6 +101,20 @@
 }
 
 /*
+ * The Home hero wave's front radius — registered so the browser can ANIMATE it
+ * as a real length (an unregistered custom property animates discretely). The
+ * one animated custom property in the project; it drives the annulus mask of
+ * `.home-hero-wave` (HOME ENTRANCE section) for the load-time dot wave, a
+ * one-shot that leaves the DOM when the theatre ends. Top level on purpose:
+ * `@property` is not a cascade rule and does not belong to a layer.
+ */
+@property --wave-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/*
  * Token layer.
  *
  * Values measured from the live Remixer (panel.dreamhost.com/ai-editor) on 13 Aug 2026.
@@ -952,31 +966,35 @@
    */
   .home-hero {
     /*
-     * The colour field. On the board this is two 4000px ellipses under a real Gaussian
-     * blur (`Magenta` 28364:40185 below `Blue` 28364:40186) over the near-black ground;
-     * here it is four static gradients, least-squares fitted to the eight colours the
-     * spec sampled off the 1:1 render (§4.1). Re-measured off the built page after the
-     * navy-band correction below: worst per-channel error 7/255 (the bottom-centre
-     * sample, 7 too green), rms 2.77 across all 24 channels. The first fit was worst
-     * 15 / rms 4.50.
+     * The colour field — READ OFF THE PRODUCTION RECORDING, not the board.
+     * (26.08.2026: the designer rejected the board-matched paint — "ни градиент,
+     * ничего вообще не похоже" — and named the live product's screen recording
+     * as the source of truth for the hero's background and entrance. The board
+     * stays the truth for layout, type, composer, chips, cards.)
      *
-     * Painted bottom to top: ground · magenta · blue · a vertical VEIL of the ground
-     * colour · a faint blue ambient lift. Layer order between the two glows is Figma's,
-     * because they overlap along the bottom edge and the order decides the violet you
-     * get in the middle.
+     * What the recording shows (scratchpad live2/, 4096×1318 full frames;
+     * capture scale 1.6356 device px per CSS px, derived from the 960px
+     * composer and cross-checked on four 36px controls): two big SIDE blooms —
+     * magenta hugging the LEFT edge with its core just inside it (fx≈0.16,
+     * below the bottom edge), blue mirrored on the RIGHT (fx≈0.84) — and a
+     * DARK VALLEY down the centre that keeps everything behind the logo,
+     * heading and composer near-black; the tails overlap along the bottom into
+     * violet. No plate, no veil, no navy band: the darkness IS the absence of
+     * the blooms. The full analysis with the sampled grid lives in
+     * scratchpad/qa7/production-analysis.md.
      *
-     * ⚠️ THE VEIL IS THE PART THAT MATTERS, and it took three rejected attempts to
-     * find. The panel has to be near-black along its top edge (#0d0d13) and saturated
-     * along its bottom (#b055d8), and if that whole ramp has to come out of the two
-     * glows alone then their ENDING SHAPES land inside the panel — and a radial
-     * gradient's ending shape is a hard edge. Rendered and screenshotted, that showed
-     * up as a bright elliptical arc across the top right (a fit with few stops), and
-     * then as a dark wedge under the headline (a fit whose boundary crossed mid-panel).
-     * A physically honest error-function falloff has no edge but cannot be dark at
-     * y=272 and still hit the measured colour at y=392 — it lands 25/255 too dark
-     * through the whole middle band. Handing the vertical ramp to a plain linear veil
-     * fixes all of it: both glows can then be far bigger than the panel (no boundary
-     * anywhere near it), and the veil has no shape to leak.
+     * The two radials below are least-squares fitted to 116 dot-free samples
+     * of the settled frame (25th-percentile patches on a 17×8 fraction grid,
+     * UI regions excluded): rms 1.87/255, worst 7.1/255. Model: source-over,
+     * blue over magenta over the ground, alpha profile A·(1−d)^q sampled into
+     * the stop ladders (q≈1.15, so the falloff is near-linear and the ladder
+     * tracks it to <1/255 per segment).
+     *
+     * ⚠️ The ending-shape lesson STANDS: a radial gradient's ending shape is a
+     * hard edge, and the magenta's d=1 passes almost exactly through the
+     * top-left corner. It is invisible only because the ladder lands on zero
+     * with near-zero slope — 0.035 alpha over the last 6.25% of a ~1400px ray
+     * is ~0.0004 alpha per px. Keep the 93.75% stop if you touch the ladder.
      *
      * ⚠️ The load ENTRANCE does not touch this stack. It fades out an opaque
      * ground-coloured CURTAIN child instead (`.home-hero-curtain`, below):
@@ -988,52 +1006,41 @@
      * (the composite quantizes at the element boundary), whole-stack-on-child
      * still left 219 corner pixels (double-rounded corner antialiasing, then
      * clip-vs-background coverage). Zero requires zero elements added.
+     *
+     * Geometry is all PERCENTAGES of the panel, so the field transfers from
+     * production's 2504×806 viewport to our 1640×812 panel by FRACTION — the
+     * valley keeps its relative width, the blooms keep their reach up the
+     * edges (~30% of height at strength, faint tint into the top corners).
      */
     background:
-      /* the ambient lift — the board's top band is #0d0d13…#101018, not #09090b */
-      linear-gradient(to bottom, rgba(124, 147, 248, 0.046), rgba(124, 147, 248, 0) 26.6%),
-      /*
-       * The mid-height NAVY BAND. Not a layer Figma draws — a correction, and the only
-       * one that could be made without moving anything that already matched.
-       *
-       * Measured against the eight samples, the two glows alone leave the panel's
-       * flanks 15 (left) and 11 (right) short of BLUE halfway down: the flanks read
-       * warm where the board reads indigo, and the area behind the composer reads
-       * violet where the board reads navy. Both flanks are at 58–65% of the blue
-       * glow's ending shape, and the bottom-left corner — which already matched — sits
-       * at 58% too, so ANY change to the blue's reach or alpha ladder that fixes the
-       * middle also washes the bottom-left corner: tried, and it cost 11/255 of red
-       * there. A band is the one shape that separates them, because the difference
-       * between "halfway down" and "at the bottom" is vertical, not radial.
-       *
-       * Zero at 34% and 76% of the panel, so it has no edge and cannot reach either
-       * the top band or the bottom corners. The 34% is not arbitrary: it is where the
-       * Shadow plate starts (33.4975%). Starting the band any higher put its blue just
-       * ABOVE the plate's opaque top, which doubled the rate of change across that
-       * edge — 10/255 of blue over 3px — and made a seam of it again. Starting at 34%
-       * scores identically on all eight samples and leaves the edge alone. Result:
-       * worst per-channel error 15 → 7, rms 4.50 → 2.98.
-       */
-      linear-gradient(to bottom,
-        rgba(70, 60, 255, 0) 34%, rgba(70, 60, 255, 0.14) 48%, rgba(70, 60, 255, 0) 76%),
-      /* the veil: what actually makes the top third dark (see the note above) */
-      linear-gradient(to bottom,
-        rgba(9, 9, 11, 0.95) 0%, rgba(9, 9, 11, 0.95) 15%, rgba(9, 9, 11, 0.95) 30%,
-        rgba(9, 9, 11, 0) 45%),
-      /* `Blue` 28364:40186 */
-      radial-gradient(222.17% 171.75% at 130.22% 98.52%,
-        rgba(18, 104, 255, 1) 0%, rgba(18, 104, 255, 0.569) 15%, rgba(18, 104, 255, 0.29) 30%,
-        rgba(18, 104, 255, 0.125) 45%, rgba(18, 104, 255, 0.041) 60%, rgba(18, 104, 255, 0.015) 70%,
-        rgba(18, 104, 255, 0.004) 80%, rgba(18, 104, 255, 0) 90%),
-      /* `Magenta` 28364:40185 — the 15/30/45% stops are pulled ~2.5% below the first
-         fit: the left flank between y 600 and 780 was reading hotter than the board,
-         and those three stops are the ones that govern it. The 0% stop is untouched,
-         so the bottom-left corner still lands on its sample. */
-      radial-gradient(338.04% 134.85% at -26.38% 98.52%,
-        rgba(217, 97, 255, 1) 0%, rgba(217, 97, 255, 0.69) 15%, rgba(217, 97, 255, 0.455) 30%,
-        rgba(217, 97, 255, 0.273) 45%, rgba(217, 97, 255, 0.14) 60%, rgba(217, 97, 255, 0.077) 70%,
-        rgba(217, 97, 255, 0.033) 80%, rgba(217, 97, 255, 0.008) 90%, rgba(217, 97, 255, 0) 100%),
-      var(--gray-950);
+      /* blue bloom — fitted core rgb(48,85,199), A=1.00, q=1.14 */
+      radial-gradient(46.63% 140.14% at 83.57% 133.39%,
+        rgba(48, 85, 199, 1) 0%,
+        rgba(48, 85, 199, 0.859) 12.5%,
+        rgba(48, 85, 199, 0.72) 25%,
+        rgba(48, 85, 199, 0.585) 37.5%,
+        rgba(48, 85, 199, 0.453) 50%,
+        rgba(48, 85, 199, 0.326) 62.5%,
+        rgba(48, 85, 199, 0.205) 75%,
+        rgba(48, 85, 199, 0.093) 87.5%,
+        rgba(48, 85, 199, 0.042) 93.75%,
+        rgba(48, 85, 199, 0) 100%),
+      /* magenta bloom — fitted core rgb(166,71,227), A=0.86, q=1.16 */
+      radial-gradient(48.54% 140.97% at 16.32% 133.37%,
+        rgba(166, 71, 227, 0.86) 0%,
+        rgba(166, 71, 227, 0.737) 12.5%,
+        rgba(166, 71, 227, 0.616) 25%,
+        rgba(166, 71, 227, 0.499) 37.5%,
+        rgba(166, 71, 227, 0.385) 50%,
+        rgba(166, 71, 227, 0.276) 62.5%,
+        rgba(166, 71, 227, 0.173) 75%,
+        rgba(166, 71, 227, 0.077) 87.5%,
+        rgba(166, 71, 227, 0.035) 93.75%,
+        rgba(166, 71, 227, 0) 100%),
+      /* the ground — the recording's valley black (#17161C measured at the
+         panel's top centre), NOT --gray-950: the panel reads a step lighter
+         than the page ground around it, exactly as the video's does */
+      #17161c;
 
     /* Vertical rhythm, hero-relative (§2): 160 pad · logo 96 · 64 · headline ·
        11 · subtitle · 64 · composer 138 · 24 · chips 42 · 118 slack. The 64
@@ -1046,15 +1053,9 @@
     --home-gap-sub: 64px;
     --home-gap-chips: 24px;
     --home-h1: 56px;
-    /* centre of the concentric ring set = centre of the logo mark */
+    /* centre of the concentric ring set = centre of the logo mark; the wave's
+       annulus mask expands from the same point */
     --home-rings-y: 208.25px;
-    /* the same centre as a FRACTION of the panel (208.25 / 812) — the entrance
-       aperture's origin. A percentage, not the px var, because the aperture is
-       a clip-path ellipse whose position and radii are element percentages —
-       the origin holds at every animated size with no keyframe arithmetic.
-       Exact at the design height; a few px adrift on odd viewports, invisible
-       in a travelling 2.8s front. */
-    --home-aperture-y: 25.646%;
   }
 
   /*
@@ -1068,10 +1069,16 @@
    * colour that can peek past the clip during the fade is invisible on the
    * near-black field the corners have at that moment.
    */
+  /* Ground-coloured — the recording's pre-pop black IS the settled valley
+     colour (measured (20,20,23) against (23,22,27)), so the covered panel and
+     the revealed panel's dark centre are the same surface to the eye. Mounted
+     LAST among the backdrop layers: it has to cover the dot lattice too, so
+     lattice and colour pop TOGETHER, inside the same reveal — production shows
+     the dots present from the very first coloured frame. */
   .home-hero-curtain {
     position: absolute;
     inset: 0;
-    background: var(--gray-950);
+    background: #17161c;
   }
   /* The headline is `whitespace-nowrap` at 56px, i.e. 735px wide and unable to
      wrap — so below roughly 800px of column it has to come down in size instead of
@@ -1093,8 +1100,6 @@
       --home-gap-chips: 18px;
       /* the top spacer is at its 76px floor here, so 76 + 64/2 */
       --home-rings-y: 108px;
-      /* 108 over a ~576 panel (960 − 8 inset − 376 dock) */
-      --home-aperture-y: 18.75%;
     }
   }
   @media (max-height: 820px) {
@@ -1105,89 +1110,74 @@
       --home-gap-chips: 12px;
       /* 76 + 52/2 */
       --home-rings-y: 102px;
-      /* 102 over a ~436 panel */
-      --home-aperture-y: 23.4%;
     }
   }
 
   /*
-   * The `Shadow` plate (28364:40187): 1640×272 at hero y=272, #121217 → transparent
-   * at 80.288% of its height. A raw hex in Figma, not a token. This is what puts
-   * contrast behind the headline (y 320–387).
+   * The dot lattice — production's, not the board's `Union` 28364:40177.
+   * Measured off the recording (FFT/autocorrelation on both flanks): a square
+   * grid, 16.0 CSS px pitch (26.2 device px / 1.6356), DIAMOND dots (45-degree
+   * squares) ~4.9px across the diagonal with a soft ~1px edge — coarser and far
+   * louder than the board's 12.8px/1.5px circles.
    *
-   * ⚠️ The direction is FLIPPED from what the code generator reports (it emits
-   * `to bottom, rgba(18,18,23,0) → #121217 80.288%`). An isolated render of the
-   * layer settles it: the dark end is at the TOP. Figma stores a gradient as stops
-   * plus handle positions and the export only carries the stops, so a flipped
-   * handle is invisible to it. Taken the generator's way the plate is fully opaque
-   * from y=490 to its bottom edge at 544 and then jumps (124, 49, 153) in RGB into
-   * the glow below — a hard line across the whole panel, which the board does not
-   * have. Both versions were built and screenshotted before trusting the render.
+   * ⚠️ The dots are NOT constant-alpha white. Measured against the settled
+   * frame: over the magenta flank a dot adds (49,16,30), at bottom-centre
+   * (59,48,101), over the right flank (8,23,28) — and in the dark valley and
+   * the top band it adds NOTHING (Δ≈0, the dots simply are not there). The
+   * lattice is a BRIGHTER COPY OF THE COLOUR FIELD shown through the diamond
+   * grid: where the field is dark its brighter copy is transparent, so the
+   * dots die in the valley with no second mask and no edge. (The board-era
+   * uniform 6% white lattice is superseded — the board is no longer the truth
+   * for this surface. A constant-alpha lattice is brightest over near-black,
+   * which is exactly the opposite of what the recording shows.)
    *
-   * Because the plate's top edge is a hard one, the field above it has to already
-   * BE #121217 at y=271 or the edge shows there instead — that is the continuity
-   * constraint in the fit above, and it is derived from the board, not invented.
-   */
-  /* ⚠️ The plate's band is a FRACTION of the panel, not 272 absolute pixels.
-     Every other layer in this hero is proportional (the field's stops are
-     percentages), so the plate's top edge is the only place a seam can appear —
-     its top is fully opaque, and continuity depends on the field ALREADY being
-     #121217 at that exact line. Pinned at 272px it only lined up at the drawn
-     812; at 1440×900 the panel is 516 and the edge fell at 53% of it, well into
-     the coloured part of the ramp, and a hard horizontal line ran the full width
-     under the subtitle. 272/812 keeps the edge on the same line of the ramp at
-     any height, and resolves to exactly 272px at the design size. */
-  /* The 1.8% ramp at the very top is ours, not Figma's: the plate arrives fully
-     opaque, and the field it lands on is a least-squares fit, so it is out by
-     3–4/255 on that one line — plus the dot texture, which the plate covers,
-     stops dead there. Measured: (21,15,27) above the edge against (18,18,23)
-     below it. Five pixels of cross-fade put both differences under the gradient's
-     own rate of change, so the texture dissolves instead of ending on a line. */
-  .home-hero-shadow {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 33.4975%;
-    height: 33.4975%;
-    background: linear-gradient(to bottom, rgba(18, 18, 23, 0) 0%, #121217 1.8%, rgba(18, 18, 23, 0) 80.288%);
-  }
-
-  /*
-   * The dotted texture (`Union` 28364:40177): a boolean union of thousands of vector
-   * dots in Figma, ≈12.8px pitch, ≈1.5px dots, offset 22px down inside the hero.
-   * Importing it as SVG would ship thousands of paths, so it is one tiled radial
-   * gradient — the cheapest possible lattice, painted once.
-   *
-   * ⚠️ TWO REJECTED VERSIONS, and both failures were the same mistake: treating the
-   * lattice as something that varies. It does not.
-   *   1. A tiled MASK over a coloured field (grey at the top, magenta bottom-left,
-   *      blue bottom-right, following the glows' hue axis). Over near-black an opaque
-   *      Gray/700 dot is a 38/255 speck — measured — so the quiet top of the panel
-   *      came out as the loudest grid on the page.
-   *   2. That layer painted UNDER the `Shadow` plate, which is Figma's own z-order.
-   *      The plate is opaque at its top, so it wiped the lattice out from y=272 down
-   *      and the texture ended on a straight horizontal line right under the logo.
-   * Together they inverted the board: strongest where it should be a whisper, absent
-   * where it should read. What the board actually has is ONE uniform low-alpha white
-   * lattice across the whole panel — no mask, no colour field, no edge. Local contrast
-   * does the rest: on near-black a 4%-white speck is nothing, over the mid-tone violet
-   * it resolves into texture, and over the saturated bottom it fades out again.
-   * Painted last (see HeroBackdrop), so nothing can clip it.
+   * The two radials are their own least-squares fit to 115 dot-centre samples
+   * (global grid phase, ring-line exclusion): rms 2.91/255, worst 10.8/255,
+   * composited over the base field. The mask tile is a 16×16 SVG with one
+   * centred diamond — one data URI, rasterized once; the whole layer is
+   * static paint after load.
    */
   .home-hero-dots {
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 22px;
-    bottom: 0;
-    background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.06) 0.75px, transparent 0.85px);
-    background-size: 12.8px 12.8px;
+    inset: 0;
+    background:
+      /* dot blue — a wide, flat ellipse hugging the bottom: the bottom run of
+         colour carries dots all the way across the centre */
+      radial-gradient(103.89% 44.97% at 62.08% 98.78%,
+        rgba(40, 151, 237, 0.377) 0%,
+        rgba(40, 151, 237, 0.289) 12.5%,
+        rgba(40, 151, 237, 0.213) 25%,
+        rgba(40, 151, 237, 0.148) 37.5%,
+        rgba(40, 151, 237, 0.095) 50%,
+        rgba(40, 151, 237, 0.054) 62.5%,
+        rgba(40, 151, 237, 0.024) 75%,
+        rgba(40, 151, 237, 0.006) 87.5%,
+        rgba(40, 151, 237, 0) 100%),
+      /* dot magenta */
+      radial-gradient(102.43% 69.78% at 18.5% 110.22%,
+        rgba(255, 78, 215, 1) 0%,
+        rgba(255, 78, 215, 0.735) 12.5%,
+        rgba(255, 78, 215, 0.515) 25%,
+        rgba(255, 78, 215, 0.339) 37.5%,
+        rgba(255, 78, 215, 0.202) 50%,
+        rgba(255, 78, 215, 0.104) 62.5%,
+        rgba(255, 78, 215, 0.041) 75%,
+        rgba(255, 78, 215, 0.008) 87.5%,
+        rgba(255, 78, 215, 0) 100%);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M8 5.55 10.45 8 8 10.45 5.55 8Z' fill='%23fff'/%3E%3C/svg%3E");
+    -webkit-mask-size: 16px 16px;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M8 5.55 10.45 8 8 10.45 5.55 8Z' fill='%23fff'/%3E%3C/svg%3E");
+    mask-size: 16px 16px;
   }
 
   /*
-   * The rings (`Circles` 28364:40178) — five 1px circles, ALL CONCENTRIC on the logo
-   * mark's centre. The per-ellipse centres in spec §4.4 are wrong (see HeroBackdrop
-   * for the proof and for what they produced); the radii are exact.
+   * The rings — five 1px circles, ALL CONCENTRIC on the logo mark's centre.
+   * Radii are PRODUCTION's, measured off the recording (radial peak detection
+   * around the logo centre, device px / 1.6356): 118.6 · 248 · 401 · 536 · 704
+   * CSS px. Two of them coincide with the board's set (118.209, 400); the
+   * board's other three (350.282, 652.763, 830.252) do NOT appear in the
+   * recording, and the recording is the truth for this surface. Production's
+   * viewport is 806 CSS tall against our 812 panel, so the set transfers 1:1.
    *
    * `--home-rings-y` is that centre's distance from the panel's top edge: 160 of
    * padding + half the 96px mark = 208.25 as drawn. On a short viewport the top spacer
@@ -1200,24 +1190,21 @@
     overflow: hidden;
   }
   /*
-   * One ring: a 1px gradient stroke painted through a ring mask, so it follows the
+   * One ring: a 1px stroke painted through a ring mask, so it follows the
    * circle and costs no layout.
    *
-   * The spec derives the stroke as White/100 `#ffffff14` → Background/Neutral/200
-   * `#33333a`, left to right (§4.4, ≈measured, and §12.3 asks the designer to confirm
-   * it). Both ends are written as WHITE ALPHA here instead, matched to that
-   * appearance on the dark top of the panel — 15.5% white over `#0e0e15` is `#33333a`
-   * to the unit. The reason is the bottom of the panel: an OPAQUE `#33333a` line
-   * crossing the saturated magenta and blue is darker than what it crosses, so it
-   * reads as a scratch, and the board's arcs plainly fade out down there instead.
-   * White alpha does that on its own — identical where it is visible, self-erasing
-   * where the board's is.
+   * FLAT white alpha, not the board-era left-to-right gradient: the recording's
+   * arcs read evenly around the circle, +12…15/255 over the local field where
+   * they cross the valley (line-minus-neighbourhood, median along the arc), and
+   * they self-erase over the saturated bottom exactly as white alpha does.
+   * 8% white = +18/255 over the valley ground, +9…12 over the blooms — the
+   * measured presence, allowing for the codec softening 1px lines.
    */
   .home-hero-ring {
     position: absolute;
     border-radius: 50%;
     padding: 1px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.155));
+    background: rgba(255, 255, 255, 0.08);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -1226,69 +1213,84 @@
 
   /*
    * ------------------------------------------------------------ HOME ENTRANCE
-   * The load-time theatre — what the LIVE product's home page plays, read
-   * frame-by-frame off a screen recording of it (50ms burst frames). Everything
-   * here is a ONE-SHOT: it runs once, ends, and then `HomePage` drops the
-   * `data-home-entrance` root attribute, which removes every declaration below
-   * from the computed styles — the settled page is the same static paint QA
-   * measured at 61fps idle with zero per-frame repaint, not an animation parked
-   * on its last frame. (The finished masks resolve to alpha-1 over the whole
-   * panel anyway; dropping them is belt and braces plus one fewer thing for the
-   * compositor to hold.)
+   * The load-time theatre — the LIVE product's own choreography, read
+   * frame-by-frame off its screen recording (live2/: 20fps burst = 50ms/frame,
+   * plus three full-res frames; analysis in scratchpad/qa7/
+   * production-analysis.md). Everything here is a ONE-SHOT: it runs once,
+   * ends, and then `HomePage` drops the `data-home-entrance` root attribute,
+   * which removes every declaration below from the computed styles — the
+   * settled page is the same static paint QA measures at ~60fps idle with
+   * zero per-frame repaint, not an animation parked on its last frame.
    *
    * The timeline, t=0 = the page's first render (production's own, ±50ms):
-   *   250ms  colour field arrives — the black curtain over it fades out, 500ms
+   *   100ms  colour field + dot lattice POP — the ground-coloured curtain over
+   *          them fades out in 120ms. Production goes black → fully-coloured
+   *          inside ONE 50ms burst frame (b-003 black, b-004 = settled values,
+   *          no overshoot): not a crawl, a pop. The lattice is under the same
+   *          curtain, so it is present from the first coloured frame, exactly
+   *          as shot.
    *   300ms  the logo starts assembling — SVGator player, 1550ms one-shot
-   *   850ms  topbar fades, headline rises · 1000ms subtitle · 1250ms composer ·
-   *          1400ms chips and dock — fade + 12px rise, expo-out, no bounce
+   *  1050ms  topbar fades, headline rises (measured: heading pixels appear at
+   *          1050–1100ms — the earlier 850ms was >100ms off the frames)
+   *  1200ms  subtitle rises (measured 1200–1250ms)
+   *  1250ms  composer rises (measured ~1275–1300ms, within the frames' 50ms
+   *          resolution of the approved 1250 — kept)
+   *  1300ms  chips and dock rise (measured 1250–1300ms; the approved 1400 was
+   *          >100ms late)   — all rises fade + 12px, expo-out, no bounce
    *  1900ms  the board mark cross-fades in over the assembled logo (240ms):
    *          the SVGator asset settles on a slightly bigger sparkle and lighter
    *          greys than the signed-off mark, so the fade IS the final settle
-   *  2000ms  the dot lattice and the rings reveal as an APERTURE opening from
-   *          the logo — 2800ms: a composited clip-path on the dots, a radius-
-   *          ordered stagger of plain fades on the five rings
-   *  4800ms  the aperture ends; HomePage hears its animationend and strikes the
-   *          set. Total theatre ≈ 4.8s, interactive throughout.
+   *  1650ms  THE WAVE ignites: a ring of over-brightened lattice dots expands
+   *          from the logo at the measured 0.385 CSS px/ms (front radius read
+   *          per burst frame: 63 CSS at 1.8s, 394 at 2.7s, 783 at 3.6s, 952
+   *          at 4.1s), its band ~80→110 CSS px; it crosses the bottom edge
+   *          ~3.2s, the side edges ~3.8s, and dies fading out by 4.10s. Dots
+   *          BEHIND the front settle back to the lattice: an annulus, not a
+   *          disc.
+   *   2.2s…  the five rings ignite RADIUS-ORDERED, each ~250ms behind the
+   *          wavefront's arrival at its radius, 0.5s fades: 2.21 / 2.54 /
+   *          2.94 / 3.29 / 3.73s (production: invisible at 0.6s, only the
+   *          innermost lit at 2.7s, all five settled by ~4.3s).
+   *  4.45s  the wave's animation ends (its last 350ms are already invisible);
+   *          HomePage hears its animationend and strikes the set.
    *
-   * Paint budget: NOTHING here repaints per frame. The curtain fade, every
-   * rise, both logo fades and the five ring fades are compositor-only
-   * (opacity/transform), and the aperture itself is an animated CLIP-PATH,
-   * which Chromium runs on the compositor too — the dots texture rasterizes
-   * once and only the clip moves (see the aperture note for the measured
-   * alternatives this beat). The composer/topbar rises drag their
-   * backdrop-blur along for ~800ms — one-shot, accepted.
-   *
-   * The three easings: the maintenance page's `--ease-expo` for the rises (the
-   * house translation of the production's soft landings), its gridBloom curve
-   * for the aperture, and a plain m3-standard for the fades.
+   * Paint budget: the curtain fade, every rise, both logo fades and the five
+   * ring fades are compositor-only (opacity/transform). THE WAVE IS NOT — its
+   * annulus mask re-rasterizes per frame for ~2.3s (an animated registered
+   * length inside a mask gradient). That cost is accepted for a load-time
+   * one-shot, like the old aperture's blend cost was; the settled page pays
+   * none of it because the layer leaves the DOM with the attribute.
    */
 
-  /* The colour field arrives — by the CURTAIN fading out over it. Production:
-     black panel until ~250ms, glows up by ~750ms. Opacity on an already-painted
-     layer — nothing moves, nothing repaints. `both` is what holds the curtain
-     opaque through the 250ms of black before the fade begins. */
+  /* The colour field + lattice arrive — by the CURTAIN fading out over them.
+     Production goes black → fully-coloured between its 100ms and 150ms burst
+     frames, with no overshoot and no crawl, so the fade must COMPLETE inside
+     that window: 100ms of black, then 60ms out — at 60Hz a four-frame bloom,
+     as abrupt as the recording's own pop. Opacity on an already-painted
+     layer — nothing moves, nothing repaints. `both` holds the curtain opaque
+     through the first 100ms of black. */
   [data-home-entrance='full'] .home-hero-curtain {
-    animation: home-curtain-out 0.5s cubic-bezier(0.33, 0, 0.2, 1) 0.25s both;
+    animation: home-curtain-out 0.06s cubic-bezier(0.33, 0, 0.2, 1) 0.1s both;
   }
 
   /* The copy and controls. One class per drawn block, whole blocks only — the
      chips row rises as a row, the dock as a section; per-item staggers are
      noise at this size (same rule as the picker's fullscreenContent). */
   [data-home-entrance='full'] .he-bar {
-    animation: home-fade-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.85s both;
+    animation: home-fade-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.05s both;
   }
   [data-home-entrance='full'] .he-head {
-    animation: home-rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.85s both;
+    animation: home-rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.05s both;
   }
   [data-home-entrance='full'] .he-sub {
-    animation: home-rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1s both;
+    animation: home-rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.2s both;
   }
   [data-home-entrance='full'] .he-composer {
     animation: home-rise-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.25s both;
   }
   [data-home-entrance='full'] .he-chips,
   [data-home-entrance='full'] .he-dock {
-    animation: home-rise-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.4s both;
+    animation: home-rise-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.3s both;
   }
 
   /* The board mark settles over the finished assembly (see HomePage's logo
@@ -1308,67 +1310,137 @@
   }
 
   /*
-   * THE APERTURE — the maintenance page's gridBloom idea, adapted to the hero:
-   * a circle of existence opening from the logo, the dots simply being there
-   * wherever it has passed (the rings surface on their own stagger just
-   * below, timed to the same front). The origin is pinned to the logo with
-   * `ellipse(… at 50% var(--home-aperture-y))` — percentages of the element,
-   * so the centre holds at every animated size with no keyframe arithmetic.
-   * (The dots layer starts 22px below the panel, so its origin sits ~17px
-   * above the true centre — invisible in a travelling front.)
+   * THE WAVE — the recording's centrepiece. At ~1.8s a ring of dots ignites
+   * tight around the logo and travels outward across the whole page; dots
+   * over-brighten on the front (bigger diamonds, saturated violet) and settle
+   * to the lattice behind it; the front crosses the page edges and the layer
+   * dies by ~4.1s.
    *
-   * ⚠️ CLIP-PATH, not the maintenance page's animated mask — measured, twice:
-   *   · gridBloom verbatim (mask-size on dots AND the rings container, its
-   *     front-loaded bezier): the five ring spans — boxes up to 1660px square,
-   *     each already carrying its own XOR ring mask — re-rasterized every
-   *     frame, 15.5fps through the whole beat on the software-rendered
-   *     harness (the claude.ai preview panel's budget class), and the wave
-   *     crossed the panel in its first 500ms and then idled for 2.3s.
-   *   · mask on dots only, rings on the opacity stagger: 21fps.
-   *   · clip-path on dots (isolated A/B, same box, same ease): 58.5fps vs
-   *     the mask construction's 50.5 — Chromium runs clip-path animations on
-   *     the COMPOSITOR, so the lattice rasterizes once and only the clip
-   *     moves; no per-frame paint at all, which is this page's law.
-   * The mask's one advantage was a feathered front, but on a 6%-alpha lattice
-   * a hard front and a soft one are indistinguishable — a dot pops 15/255
-   * either way — so the feather bought nothing and cost the frame budget.
+   * Construction: TWO nested elements, one mask each (never two masks on one
+   * element).
+   *   · the child paints the wavefront's own light: a horizontal violet
+   *     gradient — sampled off the band in wave-full.png: (175,79,197) on the
+   *     magenta side → (59,103,197) on the blue side — through a 16px diamond
+   *     tile ~1.8× the lattice's (8.8px vs 4.9px across; the recording shows
+   *     ~9 CSS px dots on the young front settling toward ~7.3 by 2.7s — one
+   *     size splits the difference), on the SAME grid so every wave dot lands
+   *     on a lattice dot.
+   *   · the parent carries the travelling ANNULUS as its mask: a radial
+   *     gradient centred on the logo whose stops are derived from the animated
+   *     --wave-r (a REGISTERED length — unregistered custom properties animate
+   *     discretely). Soft inner tail (dots dim back as the front leaves them —
+   *     that partial mask is also what makes trailing dots read smaller,
+   *     exactly as the frames show), bright plateau, hard-ish front at R.
    *
-   * What remains on the harness (~21fps through the beat) is not paint: it is
-   * SwiftShader ALPHA-BLENDING the layers the animations promote — the
-   * panel-sized dots layer plus everything stacked above it — and no
-   * construction of a travelling reveal avoids that on a machine with no GPU.
-   * On anything with a GPU the same compositing is the cheap path. One-shot,
-   * at load, nothing else competing; the settled page pays none of it.
+   * Every number is read off the burst frames (front radius measured per
+   * frame): ignition 1.65s, constant speed 0.385 CSS px/ms (943px over the
+   * animation's first 2.45s, linear), band ~80 CSS at r≈140 growing to a
+   * CONSTANT ~110 by r≈200 (the max() in the stops picks the crossover),
+   * intensity full across the dark valley and easing off over the blooms,
+   * gone by 4.10s. At the design size the bottom edge is crossed at ~3.2s,
+   * the sides at ~3.8s, the far corners never quite — the same "dies at the
+   * edges" the recording shows on its wider panel. The animation runs 350ms
+   * of dead time past the fade (to 4.45s) so its animationend is the
+   * theatre's LAST event — `HomePage` keys the curtain call on it.
    *
-   * The ease is near-linear and the final radii put the far corner at ~0.79
-   * of the ellipse, so the front is still travelling until ~t+2.1s of its
-   * 2.8s — matching the production wave, which is visibly moving for ~1.4s —
-   * and the tail settles quietly. A fully-covering clip is the identity, so
-   * the last frame is exactly the unclipped static paint and dropping the
-   * attribute changes nothing. The clip exists ONLY inside the keyframes:
-   * with the animation gone (curtain call, reduced motion) there is no
-   * clip-path property left on the element at all.
+   * ⚠️ Cost, eyes open: animating a registered property that feeds a mask
+   * gradient re-rasterizes this layer every frame for ~2.3s — a deliberate
+   * exception to the "no per-frame paint" law, accepted as a load-time
+   * one-shot (the manager's order names the price). It is the only such
+   * exception on the page, it never runs again (page bounces get 'quick'),
+   * and the element unmounts at the curtain call, taking the mask, the
+   * animation and the layer with it.
    */
-  [data-home-entrance='full'] .home-hero-dots {
-    animation: home-aperture 2.8s cubic-bezier(0.4, 0.15, 0.6, 1) 2s both;
+  .home-hero-wave {
+    position: absolute;
+    inset: 0;
+    /* inert by default: r=0 masks everything away even before the animation's
+       backwards fill lands, and if the animation is ever dead (reduced motion)
+       the layer stays invisible */
+    opacity: 0;
+    /* The band: soft tail → bright plateau → hard-ish front. Width is the
+       LARGER of the 40–100% fractions (the growing newborn ring) and a
+       constant ~115px (the travelling band): production's band measures ~80
+       CSS at r≈140, ~110 at r≈400, ~110–130 at r≈650 — constant-width late,
+       NOT proportional; max() picks the crossover by itself. The tail also
+       DEVELOPS: at 2.1s production's band is bright across nearly its whole
+       width (pct90 of the band diff ≈ its dot cores), by 2.7s the inner ~70px
+       are a soft ramp — so the two middle stops ride the INNER edge at a
+       growing offset, calc(inner + min(fraction, px)): a sliver of ramp on a
+       newborn ring, a ~73px ramp on the travelled one. */
+    -webkit-mask-image: radial-gradient(circle at 50% var(--home-rings-y),
+        transparent 0,
+        transparent max(var(--wave-r) * 0.40, var(--wave-r) - 115px),
+        rgba(255, 255, 255, 0.55)
+          calc(max(var(--wave-r) * 0.40, var(--wave-r) - 115px) + min(var(--wave-r) * 0.06, 30px)),
+        rgba(255, 255, 255, 0.95)
+          calc(max(var(--wave-r) * 0.40, var(--wave-r) - 115px) + min(var(--wave-r) * 0.16, 73px)),
+        #fff calc(var(--wave-r) - 10px),
+        transparent var(--wave-r));
+    mask-image: radial-gradient(circle at 50% var(--home-rings-y),
+        transparent 0,
+        transparent max(var(--wave-r) * 0.40, var(--wave-r) - 115px),
+        rgba(255, 255, 255, 0.55)
+          calc(max(var(--wave-r) * 0.40, var(--wave-r) - 115px) + min(var(--wave-r) * 0.06, 30px)),
+        rgba(255, 255, 255, 0.95)
+          calc(max(var(--wave-r) * 0.40, var(--wave-r) - 115px) + min(var(--wave-r) * 0.16, 73px)),
+        #fff calc(var(--wave-r) - 10px),
+        transparent var(--wave-r));
+  }
+  /* Each wavefront dot's dark HALO — production's front does not just add
+     bright dots: while the wave is young every dot sits in a punched-dark
+     diamond CELL (measured: dot cores +90…115, the ring around each core
+     −10…−17, but the band's MEDIAN pixel unchanged — so the darkness is
+     per-dot, ~14px wide around the ~9px core, not a full-band veil; it
+     fades to ~−2 by 3.0s and to nothing behind the front). A halo child
+     UNDER the dot child: a bigger dark diamond on the same 16px grid — the
+     bright core overpaints its middle, leaving the dark rim. Clipped by the
+     same parent annulus; its own faster fade (home-wave-veil below). */
+  .home-hero-wave-veil {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 7, 13, 0.75);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M8 .9 15.1 8 8 15.1 .9 8Z' fill='%23fff'/%3E%3C/svg%3E");
+    -webkit-mask-size: 16px 16px;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M8 .9 15.1 8 8 15.1 .9 8Z' fill='%23fff'/%3E%3C/svg%3E");
+    mask-size: 16px 16px;
+    opacity: 0;
+  }
+  .home-hero-wave-dots {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgb(184, 86, 208) 30%, rgb(66, 112, 208) 70%);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M8 3.6 12.4 8 8 12.4 3.6 8Z' fill='%23fff'/%3E%3C/svg%3E");
+    -webkit-mask-size: 16px 16px;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M8 3.6 12.4 8 8 12.4 3.6 8Z' fill='%23fff'/%3E%3C/svg%3E");
+    mask-size: 16px 16px;
+  }
+  [data-home-entrance='full'] .home-hero-wave {
+    animation: home-wave 2.8s linear 1.65s both;
+  }
+  /* same clock as the wave, its own curve: the punch-dark is gone by ~2.9s */
+  [data-home-entrance='full'] .home-hero-wave-veil {
+    animation: home-wave-veil 2.8s linear 1.65s both;
   }
 
-  /* The rings surface as the front reaches each radius — the spans are drawn
-     largest FIRST (HomePage RING_RADII: 830 · 653 · 400 · 350 · 118), so the
-     stagger runs BACKWARDS through the children: the innermost ring first,
-     right at the aperture's own start, the outermost as the front nears the
-     panel edge. Pure opacity — the ring masks themselves never repaint. */
+  /* The rings ignite as the wave clears each radius — measured lag ≈250ms
+     behind the front plus a 0.5s fade (production: the innermost ring is fully
+     lit by 2.7s, the 401px ring is still dark then, all five settled by ~4.3s).
+     The spans are drawn largest FIRST (HomePage RING_RADII: 704 · 536 · 401 ·
+     248 · 118.6), so the stagger runs BACKWARDS through the children. Pure
+     opacity — the ring masks themselves never repaint.
+     Delay = 1.65s + r / 0.385px-per-ms + 0.25s. */
   [data-home-entrance='full'] .home-hero-ring {
-    animation: home-fade-in 0.6s cubic-bezier(0.33, 0, 0.2, 1) both;
+    animation: home-ring-in 0.5s cubic-bezier(0.33, 0, 0.2, 1) both;
   }
-  [data-home-entrance='full'] .home-hero-ring:nth-child(1) { animation-delay: 2.8s; }
-  [data-home-entrance='full'] .home-hero-ring:nth-child(2) { animation-delay: 2.6s; }
-  [data-home-entrance='full'] .home-hero-ring:nth-child(3) { animation-delay: 2.35s; }
-  [data-home-entrance='full'] .home-hero-ring:nth-child(4) { animation-delay: 2.25s; }
-  [data-home-entrance='full'] .home-hero-ring:nth-child(5) { animation-delay: 2s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(1) { animation-delay: 3.73s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(2) { animation-delay: 3.29s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(3) { animation-delay: 2.94s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(4) { animation-delay: 2.54s; }
+  [data-home-entrance='full'] .home-hero-ring:nth-child(5) { animation-delay: 2.21s; }
 
   /* Return from the builder: no theatre, just the settled page fading up in
-     one 300ms breath on the page root. The demo bounces between pages; a 4.8s
+     one 300ms breath on the page root. The demo bounces between pages; a 4.5s
      curtain-raiser on every bounce would read as the page being broken. */
   [data-home-entrance='quick'] {
     animation: home-quick-in 0.3s cubic-bezier(0.2, 0, 0, 1) both;
@@ -1390,33 +1462,39 @@
     from { opacity: 0; }
     to { opacity: 1; }
   }
-  /* Opacity reaches 1 inside the first 30% — near the logo the dots pop in
-     with the passing front rather than the whole field pre-glowing — and the
-     clip does the rest of the travelling. Radii are percentages of the dots
-     box (rx of its width, ry of its height): 90% × 134% puts the panel's far
-     corner at ~0.79 of the ellipse — covered with margin at the end, still
-     being crossed until ~75% of the run. */
-  @keyframes home-aperture {
-    0% {
-      opacity: 0;
-      clip-path: ellipse(0% 0% at 50% var(--home-aperture-y));
-    }
-    30% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 1;
-      clip-path: ellipse(90% 134% at 50% var(--home-aperture-y));
-    }
+  @keyframes home-ring-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  /* The front: --wave-r grows linearly to 943px over the first 87.5% (2.45s =
+     the measured 0.385px/ms), then holds while 350ms of dead time run out so
+     the wave owns the theatre's final animationend. Opacity follows the
+     measured intensity: full while the wave crosses the dark valley (to
+     t≈2.55s), easing off over the blooms, gone at 87.5% (t=4.10s) — the
+     production die-window; the bottom edge is crossed at ~3.2s, the sides at
+     ~3.8s, and the far corners never quite — production's wave dies at the
+     edges too. */
+  @keyframes home-wave {
+    0% { --wave-r: 0px; opacity: 1; }
+    32% { opacity: 1; }
+    66% { opacity: 0.55; }
+    87.5% { --wave-r: 943px; opacity: 0; }
+    100% { --wave-r: 943px; opacity: 0; }
+  }
+  @keyframes home-wave-veil {
+    0% { opacity: 1; }
+    18% { opacity: 1; }
+    45% { opacity: 0; }
+    100% { opacity: 0; }
   }
 
   /*
-   * Reduced motion: the page appears settled immediately — static logo, no glow
-   * fade, no aperture, no stagger. `HomePage` already resolves the entrance to
-   * 'none' (which also swaps the SVGator logo out for the static mark, the
-   * maintenance page's own fallback doctrine), so this block is the second
+   * Reduced motion: the page appears settled immediately — static logo, no
+   * pop, no wave, no ring stagger. `HomePage` already resolves the entrance to
+   * 'none' (which also swaps the SVGator logo out for the static mark and
+   * never mounts the curtain or the wave), so this block is the second
    * engine's guarantee for the same classes: if the attribute is ever present
-   * under reduced motion, every one-shot is dead and the masks are gone.
+   * under reduced motion, every one-shot is dead.
    * `animation: none`, never the .01ms idiom (CLAUDE.md: the near-zero duration
    * leaves live transitions that lie to layout reads).
    */
@@ -1425,6 +1503,12 @@
        entirely — the colour field is simply there, settled */
     [data-home-entrance] .home-hero-curtain {
       display: none;
+    }
+    /* the wave with a dead animation is already invisible (opacity 0, r=0
+       mask); display none is the belt to those braces */
+    [data-home-entrance] .home-hero-wave {
+      display: none;
+      animation: none;
     }
     [data-home-entrance] .he-bar,
     [data-home-entrance] .he-head,
@@ -1436,10 +1520,9 @@
     [data-home-entrance='quick'] {
       animation: none;
     }
-    /* animation: none is the whole cure for the aperture too — the clip-path
-       lives only inside its keyframes, so a dead animation leaves no clip */
-    [data-home-entrance] .home-hero-ring,
-    [data-home-entrance] .home-hero-dots {
+    /* a dead ring animation leaves the ring at its resting opacity — visible,
+       settled, exactly the end state */
+    [data-home-entrance] .home-hero-ring {
       animation: none;
     }
   }

@@ -20,12 +20,21 @@
  * of the viewport, the column caps at 1608, the composer holds 960 until the viewport
  * squeezes it. The page itself never scrolls vertically; the card row scrolls sideways.
  *
- * PERFORMANCE. The hero as drawn is two 4000px ellipses under a real Gaussian blur.
- * This project has already measured what that costs (4fps with the preview glow on,
- * 60 with it off), so the whole backdrop is static paint — radial gradients, one
- * linear plate, a tiled mask, four stroked rings. Nothing here animates, nothing
- * repaints per frame, and the only `backdrop-filter` on the page is the topbar's and
- * the composer's, both of which Figma draws.
+ * PERFORMANCE. The hero's paint in the live product is two huge blurred blooms.
+ * This project has already measured what a real blur costs (4fps with the preview
+ * glow on, 60 with it off), so the whole settled backdrop is static paint — two
+ * fitted radial gradients, a diamond-masked brighter copy of them for the dot
+ * lattice, five stroked rings. Nothing settled animates, nothing repaints per
+ * frame; the ONE deliberate exception is the load-time wave (a ~2.3s one-shot
+ * whose animated mask repaints while it runs — it unmounts with the theatre).
+ * The only `backdrop-filter` on the page is the topbar's and the composer's,
+ * both of which Figma draws.
+ *
+ * ⚠️ BACKGROUND & ENTRANCE SOURCE OF TRUTH (26.08.2026): the production screen
+ * recording, per the designer — the board stays the truth for layout, type,
+ * composer, chips and cards. Measured analysis: scratchpad/qa7/
+ * production-analysis.md; the board-matched paint this replaced is in git
+ * history (07093ac).
  */
 import { useEffect, useRef, useState } from 'react'
 import type { AnimationEvent } from 'react'
@@ -47,28 +56,31 @@ import { Thumb } from './thumbs'
 
 /**
  * The load-time entrance — the choreography the LIVE product's home page plays,
- * read frame-by-frame off a recording of it (50ms burst frames; the timeline
- * lives with the keyframes in index.css, section HOME ENTRANCE). Three phases:
- * the colour glows breathe in over the black panel, the logo assembles itself
- * (the designer's SVGator asset) while the copy and composer rise in, and the
- * dot lattice + rings reveal as an aperture opening from the logo.
+ * read frame-by-frame off its screen recording (50ms burst frames; the measured
+ * timeline lives with the keyframes in index.css, section HOME ENTRANCE, and
+ * the analysis in scratchpad/qa7/production-analysis.md). Three phases: the
+ * colour field and the dot lattice POP together out of a 60ms curtain fade at
+ * t=100ms, the logo assembles itself (the designer's SVGator asset) while
+ * the copy and composer rise in, and at 1.65s a WAVE of over-brightened dots
+ * expands from the logo to the page edges, the five rings igniting
+ * radius-ordered in its wake.
  *
- *  - 'full'  — the whole ~4.8s theatre. Plays ONCE per app session, on boot.
+ *  - 'full'  — the whole ~4.45s theatre. Plays ONCE per app session, on boot.
  *  - 'quick' — a plain 300ms fade of the already-settled page. What a RETURN
  *              from the builder gets: the demo bounces between pages, and
- *              re-running a 4.8s curtain-raiser on every bounce would make the
+ *              re-running a 4.5s curtain-raiser on every bounce would make the
  *              Home page feel broken, not cinematic.
  *  - 'none'  — the settled page, byte-identical to the signed-off markup. Also
  *              the ONLY state reduced-motion users ever see (the static logo,
- *              no glow fade, no aperture, no stagger — CSS guards the same
- *              classes as a second engine, per the project's both-engines rule).
+ *              no pop, no wave, no stagger — CSS guards the same classes as a
+ *              second engine, per the project's both-engines rule).
  *
  * State drives one root attribute (`data-home-entrance`); every animation lives
- * in CSS as a one-shot scoped under it. When the LAST one-shot ends (the
- * aperture; the quick fade in 'quick') the attribute comes OFF, taking every
- * animation declaration and the finished-frame masks with it — so the settled
- * page is not "an animation parked on its last frame", it is the exact static
- * paint QA measured at 61fps idle with zero per-frame repaint.
+ * in CSS as a one-shot scoped under it. When the LAST one-shot ends (the wave;
+ * the quick fade in 'quick') the attribute comes OFF, taking every animation
+ * declaration, the wave layer and the curtain with it — so the settled page is
+ * not "an animation parked on its last frame", it is the exact static paint QA
+ * measures at ~60fps idle with zero per-frame repaint.
  */
 type Entrance = 'full' | 'quick' | 'none'
 
@@ -81,58 +93,38 @@ let theatrePlayed = false
 /* ------------------------------------------------------------------ backdrop */
 
 /**
- * `Circles` 28364:40178 — the five ring radii, largest first so the smallest paints
- * last. Exact values from `get_metadata` (widths / 2). All five share one centre:
- * the logo mark's, hero (820, 208.25). See HeroBackdrop for the proof.
+ * The five ring radii, largest first so the smallest paints last. PRODUCTION's
+ * set, measured off the screen recording (radial line detection around the
+ * logo centre; scratchpad/qa7/production-analysis.md §5): the recording is the
+ * source of truth for the hero's background. Two of the five coincide with the
+ * board's `Circles` 28364:40178 (118.209, 400); the board's other three do not
+ * appear in the recording. All five share one centre: the logo mark's.
  */
-const RING_RADII = [830.252, 652.763, 400, 350.282, 118.209]
+const RING_RADII = [704, 536, 401, 248, 118.6]
 
 /**
- * The three painted layers over the hero's colour field.
+ * The painted layers over the hero's colour field (the two blooms and the
+ * ground are painted by the panel itself — `.home-hero` in index.css, fitted
+ * to the production recording).
  *
- * Three of the board's six hero layers; the two glows and the ground are painted by
- * the panel itself (`.home-hero` in index.css).
- *
- * Figma stacks them dots → rings → magenta → blue → shadow, i.e. the texture and the
- * rings sit UNDER the glows and under the plate. Taken literally that hides both: the
- * glows are ~90% opaque along the bottom, and the plate is fully opaque at its top, so
- * the dots survive only in the band above y=272 — which is the opposite of the board,
- * where the lattice runs the full height. Figma is compositing those layers with a
- * blend the MCP does not expose, so the order here is the RENDERED one: field, rings,
- * plate, then the lattice on top of everything.
+ * Paint order, bottom to top: rings → dot lattice → (theatre only) the wave →
+ * (theatre only) the curtain. The curtain must be LAST: it has to cover the
+ * lattice too, so colour and dots pop together out of one reveal — production
+ * shows the lattice present from the first coloured frame. The wave sits above
+ * the lattice it over-brightens and below the content column (z-10), same as
+ * production, where the travelling dots read through the translucent chips but
+ * never over the composer body.
  */
-function HeroBackdrop({ curtain }: { curtain: boolean }) {
+function HeroBackdrop({ theatre }: { theatre: boolean }) {
   return (
     <>
       {/*
-       * The entrance's curtain — a ground-coloured cover the theatre fades OUT
-       * to bring the colour field up (the production page's first beat).
-       * Mounted only while the full entrance runs and gone when it ends: the
-       * settled panel keeps its committed single-element paint, byte-identical
-       * to the QA render (index.css has the two measured alternatives this
-       * replaced). First child, so every other backdrop layer stays above it
-       * in the same order as always.
-       */}
-      {curtain && <div className="home-hero-curtain pointer-events-none" aria-hidden />}
-
-      {/*
-       * `Circles` 28364:40178 — five 1px circles, and they are CONCENTRIC: every one
-       * of them shares the logo mark's centre, hero (820, 208.25). On the board they
-       * read as a target centred on the mark.
-       *
-       * ⚠️ The per-ellipse centres in spec §4.4 are WRONG and produced a set of
-       * off-centre sweeps with no ring around the mark at all. `get_metadata` reports
-       * one usable coordinate per ellipse and garbage for the other; the proof is the
-       * parent frame's own bounding box, which is 1660.504 square at hero
-       * (−10.25, −622) — i.e. EXACTLY the bounding box of a d=1660.504 circle centred
-       * on (820, 208.25). A frame's bbox is the union of its children, and the union
-       * can only equal the largest circle's own bbox if every other circle sits inside
-       * it sharing that centre. Radii (exact, from get_metadata widths): 830.252,
-       * 652.763, 400.000, 350.282, 118.209.
-       *
-       * The centre tracks the mark: 50% horizontally (the logo is centred in a centred
-       * column) and `--home-rings-y` vertically, which the height breakpoints move with
-       * the logo.
+       * Five 1px circles, CONCENTRIC on the logo mark's centre — production's
+       * radii (see RING_RADII above). The centre tracks the mark: 50%
+       * horizontally (the logo is centred in a centred column) and
+       * `--home-rings-y` vertically, which the height breakpoints move with
+       * the logo. During the theatre each ring fades in on its own delay,
+       * chasing the wavefront (index.css HOME ENTRANCE).
        */}
       <div className="home-hero-rings pointer-events-none" aria-hidden>
         {RING_RADII.map((r) => (
@@ -149,19 +141,38 @@ function HeroBackdrop({ curtain }: { curtain: boolean }) {
         ))}
       </div>
 
-      {/* `Shadow` 28364:40187 — the plate behind the headline. Dark at its TOP: an
-          isolated render of the layer says so, the code export says the opposite,
-          and only one of the two leaves the board without a hard line (index.css). */}
-      <div className="home-hero-shadow pointer-events-none" aria-hidden />
-
-      {/* The dotted texture (`Union` 28364:40177), painted LAST — above the plate.
-          Under it (Figma's own z-order) the plate's opaque top wiped the lattice out
-          from y=272 down, so the texture ended on a straight line under the logo and
-          read as strongest exactly where the board's is quietest. One uniform
-          low-alpha white lattice over the whole panel instead: no mask, no edge, and
-          the local contrast decides where it reads (see index.css). */}
+      {/* The dot lattice — 16px diamond grid whose brightness rides the colour
+          field: a brighter copy of the blooms shown through the diamond mask,
+          so the dots are loud over the colour and simply absent in the dark
+          centre valley, as the recording shows (index.css). Static paint. */}
       <div className="home-hero-dots pointer-events-none" aria-hidden />
 
+      {/*
+       * THE WAVE — the recording's centrepiece beat: at ~1.65s a ring of
+       * over-brightened lattice dots ignites around the logo and travels to
+       * the page edges, dying by ~4.1s. Parent carries the animated annulus
+       * mask, the child the wavefront's violet dot paint (index.css has the
+       * full anatomy and the measured numbers). Mounted only while the full
+       * theatre runs; its animationend IS the curtain call, and unmounting
+       * removes the per-frame mask cost from the settled page entirely.
+       */}
+      {theatre && (
+        <div className="home-hero-wave pointer-events-none" aria-hidden>
+          <div className="home-hero-wave-veil" />
+          <div className="home-hero-wave-dots" />
+        </div>
+      )}
+
+      {/*
+       * The entrance's curtain — a ground-coloured cover the theatre fades OUT
+       * to pop the colour field and the lattice up together (the production
+       * page's first beat: black to fully coloured inside ~150ms). Mounted
+       * only while the full entrance runs and gone when it ends: the settled
+       * panel keeps its committed single-element paint, byte-identical to the
+       * QA render (index.css has the two measured alternatives this replaced).
+       * LAST child, so it covers every backdrop layer while it is opaque.
+       */}
+      {theatre && <div className="home-hero-curtain pointer-events-none" aria-hidden />}
     </>
   )
 }
@@ -519,15 +530,15 @@ export function HomePage() {
    * hears every one-shot finish; keying on the animation NAME (not the target)
    * means nothing else that ever animates on this page — the picker's springs
    * are JS-driven and fire no CSS events — can end the entrance early. The
-   * aperture is the theatre's last runner; the quick path has only itself. Both
-   * aperture layers fire the same name and the second write of 'none' is a
-   * no-op.
+   * WAVE is the theatre's last runner (it carries 350ms of dead time past its
+   * own fade-out so the last ring, ending at 4.43s, is already settled); the
+   * quick path has only itself.
    */
   const onEntranceEnd =
     entrance === 'none'
       ? undefined
       : (e: AnimationEvent) => {
-          if (e.animationName === 'home-aperture' || e.animationName === 'home-quick-in') {
+          if (e.animationName === 'home-wave' || e.animationName === 'home-quick-in') {
             setEntrance('none')
           }
         }
@@ -549,7 +560,7 @@ export function HomePage() {
        */}
       <div className="flex min-h-[488px] flex-1 basis-0 px-2 pt-2">
         <div className="home-hero relative w-full overflow-hidden rounded-[20px]">
-          <HeroBackdrop curtain={entrance === 'full'} />
+          <HeroBackdrop theatre={entrance === 'full'} />
           <HomeTopbar />
 
           {/* content column: 1608 inside the 1640 panel, capped there on wider
