@@ -11,7 +11,10 @@
  *   · sheet — a uniform 16px inset from every viewport edge, radius 16, opaque
  *     `Gray/900` #18181b, overflow clipped; NO border, shadow or backdrop blur
  *   · close — 40×40, radius 12 (the Build button's radius, not the composer
- *     circles'), 16px from the sheet's top-right corner
+ *     circles'), 12px from the sheet's top-right corner — the board draws 16/16
+ *     here, and the 12 is deliberate: this is ONE button serving both views and
+ *     the detail bar's own 12px padding is what its position has to satisfy
+ *     (see PLATE_SIZE / PLATE_INSET_X)
  *   · content column — the sheet minus its drawn 32px side insets (1560 at the
  *     design size): heading (57 above the cap, 40 below), the dock's category
  *     chips (16 above, 32 below), then a 6-column grid of the dock's template
@@ -59,15 +62,20 @@
  * `Choose a template` pill.
  *
  * ⚠️ THE BAR WAS REDRAWN 26.08.2026 — the designer compressed it a notch and
- * turned the CTA blue. Layout as drawn now (§12 + the dated update block):
+ * turned the CTA blue. Layout as drawn now (§12 + the dated update block), with
+ * ONE deliberate deviation — the ✕ is 40, not the 36 he drew here (see
+ * PLATE_SIZE):
  * a **64px** header strip on the sheet's own ground (row `gap 16; padding
  * 12 12 12 0; justify-end` — it was 72 / `16 16 16 0`) — back ← (32px icon
  * button at **16, 16**), the template name (Gilroy Medium **16**, cap-trimmed)
  * with the pill 32px to its right (40 tall, radius 10, fill
  * `Background/Blue/Default` = **#1587ff**, the house action blue, white PN
- * Semibold 14 label, a + in a 24 box), and the ✕ at **(right 12, top 14),
- * 36 × 36, radius 10** — plate kept, box shrunk. The group is now genuinely
- * centred on the board too (both zones 64), so the old 4px flex drift is gone.
+ * Semibold 14 label, a + in a 24 box), and the ✕ — drawn **36 × 36, radius 10 at
+ * (right 12, top 14)**, shipped **40 × 40, radius 12 at (right 12, top 12)**
+ * because 36 is not a size in the design system (PLATE_SIZE). The title+pill group
+ * is genuinely centred on the board too (both zones 64 at the drawn 36), so the old
+ * 4px flex drift is gone — and our 40px ✕ puts 4px of it back on the right zone
+ * (68), which changes nothing: the group has always shipped truly centred.
  * Below: the stage — 4px side margins, flush with the sheet's bottom, top
  * corners radius 8, a 1px **`Gray/750` #33333a** rim (was `Gray/800`), the
  * site cropped by the bottom edge and scrolling under the house indicator.
@@ -92,13 +100,16 @@
  * (~0.15s); the ✕'s glass plate "unrolls" leftward — a clone anchored at its
  * right edge springs scaleX/scaleY into the header band (sheet width minus
  * the ✕'s own 12px insets × the 64 header — both terms re-derived for the new
- * bar; the plate's centre line, 14 + 18 = 32, is still exactly the bar's
- * centre, which is why the band needs no vertical offset term), its fill
+ * bar; the plate's centre line, 12 + 20 = 32, is still exactly the bar's
+ * centre, which is why the band needs no vertical offset term — that identity
+ * is the reason the ✕'s TOP inset had to be the row's 12), its fill
  * pouring 0→1→0 so it never doubles the real plate it starts on and dissolves
  * into the sheet's black (the board draws no visible bar); the band carries no
- * rim — a 1px border under a ~44× stretch smears, and the static ✕ above it
- * draws the rimmed plate. The ✕ button itself never moves — including across
- * the 26.08 resize, which is why both views ship the new 36 (see PLATE_SIZE). Header contents arrive a beat later (+60ms, house
+ * rim — a 1px border under a ~40× stretch smears, and the static ✕ above it
+ * draws the rimmed plate. The ✕ button itself never moves — not between the two
+ * views and not across either of the designer's two passes over its size, which
+ * is the whole reason one number serves both (see PLATE_SIZE). Header contents
+ * arrive a beat later (+60ms, house
  * rule): ← slides in from the left, the name and the pill fade up, ~30ms
  * apart. Scrolling switches on only after the spring lands, by swapping the
  * flight clone for the real `ScrollArea` stage in one commit — the two are
@@ -157,25 +168,40 @@ export const STAGE_MARGIN_X = 4
 export const STAGE_RADIUS = 8
 /**
  * The ✕ plate — the box the header band unrolls from, and the box the band's
- * right edge stays glued to. **36 × 36 at (right 12, top 14) since 26.08.2026**
- * (was 40 × 40 at 16/16, radius 12): `Close M` 28640:43357 is a 36-high child of
- * the py-12 row, so its 14 is derived (12 + (40 − 36) / 2), not authored.
+ * right edge stays glued to. **40 × 40, radius 12, at (right 12, top 12)**.
  *
- * ⚠️ The picker LIST board (28633:14905) still draws this same physical button at
- * 40 × 40 / r12 / (16, 16) — the designer updated the detail board only. Shipped
- * on the NEW numbers in both views and flagged (§12.6-Q9): one static ✕ that
- * never moves beats two sizes that would make it slide 6 px on every open, and
- * the sheen rollback (17.08.2026) is the standing lesson about motion the boards
- * do not draw.
+ * ⚠️ THE SIZE IS A SYSTEM RULE, NOT A BOARD READ (designer, 26.08.2026, answering
+ * §12.6-Q9). The two boards disagreed — the list board 28633:14905 draws this
+ * button 40 × 40 / r12 / (16, 16), the redrawn detail bar 28640:43357 draws it
+ * 36 × 36 / r10 / (12, 14) — and the tie-break came from the design system rather
+ * than from either drawing: «у нас в дизайн системе 3 варианта размеров у кнопок:
+ * 32 (Small), 40 (Medium), 48 (Large)». 36 is not one of them, so the 36 is a
+ * board accident and the answer is 40 / r12 — which is also what the Liquid Glass
+ * canon table has said all along (`design-system.md` § «Liquid Glass», the
+ * `.liquid-glass--dim` row: "close пикера (40×40 r12)").
+ *
+ * ⚠️ ITS POSITION IS ONE PAIR OF INSETS FOR BOTH VIEWS, and that is what makes the
+ * numbers below deviate from both boards. This is ONE physical button: it lives on
+ * the sheet, above the list and above the detail bar, and it must not jump when
+ * the bar arrives (the sheen rollback of 17.08.2026 is the standing lesson about
+ * motion no board draws). Of the four drawn candidates only ONE satisfies the bar:
+ * the bar is 64 tall with `padding 12 … 12`, and 12 + 40 + 12 = 64 exactly, so
+ * top 12 is the only inset at which the 40 box is centred in the bar — i.e. the
+ * only one that keeps the plate's centre line ON the bar's (12 + 20 = 32 = 64 / 2),
+ * which is the identity the whole unroll is built on. The right inset follows the
+ * bar's own `padding-right: 12` for the same reason: it is the band's terminus.
+ * The cost is 4px against the list board's 16/16 corner — the smallest deviation
+ * available, and the alternative (16/16 in the list, 12/12 in the detail) is a
+ * button that slides 4px diagonally on every open.
  */
-const PLATE_SIZE = 36
+const PLATE_SIZE = 40
 /**
  * The ✕'s right inset — also the header band's left terminus when unrolled.
- * Its TOP inset, 14, is deliberately not a constant: no math needs it, because
- * 14 + 36 / 2 = 32 = DETAIL_HEADER_H / 2 is an identity, so the band centred on
- * the plate is already centred on the bar. It lives as the literal `top-[14px]`
- * on both the button and the clone (Tailwind purges non-literal class names —
- * the standing rule in CLAUDE.md), and those two must stay in step.
+ * Its TOP inset is the same 12 (see above) and is deliberately not a constant: no
+ * math needs it, because 12 + 40 / 2 = 32 = DETAIL_HEADER_H / 2 is an identity, so
+ * the band centred on the plate is already centred on the bar. It lives as the
+ * literal `top-3` on both the button and the clone (Tailwind purges non-literal
+ * class names — the standing rule in CLAUDE.md), and those two must stay in step.
  */
 const PLATE_INSET_X = 12
 
@@ -389,7 +415,7 @@ interface FlightGeom {
   /** card-thumb size over the stage's layout size */
   sx: number
   sy: number
-  /** header-band width over the plate's 36 */
+  /** header-band width over the plate's 40 */
   plateSX: number
 }
 
@@ -820,10 +846,14 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                 because the dock component's asymmetric 16/8 padding leaks
                 through — an accident, per spec §4/§10.4.
 
-                ⚠️ SEVEN chips since 26.08.2026 on both boards, and the third is
-                a second `Ecommerce` (28734:65599 / 28734:66420) — a duplicated
-                instance, flagged §14.5, NOT shipped: a filter row with the same
-                category twice is a bug on screen even when it is on the board. */}
+                SEVEN chips since 26.08.2026 on both boards. The third one the
+                designer drew is a second `Ecommerce` (28734:65599 / 28734:66420)
+                — a filter row with the same category twice is a bug on screen
+                even when it is on a board, so it was flagged (§14.5) rather than
+                built, and he answered: «не нужен дубль, придумай другой топик».
+                The slot now carries `Tech & SaaS`, our label, in the drawn
+                position — see note 3 in `data/templates.ts` for what is filed
+                under it and why every chip is guaranteed a non-empty grid. */}
             <div className="tplpick-head-chips" ref={head.chips as React.RefObject<HTMLDivElement>}>
               <div className="flex justify-center">
                 <CategoryChips value={filter} onChange={setFilter} />
@@ -922,16 +952,17 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             Black/500 + blur 16 + the quiet cut of the Liquid Glass gradient rim
             (12% → 4% → 8% TL→BR — `.liquid-glass--dim`; the flat 12% both boards
             export is the flattening, see spec §2's correction). The PLATE SURVIVED
-            the 26.08 pass — same fill, same blur, same rim token; only the box
-            shrank 40 → 36 and the radius 12 → 10, insets 16/16 → 12/14.
-            Its blur is the sheet's single backdrop-filter — 36px square and
+            the 26.08 pass — same fill, same blur, same rim token; the box the
+            designer shrank to 36 is back at **40 / r12** because 36 is not a size
+            in his own system (PLATE_SIZE), and both insets are the bar's 12.
+            Its blur is the sheet's single backdrop-filter — 40px square and
             static. Never moves, never distorts: the detail's plate morph is a
             separate clone that unrolls out from UNDER this button (z below it).
             The 24-box glyph is unchanged on both boards, so IconClose stays 14. */}
         <button
           onClick={dismiss}
           aria-label={t({ en: 'Close', uk: 'Закрити' })}
-          className="liquid-glass liquid-glass--dim glass-interactive absolute right-3 top-[14px] z-10 grid h-9 w-9 place-items-center rounded-[10px] text-white"
+          className="liquid-glass liquid-glass--dim glass-interactive absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-[12px] text-white"
         >
           <IconClose size={14} />
         </button>
@@ -1030,9 +1061,11 @@ function DetailView({
 
   /* ---- the ✕-plate unroll ---- */
   const plateScaleX = useTransform(pp, (v) => 1 + (geom.current.plateSX - 1) * v)
-  /* 64 / 36 = 1.7778 → the band lands exactly 64 tall, and because the plate's
-     own centre line (14 + 18 = 32) IS the bar's centre, it spans 0…64 — the
-     header, edge to edge, with no offset term. Same identity held at 72/40. */
+  /* 64 / 40 = 1.6 → the band lands exactly 64 tall, and because the plate's own
+     centre line (12 + 20 = 32) IS the bar's centre, it spans 0…64 — the header,
+     edge to edge, with no offset term. The identity has now held through three
+     sets of numbers (72/40 at 16, 64/36 at 14, 64/40 at 12), because it is the
+     one thing the ✕'s insets are chosen to satisfy — see PLATE_SIZE. */
   const plateScaleY = useTransform(pp, [0, 1], [1, DETAIL_HEADER_H / PLATE_SIZE])
   /**
    * The band's fill pours 0 → 1 → 0: it must START invisible because the
@@ -1047,7 +1080,8 @@ function DetailView({
    * No rim on the band at all: a 1px border under a ~40× horizontal stretch
    * smears its side borders into wide bars (seen on the frames — the
    * predicted failure), and the static ✕ button above this clone already
-   * draws the rimmed 40×40 the gesture starts and ends on.
+   * draws the rimmed 40×40 the gesture starts and ends on. (At the drawn
+   * 1656 the stretch is exactly 40×: (1624 − 2 × 12) / 40 = 40.)
    */
   const plateFill = useTransform(pp, [0, 0.15, 0.35, 0.8], [0, 1, 1, 0])
 
@@ -1150,22 +1184,25 @@ function DetailView({
          the layer has no background — it exists to group, not to paint. */
       style={{ opacity: layerO, pointerEvents: isPresent ? 'auto' : 'none' }}
     >
-      {/* the plate clone, unrolling out from under the (static, z-10) ✕.
+      {/* the plate clone, unrolling out from under the (static, z-10) ✕. Same box,
+          same insets, same radius as that button — it IS its stand-in, so the two
+          class strings must be kept in step by hand (PLATE_INSET_X).
           Transform-origin right-centre: the right edge stays glued to the
-          plate's, the band's centre line is the plate's own (both y 36). */}
+          plate's, the band's centre line is the plate's own (both y 32). */}
       <motion.div
         aria-hidden
         data-detail-plate
-        className="absolute right-3 top-[14px] h-9 w-9"
+        className="absolute right-3 top-3 h-10 w-10"
         style={{ scaleX: plateScaleX, scaleY: plateScaleY, transformOrigin: '100% 50%', willChange: 'transform' }}
       >
-        <motion.div className="absolute inset-0 rounded-[10px] bg-[#09090b7a]" style={{ opacity: plateFill }} />
+        <motion.div className="absolute inset-0 rounded-[12px] bg-[#09090b7a]" style={{ opacity: plateFill }} />
       </motion.div>
 
       {/* header strip (28637:43245): 64 on the sheet's own ground — no bar.
           Row as drawn: `gap 16; padding 12 12 12 0; justify-end`, so the left
-          zone is 48 + 16 = 64 and the right zone 16 + 36 + 12 = 64 — symmetric
-          for the first time (see the group's max-width below). */}
+          zone is 48 + 16 = 64 and the right zone 16 + 40 + 12 = 68 with our
+          40px ✕ (the board's 36 made both 64 — see the group's max-width below).
+          The 12 of that padding is also why the ✕ sits at top 12: PLATE_SIZE. */}
       <div className="absolute inset-x-0 top-0 h-[64px]">
         <motion.button
           ref={backBtn}
@@ -1184,15 +1221,17 @@ function DetailView({
           <IconArrowLeft size={20} />
         </motion.button>
 
-        {/* Name + Choose, gap 32 (28640:43353) — centred on the sheet, and as of
-            26.08.2026 the BOARD agrees: the row's zones are now 64 (48 back + 16
-            gap) and 64 (16 gap + 36 ✕ + 12 pad), so the drawn group centre is
-            812 = 1624/2 exactly. The old 4px drift (§12.6-Q1) is FIXED upstream —
-            we were already shipping true centre, so nothing moves here.
-            max-width follows the zones: 100% − 2 × 64.
-            The title gives way first on a narrow sheet: it truncates (the
-            board draws its own text-overflow), the pill never shrinks. */}
-        <div className="absolute left-1/2 top-3 flex h-10 max-w-[calc(100%-128px)] -translate-x-1/2 items-center gap-8">
+        {/* Name + Choose, gap 32 (28640:43353) — centred on the sheet. The board's
+            own zones came out symmetric on 26.08.2026 (64 = 48 back + 16 gap on
+            the left, 64 = 16 gap + 36 ✕ + 12 pad on the right), fixing the 4px
+            drift of §12.6-Q1 — and our 40px ✕ (PLATE_SIZE) puts the right zone
+            back at 68. Neither number ever moved this group: it has always
+            shipped truly centred, which is where the fixed board now draws it.
+            What the zones DO decide is the clearance, so max-width follows the
+            wider one: 100% − 2 × 68 = 100% − 136. The title gives way first on a
+            narrow sheet: it truncates (the board draws its own text-overflow),
+            the pill never shrinks. */}
+        <div className="absolute left-1/2 top-3 flex h-10 max-w-[calc(100%-136px)] -translate-x-1/2 items-center gap-8">
           <motion.h2
             custom={1}
             variants={headerBit}

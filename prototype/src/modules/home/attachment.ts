@@ -30,8 +30,6 @@
  * as drawn.
  */
 
-import { FIELD_CLOSE } from '@/ui/motion'
-
 /** `attached template` 28734:65592 — 56 × 56 at (16, 16) in the field. */
 export const TILE = 56
 /** Its inset from the field's left and top edges — the `Attachments bar`'s
@@ -102,40 +100,31 @@ export const FIELD_RADIUS = 32
 /** The field's settled bottom padding (Figma's 16 on both boards). */
 export const FIELD_PAD_B = 16
 
-/**
- * WHEN BUILD'S PAINT ANSWERS THE ATTACHMENT — and why it is not the same
- * instant as its `disabled` attribute.
+/*
+ * WHEN BUILD'S PAINT ANSWERS THE ATTACHMENT — answer as of 26.08.2026: at once,
+ * in the same commit as its `disabled` attribute. There are no paint-delay tokens
+ * here any more, and this note exists so the next reader does not re-derive them.
  *
- * `Build` is armed by a template alone (spec §13.5-1, ours and deliberate), so
- * removing one disarms it. Its two states are INVERTED — an opaque #fafafa
- * plate with near-black ink, against an 8%-white ghost with 24%-white ink — and
- * a simultaneous cross of an inverted pair has no legible middle: measured on
- * the shipped build, plate-to-label contrast collapses to **1.17 : 1** ~35ms in
- * and stays under 2 : 1 for another ~50ms. Three frames of a pale translucent
- * plate with no readable label, and (worse) the plate is translucent exactly
- * while the row carrying it is travelling 46px, so the eye tracks it and sees
- * every one of those frames. That is the "pale scaling blob" the designer filmed.
+ * They existed for one measured reason. `Build` is armed by a template alone
+ * (spec §13.5-1, ours and deliberate), and its enabled look used to be an opaque
+ * #fafafa plate with near-black ink — the exact INVERSE of the 8%-white ghost with
+ * 24%-white ink it disarms to. A simultaneous cross of an inverted pair has no
+ * legible middle: measured on the shipped build, plate-to-label contrast collapsed
+ * to **1.17 : 1** ~35ms in and stayed under 2 : 1 for another ~50ms — three frames
+ * of a pale translucent plate with no readable label, and worse, translucent
+ * exactly while the row carrying it travelled 46px, so the eye tracked it and saw
+ * every frame. That was the "pale scaling blob" the designer filmed, and the fix
+ * was to move the cross off the travel: `ARM_PAINT_DELAY` (= SEAT_ACK_DELAY) and
+ * `DISARM_PAINT_DELAY` (= FIELD_CLOSE) held the paint a beat behind the state.
  *
- * A colour cross that has no good middle can only be moved, not fixed, so it
- * moves off the travel: the attachment's contribution to Build's LOOK lands one
- * beat after its contribution to Build's BEHAVIOUR. `disabled` flips in the
- * detach commit (the button must never be clickable while it is not), the paint
- * flips when the field has finished closing — the house rule "the content lags
- * the container", the same one `listSwapBehind` encodes for the dock's shelf.
- * Typing still arms it instantly: only the attachment's half of `armed` waits.
+ * The designer then made active Build ACTION BLUE («да, когда она активна, она
+ * синяя», 26.08.2026), and blue↔ghost is not an inverted pair. Re-measured on the
+ * built app: arming 2.20 → **3.95** → 3.53 : 1, disarming 3.53 → 3.93 → 2.20 : 1 —
+ * the middle of the cross is now its most readable frame, and nothing dips below
+ * the ghost end it is heading for. So the cross rides the movement again, the two
+ * tokens and the lagged-flag hook are deleted, and the whole argument with its
+ * numbers lives next to the button in `HomePage.tsx`.
  *
- * Arming is the mirror: the paint lights when the object is HOME, not when the
- * store says it is attached — the same `SEAT_ACK_DELAY` beat the field's own
- * acknowledgment uses, so the tile landing, the rim's flash and the button
- * lighting are one event instead of three.
+ * `SEAT_ACK_DELAY` above stays: the field's own acknowledgment of the catch is a
+ * separate gesture and still keys off it.
  */
-export const ARM_PAINT_DELAY = SEAT_ACK_DELAY
-
-/**
- * …and how long the disarm waits: the close's own spring duration
- * (`FIELD_CLOSE`, .3s). Measured on the frozen-clock film the rows are within
- * 1px of home by ~215ms and the field's painted edge lands at ~300 — so the
- * cross plays on ground that has stopped moving, which is the whole point.
- * Read from the token rather than typed, so retuning the close retunes this.
- */
-export const DISARM_PAINT_DELAY = FIELD_CLOSE.duration * 1000

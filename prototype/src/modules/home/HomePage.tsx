@@ -65,7 +65,7 @@ import { TemplateFlight } from './TemplateFlight'
 import { Thumb } from './thumbs'
 import { FIELD_CLOSE, FIELD_GROW } from '@/ui/motion'
 import {
-  ARM_PAINT_DELAY, DISARM_PAINT_DELAY, FIELD_PAD_B, FIELD_RADIUS, rectOf,
+  FIELD_PAD_B, FIELD_RADIUS, rectOf,
   SEAT_ACK_DELAY, SEAT_BLOOM_R, SHIFT_ROW, SHIFT_TEXT, TILE, TILE_INSET,
 } from './attachment'
 
@@ -613,51 +613,6 @@ function useFieldClose(
   return closing
 }
 
-/**
- * A boolean that follows another one a beat late — Build's ARMED LOOK following
- * the attachment. Why the paint lags the state at all, with the measured
- * contrast numbers: `ARM_PAINT_DELAY` in ./attachment.ts.
- *
- * The two directions get different beats and neither is a taste choice: arming
- * waits for the flying object to be visually home (`ARM_PAINT_DELAY`, the same
- * beat the field's own acknowledgment uses), disarming waits out the field's
- * close (`DISARM_PAINT_DELAY`). Under reduced motion there is no flight and no
- * close, so both are immediate.
- *
- * ⚠️ TWO DELAYS, NOT A DELAY AND A FLAG. The first cut held the disarm on
- * `useFieldClose`'s `closing` flag, and it did not work: `closing` is raised in
- * a LAYOUT effect, so on the detach commit this hook's passive effect had
- * already been queued with `held: false` and fired the flip immediately —
- * measured, the pale plate came back at exactly the old frames. A beat that has
- * to line up with another hook's state cannot be scheduled from a passive
- * effect. Both beats are therefore read from the motion tokens they belong to.
- *
- * On motion's clock, not `setTimeout`: the beat belongs to the choreography's
- * timeline, so it stays in step when the animation clock is scaled — which is
- * exactly how this is filmed (a wall timer fires while the object is still the
- * size of the screen).
- */
-function useLaggedFlag(value: boolean, delayOn: number, delayOff: number): boolean {
-  const reduced = useReducedMotion()
-  const [shown, setShown] = useState(value)
-  const beat = useMotionValue(0)
-
-  useEffect(() => {
-    if (shown === value) return
-    const delay = value ? delayOn : delayOff
-    if (reduced || !delay) { setShown(value); return }
-    const run = animate(beat, 1, {
-      duration: 0.001,
-      delay: delay / 1000,
-      onComplete: () => setShown(value),
-    })
-    return () => run.stop()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, shown, reduced])
-
-  return shown
-}
-
 function Composer() {
   const { t } = useT()
   const { openBuilder, openTemplatePicker } = useUI()
@@ -692,16 +647,6 @@ function Composer() {
   useSnapSlide(textRow, SHIFT_TEXT, hasTile)
   useSnapSlide(buttonRow, SHIFT_ROW, hasTile)
   useSnapSlide(chipsRow, SHIFT_ROW, hasTile, 'grow')
-
-  /*
-   * Build's LOOK, one beat behind Build's BEHAVIOUR — the fix for the "pale
-   * blob". `armed` still drives `disabled` and the guard in `build()`, so the
-   * button stops working the instant the template leaves; only the colours
-   * wait, and only the attachment's half of them (typing arms it at once).
-   * The full argument and the measured contrast floor: ARM_PAINT_DELAY.
-   */
-  const tileArms = useLaggedFlag(hasTile, ARM_PAINT_DELAY, DISARM_PAINT_DELAY)
-  const armedPaint = draft.trim().length > 0 || tileArms
 
   /*
    * THE FIELD ACKNOWLEDGES RECEIVING IT. When the flying template lands, the
@@ -913,25 +858,59 @@ function Composer() {
             {/*
              * Build — 86 × 36, radius 12, label 14 Proxima Semibold + the ⏎ glyph.
              *
-             * ⚠️ The enabled state is a near-white #fafafa pill with a #09090b
-             * label, NOT action blue. That is a deliberate departure from this
-             * project's verified brand rule ("#1587FF = action", CLAUDE.md): the
-             * board draws all three states as hidden sibling frames (28364:40238
-             * enabled, 40242 disabled, 40246 hover/pressed) and is explicit about
-             * it, and the same white-on-dark treatment carries the active tab in
-             * the dock. Raised with the designer as spec §12.4 and accepted.
+             * ⚠️ ACTIVE BUILD IS ACTION BLUE (designer, 26.08.2026: «да, когда она
+             * активна, она синяя»), which OVERRIDES the board. The three states are
+             * drawn as hidden sibling frames — 28364:40238 enabled, 40242 disabled,
+             * 40246 hover/pressed — and 40238 draws a near-white #fafafa plate with
+             * a #09090b label; that white plate was shipped, flagged as a departure
+             * from the project's verified brand rule ("#1587FF = action", CLAUDE.md),
+             * and the designer has now answered the flag: the rule wins. So enabled
+             * is `--action` #1587ff with a white label, and hover / pressed are the
+             * house action ramp (`--action-hover` / `--action-pressed`) that every
+             * other solid blue button in the prototype uses — PublishPanel, the
+             * domain sheets, and the `Choose a template` pill this page's own picker
+             * turned blue on the same day. The board's hover pair (#1f1f22 plate +
+             * #52525b label, 40246) belonged to the white plate and goes with it.
+             *
+             * The DISABLED look is untouched: an 8%-white ghost plate with a
+             * 24%-white label, exactly as 40242 draws it.
+             *
+             * ⚠️ AND BLUE ↔ GHOST HAS A LEGIBLE MIDDLE, so the paint may ride the
+             * movement again — which is why the lagged-paint machinery that used
+             * to sit here is gone. `design-system.md` §5 rule 4б moved this cross
+             * OFF the attachment's 46px travel because the WHITE pair inverted
+             * through a grey with no readable middle: plate↔label contrast
+             * 19.06 → **1.17** → 2.20 : 1, the label gone for ~3 frames while the
+             * eye tracked the moving row. Re-measured on the built app with the
+             * blue pair (per-frame computed values composited over the recovered
+             * backdrop, `scratchpad/wp1/build-cross.mjs`, screenshot-verified at
+             * both ends): arming 2.20 → **3.95** → 3.53 : 1, disarming
+             * 3.53 → 3.93 → 2.20 : 1. The middle is now the MOST readable part of
+             * the cross — the plate darkens in one channel while the ink brightens
+             * — and no frame is worse than the state it is travelling towards
+             * (2.20 : 1 IS the settled ghost, unchanged and WCAG-exempt as a
+             * disabled control). Rule 4б still holds as a rule; it just no longer
+             * has a case here.
+             *
+             * ⚑ ONE VISIBLE CONSEQUENCE for the designer: on ATTACH the button now
+             * lights at the START of the flight rather than with the tile's
+             * landing, so "tile lands · field flashes · button lights" is no
+             * longer one event (that pairing was `ARM_PAINT_DELAY = SEAT_ACK_DELAY`).
+             * Restoring it is one lagged flag; it was not restored because its only
+             * documented reason was the contrast failure above.
              */}
             <button
               onClick={build}
               disabled={!armed}
-              /* `armed` gates the behaviour, `armedPaint` the colours — they are
-                 the same thing except across an attachment's arrival and its
-                 departure, where the paint waits for the choreography to be
-                 over (ARM_PAINT_DELAY). Still one static box, still one
+              /* ONE flag for behaviour AND paint — see the blue note above.
+                 Until 26.08.2026 the colours were a lagged copy of `armed`
+                 (`ARM_PAINT_DELAY`), because the white↔ghost pair had no legible
+                 middle; the blue pair does, so the cross rides the movement
+                 again and the copy is gone. Still one static box, still one
                  `--dur-fast` colour cross: no scale, no crossfade, no swap. */
               className={`flex h-9 w-[86px] items-center justify-center gap-1.5 rounded-[12px] pl-[18px] pr-1.5 text-[14px] font-semibold leading-none transition-colors duration-[var(--dur-fast)] ease-std ${
-                armedPaint
-                  ? 'bg-[var(--gray-50)] text-[var(--gray-950)] hover:bg-[var(--gray-850)] hover:text-[var(--gray-600)]'
+                armed
+                  ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]'
                   : 'bg-[var(--white-100)] text-[#ffffff3d]'
               }`}
             >
