@@ -17,11 +17,12 @@
  * board reports. There is no fill, no hairline and no shadow on this band: the hero's
  * rounded bottom corners are the entire separation.
  */
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion, type TargetAndTransition } from 'motion/react'
 import { hasProjects, useWorld, type HomeProject } from '@/state/world'
 import { useUI, type DockTab } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
-import { listSwapBehind, listSwapFade, segmentedPill } from '@/ui/motion'
+import { cardAdd, cardAddFade, cardAddScrim, listSwapBehind, listSwapFade, segmentedPill } from '@/ui/motion'
 import {
   TEMPLATES, TEMPLATE_CATEGORIES, templatesIn,
   type Template, type TemplateCategoryId,
@@ -33,6 +34,9 @@ import { Thumb } from './thumbs'
 
 /** How many slots the shelf shows. Six is what the canonical board draws. */
 const SLOTS = 6
+
+/** No animation at all — see `instant` on TemplateCard. */
+const NO_TIME = { duration: 0 } as const
 
 /**
  * Which conveyor the tab switch's content rides — the house one, or the same
@@ -376,7 +380,7 @@ export function TemplateCard({
   template,
   className = 'home-card',
   thumbClassName = 'home-thumb home-thumb--template',
-  onPick, pickLabel, dataKey, onAdd, addLabel,
+  onPick, pickLabel, dataKey, onAdd, addLabel, instant,
 }: {
   template: Template
   /** Wrapper sizing. The dock's flex row sizes cards itself (`home-card`);
@@ -413,9 +417,51 @@ export function TemplateCard({
   onAdd?: () => void
   /** Accessible name for the `+`. */
   addLabel?: string
+  /**
+   * Reveal the `+` and its plate with no time at all — the same call the
+   * thumbnail's hover ring makes through `--card-hover-dur`, and for the same
+   * reason: a surface that ARRIVES under a parked cursor leaves one card hovered
+   * a frame after it mounts, and a spring firing there announces itself on top
+   * of the sheet's own entrance. Passed by the picker while its sheet is still
+   * springing; unset everywhere else, so a settled picker and the dock both get
+   * the drawn motion.
+   */
+  instant?: boolean
 }) {
   const { t } = useT()
   const { openBuilder } = useUI()
+  const reduce = useReducedMotion()
+
+  /*
+   * The hover affordance's own state, and it is REACT state rather than CSS
+   * `:hover` because what it drives is a spring (motion.ts, `cardAdd`). One
+   * pointer event per card, never a frame; and the two sources are kept apart so
+   * that tabbing out of a card the pointer is still over does not hide the
+   * button. Only wired when there IS a `+` — the dock's cards must not re-render
+   * on hover for nothing.
+   */
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const hot = hovered || focused
+  const hover = onAdd
+    ? {
+        /* A tap on a touch screen fires pointerenter too, and there it would
+           park the button on the card until the next tap elsewhere. Hover is a
+           pointer affordance; touch gets the card's own action. */
+        onPointerEnter: (e: React.PointerEvent) => { if (e.pointerType !== 'touch') setHovered(true) },
+        onPointerLeave: () => setHovered(false),
+        /* focusin/focusout, i.e. focus-WITHIN: reaching the card by keyboard
+           shows the `+` before you reach the `+` itself. The `contains` guard is
+           what stops the one-frame blink as focus moves from the card's own
+           button to the `+` — focusout fires before focusin. */
+        onFocus: () => setFocused(true),
+        onBlur: (e: React.FocusEvent) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false)
+        },
+      }
+    : null
+  const add = reduce ? cardAddFade : cardAdd
+  const timed = (target: TargetAndTransition) => (instant ? { ...target, transition: NO_TIME } : target)
 
   /*
    * What picking a template actually does is not drawn anywhere — there is no
@@ -429,7 +475,7 @@ export function TemplateCard({
   }
 
   return (
-    <div className={`${className} group relative flex flex-col`} data-tpl-card={dataKey}>
+    <div className={`${className} group relative flex flex-col`} data-tpl-card={dataKey} {...hover}>
       {/* radius 8 here against the project card's 12 — as drawn on the two boards,
           flagged as probably accidental (spec §12.12)
 
@@ -445,42 +491,67 @@ export function TemplateCard({
           sheet lands (which is honest — the pointer is over that card) instead
           of announcing itself. Unset everywhere else, so the dock and a settled
           picker both keep the drawn `--dur-fast` fade. */}
-      <div className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1`}>
+      <div className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1 group-focus-within:ring-1`}>
         <Thumb id={template.id} className="absolute inset-0" />
       </div>
 
-      {/* `pr-12` ONLY while the `+` is showing: 32 for the button and the drawn
-          16 gap, which is exactly the 185.333 the board measures on the card
-          that has it (233.333 − 4 − 48) — and the reason that card's caption is
-          the one drawn with ellipses while its seventeen neighbours are not. So
-          the room is made on hover, as drawn, and not reserved at rest, where it
-          would truncate every description on the sheet against the board.
-          It is a padding, i.e. one reflow per hover — a pointer event, never a
-          frame — and the caption is left-aligned and already clipped, so nothing
-          moves: the ellipsis walks left under the button that is fading in. */}
-      <div className={`relative flex h-[54px] w-full flex-none flex-col gap-[5px] pb-px pl-1 pt-3 ${onAdd ? 'group-hover:pr-12 group-focus-within:pr-12' : ''}`}>
+      {/* THE CAPTION'S BOX NEVER MOVES — not at rest, not on hover.
+          The board's hovered card measures its `Text` frame at 185.333, i.e.
+          48 narrower, but that is Figma's auto-layout reacting to the button
+          being inserted beside it, not a second layout to reproduce: copying it
+          would jump a long name's ellipsis 48px left the instant the pointer
+          arrives. The room the button needs is taken by the PLATE below, which
+          fades the caption out as it reaches the button instead of re-cutting
+          it. */}
+      <div className="relative flex h-[54px] w-full flex-none flex-col gap-[5px] pb-px pl-1 pt-3">
         {/* verbatim from the board; the captions do not describe their own
             screenshots and two of the six repeat — see data/templates.ts */}
         <p className="truncate font-display text-[16px] font-medium leading-[1.2] text-white">{template.name}</p>
         <p className="truncate text-[12px] leading-[1.4] text-[var(--white-480)]">{template.description}</p>
 
-        {/* 32 × 32, radius 10, Background/Blue/Default #1587ff (the export's
-            #0073ec is the light-theme trap), 24-box white glyph on 4px of
-            padding, flush with the card's right edge at meta-local y 16 — all
-            drawn. `z-10` puts it over the card's own stretched button, the same
-            way the project card's kebab sits over it. Its fade borrows
-            `--card-hover-dur` from the thumbnail ring: a sheet arriving under a
-            parked cursor must not announce itself. Colours on hover/press are
-            the house convention for a filled blue button (PublishPanel,
-            DomainModal, the detail bar's own pill) — the boards draw no states. */}
         {onAdd && (
-          <button
-            onClick={onAdd}
-            aria-label={addLabel}
-            className="absolute right-0 top-4 z-10 grid h-8 w-8 place-items-center overflow-hidden rounded-[10px] bg-[var(--action)] text-white opacity-0 transition-[opacity,background-color] duration-[var(--card-hover-dur,var(--dur-fast))] ease-std hover:bg-[var(--action-hover)] focus-visible:opacity-100 active:bg-[var(--action-pressed)] group-hover:opacity-100"
-          >
-            <IconPlus size={20} />
-          </button>
+          <>
+            {/* The plate — `Rectangle 1162905197` 28740:66863, the gradient that
+                "looks like a shadow and stops the text running ugly into the
+                button" (the designer, 26.08.2026). Geometry, the ground-colour
+                rule and the two departures from the drawn rect are in
+                `.home-card-scrim` in index.css. Below the button, above the
+                caption, and deaf to the pointer, so hovering it still means
+                hovering the card. */}
+            <motion.span
+              aria-hidden
+              data-card-scrim
+              className="home-card-scrim"
+              initial={false}
+              animate={timed(hot ? cardAddScrim.on : cardAddScrim.off)}
+            />
+
+            {/* 32 × 32, radius 10, Background/Blue/Default #1587ff (the export's
+                #0073ec is the light-theme trap), 24-box white glyph on 4px of
+                padding, flush with the card's right edge at meta-local y 16 —
+                all drawn. `z-10` puts it over the card's own stretched button,
+                the same way the project card's kebab sits over it, and it stays
+                in the DOM at rest so the Tab order does not depend on what the
+                pointer is doing. Colours on hover/press are the house convention
+                for a filled blue button (PublishPanel, DomainModal, the detail
+                bar's own pill) — the kit's variant here is State=Enabled and the
+                boards draw no others. NOT the Liquid Glass wash and ripple:
+                those belong to glass, and this is a solid CTA. */}
+            <motion.button
+              data-card-add
+              onClick={onAdd}
+              aria-label={addLabel}
+              initial={false}
+              animate={timed(hot ? add.on : add.off)}
+              /* Deaf to the pointer while it is not on offer — an invisible
+                 button in the corner of a card must not take a tap (it can
+                 still be reached and pressed by keyboard, which is the point of
+                 keeping it mounted). */
+              className={`absolute right-0 top-4 z-10 grid h-8 w-8 place-items-center overflow-hidden rounded-[10px] bg-[var(--action)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)] ${hot ? '' : 'pointer-events-none'}`}
+            >
+              <IconPlus size={24} />
+            </motion.button>
+          </>
         )}
       </div>
 

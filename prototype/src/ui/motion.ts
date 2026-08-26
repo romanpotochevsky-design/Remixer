@@ -331,6 +331,72 @@ export const listSwapFade = {
  */
 export const segmentedPill = { transition: SPRING } as const
 
+/**
+ * THE TEMPLATE CARD'S HOVER AFFORDANCE — the blue `+` that offers a card
+ * straight to the composer, and the gradient plate that keeps the caption from
+ * colliding with it. Board 28626:606: the button `28637:42070`, the plate
+ * `28740:66863`. Neither is drawn with a state, so this law is ours.
+ *
+ * THE BUTTON SPRINGS, ITS OPACITY DOES NOT. Scale rides `SPRING`, whose ~2%
+ * overshoot is what makes a 32px control read as SEATING itself rather than
+ * blinking on; opacity gets its own 120ms tween, because a spring on opacity
+ * would keep the button faint for a third of a second and the affordance has to
+ * answer a gesture the user is still making. Together they give a control that
+ * is legible almost at once and settles a beat later.
+ *
+ * THE PLATE FADES WITH IT, NOT AFTER IT. Same 120ms tween, same start: the
+ * plate exists to stop the caption standing at full strength beside a solid
+ * button, so any lag it took would show the exact collision it was added to
+ * prevent. Ramping together, the text is always being covered at the rate the
+ * button is arriving.
+ *
+ * LEAVING IS `EXIT` (rule 4), and the button gives up only a tenth of its size
+ * on the way out — a control that collapses reads as cancelled, and this one is
+ * simply no longer on offer.
+ */
+export const cardAdd = {
+  off: { opacity: 0, scale: 0.9, transition: EXIT },
+  on: {
+    opacity: 1,
+    scale: 1,
+    transition: { ...SPRING, opacity: { duration: 0.12, ease: [0.2, 0, 0, 1] } },
+  },
+} as const
+
+/**
+ * The same affordance with the movement taken out — the plate ALWAYS (it only
+ * ever had opacity), and the button under `prefers-reduced-motion`.
+ *
+ * ⚠️ It exists for the reason `listSwapFade` exists: `MotionConfig
+ * reducedMotion="user"` does not cancel a transform target, it JUMPS to it.
+ * Under the setting, `cardAdd` would park the button at 0.9 and snap it to 1 —
+ * a hop where the user asked for none. A variant whose target is a
+ * displacement has to drop the displacement itself, not just its animation.
+ */
+export const cardAddFade = {
+  off: { opacity: 0, transition: EXIT },
+  on: { opacity: 1, transition: { duration: 0.12, ease: [0.2, 0, 0, 1] } },
+} as const
+
+/**
+ * The plate: arrives WITH the button, leaves AFTER it.
+ *
+ * Coming in they share one tween — see `cardAdd`. Going out they must not: a
+ * button fading from 1 to 0 is translucent for most of those 140ms, and if the
+ * plate fades with it the caption comes back UNDER the ghost and reads through
+ * it. Filmed at 3× (scratchpad/qa16), that is the muddiest frame of the whole
+ * gesture — and it is precisely the collision the plate was added to prevent, so
+ * the plate has no business leaving first. It holds for 100ms while the button
+ * dissolves and then lifts, which reads as a shadow being taken off the text.
+ *
+ * The plate is invisible on its own (it is the ground colour, on the ground), so
+ * this costs nothing anywhere else on the card.
+ */
+export const cardAddScrim = {
+  off: { opacity: 0, transition: { ...EXIT, delay: 0.1 } },
+  on: cardAddFade.on,
+} as const
+
 /** Full-surface swaps — a screen replacing another inside the same shell. */
 export const surface = {
   initial: { opacity: 0, scale: 0.985, y: 8 },

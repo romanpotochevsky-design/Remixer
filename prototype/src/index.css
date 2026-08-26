@@ -1832,6 +1832,66 @@
   .tplpick-thumb { flex: 1 1 auto; min-height: 0; aspect-ratio: 233.333 / 218; }
 
   /*
+   * ------------------- the hover plate behind the card's blue `+`
+   *
+   * `Rectangle 1162905197` 28740:66863 — the NEWEST node on the rest board (its
+   * id runs past the whole scrolled board), added the moment the designer
+   * confirmed the `+`. Drawn: 48 × 38 at card-local (153.667, 231), i.e. flush
+   * against the button's left edge and 3px taller than it top and bottom, filled
+   * `linear-gradient(to left, #18181b 19.712%, rgba(24,24,27,0) 100%)`.
+   *
+   * It is a PLATE OF THE GROUND COLOUR, never a mask on the text: the caption
+   * keeps running and dissolves INTO the surface as it nears the button. That is
+   * why it reads as a shadow rather than as a grey block (a plate of any other
+   * colour would be a block) and why it can never look like a hard cut.
+   *
+   * TWO DEPARTURES FROM THE DRAWN RECT, both forced, both invisible:
+   *
+   * 1. IT IS 80 WIDE, NOT 48 — the extra 32 is the button's own box, opaque, and
+   *    it is what lets the caption keep its RESTING width. Figma's auto-layout
+   *    shrank the hovered card's `Text` frame to 185.333 the instant the button
+   *    was inserted beside it, so on the board the caption is already clipped
+   *    before the button and the plate only has to soften that clip. Copying
+   *    that would mean re-clipping the caption on hover: a long name's ellipsis
+   *    would jump 48px left the moment the pointer arrives — the text reflowing
+   *    under the reader's eye, which is the one thing this plate is here to
+   *    prevent. So the caption never moves, and the tail that would run under
+   *    the button is covered by opaque ground instead of being cut away. The
+   *    RAMP is drawn exactly as specced: its zero still lands 48px left of the
+   *    button's edge (0.333px off the drawn 153.667 — Figma's rect was
+   *    hand-placed on a 233.333px card).
+   * 2. THE COLOUR IS INHERITED. The board's stop is a literal `#18181b`, which is
+   *    the picker sheet's ground and nothing else — the same component also
+   *    lives on the dock, over `--gray-950`. Hard-coded, the plate would read as
+   *    a lighter smear there. So the ink is `--card-ground`, defaulting to the
+   *    page's own ground, and the picker's grid declares the sheet's. Any new
+   *    home for this card must declare its ground or inherit the page's.
+   *
+   * `transparent` is the far stop, and it is EXACTLY the board's
+   * `rgba(24,24,27,0)`: CSS gradients interpolate in premultiplied alpha, where
+   * every colour at alpha 0 is the same value, so there is no hue to get wrong
+   * and no grey dead zone in the middle. (Verified by sampling: hovering a card
+   * changes not one pixel of its own background inside the plate's box.)
+   */
+  .home-card-scrim {
+    position: absolute;
+    top: 13px;
+    right: 0;
+    width: 80px;
+    height: 38px;
+    pointer-events: none;
+    /* 41.462 of the 80 are opaque — the button's 32 plus the drawn 19.712% of
+       48 — and the remaining 38.538 are the drawn ramp; 51.827% is that
+       boundary expressed over the wider box. */
+    background: linear-gradient(
+      to left,
+      var(--card-ground, var(--gray-950)) 0%,
+      var(--card-ground, var(--gray-950)) 51.827%,
+      transparent 100%
+    );
+  }
+
+  /*
    * ------------------------- the attached template (Figma 28726:64760)
    *
    * The composer's attachment: a 56px preview tile in the field's new top row
@@ -2130,6 +2190,11 @@
     grid-template-columns:
       repeat(auto-fill, minmax(max(200px, (100% - 5 * 32px) / 6 - 1px), 1fr));
     gap: 32px;
+    /* The ground these cards lie on — the sheet's `Gray/900`, which is what the
+       board's hover plate is filled with. Declared here rather than baked into
+       `.home-card-scrim` because the same card also lives on the dock, over the
+       page's `--gray-950`; see the plate's own note. */
+    --card-ground: var(--gray-900);
   }
 
   body {

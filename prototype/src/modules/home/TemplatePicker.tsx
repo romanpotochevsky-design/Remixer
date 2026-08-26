@@ -875,6 +875,11 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                       onPick={() => onCardPick(index)}
                       onAdd={() => onCardAdd(index)}
                       addLabel={t({ en: `Use ${tpl.name}`, uk: `Взяти ${tpl.name}` })}
+                      /* Same call as `--card-hover-dur: 0s` above, for the same
+                         reason: while the sheet is still springing, a card that
+                         arrives under a parked cursor shows its `+` rather than
+                         springing it in over the entrance. */
+                      instant={entering}
                     />
                   ))}
                 </div>
