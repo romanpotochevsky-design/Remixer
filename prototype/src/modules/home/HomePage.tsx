@@ -263,7 +263,7 @@ function AttachedChip({ index }: { index: number }) {
       /* the picker's grow-from-trigger origin: with the pill replaced, the
          chip is the trigger — same attribute, same spot */
       data-template-trigger
-      className="liquid-glass liquid-glass--bright flex h-9 flex-none items-center rounded-full pl-1.5 pr-1"
+      className="liquid-glass liquid-glass--pill flex h-9 flex-none items-center rounded-full pl-1.5 pr-1"
     >
       {/* the body re-opens the picker: picking again replaces the attachment */}
       <button
@@ -378,14 +378,16 @@ function Composer() {
           {/*
            * `Left` 28616:58687 — the "+" and the template pill, gap 8. The
            * 25.08.2026 restyle of board 28364:40053 moves all three round
-           * controls from ghost (no fill, 8% rim) to the builder-composer
-           * glass — Black/700 + blur 16 + the 24% rim (.liquid-glass--bright);
-           * the two composers now match, as CLAUDE.md always said they should.
+           * controls from ghost (no fill, 8% rim) to the canonical Liquid
+           * Glass — Black/700 + blur 16 + the top-lit TL→BR gradient rim
+           * (.liquid-glass--control on the circles, --pill on the pill; the
+           * stroke paints are gradients in Figma, not the flat 24% an early
+           * flattened export read claimed — design-system.md § Liquid Glass).
            */}
           <div className="flex min-w-0 items-center gap-2">
             <button
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
-              className="liquid-glass liquid-glass--bright grid h-9 w-9 flex-none place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+              className="liquid-glass liquid-glass--control grid h-9 w-9 flex-none place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
             >
               <IconPlus size={24} />
             </button>
@@ -401,7 +403,7 @@ function Composer() {
               <button
                 data-template-trigger
                 onClick={openTemplatePicker}
-                className="liquid-glass liquid-glass--bright flex h-9 flex-none items-center whitespace-nowrap rounded-full px-5 text-[14px] leading-none text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc] hover:text-white"
+                className="liquid-glass liquid-glass--pill flex h-9 flex-none items-center whitespace-nowrap rounded-full px-5 text-[14px] leading-none text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc] hover:text-white"
               >
                 {t({ en: 'Add template', uk: 'Додати шаблон' })}
               </button>
@@ -411,7 +413,7 @@ function Composer() {
           <div className="flex items-center gap-4">
             <button
               aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-              className="liquid-glass liquid-glass--bright grid h-9 w-9 place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+              className="liquid-glass liquid-glass--control grid h-9 w-9 place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
             >
               {/* 24px icon box, 20px leaf — the two are NOT the same in Figma */}
               <span className="grid h-6 w-6 place-items-center"><IconMic size={20} /></span>

@@ -493,14 +493,17 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
           )}
         </AnimatePresence>
 
-        {/* close (28633:14905): Black/500 + blur 16 + 12% rim; its blur is the
-            sheet's single backdrop-filter — 40px square and static, as drawn.
-            Never moves, never distorts: the detail's plate morph is a separate
-            clone that unrolls out from UNDER this button (z below it). */}
+        {/* close (28633:14905, plate 28633:14906): Black/500 + blur 16 + the
+            quiet cut of the Liquid Glass gradient rim (12% → 4% → 8% TL→BR —
+            `.liquid-glass--dim`; the earlier flat 12% was a flattened export read).
+            Its blur is the sheet's single backdrop-filter — 40px square and
+            static, as drawn. Never moves, never distorts: the detail's plate
+            morph is a separate clone that unrolls out from UNDER this button
+            (z below it). */}
         <button
           onClick={onClose}
           aria-label={t({ en: 'Close', uk: 'Закрити' })}
-          className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-[12px] border border-[#ffffff1f] bg-[#09090b7a] text-white backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+          className="liquid-glass liquid-glass--dim absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-[12px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
         >
           <IconClose size={14} />
         </button>

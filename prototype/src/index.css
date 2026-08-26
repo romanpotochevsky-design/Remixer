@@ -740,21 +740,64 @@
   }
 
   /*
-   * Brighter cut — the Home composer's controls: the "+", the "Add template"
-   * pill and the mic (Figma 28364:40227 / 28616:58682 / 28364:40236, the
-   * 25.08.2026 restyle of board 28364:40053), plus the attached-template chip
-   * that stands in the pill's place. This is the builder-composer recipe from
-   * CLAUDE.md — fill `Black/700` #09090ba3 + blur 16 — under the rim those
-   * boards draw at `Neutral Alpha/300`: 24% white, twice the chrome's 12%.
-   * The diagonal swings around 24% exactly as the base rim swings around 12%
-   * (31% → 20% → 18% → 27%): the distribution carries the glass, the average
-   * stays on the drawn token.
+   * ========================== LIQUID GLASS — CONTROLS (THE REMIXER CANON) ==
+   *
+   * THE canonical Remixer Liquid Glass recipe for buttons and controls — the
+   * Home composer's round buttons and pills, and the template picker's chrome.
+   * Do not re-derive it: every number below was read off the STROKE PAINT
+   * ITSELF (Plugin API, 26.08.2026) and the pill's stops were confirmed
+   * against the designer's own gradient-editor screenshot the same day. Full
+   * recipe, the applicability map and the how-to-read-Figma warning live in
+   * docs/knowledge/design-system.md § «Liquid Glass — кнопки и контролы».
+   *
+   * Three parts, none of which is a CSS `border`:
+   *   1. fill — translucent near-black: Black/700 #09090ba3 (controls, pill)
+   *      or Black/500 #09090b7a (the quiet picker-close cut);
+   *   2. blur — backdrop blur(16px), inherited from `.liquid-glass`. Figma
+   *      stores the effect as radius 32; its own exporter emits 16px — the
+   *      2× is Figma's convention, not a disagreement;
+   *   3. the RIM — a 1px linear-gradient STROKE running top-left → bottom-
+   *      right: brightest at the top-left, dimmest (≈4–5%) mid-run, partly
+   *      recovering at the bottom-right. The gradient is what makes the edge
+   *      read as lit glass; the flat 24% hairline that used to sit here was
+   *      a flattened export read, not the drawn paint.
+   *
+   * Drawn through the `.liquid-glass::before` mask ring (padding-box XOR),
+   * NEVER as `border` — Figma strokes sit inside the geometry, a CSS border
+   * adds and shifts layout (CLAUDE.md). Figma's normalized TL→BR handle line
+   * is mathematically identical to CSS `to bottom right` (both put the two
+   * off-corners at exactly 50% of the run), so the keyword is exact at any
+   * aspect ratio — verified against the node SVG exports.
+   *
+   * The cuts, per the boards (28364:40053 restyle 25.08.2026 + 28616:59168):
+   *   --control  24% → 4% → 24% — the composer circles: “+” 28364:40227,
+   *              mic 28364:40236. Stops bound to Neutral Alpha/300→50→300.
+   *   --pill     20% → 5% → 15% — “Add template” 28616:58682 and the
+   *              attached-template chip standing in its place. Literal stops,
+   *              from the designer's gradient editor.
+   *   --dim      12% → 4% → 8%  — the picker close 28633:14906, on Black/500.
+   * (The builder shell's own Figma component, Preview buttons 25819:143747,
+   * draws the same construction at 12% → 4% → 12%; the shell keeps its QA'd
+   * `.liquid-glass` recipe above — see design-system.md for the kinship.)
+   *
+   * Hover never touches the rim: only the fill changes (Tailwind utilities
+   * override these backgrounds; the ::before ring stays put).
    */
-  .liquid-glass--bright {
-    background: #09090ba3;
+  .liquid-glass--control,
+  .liquid-glass--pill {
+    background: #09090ba3; /* Black/700 */
   }
-  .liquid-glass--bright::before {
-    background: linear-gradient(150deg, #ffffff4f 0%, #ffffff33 32%, #ffffff2e 64%, #ffffff45 100%);
+  .liquid-glass--control::before {
+    background: linear-gradient(to bottom right, #ffffff3d 0%, #ffffff0a 50%, #ffffff3d 100%);
+  }
+  .liquid-glass--pill::before {
+    background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
+  }
+  .liquid-glass--dim {
+    background: #09090b7a; /* Black/500 */
+  }
+  .liquid-glass--dim::before {
+    background: linear-gradient(to bottom right, #ffffff1f 0%, #ffffff0a 50%, #ffffff14 100%);
   }
 
   /*
@@ -1538,6 +1581,41 @@
   .home-chip-scroller {
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
     mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+  }
+
+  /*
+   * The dock's segmented-control track (`Tabs (Small)` 28364:42996): fill
+   * Neutral Alpha/50 under the SAME top-lit gradient-rim construction as the
+   * composer controls (design-system.md § Liquid Glass), at its loudest cut —
+   * Neutral Alpha/400 → 50 → 300, i.e. 32% → 4% → 24%. It is NOT
+   * `.liquid-glass`: Figma draws no backdrop blur here and the fill is 4%
+   * white, not black glass — the track borrows only the rim.
+   *
+   * One geometric difference from the buttons: the drawn handle line is the
+   * PIXEL diagonal of the 211×44 box (node SVG: (0,0)→(210.92,44.36)), not
+   * the normalized diagonal — `to bottom right` would put the off-corners at
+   * 50%, where this paint puts them at 96%/4% of the run. 101.88deg
+   * reproduces the paint exactly for the fixed 211×44 track (both labels are
+   * fixed-width, so the box never changes; recompute the angle if it ever
+   * does). Mask ring, not `border`: the 1px comes out of the drawn 6px
+   * padding instead of adding to the box (same reason as everywhere).
+   */
+  .home-tabs-track {
+    position: relative;
+    background: var(--white-050);
+  }
+  .home-tabs-track::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(101.88deg, #ffffff52 0%, #ffffff0a 50%, #ffffff3d 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
   }
 
   /*

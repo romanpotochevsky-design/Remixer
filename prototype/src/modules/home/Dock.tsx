@@ -34,7 +34,12 @@ const SLOTS = 6
 
 /* ------------------------------------------------------------------- header */
 
-/** `Tabs (Small)` 28364:42996 — track 211 × 44, 4% white fill, 32% white rim. */
+/**
+ * `Tabs (Small)` 28364:42996 — track 211 × 44, 4% white fill, and a GRADIENT
+ * rim (32% → 4% → 24% down the pixel diagonal — the loudest cut of the Liquid
+ * Glass rim family; `.home-tabs-track` in index.css has the exact paint).
+ * ⚠️ The old flat `32% white` here was a flattened export read, not the drawn paint.
+ */
 function DockTabs() {
   const { t } = useT()
   const { dockTab, setDockTab } = useUI()
@@ -51,9 +56,10 @@ function DockTabs() {
   ]
 
   return (
-    /* 211 × 44: 6px of padding, 101 + 6 + 92 of tabs. The 1px rim comes out of the
-       padding rather than adding to the track, the same reason as the composer's. */
-    <div className="flex h-11 w-[211px] flex-none items-center gap-1.5 rounded-full border border-[#ffffff52] bg-[var(--white-050)] p-[5px]">
+    /* 211 × 44: 6px of padding, 101 + 6 + 92 of tabs. The rim is a mask ring
+       overlaying the padding's outer pixel rather than a border adding to the
+       track, the same reason as the composer's. */
+    <div className="home-tabs-track flex h-11 w-[211px] flex-none items-center gap-1.5 rounded-full p-[6px]">
       {tabs.map((tab) => {
         const active = dockTab === tab.id
         return (

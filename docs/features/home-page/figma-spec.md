@@ -740,6 +740,16 @@ is **flush with the card grid's left edge** at board x = 32.
 | Gap | **6** |
 | Shadow | **none** |
 
+🛠 **Correction 26.08.2026 to the Border row: the “1 px 32 %” was a flattened export
+read (the gradient's first bound token), not the drawn paint.**
+The stroke paint is a LINEAR GRADIENT, `Neutral Alpha/400 → 50 → 300` = **32 % → 4 %
+(at 50 %) → 24 %**, handle line dragged along the box’s PIXEL diagonal (node SVG:
+(0,0)→(210.92,44.36) — off-corners at 96 %/4 %, so this one is *not* CSS
+`to bottom right`; for the fixed 211 × 44 track the exact CSS is `101.88deg`).
+`get_design_context` flattens gradient strokes to one solid. Canon:
+`design-system.md` § «Liquid Glass — кнопки и контролы»; implementation
+`.home-tabs-track` in `index.css`.
+
 **Active pill** — `Tab` `28364:42997` → `state-layer` `I28364:42997;28364:42903`:
 
 | Property | Value |

@@ -47,6 +47,13 @@ here is unchanged from that spec.
    `#ffffff3d` (24 % white). Previously: no fill, no blur, 1 px `Neutral Alpha/100`
    `#ffffff14` (8 %). This is **exactly the builder-shell composer button recipe** from
    `CLAUDE.md` — the home composer now matches the builder composer.
+   🛠 **Correction 26.08.2026: the “1 px 24 % border” was a flattened export read, not
+   the drawn paint.** The stroke paints are LINEAR GRADIENTS running top-left → bottom-right:
+   the circles 24 % → 4 % → 24 % (stops bound to `Neutral Alpha/300 → 50 → 300`), the
+   pill 20 % → 5 % → 15 % (literal stops; confirmed against the designer’s own
+   gradient-editor screenshot). `get_design_context` flattens a gradient stroke to a
+   single solid — read `node.strokes` via the Plugin API instead. Canon:
+   `design-system.md` § «Liquid Glass — кнопки и контролы».
 3. **Nothing else on the Home board changed.** Field, text row, Build (all three stacked
    states), right-group layout, prompt-chip row (including the hard-coded `#283a71` scrim
    rectangle), hero, topbar, dock — all byte-identical to `figma-spec.md`. Verified by
@@ -156,6 +163,12 @@ sheet’s top-right corner; `padding: 16px 16px 0 0` inside it.
 | Border | **1 px solid** `Neutral Alpha/200` → **`#ffffff1f`** (12 % white in dark; the reference code’s `rgba(9,9,11,.16)` is the light-theme trap) |
 | Glyph | `Icon` `28633:14907`, **24 × 24**, centred (8 px inset); a plain **✕**; colour `Icon/Default/Default` → **`#ffffff`** |
 | Interactive | exported as `<a cursor-pointer>` |
+
+🛠 **Correction 26.08.2026 to the Border row:** the stroke is not a flat 12 % — it is a
+LINEAR GRADIENT on `state-layer` `28633:14906`, top-left → bottom-right (SVG handle line
+(0,0)→(40,40)): **12 % → 4 % (at 50 %) → 8 %**, literal stops, 1 px inside. The flat read
+was the export flattening the gradient. Canon: `design-system.md` § «Liquid Glass»
+(`.liquid-glass--dim`).
 
 Hidden alternates parked in the same corner frame: `28633:14904` — a 32 × 32 `Close M`
 (smaller size), and `28633:14901` `Buttons` (207 × 40, hidden) — an icon button 40 × 40
@@ -420,6 +433,20 @@ This is the **builder composer recipe** (`CLAUDE.md`: «кружки … `rgba(9
 рамка 24 %») — the two composers now match. Note the home field itself stays `Black/900`
 80 % (the builder field is `rgba(9,9,11,.8)` too — already aligned).
 
+🛠 **Correction 26.08.2026 to (b) Border and the (c) recipe: the borders are GRADIENT
+strokes, not flat.** Read off the stroke paints themselves (Plugin API + node SVG
+export): the `+` and mic carry a top-left → bottom-right linear gradient
+`Neutral Alpha/300 → 50 → 300` = **24 % → 4 % → 24 %** (handle line = the normalized
+box diagonal, i.e. exactly CSS `to bottom right`); the pill carries **20 % → 5 % → 15 %**
+with literal stops — confirmed against the designer’s own gradient-editor screenshot,
+26.08.2026. The “1 px solid `Neutral Alpha/300`” rows above are what
+`get_design_context` reports after flattening the gradient to its first bound variable —
+the same failure family as the light-theme trap. The home field’s own 8 % stroke IS
+genuinely flat (it also parks an *invisible* pink→purple gradient stroke — an experiment,
+node name `Input field gradient`; do not ship). Canon + implementation:
+`design-system.md` § «Liquid Glass — кнопки и контролы», `index.css`
+`.liquid-glass--control` / `--pill`.
+
 ### 7.2 What did NOT change (verified, don’t churn)
 
 * **The field** `28364:40219`: 960 × 138, fill `Black/900` `#09090bcc`* (80 % black),
@@ -601,6 +628,9 @@ justify-content: flex-end` — three zones:
 | Back | wrapper `28640:43368` (0, 16) 48 × 40, `pl 16` → `Icon button` **`28640:43362`** | **32 × 32 at (16, 20)** — vertically centred in the 72 | Component `Style=Standard, Shape=Square, Size=Small` (`889:7322`): container **radius 8**, state-layer `padding 4`, icon **24 × 24**. No fill until interaction (per the component's own doc: “Until the button is interacted with, its container isn’t visible”). Glyph: a plain **←**; colour `Icon/Default/Default` → **`#ffffff`** |
 | Title + CTA | flex-1 container `28641:43374` (64, 16) 1488 × 40 → group `Name + Category` `28640:43353` (497, 0) **494 × 40**, `gap: 32` | group centred in the container | see below |
 | Close | `Close M` `28640:43357` → state-layer `28640:43358` | **40 × 40 at (1568, 16)** — 16 from top, 16 from right | **identical to §2**: radius 12, `Black/500` `#09090b7a`, `backdrop-blur 16`, 1 px `Neutral Alpha/200` → **`#ffffff1f`** (the reference code's `rgba(9,9,11,.16)` is the light trap again), white ✕ 24-box |
+
+🛠 26.08.2026: the close's “1 px 12 %” is a flattened read — the stroke is the 12 → 4 →
+8 % TL→BR gradient; see the correction under §2.
 
 **Title** `28640:43354` — box 284 × 13 at group (0, 13.5):
 
