@@ -3,12 +3,17 @@
  * picker's full-screen stage and the composer's 56px attachment tile.
  *
  * ONE OBJECT. A template is a single physical thing in this product: a card in
- * the grid, the stage it grows into, and the tile it lands in. The grid ⇄ stage
- * hand-off is owned by the picker itself (`DetailView`, a clone INSIDE the
- * sheet). This file owns the two hand-offs that cross a surface boundary:
+ * the grid, a card in the dock's shelf, the stage it grows into, and the tile it
+ * lands in. The grid ⇄ stage hand-off is owned by the picker itself
+ * (`DetailView`, a clone INSIDE the sheet). This file owns the hand-offs that
+ * cross a surface boundary:
  *
  *   · stage → tile — "Choose a template", and closing the tile's own preview
  *   · tile → stage — clicking the tile to blow the attachment back up
+ *   · card → stage / stage → card — the DOCK card's preview (26.08.2026). Same
+ *     construction as the tile's: the object starts outside the sheet, so the
+ *     picker cannot carry it. The one thing that differs is the content layout —
+ *     see `contentWidth`.
  *
  * Neither can live inside the picker, because in the very commit the flight
  * starts the picker is either unmounting (a dissolving sheet cannot carry a
@@ -43,7 +48,6 @@
 import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useUI, type FlightRect, type TemplateFlight as Flight } from '@/state/ui'
-import { TEMPLATE_LIBRARY } from '@/data/templates'
 import { FLIGHT_OPEN, FLIGHT_SEAT } from '@/ui/motion'
 import { Thumb } from './thumbs'
 import { DETAIL_HEADER_H, SHEET_INSET, STAGE_MARGIN_X, STAGE_RADIUS } from './TemplatePicker'
@@ -57,6 +61,8 @@ const THUMB_ASPECT = 233.333 / 218
  *  rounds its top corners only and runs off the sheet's bottom edge. */
 const TILE_CORNERS = [TILE_RADIUS, TILE_RADIUS_TR, TILE_RADIUS, TILE_RADIUS] as const
 const STAGE_CORNERS = [STAGE_RADIUS, STAGE_RADIUS, 0, 0] as const
+/** The dock card's thumbnail — `rounded-[8px]` on all four, as drawn. */
+const CARD_CORNERS = [8, 8, 8, 8] as const
 
 const lerp = (a: number, b: number, v: number) => a + (b - a) * v
 
@@ -71,16 +77,29 @@ function stageRect(): FlightRect {
   }
 }
 
-/** The width the drawing has inside a given home — see the header note. */
-function contentWidth(rect: FlightRect, home: 'tile' | 'stage'): number {
+/**
+ * The width the drawing has inside a given home — see the header note.
+ *
+ * WIDTH-driven in the stage and in a dock card: the drawing fills the box's width
+ * and the box crops whatever is left (the stage crops the site's bottom as drawn;
+ * the card's thumbnail is 238.667/218, a hair wider than the drawn 233.333/218 the
+ * clone lays out, so its bottom ~5px are cropped too). HEIGHT-driven in the tile:
+ * a 1.07:1 drawing filling a 1:1 square has to crop at the SIDE instead.
+ *
+ * The card's 2.2% crop is the standard price of rule 3 — the content is laid out
+ * at the BIG end, so every mismatch lands on the frame where the object is small.
+ * Matching the card exactly would mean laying the clone out at 238.667/218 and
+ * mismatching the stage instead, i.e. moving the same error onto 1.8M pixels.
+ */
+function contentWidth(rect: FlightRect, home: 'tile' | 'stage' | 'card'): number {
   return home === 'tile' ? rect.height * THUMB_ASPECT : rect.width
 }
 
 export function TemplateFlight() {
   const flight = useUI((s) => s.tplFlight)
-  /* Keyed on the direction as well as the index: a tile clicked, closed and
+  /* Keyed on the direction as well as the drawing: a tile clicked, closed and
      clicked again must get a fresh clone, never a re-aimed one. */
-  return flight ? <FlightClone key={`${flight.index}-${flight.to}`} flight={flight} /> : null
+  return flight ? <FlightClone key={`${flight.id}-${flight.to}-${flight.card ?? ''}`} flight={flight} /> : null
 }
 
 function FlightClone({ flight }: { flight: Flight }) {
@@ -102,19 +121,25 @@ function FlightClone({ flight }: { flight: Flight }) {
   const hidden = useRef<HTMLElement | null>(null)
 
   useLayoutEffect(() => {
-    if (!TEMPLATE_LIBRARY[flight.index]) { land(); return }
-    if (flight.to === 'tile') {
-      const tile = document.querySelector<HTMLElement>('[data-attach-tile]')
-      if (!tile) { land(); return }
-      /* The clone covers it pixel-for-pixel at the end of the flight; hiding it
-         now means there is never a second copy of the same object on screen. */
-      tile.style.opacity = '0'
-      hidden.current = tile
-      setDest(rectOf(tile))
-    } else {
+    if (flight.to === 'stage') {
       const stage = document.querySelector<HTMLElement>('[data-detail-stage]')
       setDest(stage ? rectOf(stage) : stageRect())
+      return
     }
+    /* The two small homes. Both are RE-MEASURED here rather than trusted from
+       the press: the dock card in particular may have moved since (a resize
+       re-columns the shelf), and a FLIP that lands 4px off its slot is worse
+       than one that never flew. */
+    const el =
+      flight.to === 'tile'
+        ? document.querySelector<HTMLElement>('[data-attach-tile]')
+        : document.querySelector<HTMLElement>(`[data-dock-card="${flight.card}"] .home-thumb`)
+    if (!el) { land(); return }
+    /* The clone covers it pixel-for-pixel at the end of the flight; hiding it
+       now means there is never a second copy of the same object on screen. */
+    el.style.opacity = '0'
+    hidden.current = el
+    setDest(rectOf(el))
     return () => { hidden.current?.style.removeProperty('opacity') }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -139,7 +164,9 @@ function FlightClone({ flight }: { flight: Flight }) {
       return
     }
     const run = animate(p, 1, {
-      ...(flight.to === 'tile' ? FLIGHT_SEAT : FLIGHT_OPEN),
+      /* Landing in a small home is a CATCH (one hair of overshoot); growing into
+         the stage is a surface arriving (flat). Motion doctrine rule 4. */
+      ...(flight.to === 'stage' ? FLIGHT_OPEN : FLIGHT_SEAT),
       onComplete: () => {
         /* Reveal and unmount on the same beat: the two are identical pixels at
            this instant, so whichever the browser paints first is one picture. */
@@ -158,7 +185,11 @@ function FlightClone({ flight }: { flight: Flight }) {
 
 function Morph({ p, flight, to }: { p: MotionValue<number>; flight: Flight; to: FlightRect }) {
   const from = flight.from
-  const src = flight.to === 'tile' ? 'stage' : 'tile'
+  /* Where the object is coming from. A `'stage'` flight starts in the composer's
+     tile unless it carries a dock card, which is the whole of the card path's
+     bookkeeping (see `TemplateFlight` in state/ui.ts). */
+  const src: 'tile' | 'stage' | 'card' =
+    flight.to === 'stage' ? (flight.card != null ? 'card' : 'tile') : 'stage'
   /* Clip scale: source box over destination box, since the clone is MOUNTED at
      the destination (FLIP's whole point — the settled frame needs no transform). */
   const sx0 = to.width ? from.width / to.width : 1
@@ -185,8 +216,10 @@ function Morph({ p, flight, to }: { p: MotionValue<number>; flight: Flight; to: 
   const cw = flight.to === 'stage' ? contentWidth(to, 'stage') : contentWidth(from, 'stage')
   const s0 = cw ? contentWidth(from, src) / cw : 1
   const s1 = cw ? contentWidth(to, flight.to) / cw : 1
-  const corners = flight.to === 'tile' ? TILE_CORNERS : STAGE_CORNERS
-  const srcCorners = flight.to === 'tile' ? STAGE_CORNERS : TILE_CORNERS
+  const cornersOf = (home: 'tile' | 'stage' | 'card') =>
+    home === 'tile' ? TILE_CORNERS : home === 'card' ? CARD_CORNERS : STAGE_CORNERS
+  const corners = cornersOf(flight.to)
+  const srcCorners = cornersOf(src)
 
   /*
    * ⚠️ THE SCALE IS INTERPOLATED GEOMETRICALLY, NOT LINEARLY — and this is the
@@ -249,7 +282,6 @@ function Morph({ p, flight, to }: { p: MotionValue<number>; flight: Flight; to: 
    *  1px line is still 1px. */
   const rimO = useTransform(p, [0.8, 1], [0, 1])
 
-  const tpl = TEMPLATE_LIBRARY[flight.index]
   return (
     <div className="pointer-events-none fixed inset-0 z-[80]" aria-hidden>
       <motion.div
@@ -277,20 +309,27 @@ function Morph({ p, flight, to }: { p: MotionValue<number>; flight: Flight; to: 
               inside `Thumb` make any size proportionally identical, which is
               what makes this read as one object and not as two pictures */}
           <div className="relative aspect-[233.333/218] w-full">
-            <Thumb id={tpl.id} className="absolute inset-0" />
+            <Thumb id={flight.id} className="absolute inset-0" />
           </div>
         </motion.div>
-        <motion.div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            opacity: rimO,
-            borderRadius: radius,
-            boxShadow:
-              flight.to === 'tile'
-                ? 'inset 0 0 0 1px var(--white-100)'
-                : 'inset 0 0 0 1px var(--gray-750)',
-          }}
-        />
+        {/* The destination's own 1px edge, arriving with it — and only where the
+            destination HAS one. The composer's tile draws a 10%-white rim and the
+            stage a Gray/750 one; a dock card's thumbnail draws none at rest (its
+            rim is a hover state, `.home-thumb-rim`), so flying one in would light
+            an edge the shelf does not have. */}
+        {flight.to !== 'card' && (
+          <motion.div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              opacity: rimO,
+              borderRadius: radius,
+              boxShadow:
+                flight.to === 'tile'
+                  ? 'inset 0 0 0 1px var(--white-100)'
+                  : 'inset 0 0 0 1px var(--gray-750)',
+            }}
+          />
+        )}
       </motion.div>
     </div>
   )

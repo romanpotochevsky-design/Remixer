@@ -329,6 +329,21 @@ export const IconGlobe = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * The `Preview` pill's glyph on a template card's hover (ours — no board draws
+ * this affordance). Two diagonal arrows breaking out of opposite corners: the
+ * universal "make this bigger", which is literally what the click does. Drawn on
+ * the 20-box like its neighbours, 1.8px strokes.
+ */
+export const IconExpand = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path
+      d="M11.5 3.5h5v5M8.5 16.5h-5v-5M16.5 3.5 11 9M3.5 16.5 9 11"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    />
+  </svg>
+)
+
 export const IconClose = ({ size = 12, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 12 12" fill="none" className={className} aria-hidden>
     <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

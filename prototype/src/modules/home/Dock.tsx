@@ -33,10 +33,10 @@ import {
   TEMPLATES, TEMPLATE_CATEGORIES, templatesIn,
   type Template, type TemplateCategoryId,
 } from '@/data/templates'
-import { startBuild } from '@/modules/chat/send'
 import { ScrollArea } from '@/ui/ScrollArea'
-import { IconMoreVertical, IconPlus } from '@/ui/icons'
+import { IconExpand, IconMoreVertical, IconPlus } from '@/ui/icons'
 import { Thumb } from './thumbs'
+import { rectOf } from './attachment'
 
 /** How many slots the shelf shows. Six is what the canonical board draws. */
 const SLOTS = 6
@@ -643,16 +643,22 @@ function EmptySlot() {
 /**
  * A template card (28375:43585 and siblings; the picker's 18 at 28626:592+ are
  * the same component, only narrower) — name 16px, description under it. One
- * card, two homes: the dock seeds the builder from it, the template picker
- * attaches it to the prompt instead, so the click action can come from the
- * caller. The picker's ghost kebab (`opacity: 0` on all 18 cards) is simply
- * not rendered — hidden as drawn, same as here.
+ * card, two homes, and since 26.08.2026 ONE ACTION in both: clicking it opens the
+ * full-screen preview (designer: «нет, в доке ховера + нет, только открыть превью
+ * и там будет кнопка "Начать из этого тимплейта"»). The dock used to start a
+ * generation on the click; that now lives behind the preview's own
+ * `Remix this template`. The picker still overrides the click, because its
+ * preview is opened from INSIDE the sheet (no page-level flight, no second
+ * surface) — see `onPick`.
+ *
+ * The picker's ghost kebab (`opacity: 0` on all 18 cards) is simply not
+ * rendered — hidden as drawn, same as here.
  */
 export function TemplateCard({
   template,
   className = 'home-card',
   thumbClassName = 'home-thumb home-thumb--template',
-  onPick, pickLabel, dataKey, onAdd, addLabel, instant, item,
+  onPick, pickLabel, dataKey, dockKey, onAdd, addLabel, instant, item,
 }: {
   template: Template
   /** Wrapper sizing. The dock's flex row sizes cards itself (`home-card`);
@@ -672,6 +678,16 @@ export function TemplateCard({
    *  finds the clicked card by it — to fly the preview out of the thumbnail's
    *  measured rect, and back into its CURRENT rect on the way out. */
   dataKey?: number
+  /**
+   * The same idea for the DOCK, and deliberately a SECOND attribute rather than
+   * the same one: `data-tpl-card` is an index into `TEMPLATE_LIBRARY` and this is
+   * an index into `TEMPLATES`. They are different lists that disagree on one
+   * drawing (see data/templates.ts), so sharing one attribute name would be the
+   * index-space bug the flight payload was just fixed to avoid. Rendered as
+   * `data-dock-card`; the flight layer lands the returning object in
+   * `[data-dock-card="N"] .home-thumb`, re-measured at close.
+   */
+  dockKey?: number
   /**
    * THE BLUE `+`, drawn 26.08.2026 on ONE of the picker's eighteen cards —
    * `28637:42070` on the rest board, `28734:66455` on the scrolled one — in the
@@ -711,16 +727,21 @@ export function TemplateCard({
   item?: boolean
 }) {
   const { t } = useT()
-  const { openBuilder } = useUI()
+  const openCardPreview = useUI((s) => s.openCardPreview)
   const reduce = useReducedMotion()
+  /** The thumbnail's box — the rect every flight out of this card is measured on. */
+  const thumb = useRef<HTMLDivElement>(null)
 
   /*
-   * The hover affordance's own state, and it is REACT state rather than CSS
-   * `:hover` because what it drives is a spring (motion.ts, `cardAdd`). One
-   * pointer event per card, never a frame; and the two sources are kept apart so
-   * that tabbing out of a card the pointer is still over does not hide the
-   * button. Only wired when there IS a `+` — the dock's cards must not re-render
-   * on hover for nothing.
+   * The BLUE `+`'s own state, and it is REACT state rather than CSS `:hover`
+   * because what it drives is a spring (motion.ts, `cardAdd`). One pointer event
+   * per card, never a frame; and the two sources are kept apart so that tabbing
+   * out of a card the pointer is still over does not hide the button. Only wired
+   * when there IS a `+` — the dock's cards must not re-render on hover for
+   * nothing, and since 26.08.2026 they do not have to: the CARD's own hover (the
+   * zoom, the glass edge and the `Preview` pill, all three in both homes) is pure
+   * CSS, so it costs zero renders here and zero in the picker. See «THE CARD'S
+   * OWN HOVER» in index.css.
    */
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -746,40 +767,66 @@ export function TemplateCard({
   const timed = (target: TargetAndTransition) => (instant ? { ...target, transition: NO_TIME } : target)
 
   /*
-   * What picking a template actually does is not drawn anywhere — there is no
-   * preview, no confirm and no "customise" step on any board. Until there is, it
-   * does the one thing the page can honestly do: hands the builder a first message
-   * naming the template and lets the generation run, exactly as a typed prompt does.
+   * THE DOCK'S CLICK OPENS THE PREVIEW (designer, 26.08.2026). It used to call
+   * `startBuild` + `openBuilder` straight from here, i.e. a click on a 238px
+   * thumbnail committed you to a generation. Now it opens the same full-screen
+   * sheet the picker opens, and the commitment lives on that sheet's own
+   * `Remix this template` — one look before one decision.
+   *
+   * The rect is measured HERE, in the handler, before the sheet exists: the
+   * page-level flight layer (TemplateFlight.tsx) needs the source rect in the
+   * very commit the destination mounts. Nothing else is measured — the drawing's
+   * id travels with the flight, because the dock's list is not the library's.
    */
   function open() {
-    startBuild(`Start a new site from the “${template.name}” template`)
-    openBuilder()
+    const el = thumb.current
+    if (!el || dockKey == null) return
+    openCardPreview(dockKey, template.id, rectOf(el))
   }
 
   return (
     <motion.div
       className={`${className} home-card-face group relative flex flex-col`}
       data-tpl-card={dataKey}
+      data-dock-card={dockKey}
       {...(item ? { variants: reduce ? listSwapPopFade : listSwapPop } : {})}
       {...hover}
     >
       {/* radius 8 here against the project card's 12 — as drawn on the two boards,
           flagged as probably accidental (spec §12.12)
 
-          ⚠️ The hover ring's DURATION is a variable, not a constant, and that is
-          the whole of the fix for a flicker QA caught: a surface that arrives
-          under a parked cursor makes one card hovered a frame after it mounts,
-          so its ring animated in — measured from `box-shadow: transparent 0px`
-          at t=0 to the full hairline at ~100ms, all of it while the sheet was
-          still springing. It read as the grid glitching on arrival. The card is
-          the dock's signed-off component, so nothing about the ring itself moves
-          — only who decides how long it takes: an owner that is still animating
-          sets `--card-hover-dur: 0s`, and the ring is simply THERE when the
-          sheet lands (which is honest — the pointer is over that card) instead
-          of announcing itself. Unset everywhere else, so the dock and a settled
-          picker both keep the drawn `--dur-fast` fade. */}
-      <div className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1 group-focus-within:ring-1`}>
-        <Thumb id={template.id} className="absolute inset-0" />
+          THE CARD'S OWN HOVER lives in three children of this box and is defined
+          in `THE CARD'S OWN HOVER` in index.css — the designer asked for one
+          hover on the card itself, identical in the dock and in the picker,
+          because in both the click now opens the same full-screen preview. The
+          box only has to CLIP (`overflow: hidden`, which — unlike a mask — is
+          safe for the pill's `backdrop-filter`).
+
+          ⚠️ `--card-hover-dur` is the same variable the old flat ring read, and
+          for the same reason: a surface that arrives under a parked cursor makes
+          one card hovered a frame after it mounts, and an affordance animating
+          itself in on top of a still-springing sheet read as the grid glitching.
+          An owner that is still animating writes `0s` and the affordance is
+          simply THERE when the sheet lands (honest — the pointer IS over that
+          card). Unset everywhere else. */}
+      <div
+        ref={thumb}
+        className={`${thumbClassName} relative w-full overflow-hidden rounded-[8px]`}
+      >
+        {/* the drawing, on its own layer so the 1.03 lean cannot touch layout */}
+        <div className="home-thumb-zoom">
+          <Thumb id={template.id} className="absolute inset-0" />
+        </div>
+        {/* the glass edge (gradient rim, opacity only) */}
+        <span aria-hidden className="home-thumb-rim" />
+        {/* bottom-LEFT = look. The top-right corner belongs to the picker's blue
+            `+` = take, so the two affordances never share a pixel. Deaf and
+            `aria-hidden`: the card's stretched button is the action and already
+            carries the name. */}
+        <span aria-hidden className="home-thumb-peek">
+          {t({ en: 'Preview', uk: 'Перегляд' })}
+          <IconExpand size={14} />
+        </span>
       </div>
 
       {/* THE CAPTION'S BOX NEVER MOVES — not at rest, not on hover.
@@ -854,7 +901,10 @@ export function TemplateCard({
 
       <button
         onClick={onPick ?? open}
-        aria-label={pickLabel ?? t({ en: `Start from ${template.name}`, uk: `Почати з ${template.name}` })}
+        /* Both homes open the same preview now, so the default name says that
+           rather than the old "Start from …" — the generation is one screen
+           further on, behind `Remix this template`. */
+        aria-label={pickLabel ?? t({ en: `Open ${template.name}`, uk: `Відкрити ${template.name}` })}
         className="absolute inset-0 rounded-[16px]"
       />
     </motion.div>
@@ -975,7 +1025,17 @@ export function HomeDock() {
           >
             {showTemplates ? (
               templates.length ? (
-                templates.map((tpl) => <TemplateCard key={tpl.id} template={tpl} item />)
+                templates.map((tpl) => (
+                  /* `dockKey` is the row's index in TEMPLATES, not in this
+                     filtered list: the filter changes what is on the shelf, and
+                     the flight home has to find the same card afterwards. */
+                  <TemplateCard
+                    key={tpl.id}
+                    template={tpl}
+                    dockKey={TEMPLATES.indexOf(tpl)}
+                    item
+                  />
+                ))
               ) : (
                 /* Not drawn on any board: no card carries a category, so the chips
                    cannot really filter (spec §12.13) and the designer has never had to

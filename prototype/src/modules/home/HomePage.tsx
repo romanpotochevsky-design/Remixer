@@ -66,7 +66,8 @@ import { Thumb } from './thumbs'
 import { FIELD_CLOSE, FIELD_GROW } from '@/ui/motion'
 import {
   FIELD_PAD_B, FIELD_RADIUS, rectOf,
-  SEAT_ACK_DELAY, SEAT_BLOOM_R, SHIFT_ROW, SHIFT_TEXT, TILE, TILE_INSET,
+  SEAT_ACK_DELAY, SEAT_BLOOM_R, SHIFT_ROW, SHIFT_TEXT,
+  SWAP_OUT, SWAP_OUT_DELAY, TILE, TILE_INSET, TILE_SETTLE,
 } from './attachment'
 
 /* ----------------------------------------------------------------- entrance */
@@ -350,19 +351,90 @@ function useChipEdgeFade(viewport: React.MutableRefObject<HTMLDivElement | null>
  *     view, flown out of the tile) — a 56px thumbnail is not something you can
  *     check a template by;
  *   · the pill, with an attachment already there, re-opens the library and the
- *     next pick REPLACES the attachment — the drawn bar is 88 wide, i.e. sized
- *     for exactly one tile, and nothing anywhere draws a second one;
+ *     next pick REPLACES the attachment — confirmed by the designer 26.08.2026
+ *     («один шаблон… оно просто заменит шаблон»), and the drawn 88px one-tile bar
+ *     was already the only reading available. The replacement's choreography and
+ *     the two traps it avoids live in `attachment.ts` («ONE SLOT»);
  *   · Build stays "Build" (no board draws a "Remix" label anywhere).
  */
 function AttachedTile({ index }: { index: number }) {
   const { t } = useT()
   const { detachTemplate, openAttachedPreview } = useUI()
+  const settle = useUI((s) => s.tileSettle)
   const reduced = useReducedMotion()
   const tpl = TEMPLATE_LIBRARY[index]
   const box = useRef<HTMLDivElement>(null)
   const face = useRef<HTMLButtonElement>(null)
+  const ack = useRef<HTMLSpanElement>(null)
   /** Set while the collapse plays, so a second ✕ press cannot start it twice. */
   const leaving = useRef(false)
+
+  /*
+   * ONE SLOT, ONE OBJECT — the outgoing drawing, kept alive in the slot while the
+   * new one flies in. Rules, timing and the measurement that says why the
+   * collapse ends on the landing (and why it is invisible on one of the three
+   * paths) are in `attachment.ts` § ONE SLOT.
+   *
+   * Derived in a LAYOUT effect, so the ghost is in the DOM before the browser
+   * paints the commit that swapped the drawing — no frame ever shows the new
+   * picture without the old one under it. It lives OUTSIDE the face button,
+   * because the face is exactly what the flight layer hides while its clone
+   * stands in (`[data-attach-tile]`), and a ghost inside it would be hidden too.
+   */
+  const [ghost, setGhost] = useState<number | null>(null)
+  const shown = useRef(index)
+  const ghostEl = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const was = shown.current
+    shown.current = index
+    if (was === index) return
+    setGhost(was)
+  }, [index])
+
+  useLayoutEffect(() => {
+    const el = ghostEl.current
+    if (ghost === null || !el) return
+    /*
+     * Reduced motion: no collapse, just a fade — and it is a CROSS-fade, because
+     * the flight layer's own reduced branch fades the new tile IN over 150ms on
+     * top of this. A fade is not motion; a 56px box shrinking is.
+     */
+    const anim = el.animate(
+      reduced
+        ? { opacity: [1, 0] }
+        : { transform: ['scale(1)', 'scale(0.9)'], opacity: [1, 1, 0] },
+      {
+        duration: reduced ? 150 : SWAP_OUT,
+        delay: reduced ? 0 : SWAP_OUT_DELAY,
+        easing: 'cubic-bezier(0.4, 0, 1, 1)',
+        fill: 'forwards',
+      },
+    )
+    anim.onfinish = () => setGhost(null)
+    return () => anim.cancel()
+  }, [ghost, reduced])
+
+  /*
+   * THE SETTLE PULSE — the tile's answer to being re-picked (the store's
+   * `tileSettle` nudge, bumped by the picker when the chosen template is the one
+   * already attached). It dips 6% and comes back while its edge flashes once:
+   * "yes, this one". WAAPI on purpose — the global reduced-motion block kills CSS
+   * animations outright, and under the setting this must still ACKNOWLEDGE the
+   * press, so the reduced branch keeps the edge flash and drops the dip (the
+   * displacement itself, not just its animation — the house rule).
+   */
+  useEffect(() => {
+    if (!settle) return
+    const opts = { duration: TILE_SETTLE, easing: 'cubic-bezier(0.2, 0, 0, 1)' } as const
+    const runs = [
+      ack.current?.animate({ opacity: [0, 1, 0] }, opts),
+      reduced
+        ? undefined
+        : face.current?.animate({ transform: ['scale(1)', 'scale(0.94)', 'scale(1)'] }, opts),
+    ]
+    return () => runs.forEach((r) => r?.cancel())
+  }, [settle, reduced])
+
   if (!tpl) return null
 
   /* Click the tile → the object grows back into the stage it came from. The
@@ -370,7 +442,7 @@ function AttachedTile({ index }: { index: number }) {
   function preview() {
     const el = face.current
     if (!el || leaving.current) return
-    openAttachedPreview(index, rectOf(el))
+    openAttachedPreview(index, tpl.id, rectOf(el))
   }
 
   /*
@@ -411,6 +483,17 @@ function AttachedTile({ index }: { index: number }) {
       className="attach-tile relative flex-none"
       style={{ width: TILE, height: TILE }}
     >
+      {/* THE OUTGOING DRAWING (see § ONE SLOT above). First child, so it paints
+          UNDER the face — the arriving object collapses it from in front rather
+          than swapping places with it. */}
+      {ghost !== null && TEMPLATE_LIBRARY[ghost] && (
+        <span aria-hidden ref={ghostEl} className="attach-tile-ghost">
+          <span className="absolute left-0 top-0 block aspect-[233.333/218] h-full">
+            <Thumb id={TEMPLATE_LIBRARY[ghost].id} className="absolute inset-0" />
+          </span>
+        </span>
+      )}
+
       <button
         ref={face}
         data-attach-tile
@@ -424,6 +507,10 @@ function AttachedTile({ index }: { index: number }) {
         <span className="absolute left-0 top-0 block aspect-[233.333/218] h-full">
           <Thumb id={tpl.id} className="absolute inset-0" />
         </span>
+
+        {/* the settle pulse's edge flash — inside the face so it dips WITH the
+            picture; the badge outside must not move, it is a control */}
+        <span aria-hidden ref={ack} className="attach-tile-ack" />
       </button>
 
       <button

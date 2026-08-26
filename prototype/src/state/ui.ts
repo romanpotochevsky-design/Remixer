@@ -14,6 +14,7 @@
  */
 import { create } from 'zustand'
 import type { TemplateCategoryId } from '@/data/templates'
+import type { ThumbId } from '@/modules/home/thumbs'
 
 /**
  * Which top-level page is on screen.
@@ -92,18 +93,38 @@ export interface FlightRect {
 }
 
 /**
- * A template in the air between the picker's stage and the composer's tile.
+ * A template in the air between one of its homes and another.
  *
  * `to` names the DESTINATION, which is also who owns the landing: `'tile'` after
- * a pick (or after closing the attachment's preview), `'stage'` when the tile is
- * clicked to blow it back up. Null the rest of the time; cleared by the flight
- * layer the moment the spring lands, which is the same commit that reveals the
- * real destination — the two are pixel-identical there, so the swap is invisible.
+ * a pick (or after closing the attachment's preview), `'stage'` when a tile or a
+ * dock card is opened to blow it back up, `'card'` when a dock card's preview is
+ * closed and the object flies home into the shelf. Null the rest of the time;
+ * cleared by the flight layer the moment the spring lands, which is the same
+ * commit that reveals the real destination — the two are pixel-identical there,
+ * so the swap is invisible.
+ *
+ * ⚠️ THE PAYLOAD CARRIES A DRAWING, NOT A LIBRARY INDEX (26.08.2026, when the
+ * dock's cards got their own preview). A FLIP needs exactly three things: what
+ * is in the air and the two rects. It used to carry `index` into
+ * `TEMPLATE_LIBRARY`, which was fine while every flight started in the picker —
+ * but the dock's shelf is `TEMPLATES`, a DIFFERENT list, and the two disagree on
+ * one drawing (dock col 3 is `campaign`, the library's is `agency`, deliberately
+ * — see data/templates.ts). An index would therefore have flown the wrong
+ * picture out of the third dock card, so the flight names the drawing itself.
  */
 export interface TemplateFlight {
-  index: number
+  /** Which miniature site is in the air (`thumbs.tsx`) — all the clone needs. */
+  id: ThumbId
   from: FlightRect
-  to: 'tile' | 'stage'
+  to: 'tile' | 'stage' | 'card'
+  /**
+   * The dock card this flight belongs to, as an index into `TEMPLATES` — set on
+   * BOTH legs of the dock's preview, so it also marks the card path for the
+   * flight layer (a `'stage'` flight with `card` set comes out of a card, one
+   * without comes out of the composer's tile; the two are laid out differently
+   * — see `contentWidth` in TemplateFlight.tsx).
+   */
+  card?: number
 }
 
 export type Device = 'desktop' | 'mobile'
@@ -143,8 +164,21 @@ interface UIStore {
    *    attached. No grid at all (the library is not part of this path), the
    *    sheet materialises with a plain fade, and the object flies from the tile
    *    into the stage and back into the tile on the way out.
+   *  - `'card'` — a template card in the HOME DOCK (designer, 26.08.2026: a dock
+   *    card opens the full-screen preview instead of starting a generation).
+   *    Structurally the tile's path: no grid, a fade, and a page-level flight,
+   *    because the object starts OUTSIDE the sheet. What differs is only the
+   *    bar's CTA — `Remix this template`, which seeds the builder — and where
+   *    the object flies home to (`pickerCard`).
    */
-  pickerSource: 'pill' | 'tile'
+  pickerSource: 'pill' | 'tile' | 'card'
+  /**
+   * Which DOCK card's preview is open, as an index into `TEMPLATES` — the dock's
+   * own list, not the picker's library (they are different lists; see
+   * `TemplateFlight`). Exactly one of `pickerDetail` / `pickerCard` is ever set:
+   * the library path indexes the library, the dock path indexes the shelf.
+   */
+  pickerCard: number | null
   /**
    * The template attached to the Home composer's prompt — an index into
    * `TEMPLATE_LIBRARY` (the library repeats sites, so a position is the only
@@ -161,6 +195,8 @@ interface UIStore {
   attachedTemplate: number | null
   /** The template mid-flight between the stage and the tile — see TemplateFlight. */
   tplFlight: TemplateFlight | null
+  /** Bumped by `settleAttachedTile` — see it. */
+  tileSettle: number
   surface: Surface
   domainScreen: DomainScreen
   /** The domain the user is acting on inside the domains surface. */
@@ -181,6 +217,21 @@ interface UIStore {
   setTemplateFilter: (id: TemplateCategoryId) => void
   openTemplatePicker: () => void
   closeTemplatePicker: () => void
+  /**
+   * A dock template card was clicked: the same full-screen sheet opens showing
+   * that card alone, and the object flies out of the card's thumbnail into the
+   * stage. `id` rides along because the dock's list is not the library's.
+   */
+  openCardPreview: (card: number, id: ThumbId, from: FlightRect) => void
+  /** ←, Esc, ✕ or the scrim in that preview: the object flies home to the card. */
+  closeCardPreview: (card: number, id: ThumbId, from: FlightRect) => void
+  /**
+   * The attachment tile acknowledges something that did NOT change it: picking
+   * the template that is already attached. A monotonic nudge rather than a
+   * boolean — every press has to play, including two in a row, and a one-shot
+   * that unmounts itself has nothing to reset. Read by `AttachedTile`.
+   */
+  settleAttachedTile: () => void
   /** A card was clicked — the detail view opens over the grid. */
   openTemplateDetail: (libIndex: number) => void
   /** ← or Esc inside the detail view — back to the grid, picker stays open. */
@@ -191,13 +242,13 @@ interface UIStore {
    * dissolves itself on its own beat and closes when that lands, so the flying
    * object is never racing a surface that has already left.
    */
-  attachTemplate: (libIndex: number, from: FlightRect | null) => void
+  attachTemplate: (libIndex: number, id: ThumbId, from: FlightRect | null) => void
   detachTemplate: () => void
   /** The attachment tile was clicked: the picker opens on that template alone
    *  and the object flies out of the tile into the stage. */
-  openAttachedPreview: (libIndex: number, from: FlightRect) => void
+  openAttachedPreview: (libIndex: number, id: ThumbId, from: FlightRect) => void
   /** ←, Esc, ✕ or the scrim inside that preview: the object flies home. */
-  closeAttachedPreview: (libIndex: number, from: FlightRect) => void
+  closeAttachedPreview: (libIndex: number, id: ThumbId, from: FlightRect) => void
   /** The flight landed — the destination is real from this commit on. */
   endTemplateFlight: () => void
   setDevice: (d: Device) => void
@@ -223,6 +274,8 @@ export const useUI = create<UIStore>((set, get) => ({
   templatePickerOpen: false,
   pickerDetail: null,
   pickerSource: 'pill',
+  pickerCard: null,
+  tileSettle: 0,
   attachedTemplate: null,
   tplFlight: null,
   surface: 'preview',
@@ -238,8 +291,8 @@ export const useUI = create<UIStore>((set, get) => ({
      publish popover — or to a stale attached-template chip over an empty field —
      from another page reads as a bug, not as continuity. Build consumes the
      attachment via `openBuilder`, which is exactly when it should die. */
-  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null, templatePickerOpen: false, tplFlight: null }),
-  openBuilder: () => set({ page: 'builder', templatePickerOpen: false, attachedTemplate: null, tplFlight: null }),
+  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null }),
+  openBuilder: () => set({ page: 'builder', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null }),
   setDockTab: (dockTab) => set({ dockTab }),
   setTemplateFilter: (templateFilter) => set({ templateFilter }),
   /* Every open starts on the grid, like the board draws it. The reset happens
@@ -247,8 +300,31 @@ export const useUI = create<UIStore>((set, get) => ({
      so a picker dismissed (or chosen) from the detail view exits showing the
      detail view — clearing it at close time would fly the preview back into
      the grid underneath a sheet that is already leaving. */
-  openTemplatePicker: () => set({ templatePickerOpen: true, pickerDetail: null, pickerSource: 'pill' }),
+  openTemplatePicker: () => set({ templatePickerOpen: true, pickerDetail: null, pickerCard: null, pickerSource: 'pill' }),
   closeTemplatePicker: () => set({ templatePickerOpen: false }),
+  /* Mirrors `openAttachedPreview`: one write opens the sheet on this card alone
+     and puts the object in the air toward the stage. `pickerDetail` is cleared —
+     the two index spaces must never both be set. */
+  openCardPreview: (card, id, from) =>
+    set({
+      templatePickerOpen: true,
+      pickerSource: 'card',
+      pickerDetail: null,
+      pickerCard: card,
+      tplFlight: { id, from, to: 'stage', card },
+    }),
+  /* …and mirrors `closeAttachedPreview`: the sheet starts dissolving, the detail
+     view stands down in the same commit (so it cannot double the clone), and the
+     object is in the air toward the card it came from. `pickerSource` deliberately
+     survives, like `pickerDetail` does on the library path — the exiting sheet has
+     to keep the fade it came in with rather than the pill's shrink. */
+  closeCardPreview: (card, id, from) =>
+    set({
+      templatePickerOpen: false,
+      pickerCard: null,
+      tplFlight: { id, from, to: 'card', card },
+    }),
+  settleAttachedTile: () => set((st) => ({ tileSettle: st.tileSettle + 1 })),
   openTemplateDetail: (pickerDetail) => set({ pickerDetail }),
   closeTemplateDetail: () => set({ pickerDetail: null }),
   /*
@@ -258,26 +334,27 @@ export const useUI = create<UIStore>((set, get) => ({
    * that fade lands. Attaching and closing in one write made the sheet's exit
    * spring compete with the flight for the eye.
    */
-  attachTemplate: (attachedTemplate, from) =>
+  attachTemplate: (attachedTemplate, id, from) =>
     set({
       attachedTemplate,
-      tplFlight: from ? { index: attachedTemplate, from, to: 'tile' } : null,
+      tplFlight: from ? { id, from, to: 'tile' } : null,
     }),
   detachTemplate: () => set({ attachedTemplate: null, tplFlight: null }),
-  openAttachedPreview: (index, from) =>
+  openAttachedPreview: (index, id, from) =>
     set({
       templatePickerOpen: true,
       pickerSource: 'tile',
       pickerDetail: index,
-      tplFlight: { index, from, to: 'stage' },
+      pickerCard: null,
+      tplFlight: { id, from, to: 'stage' },
     }),
   /* One write: the sheet starts dissolving, the detail view stands down (so it
      cannot double the clone), and the object is in the air toward the tile. */
-  closeAttachedPreview: (index, from) =>
+  closeAttachedPreview: (index, id, from) =>
     set({
       templatePickerOpen: false,
       pickerDetail: null,
-      tplFlight: { index, from, to: 'tile' },
+      tplFlight: { id, from, to: 'tile' },
     }),
   endTemplateFlight: () => set({ tplFlight: null }),
   setDevice: (device) => set({ device }),

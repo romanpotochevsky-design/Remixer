@@ -94,6 +94,58 @@ export function rectOf(el: Element): import('@/state/ui').FlightRect {
  */
 export const SEAT_ACK_DELAY = 300
 
+/**
+ * ─────────────── ONE SLOT: WHAT HAPPENS WHEN A SECOND TEMPLATE ARRIVES ───────
+ *
+ * Designer, 26.08.2026: «один шаблон, если ты снова нажмёшь "Add template" и
+ * выберешь, то оно просто заменит шаблон, нужна анимация для этого красивая и
+ * плавная». The incoming flight is unchanged — it IS the animation — and the
+ * OUTGOING drawing stays in the slot until the new one lands, then collapses
+ * (scale 0.9 + fade) behind it. So the slot is never empty and no row moves: the
+ * field is already tall, and its 138 → 184 snap must NOT re-run (that snap is
+ * what holds the hero column's height through a negative margin — re-running it
+ * would jog the whole column for a change that has no layout in it).
+ *
+ * ⚠️ THE COLLAPSE ENDS WHEN THE OBJECT IS VISUALLY HOME — at `SEAT_ACK_DELAY`,
+ * the same 300ms beat the field's own acknowledgment keys off, NOT at "70% of the
+ * 620ms spring". Measured, one frozen probe per timestamp (a polling loop starves
+ * the page and stretches the timeline — the same flight read that way looked like
+ * it took 818ms): out of the card's `+` the clone is 181px wide and ~525px away at
+ * 30ms, 95px at 80, 67px at 130, 58.7 at 240 and home at 300 (55.7, i.e. inside
+ * the tile's own 56 — the seat dip). The spring's remaining 300ms is a 2% settle
+ * nobody watches. A collapse timed off 620 would therefore play its whole length
+ * UNDER an object that had been sitting on the slot for a third of a second;
+ * timed off 300 it is the old picture folding away as the new one lands, which is
+ * the gesture that was asked for.
+ *
+ * ⚠️ AND ON THE `Choose a template` PATH IT IS INVISIBLE ANYWAY — measured, not
+ * assumed, and it is why the collapse is not the point of this. A FLIP's clone is
+ * the destination box dilated about the flight's fixed point, and on that path the
+ * fixed point lands INSIDE the 56px tile (measured (12.35, 23.28) from its
+ * corner), so the clone COVERS the slot on every frame from the full-screen stage
+ * down: 263 of 375 sampled frames cover it strictly, and the ones that do not are
+ * the final sub-pixel seat dip where the clone is 55.5 against the tile's 56.
+ * Nothing drawn in that slot can be seen until the clone leaves.
+ *
+ * What the outgoing drawing is really FOR is the other doors — the card's blue `+`
+ * today, any small source tomorrow — where the clone starts as a 233px card up in
+ * the grid and does not reach the slot until ~200ms: without it the slot would
+ * blink EMPTY on a page the customer is looking straight at. The collapse is how
+ * it leaves once it has done that job.
+ */
+export const SWAP_OUT = 140
+/** …so the collapse starts here, measured from the flight's start. */
+export const SWAP_OUT_DELAY = SEAT_ACK_DELAY - SWAP_OUT
+
+/**
+ * The tile's answer to a press that changed nothing — picking the template that
+ * is already attached. It dips and comes back (the only "settle" a photograph
+ * can take without being painted over) while its edge flashes once. Not drawn;
+ * ours, and the same length as the field's own catch acknowledgment so the two
+ * read as one family.
+ */
+export const TILE_SETTLE = 280
+
 /** The field's own radius (`rounded-[32px]` on `.he-composer`). Needed as a
  *  number by the close, which re-states the field's shape as a clip. */
 export const FIELD_RADIUS = 32

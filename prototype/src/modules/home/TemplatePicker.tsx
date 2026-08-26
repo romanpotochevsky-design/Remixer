@@ -61,6 +61,38 @@
  * preview to fill the sheet, and attaching moved to the header's
  * `Choose a template` pill.
  *
+ * ⚠️ THREE DOORS, ONE DETAIL SURFACE (`ui.pickerSource`) — and this is the
+ * architecture answer for the dock's cards, added 26.08.2026:
+ *
+ *   · `'pill'` — the library. Grid, then a card opens the detail view with the
+ *     picker's OWN internal flight (a clone inside this sheet).
+ *   · `'tile'` — one attachment's preview, opened from the composer's tile.
+ *   · `'card'` — one template's preview, opened from a DOCK card. Same sheet,
+ *     no grid, and the bar's CTA reads `Remix this template` instead of
+ *     `Choose a template` (two different actions must not share a word:
+ *     `decisions.md`, 26.08.2026).
+ *
+ * The alternative was to hoist the detail view into its own module and give the
+ * dock a second host for it. It was rejected on what the two paths actually
+ * SHARE: the scrim, the 16px sheet, the never-moving ✕, the focus trap, the Esc
+ * ladder, the plate unroll and the stage with its scroller are all this sheet's,
+ * and a second host would either duplicate them or drag them out into a third
+ * file that both import — for a difference that is one string and one callback.
+ * The dock's path is not even a new SHAPE: `'tile'` already meant "no grid, a
+ * plain fade, and a page-level flight because the object lives outside the
+ * sheet", which is exactly the dock's case (a card in the shelf is as far
+ * outside this sheet as the composer's tile is). So the third door is one more
+ * value in a union, the same way `Surface` grows (state/ui.ts) — and the flight
+ * that crosses the boundary stays in the ONE place that already owns crossing
+ * flights, TemplateFlight.tsx.
+ *
+ * ⚠️ Why the dock's flight is NOT the picker's internal one, which would have
+ * been free: the sheet on this path FADES in (there is no grid to grow out of,
+ * and the object is the gesture), and a clone living inside a fading sheet flies
+ * translucent. The page-level layer is above the scrim, so the object stays
+ * opaque over a surface that is still arriving — the same reason the tile's path
+ * is built that way.
+ *
  * ⚠️ THE BAR WAS REDRAWN 26.08.2026 — the designer compressed it a notch and
  * turned the CTA blue. Layout as drawn now (§12 + the dated update block), with
  * ONE deliberate deviation — the ✕ is 40, not the 36 he drew here (see
@@ -146,7 +178,11 @@ import { AnimatePresence, animate, motion, useMotionValue, usePresence, useReduc
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
-import { libraryIn, TEMPLATE_LIBRARY, type TemplateCategoryId } from '@/data/templates'
+import {
+  libraryIn, TEMPLATES, TEMPLATE_LIBRARY,
+  type Template, type TemplateCategoryId,
+} from '@/data/templates'
+import { startBuild } from '@/modules/chat/send'
 import { ScrollArea, type ScrollMetrics } from '@/ui/ScrollArea'
 import { IconArrowLeft, IconClose, IconPlus } from '@/ui/icons'
 import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, gridSwapBehind, HEADER_COMPACT, SPRING_SOFT } from '@/ui/motion'
@@ -398,7 +434,23 @@ function returnToTile(index: number) {
     document.querySelector('[data-detail-stage]') ?? document.querySelector('[data-detail-clone]')
   const tile = document.querySelector('[data-attach-tile]')
   if (!stage || !tile) { ui.closeTemplatePicker(); return }
-  ui.closeAttachedPreview(index, rectOf(stage))
+  ui.closeAttachedPreview(index, TEMPLATE_LIBRARY[index].id, rectOf(stage))
+}
+
+/**
+ * The same gesture for a DOCK card's preview (`pickerSource === 'card'`): every
+ * way out flies the object home into the card it grew from. The destination is
+ * NOT taken from the opening measurement — the flight layer re-measures
+ * `[data-dock-card="N"] .home-thumb` at landing time, because the shelf can
+ * re-column under a resize while the preview is up.
+ */
+function returnToCard(card: number) {
+  const ui = useUI.getState()
+  const stage =
+    document.querySelector('[data-detail-stage]') ?? document.querySelector('[data-detail-clone]')
+  const home = document.querySelector(`[data-dock-card="${card}"] .home-thumb`)
+  if (!stage || !home || !TEMPLATES[card]) { ui.closeTemplatePicker(); return }
+  ui.closeCardPreview(card, TEMPLATES[card].id, rectOf(stage))
 }
 
 /**
@@ -487,6 +539,8 @@ export function TemplatePicker() {
       /* …except on the tile's own preview, where there is no grid underneath:
          one Esc flies the object home and closes the whole thing. */
       if (s.pickerSource === 'tile' && s.pickerDetail !== null) returnToTile(s.pickerDetail)
+      /* …and the dock's preview, which likewise has no grid underneath. */
+      else if (s.pickerSource === 'card' && s.pickerCard !== null) returnToCard(s.pickerCard)
       else if (s.pickerDetail !== null) s.closeTemplateDetail()
       else s.closeTemplatePicker()
     }
@@ -503,10 +557,17 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
   const detail = useUI((s) => s.pickerDetail)
   const openDetail = useUI((s) => s.openTemplateDetail)
   const backToGrid = useUI((s) => s.closeTemplateDetail)
-  /* Which surface this is: the library (opened by the pill) or one attachment's
-     own preview (opened by the tile). See `ui.pickerSource`. */
+  /* Which surface this is: the library (opened by the pill), one attachment's
+     own preview (the tile), or one dock card's preview. See `ui.pickerSource`
+     and the THREE DOORS note at the top of this file. */
   const source = useUI((s) => s.pickerSource)
+  const card = useUI((s) => s.pickerCard)
   const fromTile = source === 'tile'
+  const fromCard = source === 'card'
+  /* Both of those open ONE template's preview with no grid behind it, and both
+     are carried across the surface boundary by the page-level flight layer. Every
+     place that only cares about "is this the library?" asks this. */
+  const detailOnly = fromTile || fromCard
   const sheet = useRef<HTMLDivElement>(null)
   /*
    * True from "Choose a template" until the sheet has faded: the surface is
@@ -617,7 +678,11 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
        screen and the tile comes first in the DOM — a single shared hook would
        silently re-aim the pill's own grow-from-trigger at the tile. */
     const trigger = document.querySelector<HTMLElement>(
-      fromTile ? '[data-attach-tile]' : '[data-template-trigger]',
+      fromTile
+        ? '[data-attach-tile]'
+        : fromCard
+          ? `[data-dock-card="${card}"] > button`
+          : '[data-template-trigger]',
     )
     sheet.current?.focus()
     return () => {
@@ -664,7 +729,15 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
   })
 
   const cards = libraryIn(filter)
-  const detailTpl = detail !== null ? TEMPLATE_LIBRARY[detail] : null
+  /* The template on screen, from whichever index space this door indexes: the
+     library on the pill/tile paths, the dock's own shelf on the card path (the
+     two lists disagree on one drawing — data/templates.ts). Exactly one of the
+     two is ever set; see `ui.pickerCard`. */
+  const detailTpl: Template | null = fromCard
+    ? (card !== null ? TEMPLATES[card] ?? null : null)
+    : detail !== null
+      ? TEMPLATE_LIBRARY[detail] ?? null
+      : null
 
   /*
    * A NEW FILTER PARKS THE GRID AT THE TOP — decided, not inherited.
@@ -704,20 +777,54 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
    * dissolving; from that rect the page-level flight layer flies the object
    * into the composer's tile (which the same store write brings into existence).
    */
-  /* The ✕ and the scrim. On the library path they close; on one attachment's
-     preview they are the same gesture as ← — the object flies home. */
+  /* The ✕ and the scrim. On the library path they close; on a preview with no
+     grid behind it they are the same gesture as ← — the object flies home. */
   function dismiss() {
     if (fromTile && detail !== null) returnToTile(detail)
+    else if (fromCard && card !== null) returnToCard(card)
     else onClose()
   }
 
   function onChoose(index: number) {
+    /*
+     * ONE SLOT. Picking the template that is ALREADY attached is not a
+     * replacement — there is nothing to replace it with, and flying an object
+     * into a box where an identical object already sits would be a 620ms
+     * animation whose two endpoints are the same picture. So the sheet just
+     * dissolves and the tile ACKNOWLEDGES the press with its own settle pulse:
+     * the answer to "this one" is "yes, this one". `attach` is not called at all
+     * — the store write would be a no-op, and skipping it also keeps the field's
+     * snap-once machinery from seeing any transition.
+     */
+    if (index === useUI.getState().attachedTemplate) {
+      picked.current = true
+      setDissolving(true)
+      useUI.getState().settleAttachedTile()
+      return
+    }
     picked.current = true
     const stage =
       sheet.current?.querySelector('[data-detail-stage]') ??
       sheet.current?.querySelector('[data-detail-clone]')
     setDissolving(true)
-    attach(index, stage ? rectOf(stage) : null)
+    attach(index, TEMPLATE_LIBRARY[index].id, stage ? rectOf(stage) : null)
+  }
+
+  /*
+   * `Remix this template` — the dock preview's CTA, and the naming is ours
+   * (delegated by the designer, recorded in `decisions.md` 26.08.2026): the
+   * picker's own pill keeps `Choose a template`, because attaching a template to
+   * a prompt and starting a site FROM one are two different actions and must not
+   * share a word. What it DOES is exactly what a dock card's click did before
+   * this preview existed — seed the builder's first message with the template's
+   * name and open it. `openBuilder` unmounts the whole Home page, so there is no
+   * exit to choreograph and nothing to dissolve.
+   */
+  function onRemix() {
+    if (!detailTpl) return
+    picked.current = true
+    startBuild(`Start a new site from the “${detailTpl.name}” template`)
+    useUI.getState().openBuilder()
   }
 
   /*
@@ -730,10 +837,18 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
    * stranger one.
    */
   function onCardAdd(index: number) {
+    /* Same one-slot rule as `onChoose`: the card the customer already attached
+       answers with the tile's settle pulse, not with a flight to itself. */
+    if (index === useUI.getState().attachedTemplate) {
+      picked.current = true
+      setDissolving(true)
+      useUI.getState().settleAttachedTile()
+      return
+    }
     const thumb = sheet.current?.querySelector(`[data-tpl-card="${index}"] .tplpick-thumb`)
     picked.current = true
     setDissolving(true)
-    attach(index, thumb ? rectOf(thumb) : null)
+    attach(index, TEMPLATE_LIBRARY[index].id, thumb ? rectOf(thumb) : null)
   }
 
   return (
@@ -753,7 +868,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
         variants={modalScrim}
         initial="initial"
         animate={dissolving ? 'dissolve' : 'animate'}
-        exit={fromTile ? 'dissolve' : 'exit'}
+        exit={detailOnly ? 'dissolve' : 'exit'}
         onClick={dismiss}
         className="absolute inset-0 bg-[rgba(0,0,0,0.5)]"
       />
@@ -769,9 +884,11 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
            thing being announced is the dialog, not a control. */
         tabIndex={-1}
         onKeyDown={trapTab}
-        /* The library grows out of the pill (rule 2); one attachment's preview
-           only fades, because there the flying object is the gesture. */
-        variants={fromTile ? fullscreenSheetFade : fullscreenSheet}
+          /* The library grows out of the pill (rule 2). A single-template preview
+           only fades — there the FLYING OBJECT is the gesture, and a surface
+           growing out of one corner while the object leaves another is two
+           gestures for one pair of eyes. */
+        variants={detailOnly ? fullscreenSheetFade : fullscreenSheet}
         initial="initial"
         animate={dissolving ? 'dissolve' : 'animate'}
         exit="exit"
@@ -789,11 +906,12 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
       >
         {/* One motion block over both boxes, so the content still lands as the
             single ~60ms-later beat the sheet's motion note describes.
-            NOT RENDERED AT ALL on the attachment tile's own preview: the library
-            is not part of that path (nothing to go "back" to, nothing to fade
-            under the detail view), and an 18-card grid mounted invisibly would
-            be 18 thumbnails of cost for a surface that never shows them. */}
-        {!fromTile && (
+            NOT RENDERED AT ALL on the two single-template previews (the
+            attachment tile's and a dock card's): the library is not part of those
+            paths (nothing to go "back" to, nothing to fade under the detail
+            view), and a 36-card grid mounted invisibly would be 36 thumbnails of
+            cost for a surface that never shows them. */}
+        {!detailOnly && (
         <motion.div
           variants={fullscreenContent}
           initial="initial"
@@ -973,19 +1091,38 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
             closing from the detail leaves `pickerDetail` set, so the sheet
             shrinks away showing exactly what was on screen. */}
         <AnimatePresence>
-          {detail !== null && TEMPLATE_LIBRARY[detail] && (
+          {detailTpl && (
             <DetailView
-              key={detail}
-              index={detail}
+              /* One key per door AND per template: the two index spaces must
+                 never collide, or a dock preview could inherit a library
+                 preview's flight state. */
+              key={fromCard ? `card-${card}` : `lib-${detail}`}
+              tpl={detailTpl}
+              /* Only the library path has a card in a grid to fly out of and
+                 back into; the other two doors are external. */
+              index={fromCard ? null : detail}
               sheetRef={sheet}
               geom0={flightFrom.current}
-              /* On the tile's own preview the flight is not the picker's: a
-                 page-level clone carries the object across the surface boundary
-                 (TemplateFlight.tsx), so this view holds still and only hides
-                 its stage until that clone lands. */
-              external={fromTile}
-              onChoose={onChoose}
-              onBack={fromTile ? () => returnToTile(detail) : backToGrid}
+              /* On the two single-template previews the flight is not the
+                 picker's: a page-level clone carries the object across the
+                 surface boundary (TemplateFlight.tsx), so this view holds still
+                 and only hides its stage until that clone lands. */
+              external={detailOnly}
+              /* Two doors, two different final actions — and deliberately two
+                 different words (decisions.md, 26.08.2026). */
+              ctaLabel={
+                fromCard
+                  ? t({ en: 'Remix this template', uk: 'Реміксувати цей шаблон' })
+                  : t({ en: 'Choose a template', uk: 'Обрати шаблон' })
+              }
+              onCta={fromCard ? onRemix : () => detail !== null && onChoose(detail)}
+              onBack={
+                fromTile && detail !== null
+                  ? () => returnToTile(detail)
+                  : fromCard && card !== null
+                    ? () => returnToCard(card)
+                    : backToGrid
+              }
             />
           )}
         </AnimatePresence>
@@ -1023,16 +1160,25 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
  * card's re-measured rect on exit, and restores thumbnail + focus when done.
  */
 function DetailView({
-  index, sheetRef, geom0, external = false, onChoose, onBack,
+  tpl, index, sheetRef, geom0, external = false, ctaLabel, onCta, onBack,
 }: {
-  index: number
+  /** The template on screen — passed in rather than looked up, because the three
+   *  doors index two different lists (see the THREE DOORS note). */
+  tpl: Template
+  /**
+   * Its row in the picker's grid, or null when this preview was not opened from
+   * that grid (the tile's and the dock card's doors). It is the handle for
+   * everything that involves a card in a grid: hiding the source thumbnail,
+   * measuring the flight, landing back in the re-measured slot, returning focus.
+   */
+  index: number | null
   sheetRef: React.RefObject<HTMLDivElement>
   /** Measured in the card's click handler, before this mounts — so the first
    *  painted frame already sits on the card. Null only defensively. */
   geom0: FlightGeom | null
   /**
-   * The flight is somebody else's: on the attachment tile's own preview a
-   * page-level clone carries the object between the tile and this stage
+   * The flight is somebody else's: on the tile's and the dock card's previews a
+   * page-level clone carries the object between that home and this stage
    * (TemplateFlight.tsx), because neither end is inside this sheet's lifetime.
    * So this view mounts already landed and simply keeps its stage INVISIBLE
    * while that clone is in the air — the two are the same rect, so the reveal is
@@ -1040,12 +1186,15 @@ function DetailView({
    * is no grid to unroll away from), no thumbnail to hide.
    */
   external?: boolean
-  onChoose: (index: number) => void
-  /** ← : back to the grid on the library path, home to the tile on the other. */
+  /** `Choose a template` from the library, `Remix this template` from the dock —
+   *  the bar is one component, the final action is the door's. */
+  ctaLabel: string
+  onCta: () => void
+  /** ← : back to the grid on the library path, home into the tile or the dock
+   *  card on the two external ones. */
   onBack: () => void
 }) {
   const { t } = useT()
-  const tpl = TEMPLATE_LIBRARY[index]
   const back = onBack
   /** True while the page-level clone is standing in for this stage. */
   const externalFlying = useUI((s) => external && s.tplFlight !== null)
@@ -1128,13 +1277,17 @@ function DetailView({
   const plateFill = useTransform(pp, [0, 0.15, 0.35, 0.8], [0, 1, 1, 0])
 
   const thumbEl = () =>
-    sheetRef.current?.querySelector<HTMLElement>(`[data-tpl-card="${index}"] .tplpick-thumb`) ?? null
+    index === null
+      ? null
+      : sheetRef.current?.querySelector<HTMLElement>(`[data-tpl-card="${index}"] .tplpick-thumb`) ?? null
 
   /** Back flight touchdown: thumbnail returns in the same commit the clone
    *  leaves (identical pixels), focus returns to the card that was opened. */
   const finishBack = () => {
     thumbEl()?.style.removeProperty('opacity')
-    sheetRef.current?.querySelector<HTMLElement>(`[data-tpl-card="${index}"] > button`)?.focus()
+    if (index !== null) {
+      sheetRef.current?.querySelector<HTMLElement>(`[data-tpl-card="${index}"] > button`)?.focus()
+    }
     safeToRemove?.()
   }
 
@@ -1171,7 +1324,7 @@ function DetailView({
          pixel-for-pixel (geometry was measured in the click handler), so
          hiding the original here — one effect later — cannot flash. */
       thumbEl()?.style.setProperty('opacity', '0')
-      const g = flightGeometry(sheetEl, index)
+      const g = index === null ? null : flightGeometry(sheetEl, index)
       if (g) geom.current = g
       const flight = animate(p, 1, { ...SPRING_SOFT, onComplete: () => setLanded(true) })
       const plate = animate(pp, 1, { ...SPRING_SOFT })
@@ -1183,8 +1336,10 @@ function DetailView({
        re-columned under a resize — after making sure the slot is on screen.
        Faster than the open and bounceless, house exit doctrine. */
     setLanded(false)
-    sheetEl.querySelector(`[data-tpl-card="${index}"]`)?.scrollIntoView({ block: 'nearest' })
-    const g = flightGeometry(sheetEl, index)
+    if (index !== null) {
+      sheetEl.querySelector(`[data-tpl-card="${index}"]`)?.scrollIntoView({ block: 'nearest' })
+    }
+    const g = index === null ? null : flightGeometry(sheetEl, index)
     if (!g) {
       /* No slot to land in (never expected — the filter is unreachable from
          the detail view): fading out beats flying into nothing. */
@@ -1305,7 +1460,7 @@ function DetailView({
             variants={headerBit}
             initial="pre"
             animate={isPresent ? 'in' : 'out'}
-            onClick={() => onChoose(index)}
+            onClick={onCta}
             /* Filled, Icon=Right, **Color=Blue** (28641:43375 → component
                70:464; it was Color=Dark / 70:448 before 26.08.2026): 40 tall,
                radius 10, fill `Background/Blue/Default` — which resolves in the
@@ -1334,7 +1489,11 @@ function DetailView({
                on a glass control (index.css has the whole table). */
             className="press-bloom flex h-10 flex-none items-center gap-[7px] rounded-[10px] bg-[var(--action)] pl-5 pr-2 text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
           >
-            {t({ en: 'Choose a template', uk: 'Обрати шаблон' })}
+            {/* The label is the DOOR's, not this bar's — see `ctaLabel`. The glyph
+                stays the drawn `+` in its 24 box in both cases: the board draws
+                one pill and the designer's answer changed the word, not the kit
+                variant. */}
+            {ctaLabel}
             <span className="grid h-6 w-6 place-items-center"><IconPlus size={20} /></span>
           </motion.button>
         </div>

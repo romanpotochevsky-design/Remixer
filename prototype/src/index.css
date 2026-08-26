@@ -1965,6 +1965,186 @@
   .tplpick-thumb { flex: 1 1 auto; min-height: 0; aspect-ratio: 233.333 / 218; }
 
   /*
+   * ============ THE CARD'S OWN HOVER — ZOOM · GLASS EDGE · `Preview` PILL ====
+   *
+   * Designer's order, 26.08.2026 (night): «но ховер нужен, можешь придумать
+   * какой-то ховер на саму карточку? он должен быть в обоих случаях, потому что
+   * клик по карточке открывает на весь экран превью». So this is the hover of the
+   * CARD — identical in the dock and in the picker — and it answers the click that
+   * both now share: the full-screen preview. The blue `+` stays picker-only: it is
+   * the second, DIFFERENT action (attach), and the two never overlap — bottom-left
+   * says LOOK, top-right says TAKE.
+   *
+   * Three parts, each answering "look closer":
+   *
+   *  1. THE DRAWING SCALES 1.03 INSIDE ITS CLIPPED BOX. Transform only, on a
+   *     wrapper inside `overflow: hidden`, so the layout, the caption and the
+   *     card's own box cannot move — the picture leans in and the frame holds
+   *     still, which is exactly what the click then does at 7× the scale.
+   *     1.03 is 3.6px of travel on a 238-wide thumbnail: enough to read as
+   *     motion, small enough that no drawn detail crosses a pixel boundary
+   *     twice.
+   *  2. THE EDGE BECOMES GLASS. At rest there is no rim at all (as drawn); on
+   *     hover the flat `--white-200` hairline this used to fade in is replaced by
+   *     the Liquid Glass canon's GRADIENT rim at card scale — 20% → 7% → 16%
+   *     top-left to bottom-right (`.liquid-glass::before`'s own amplitude, whose
+   *     AVERAGE is the same 12% = Neutral Alpha/200 the flat hairline was). So
+   *     the hover did not get louder, only glassier: same ink, better
+   *     distribution. `to bottom right` is exact here (a near-square box puts the
+   *     two off-corners at 50% of the run, which is what the canon's button
+   *     family draws) — the pixel-diagonal form belongs to the tabs track alone.
+   *  3. A FROSTED `Preview` PILL FADES IN AT THE BOTTOM-LEFT, on the family's
+   *     `.liquid-glass--pill` recipe (Black/700 + blur 16 + the 20 → 5 → 15% rim).
+   *     ⚠️ The thumbnail clips with `overflow`, which is SAFE for
+   *     `backdrop-filter`; a MASK anywhere above it would kill the blur silently
+   *     (the prompt-chip lesson, `design-system.md` §5), and a radius over ~16px
+   *     makes the artefact worse rather than softer. 16 it is.
+   *
+   * TIMING — house ramp, out faster than in, and the pill one beat behind the
+   * zoom (overlay rule 3, "the contents lag the container"):
+   *   zoom  in 240ms `--ease-std`   · out 140ms (the `EXIT` curve)
+   *   rim   in 120ms `--ease-std`   · out 140ms
+   *   pill  in 120ms after a 60ms beat · out 140ms, no beat
+   *
+   * ⚠️ `--card-hover-dur` IS BOTH THE DURATION AND THE BEAT, and that is why the
+   * delay reads the same variable: the only thing that ever sets it is a surface
+   * that is still arriving (`0s`, written on the picker's sheet while its
+   * entrance spring runs), and `0s` is as valid a delay as it is a duration. So
+   * one write makes the whole affordance instant — a card that arrives under a
+   * parked cursor is simply already hovered, instead of animating itself in on
+   * top of the sheet's own entrance. Same call, same variable, as the ring it
+   * replaces.
+   *
+   * WHY CSS AND NOT REACT STATE: this hover has to exist on the dock's cards too,
+   * and the `+`'s React state was deliberately NOT wired there ("the dock's cards
+   * must not re-render on hover for nothing"). A `:hover` rule costs zero renders
+   * in either home. `@media (hover: hover)` is what keeps a tap on a touch screen
+   * from parking the affordance on the card — the same guard the `+`'s
+   * `pointerType !== 'touch'` check makes in JS.
+   */
+  .home-thumb-zoom {
+    position: absolute;
+    inset: 0;
+    transform: scale(1);
+    transform-origin: 50% 50%;
+    transition: transform 140ms cubic-bezier(0.4, 0, 1, 1);
+  }
+  .home-thumb-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff12 50%, #ffffff29 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 140ms cubic-bezier(0.4, 0, 1, 1);
+    pointer-events: none;
+  }
+  /* 32 tall = the design system's Small (the only legal sizes are 32/40/48 —
+     the designer's own rule, 26.08.2026), radius 999 like the rest of the pill
+     family, 12px in from the thumbnail's bottom-left corner. Label PN Semibold
+     13 in full white rather than the family's 14 at 80%: it sits on a
+     PHOTOGRAPH, not on flat chrome, and needs the extra weight to survive a
+     busy crop. It is `aria-hidden` and deaf to the pointer — the card's own
+     stretched button is the action, and its accessible name already says
+     "Open …"; a second control here would put two names on one gesture. */
+  .home-thumb-peek {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #09090ba3; /* Black/700 — the family fill */
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity 140ms cubic-bezier(0.4, 0, 1, 1),
+      transform 140ms cubic-bezier(0.4, 0, 1, 1);
+    pointer-events: none;
+  }
+  /* the pill's own gradient rim — `.liquid-glass--pill`'s stops, drawn through
+     the same ring mask so it never owns layout */
+  .home-thumb-peek::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ---- the hot state. Focus-within is unconditional (keyboard parity); the
+     pointer half is gated on a real hovering device. ---- */
+  .home-card-face:focus-within .home-thumb-zoom,
+  .home-card-face:focus-within .home-thumb-rim,
+  .home-card-face:focus-within .home-thumb-peek {
+    transition-duration: var(--card-hover-dur, var(--dur-fast));
+    transition-timing-function: var(--ease-std);
+  }
+  .home-card-face:focus-within .home-thumb-zoom {
+    transform: scale(1.03);
+    transition-duration: var(--card-hover-dur, 240ms);
+  }
+  .home-card-face:focus-within .home-thumb-rim { opacity: 1; }
+  .home-card-face:focus-within .home-thumb-peek {
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: var(--card-hover-dur, 60ms);
+  }
+
+  @media (hover: hover) {
+    .home-card-face:hover .home-thumb-zoom,
+    .home-card-face:hover .home-thumb-rim,
+    .home-card-face:hover .home-thumb-peek {
+      transition-duration: var(--card-hover-dur, var(--dur-fast));
+      transition-timing-function: var(--ease-std);
+    }
+    .home-card-face:hover .home-thumb-zoom {
+      transform: scale(1.03);
+      transition-duration: var(--card-hover-dur, 240ms);
+    }
+    .home-card-face:hover .home-thumb-rim { opacity: 1; }
+    .home-card-face:hover .home-thumb-peek {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: var(--card-hover-dur, 60ms);
+    }
+  }
+
+  /*
+   * ⚠️ REDUCED MOTION DROPS THE DISPLACEMENTS THEMSELVES, not just their
+   * animation — the fourth time this project writes that sentence
+   * (`listSwapFade`, `cardAddFade`, `listSwapPopFade`). The global reduce block
+   * only kills `transition`, which would leave the zoom SNAPPING to 1.03 and the
+   * pill JUMPING 4px up: a hop is not less motion than a slide. So under the
+   * setting the picture does not zoom and the pill does not rise — they only
+   * appear, which is what the setting is actually asking for.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .home-card-face .home-thumb-zoom { transform: none !important; }
+    .home-card-face .home-thumb-peek { transform: none !important; }
+  }
+
+  /*
    * ------------------- the hover plate behind the card's blue `+`
    *
    * `Rectangle 1162905197` 28740:66863 — the NEWEST node on the rest board (its
@@ -2040,6 +2220,38 @@
    * back off the Publish panel for decorating an opaque surface with it
    * (CLAUDE.md, 17.08.2026), and a thumbnail is as opaque as it gets.
    */
+  /*
+   * The OUTGOING drawing during a replacement (`attachment.ts` § ONE SLOT): a
+   * copy of the tile, identical in every painted way, that lives in the slot
+   * until the arriving object lands and then collapses behind it. Same radii and
+   * same rim as the face — it IS the tile, one commit out of date — but no
+   * interaction and no `data-attach-tile`, so nothing can find it or hide it.
+   */
+  .attach-tile-ghost {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+    border-radius: 16px 8px 16px 16px;
+    box-shadow: inset 0 0 0 1px #ffffff1a;
+    pointer-events: none;
+  }
+
+  /*
+   * The settle pulse's edge flash — the tile's answer to being re-picked. One
+   * composited layer whose opacity is driven by WAAPI (`AttachedTile`), so it
+   * still plays under `prefers-reduced-motion`, where the dip does not. Brighter
+   * than the hover rim (40% white) because this is an EVENT, not a state.
+   */
+  .attach-tile-ack {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px #ffffff73;
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .attach-tile-face {
     border-radius: 16px 8px 16px 16px; /* the board's tr 8 — the badge's corner */
     /* the drawn 10% white edge, as an inset shadow: a CSS border would eat a
