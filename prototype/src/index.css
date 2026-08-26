@@ -179,7 +179,10 @@
     --brand-to: #4a2bc3;
 
     /* black alpha ladder — Figma "Black/…", used on glass controls */
-    /* 16% — Figma Black/200, the Home page's prompt-chip fill (28364:40330). */
+    /* 16% — Figma Black/200, the prompt chips' DRAWN fill (28364:40330). The
+       built chips use Black/300 instead: once they became frosted glass
+       (26.08.2026) a 16% wash left the pill within 1/255 of the field behind it
+       — see `.home-chip`. Kept as the ladder's rung and the one-token revert. */
     --black-200: #09090b29;
     --black-300: #09090b3d;
     --black-700: #09090ba3;
@@ -1637,16 +1640,75 @@
   }
 
   /*
-   * The chip row's right edge. Figma paints an OPAQUE #283a71 rectangle over the
-   * last chip (28364:40378) — a colour hand-matched to the hero behind that one
-   * spot, which reads as a highlighted blue chip rather than as a fade and would
-   * mis-match the moment the gradient, the row's position or the window width
-   * changed. Same intent, done properly: a mask, so the true background shows
-   * through. Raised with the designer as a file bug, not copied. (§6, §12.5)
+   * ===================== THE PROMPT-CHIP ROW — FROSTED GLASS (26.08.2026) ====
+   *
+   * The chips and their end cap are the hero's only controls sitting DIRECTLY
+   * on the colour field and the dot lattice, and the designer's order is
+   * Apple's frosted material: the lattice goes SOFT inside a pill and stays
+   * sharp outside it. Material = the house Liquid Glass recipe
+   * (design-system.md §5) minus the gradient rim: a translucent near-black
+   * fill, a real backdrop blur, one FLAT hairline. Flat because Figma draws
+   * these two strokes flat — chips `White/300` 24 %, cap `White/200` 12 % —
+   * and the gradient rim belongs to the composer's controls, where the
+   * designer's own gradient editor is the source. Fill is `Black/300` (24 %
+   * black) for BOTH: one step up the token ladder from the chips' drawn
+   * `Black/200`, which is what a frosted surface needs to read as a surface at
+   * all (measured over the valley: at 16 % the pill is within 1/255 of the
+   * field behind it and only its hairline exists), and it lands the whole row
+   * — chips and cap — on the one fill the cap was already drawn with.
+   *
+   * ⚠️⚠️ THE TRAP: `backdrop-filter` samples the backdrop only down to the
+   * nearest BACKDROP ROOT, and a `mask` on ANY ancestor is one. The row's
+   * right-edge fade used to be exactly that — a mask on the scroller — so a
+   * chip inside it sampled an EMPTY backdrop: the pill stayed a flat fill with
+   * the lattice sharp behind it, i.e. adding `backdrop-filter` to the chips
+   * would have changed nothing at all. Measured in this Chromium
+   * (scratchpad/qa10/probe2-3.html): lattice ripple killed 74 % with no masked
+   * ancestor, 0 % under one. `opacity` (even .999) kills it the same way;
+   * `overflow`, `clip-path`, `contain: paint` and `transform` do NOT. And it
+   * cannot be bought back from inside: an identity `backdrop-filter: blur(0)`
+   * on the masked scroller — so its own copy of the field would be the chips'
+   * backdrop — changes nothing either, because Chrome does not feed a backdrop
+   * root's own filtered image to its descendants.
+   *
+   * So the fade cannot live on an ancestor, and `.home-chip-scroller` (the row's
+   * ScrollArea, in HomePage.tsx) deliberately has NO rule here any more — that
+   * class is now only a hook, and the mask it used to carry must never come back.
+   * The fade lives on the CHIPS: every chip overlapping the last 48 px carries the
+   * same ramp expressed in its own coordinates (`--chip-fade-a/-b`, written by
+   * `useChipEdgeFade` in HomePage.tsx), which composes to exactly the one
+   * gradient the row had before. A chip's OWN mask is safe: an element's mask
+   * clips its finished paint, backdrop included, and only ANCESTORS form
+   * backdrop roots (measured — self-mask kills 74 %, same as bare).
+   *
+   * ⚠️ Radius 16px, the family's (Figma 32), and NOT higher: Chrome's backdrop
+   * blur convolves a DOWNSCALED copy of the backdrop, so the lattice comes
+   * BACK as the radius grows — measured kill 92 % at blur(8), 74 % at 16,
+   * 59 % at 24, 47 % at 32, and at 32 the ghosts are visible square blobs.
+   * Cranking the radius to "soften more" makes it worse AND costs more.
    */
-  .home-chip-scroller {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+  .home-chip,
+  .home-chip-cap {
+    background: var(--black-300);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+  .home-chip {
+    border: 1px solid #ffffff3d; /* White/300, flat, as drawn */
+  }
+  .home-chip-cap {
+    border: 1px solid var(--white-200); /* White/200, flat, as drawn */
+  }
+  /*
+   * The right-edge fade, one chip at a time. `-a` is where the ramp starts and
+   * `-b` where it ends, both relative to THIS chip's left edge — negative once
+   * the chip is deep inside the zone, which is what makes the seam between two
+   * adjacent chips invisible. The attribute is what keeps the other seven chips
+   * mask-free (and therefore raster-free) at rest.
+   */
+  .home-chip[data-fade] {
+    -webkit-mask-image: linear-gradient(to right, #000 var(--chip-fade-a), transparent var(--chip-fade-b));
+    mask-image: linear-gradient(to right, #000 var(--chip-fade-a), transparent var(--chip-fade-b));
   }
 
   /*

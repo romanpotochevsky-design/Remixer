@@ -27,8 +27,18 @@
  * lattice, five stroked rings. Nothing settled animates, nothing repaints per
  * frame; the ONE deliberate exception is the load-time wave (a ~2.3s one-shot
  * whose animated mask repaints while it runs — it unmounts with the theatre).
- * The only `backdrop-filter` on the page is the topbar's and the composer's,
- * both of which Figma draws.
+ * `backdrop-filter` is confined to what Figma draws — the topbar, the composer,
+ * the chip row's end cap — plus the prompt chips, which the designer had frosted
+ * on 26.08.2026. A blur costs only while its backdrop CHANGES, and the settled
+ * hero never does, so the nine pills are free: measured on the software renderer,
+ * idle 59.5 → 60.0fps and a chevron-driven row scroll 46.4 → 46.3fps (mean of 6)
+ * across the change. They are also free during the load wave — the one moment the
+ * backdrop DOES repaint — for two reasons worth knowing: the risen row is under a
+ * composited opacity animation until the curtain call, which makes it a backdrop
+ * root and leaves the chips nothing to sample (so the frost lands when the page
+ * settles, and the wave beat measured 14.1 → 17.1fps); and with that rise removed
+ * so they DO sample the wave, the beat still measured 15.3fps. No gate needed —
+ * but re-measure if the row's entrance ever stops being an opacity fade.
  *
  * ⚠️ BACKGROUND & ENTRANCE SOURCE OF TRUTH (26.08.2026): the production screen
  * recording, per the designer — the board stays the truth for layout, type,
@@ -36,7 +46,7 @@
  * production-analysis.md; the board-matched paint this replaced is in git
  * history (07093ac).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AnimationEvent } from 'react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
@@ -245,6 +255,74 @@ const PROMPT_CHIPS = [
 /** How far one press of the end-cap chevron moves the chip row. */
 const CHIP_STEP = 320
 
+/** Width of the row's right-edge fade. The only place this number lives. */
+const CHIP_FADE = 48
+
+/**
+ * The row's right-edge fade — the same one gradient the row always had, but
+ * carried by the CHIPS instead of by a mask on the scroller.
+ *
+ * Why it moved: a `mask` on any ancestor is a Backdrop Root, so a frosted chip
+ * inside a masked scroller samples an EMPTY backdrop and renders as a flat fill
+ * with the hero's dot lattice untouched behind it. Measured, with the whole
+ * matrix of what does and does not break sampling, in the `.home-chip` block in
+ * index.css. A chip's OWN mask is harmless — only ancestors form backdrop roots.
+ *
+ * So each chip overlapping the last 48px gets the ramp in its own coordinates:
+ * `--chip-fade-a` where it starts, `-b` where it ends, both relative to that
+ * chip's left edge and both free to go negative once the chip is deep in the
+ * zone. Adjacent chips therefore share one continuous ramp and the seam between
+ * them is invisible. Chips clear of the zone carry no mask at all — no
+ * attribute, no raster.
+ *
+ * Cost: ≤2 chips are ever in the zone, so a scroll frame writes 4 custom
+ * properties; nothing at rest. Positions come from `offsetLeft`, which is a
+ * layout offset and does not move when the scrollport scrolls — the scroll
+ * offset is added once, in `start`.
+ */
+function useChipEdgeFade(viewport: React.MutableRefObject<HTMLDivElement | null>) {
+  const sync = useCallback(() => {
+    const vp = viewport.current
+    if (!vp) return
+    const chips = Array.from(vp.children) as HTMLElement[]
+    if (!chips.length) return
+    /* Where the ramp starts, in the row's content coordinates. */
+    const start = vp.scrollLeft + vp.clientWidth - CHIP_FADE
+    const x0 = chips[0].offsetLeft
+    for (const chip of chips) {
+      const from = start - (chip.offsetLeft - x0)
+      if (from >= chip.offsetWidth) {
+        /* wholly clear of the zone — guarded so seven of nine chips stay
+           untouched on every frame of a scroll */
+        if (chip.hasAttribute('data-fade')) {
+          chip.removeAttribute('data-fade')
+          chip.style.removeProperty('--chip-fade-a')
+          chip.style.removeProperty('--chip-fade-b')
+        }
+      } else {
+        chip.style.setProperty('--chip-fade-a', `${from}px`)
+        chip.style.setProperty('--chip-fade-b', `${from + CHIP_FADE}px`)
+        chip.setAttribute('data-fade', '')
+      }
+    }
+  }, [viewport])
+
+  useEffect(() => {
+    const vp = viewport.current
+    if (!vp) return
+    sync()
+    /* The zone moves when the scrollport is resized, and the chips move within
+       it when their own widths change — a font finally loading, a locale swap.
+       Observing both is what ScrollArea's own thumb does, for the same reason. */
+    const ro = new ResizeObserver(sync)
+    ro.observe(vp)
+    for (const chip of Array.from(vp.children)) ro.observe(chip)
+    return () => ro.disconnect()
+  }, [sync, viewport])
+
+  return sync
+}
+
 /**
  * The attached-template chip — what stands in the "Add template" pill's place
  * once a template is picked. ⚠️ OUR proposal, pending the designer: NO board
@@ -303,6 +381,7 @@ function Composer() {
   const [draft, setDraft] = useState('')
   const field = useRef<HTMLInputElement>(null)
   const chipRow = useRef<HTMLDivElement | null>(null)
+  const syncChipFade = useChipEdgeFade(chipRow)
 
   const attached = attachedIndex != null ? TEMPLATE_LIBRARY[attachedIndex] : null
   /* A template alone arms Build too — a lit chip beside a dead button would
@@ -465,16 +544,23 @@ function Composer() {
           className="home-chip-scroller h-[42px] min-w-0 flex-1"
           innerClassName="flex items-center gap-2"
           viewportRef={chipRow}
+          /* the row's right-edge fade is carried by the chips, not by a mask on
+             this scroller — a masked ancestor would kill their frost outright
+             (useChipEdgeFade above, `.home-chip` in index.css) */
+          onScroll={syncChipFade}
         >
           {PROMPT_CHIPS.map((label, i) => (
             <button
               // duplicates in the drawn list, so the index is the only honest key
               key={`${label}-${i}`}
               onClick={() => { setDraft(label); field.current?.focus() }}
-              /* Label is `White/900` = 80% white, written out rather than taken
-                 from `--white-700`, which is 85% (spec §9 flags it as a near miss
-                 and the chip label is the place it shows). */
-              className="h-10 flex-none whitespace-nowrap rounded-full border border-[#ffffff3d] bg-[var(--black-200)] px-5 text-[14px] text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+              /* `.home-chip` carries the frosted material (fill + backdrop blur
+                 + the flat drawn hairline) and `glass-interactive` the family's
+                 hover wash and press ripple. Label is `White/900` = 80% white,
+                 written out rather than taken from `--white-700`, which is 85%
+                 (spec §9 flags it as a near miss and the chip label is the place
+                 it shows). */
+              className="home-chip glass-interactive h-10 flex-none whitespace-nowrap rounded-full px-5 text-[14px] text-[#ffffffcc] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
             >
               {label}
             </button>
@@ -488,7 +574,11 @@ function Composer() {
           <button
             onClick={() => chipRow.current?.scrollBy({ left: CHIP_STEP, behavior: 'smooth' })}
             aria-label={t({ en: 'More prompts', uk: 'Більше підказок' })}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--white-200)] bg-[var(--black-300)] pl-[2px] text-white backdrop-blur-[10px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+            /* `.home-chip-cap`: the same fill and blur as the chips beside it —
+               Figma already draws this one as glass (Black/300, blur 10), and
+               the row now reads as ONE material at the family's 16px radius.
+               Its hover is the family wash instead of the old bg swap. */
+            className="home-chip-cap glass-interactive flex h-10 w-10 items-center justify-center rounded-full pl-[2px] text-white"
           >
             <IconChevronRight size={20} />
           </button>
