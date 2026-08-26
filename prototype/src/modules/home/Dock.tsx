@@ -17,9 +17,11 @@
  * board reports. There is no fill, no hairline and no shadow on this band: the hero's
  * rounded bottom corners are the entire separation.
  */
+import { AnimatePresence, motion } from 'motion/react'
 import { hasProjects, useWorld, type HomeProject } from '@/state/world'
-import { useUI } from '@/state/ui'
-import { useT } from '@/i18n'
+import { useUI, type DockTab } from '@/state/ui'
+import { useT, type Text } from '@/i18n'
+import { listSwapBehind, segmentedPill } from '@/ui/motion'
 import {
   TEMPLATES, TEMPLATE_CATEGORIES, templatesIn,
   type Template, type TemplateCategoryId,
@@ -39,41 +41,140 @@ const SLOTS = 6
  * rim (32% → 4% → 24% down the pixel diagonal — the loudest cut of the Liquid
  * Glass rim family; `.home-tabs-track` in index.css has the exact paint).
  * ⚠️ The old flat `32% white` here was a flattened export read, not the drawn paint.
+ *
+ * SEAT GEOMETRY, as drawn: 6px of padding all round, two seats 101 and 92 wide
+ * with 6px between them. The widths are per POSITION, not per selection — they
+ * come from the two labels, so the pill is 101 wide on the left and 92 on the
+ * right. That difference is the whole reason the pill is built the way it is
+ * below.
  */
+const SEAT_PAD = 6
+const SEAT_GAP = 6
+const SEATS: { id: DockTab; label: Text; w: number }[] = [
+  { id: 'projects', label: { en: 'My projects', uk: 'Мої проєкти' }, w: 101 },
+  { id: 'templates', label: { en: 'Templates', uk: 'Шаблони' }, w: 92 },
+]
+/** Left / right edge of seat i in the track's padding-box coordinates. */
+const seatL = (i: number) => SEAT_PAD + SEATS.slice(0, i).reduce((s, t) => s + t.w + SEAT_GAP, 0)
+const seatR = (i: number) => seatL(i) + SEATS[i].w
+/** The travelling pill's own width: the NARROWEST seat (see the capsule below). */
+const CAP_W = Math.min(...SEATS.map((s) => s.w))
+
+/**
+ * The travelling pill — the designer's order, 26.08.2026: "a smooth, great
+ * animation for the segmented control switch".
+ *
+ * THE CAPSULE OF TWO. The seats are different widths, so the shape genuinely
+ * changes (101 → 92) and the obvious `translate + scaleX` is wrong twice over:
+ * scaling a 999-radius box squashes its caps (16px vertical radius against
+ * 14.6 horizontal), which means the SETTLED pill is no longer the drawn one —
+ * and pixel-QA'd geometry is not something an animation gets to spend.
+ *
+ * So the pill is two identical 92-wide capsules, one pinned to the active
+ * seat's LEFT edge and one to its RIGHT edge, each animating `x` and nothing
+ * else. The union of two equal-height capsules is always a capsule, so the
+ * ends stay exactly round at every width in between; both bodies are opaque
+ * white, so the seam inside the union does not exist. Nothing scales, nothing
+ * repaints, and at rest the two coincide (on `Templates`, both seats being 92
+ * apart) or overlap by 83px (on `My projects`) into the drawn 101.
+ *
+ * Why the two halves stay in phase: a spring is a linear system, so two
+ * springs with the same parameters trace the same NORMALIZED curve whatever
+ * distance they cover — 107px and 98px here. That holds through interruption
+ * too, since each carries velocity proportional to its own distance. The law
+ * is `segmentedPill` in ui/motion.ts.
+ */
+function TabPill({ active }: { active: number }) {
+  return (
+    /* Inset 0 = the track's PADDING box, which is also its border box (the rim
+       is a mask ring on ::before, never a border) — so `left`/`top` below are
+       seat coordinates straight out of the board. */
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
+      {([0, 1] as const).map((end) => (
+        <motion.div
+          key={end}
+          className="absolute top-[6px] h-8 w-[92px] rounded-full bg-white"
+          style={{ left: end ? seatR(0) - CAP_W : seatL(0) }}
+          /* `initial={false}`: on mount the pill IS at its seat. Without this
+             it would spring in from x:0 during the Home entrance, which already
+             animates the whole dock as one block (`he-dock`). */
+          initial={false}
+          animate={{ x: end ? seatR(active) - seatR(0) : seatL(active) - seatL(0) }}
+          transition={segmentedPill.transition}
+        />
+      ))}
+    </div>
+  )
+}
+
 function DockTabs() {
   const { t } = useT()
   const { dockTab, setDockTab } = useUI()
-
-  /* Widths are per POSITION (101 / 92), as drawn: they come from the two labels,
-     not from which one is selected. Only the fill and the label colour move.
-     ⚠️ The inactive tab's radius is 8 while the active pill is a full 999 — as
-     drawn, flagged to the designer as probably accidental (spec §12.10). With no
-     fill on the inactive tab it is invisible either way, so it costs nothing to
-     keep the file honest. */
-  const tabs = [
-    { id: 'projects' as const, label: { en: 'My projects', uk: 'Мої проєкти' }, width: 101 },
-    { id: 'templates' as const, label: { en: 'Templates', uk: 'Шаблони' }, width: 92 },
-  ]
+  const active = SEATS.findIndex((s) => s.id === dockTab)
 
   return (
     /* 211 × 44: 6px of padding, 101 + 6 + 92 of tabs. The rim is a mask ring
        overlaying the padding's outer pixel rather than a border adding to the
        track, the same reason as the composer's. */
-    <div className="home-tabs-track flex h-11 w-[211px] flex-none items-center gap-1.5 rounded-full p-[6px]">
-      {tabs.map((tab) => {
-        const active = dockTab === tab.id
+    <div className="home-tabs-track relative flex h-11 w-[211px] flex-none items-center gap-1.5 rounded-full p-[6px]">
+      <TabPill active={active} />
+      {SEATS.map((seat, i) => {
+        const on = i === active
         return (
+          /*
+           * `relative` is load-bearing: the pill is an absolutely-positioned
+           * sibling, and a non-positioned button would have its text painted
+           * UNDER it (positioned boxes paint after in-flow ones).
+           *
+           * Interaction states belong to the INACTIVE seat only. The active
+           * seat is solid white — a white wash and a white bloom on white are
+           * invisible — and pressing what is already selected is a no-op, so
+           * there is nothing to acknowledge. `glass-interactive` therefore
+           * comes and goes with the selection; both the 8% wash and the
+           * positional ripple clip to the button's own rounded box.
+           *
+           * ⚠️ The inactive seat's drawn radius is 8 while the active pill is
+           * a full 999 — flagged to the designer as probably accidental (spec
+           * §12.10). It used to be invisible either way; the wash and ripple
+           * are the first things that would ever SHOW it, so they take the
+           * pill's radius instead of enshrining a probable accident. The drawn
+           * 8 stays recorded here and in the spec.
+           */
           <button
-            key={tab.id}
-            onClick={() => setDockTab(tab.id)}
-            style={{ width: tab.width }}
-            className={`h-8 text-[14px] leading-none transition-colors duration-[var(--dur-fast)] ease-std ${
-              active
-                ? 'rounded-full bg-white font-semibold text-[var(--gray-950)]'
-                : 'rounded-[8px] font-medium text-[var(--white-480)] hover:text-white'
-            }`}
+            key={seat.id}
+            onClick={() => setDockTab(seat.id)}
+            style={{ width: seat.w }}
+            aria-pressed={on}
+            className={`group relative h-8 rounded-full text-[14px] leading-none ${on ? '' : 'glass-interactive'}`}
           >
-            {t(tab.label)}
+            {/*
+             * TWO INKS, CROSS-FADING IN PLACE. The label's colour is not the
+             * only thing that changes between states — the WEIGHT does too
+             * (semibold dark / medium muted, as drawn), and a weight cannot be
+             * interpolated. So each seat carries both inks stacked in the same
+             * box and only their opacity moves: no glyph travels, no glyph
+             * scales, and the ink never snaps.
+             *
+             * The fade is deliberately late (see `.home-tab-ink`): the pill is
+             * halfway across in ~60ms, so ink that changed on the click would
+             * leave dark text sitting on the dark track for a few frames.
+             */}
+            {/* ⚠️ One of the two carries the accessible name and the other is
+                `aria-hidden` UNCONDITIONALLY — not "whichever is visible".
+                Both inks are real text, so without this the button is named
+                "Templates Templates", and flipping the flag with the selection
+                would make the name churn on every switch. The name is the same
+                string either way; the selected state is on `aria-pressed`. */}
+            <span className="home-tab-ink font-semibold text-[var(--gray-950)]" style={{ opacity: on ? 1 : 0 }}>
+              {t(seat.label)}
+            </span>
+            <span
+              aria-hidden
+              className="home-tab-ink font-medium text-[var(--white-480)] group-hover:text-white"
+              style={{ opacity: on ? 0 : 1 }}
+            >
+              {t(seat.label)}
+            </span>
           </button>
         )
       })}
@@ -343,7 +444,23 @@ export function HomeDock() {
             {t({ en: 'Templates', uk: 'Шаблони' })}
           </h2>
         )}
-        {showTemplates && <FilterChips />}
+        {/* The chips are the title row's half of the same conveyor — they
+            arrive and leave with the shelf, on the same beat, so the switch is
+            ONE gesture and not a control plus two unrelated fades. */}
+        <AnimatePresence mode="wait" initial={false}>
+          {showTemplates && (
+            <motion.div
+              key="chips"
+              variants={listSwapBehind}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="flex-none"
+            >
+              <FilterChips />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/*
@@ -353,27 +470,55 @@ export function HomeDock() {
        * app-wide and a bar that steals a row of layout is exactly what this
        * component exists to avoid.
        */}
-      <ScrollArea axis="x" className="min-h-0 flex-1" innerClassName="flex items-stretch gap-8">
-        {showTemplates ? (
-          templates.length ? (
-            templates.map((tpl) => <TemplateCard key={tpl.id} template={tpl} />)
-          ) : (
-            /* Not drawn on any board: no card carries a category, so the chips
-               cannot really filter (spec §12.13) and the designer has never had to
-               decide what an empty result looks like. One honest line until he does. */
-            <p className="self-center text-[14px] text-[var(--white-400)]">
-              {t({ en: 'No templates in this category yet.', uk: 'У цій категорії ще немає шаблонів.' })}
-            </p>
-          )
-        ) : (
-          <>
-            {world.projects.slice(0, SLOTS).map((p) => <ProjectCard key={p.id} project={p} />)}
-            {Array.from({ length: Math.max(0, SLOTS - world.projects.length) }, (_, i) => (
-              <EmptySlot key={`slot-${i}`} />
-            ))}
-          </>
-        )}
-      </ScrollArea>
+      {/*
+       * THE SHELF ACKNOWLEDGES THE SWITCH. The house conveyor (`listSwapBehind`
+       * = `listSwap` plus the 60ms beat, ui/motion.ts), the same one the domains
+       * surface uses when its lists change hands under a header that stays: the
+       * old shelf leaves UPWARD, the new one rises from just below, so the eye
+       * reads "this was replaced by that" instead of "the picture changed".
+       * `mode="wait"` keeps twelve cards from overlapping mid-flight.
+       *
+       * The wrapper is OUTSIDE the ScrollArea on purpose: nothing about the
+       * scroller, its flex row or the cards' `flex: 1 0 0` sizing is touched,
+       * and each shelf gets a fresh scroll position and a fresh ResizeObserver
+       * instead of inheriting the other's.
+       *
+       * `initial={false}`: the first shelf must NOT animate in — the Home
+       * entrance already raises the whole dock as one block (`he-dock`), and a
+       * second entrance on top of it would double-animate the row.
+       */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={showTemplates ? 'templates' : 'projects'}
+          variants={listSwapBehind}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <ScrollArea axis="x" className="min-h-0 flex-1" innerClassName="flex items-stretch gap-8">
+            {showTemplates ? (
+              templates.length ? (
+                templates.map((tpl) => <TemplateCard key={tpl.id} template={tpl} />)
+              ) : (
+                /* Not drawn on any board: no card carries a category, so the chips
+                   cannot really filter (spec §12.13) and the designer has never had to
+                   decide what an empty result looks like. One honest line until he does. */
+                <p className="self-center text-[14px] text-[var(--white-400)]">
+                  {t({ en: 'No templates in this category yet.', uk: 'У цій категорії ще немає шаблонів.' })}
+                </p>
+              )
+            ) : (
+              <>
+                {world.projects.slice(0, SLOTS).map((p) => <ProjectCard key={p.id} project={p} />)}
+                {Array.from({ length: Math.max(0, SLOTS - world.projects.length) }, (_, i) => (
+                  <EmptySlot key={`slot-${i}`} />
+                ))}
+              </>
+            )}
+          </ScrollArea>
+        </motion.div>
+      </AnimatePresence>
     </section>
   )
 }

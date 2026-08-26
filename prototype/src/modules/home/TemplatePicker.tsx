@@ -837,7 +837,7 @@ function DetailView({
           <ScrollArea axis="y" thumb="auto" className="h-full">
             {site}
           </ScrollArea>
-          <div aria-hidden className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]" />
+          <div aria-hidden data-detail-rim className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]" />
         </div>
       ) : (
         <motion.div
@@ -852,7 +852,7 @@ function DetailView({
           </motion.div>
           <motion.div
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]"
+            data-detail-rim className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]"
             style={{ opacity: rimO }}
           />
         </motion.div>

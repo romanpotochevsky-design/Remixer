@@ -170,6 +170,51 @@ export const listSwapItem = {
   animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
 }
 
+/**
+ * The same conveyor, one beat BEHIND a control that moved — the Home dock's
+ * segmented control (`My projects | Templates`, Figma 28364:42996).
+ *
+ * Rule 3 turned sideways: the pill takes the gesture, the shelf answers it.
+ * Everything is `listSwap` — same distances, same spring, same stagger — and
+ * the beat is the only difference, so the two surfaces still speak one
+ * language. It sits on the EXIT, because that is where the gesture starts:
+ * under `AnimatePresence mode="wait"` the old shelf holds still for 60ms while
+ * the pill sets off, and only then whisks up. (Delaying the entrance instead
+ * would just add dead air in the middle — the exit already separates them.)
+ */
+export const listSwapBehind = {
+  ...listSwap,
+  exit: { ...listSwap.exit, transition: { ...EXIT, delay: 0.06 } },
+}
+
+/**
+ * A segmented control's pill changing seats — one object travelling, never a
+ * cut. Only the LAW lives here; the seat geometry belongs to the control
+ * (`DockTabs` in modules/home/Dock.tsx).
+ *
+ * WHICH SPRING, and why not the overlay one: `SPRING` (520/34/.9), described
+ * at the top of this file as "quick, one barely-perceptible overshoot", is
+ * exactly what a segmented pill wants — measured here it covers half the
+ * 107px hop in ~60ms and is settled by ~250ms, with a ~2% overshoot that
+ * reads as the pill seating itself rather than as a wobble. `SPRING_SOFT` is
+ * for large surfaces and lands the same hop dead-flat: correct, and duller.
+ * A control this small under the soft spring reads as sliding on rails.
+ *
+ * WHAT MOVES: nothing but `x`, on two layers. The two seats are DIFFERENT
+ * widths (101 and 92, per position, as drawn), and a pill that `scaleX`es
+ * between them ends its life with elliptical caps — 16px vertical radius
+ * against 14.6 horizontal — i.e. a settled state that is no longer the
+ * drawn one. So the travelling shape is a CAPSULE OF TWO: two identical
+ * 92-wide pills, one pinned to each end of the active seat, translating only.
+ * The union of two equal-height capsules is always a capsule, so the ends
+ * stay perfectly round at every width, and the seam is white-on-white.
+ * Because a spring is a linear system, two springs with identical parameters
+ * follow the same NORMALIZED curve whatever distance they cover — so the two
+ * ends stay in phase, including when a click interrupts a flight already in
+ * progress (both carry velocity proportional to their own distance).
+ */
+export const segmentedPill = { transition: SPRING } as const
+
 /** Full-surface swaps — a screen replacing another inside the same shell. */
 export const surface = {
   initial: { opacity: 0, scale: 0.985, y: 8 },

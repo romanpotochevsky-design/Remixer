@@ -1747,6 +1747,42 @@
   }
 
   /*
+   * THE SEGMENTED SWITCH — the two inks (designer's order, 26.08.2026: "a
+   * smooth, great-looking animation for the segmented control").
+   *
+   * Each seat carries BOTH of its labels stacked in the same box — semibold
+   * dark for selected, medium muted for not — and only opacity moves between
+   * them. The reason is the weight: colour interpolates, `font-weight` does
+   * not, and snapping it mid-slide is the one thing on this control that would
+   * read as a glitch. Stacked, nothing about the text travels or scales, and at
+   * rest the hidden ink is at opacity 0 — the settled control is byte-for-byte
+   * the one that passed pixel QA against 28364:40053.
+   *
+   * Absolutely positioned rather than laid out: a centred 14px line box inside
+   * a 32px seat lands its baseline at the same place whatever the line-height
+   * or the display mode (baseline = H/2 + (ascent−descent)/2, independent of
+   * the leading), so this reproduces the button's own UA centring exactly while
+   * letting two inks share one box.
+   *
+   * ⚠️ THE FADE IS LATE ON PURPOSE. The pill is halfway across in ~60ms and
+   * settled by ~250ms (measured, house SPRING over the 107px hop). Ink that
+   * changed on the click — the old `transition-colors` at 0ms — would turn the
+   * destination label dark while the pill was still two thirds away, i.e. dark
+   * text on the dark track for three or four frames. 70ms of hold, then 130ms
+   * of fade, puts the cross-over under the moving pill.
+   */
+  .home-tab-ink {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    white-space: nowrap;
+    transition:
+      opacity 130ms var(--ease-std) 70ms,
+      color var(--dur-fast) var(--ease-std);
+  }
+
+  /*
    * The card row. Cards are `flex: 1 0 0` in Figma, so their width is an OUTPUT
    * (238.667 at six-up in a 1592 column) — never a fixed size. They stop
    * shrinking at 200px, which is what the 7-up board already showed as the
