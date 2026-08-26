@@ -65,7 +65,8 @@ import { TemplateFlight } from './TemplateFlight'
 import { Thumb } from './thumbs'
 import { FIELD_CLOSE, FIELD_GROW } from '@/ui/motion'
 import {
-  rectOf, SEAT_ACK_DELAY, SEAT_BLOOM_R, SHIFT_ROW, SHIFT_TEXT, TILE, TILE_INSET,
+  ARM_PAINT_DELAY, DISARM_PAINT_DELAY, FIELD_PAD_B, FIELD_RADIUS, rectOf,
+  SEAT_ACK_DELAY, SEAT_BLOOM_R, SHIFT_ROW, SHIFT_TEXT, TILE, TILE_INSET,
 } from './attachment'
 
 /* ----------------------------------------------------------------- entrance */
@@ -462,7 +463,15 @@ function AttachedTile({ index }: { index: number }) {
  * the first painted frame the OLD position rather than a flash of the new one.
  * The spring then drives one motion value and writes the same property.
  */
-function useSnapSlide(ref: React.RefObject<HTMLElement>, distance: number, attached: boolean) {
+function useSnapSlide(
+  ref: React.RefObject<HTMLElement>,
+  distance: number,
+  attached: boolean,
+  /* 'grow' = this row only rides the snap when the field OPENS; on the close
+     `useFieldClose` drives it, because there the row travels with the field's
+     painted edge rather than against a box that has already shrunk. */
+  only?: 'grow',
+) {
   const reduced = useReducedMotion()
   const mv = useMotionValue(0)
   const was = useRef(attached)
@@ -474,6 +483,7 @@ function useSnapSlide(ref: React.RefObject<HTMLElement>, distance: number, attac
     /* Reduced motion: the field just snaps. A row sliding is exactly the
        movement the setting asks us not to make. */
     if (from === null || !el || reduced) return
+    if (only === 'grow' && !attached) return
 
     el.style.transform = `translateY(${from}px)`
     el.style.willChange = 'transform'
@@ -490,6 +500,162 @@ function useSnapSlide(ref: React.RefObject<HTMLElement>, distance: number, attac
     return () => { write(); run.stop() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attached])
+}
+
+/**
+ * ─────────── THE CLOSE KEEPS THE FIELD AROUND ITS OWN CONTENTS ───────────
+ *
+ * The snap-once cover (above) is right in ONE direction and was wrong in the
+ * other, and this is the bug the designer filmed as "все элементы интейк формы
+ * стремно прыгают".
+ *
+ * Growing, the order is forced and correct: the box has to exist before the
+ * contents can move into it, so the box snaps to 184 and the rows — put back
+ * with a transform — travel DOWN inside it. They are inside the field on every
+ * frame.
+ *
+ * Closing, the same order runs backwards: the box snapped to 138 in the detach
+ * commit while the rows were still 46px lower, i.e. BELOW the field's painted
+ * bottom edge. Measured on the shipped build (frozen-clock film, 16ms steps,
+ * scratchpad/qa15): the field's edge teleports up 46px in ONE frame and for the
+ * next ~3 frames the placeholder line and the whole button row hang OUTSIDE the
+ * composer, on the bare hero — and because every control on that row is
+ * translucent glass over a live `backdrop-filter`, all four of them jump in
+ * tone at once (the `+` fill 12,10,16 → 45,24,55; the pill 11,9,14 → 33,20,43;
+ * the mic 15,14,24 → 39,36,72 — roughly a 3× luminance spike, gone again two
+ * frames later). Nothing re-mounted and nothing scaled; the controls simply
+ * changed the thing they were standing on. That is what read as "все кнопки
+ * делают лишнюю ненужную анимацию".
+ *
+ * So the close defers the part of the commit that shrinks the box:
+ *
+ *  · the detach commit drops the tile and re-lays the rows at their unattached
+ *    places (one reflow, exactly as before) but hands the field a temporary
+ *    bottom padding of 16 + 46, so its BOX is still 184 and the chips row keeps
+ *    the negative margin that holds the hero column's height;
+ *  · the rows ride `useSnapSlide` home unchanged (+72 / +46 → 0);
+ *  · the field's painted bottom edge follows them as a `clip-path: inset(0 0 N
+ *    0 round 32px)`, N: 0 → 46 on the same `FIELD_CLOSE` spring, and the chips
+ *    row rides the same value as a transform. Springs are linear systems, so
+ *    identical parameters give the identical normalised curve whatever the
+ *    distance — the edge stays exactly the field's own 16px of bottom padding
+ *    below the button row on every frame, by construction rather than by tuning;
+ *  · when the spring lands, the real commit happens (padding → 16, margin → 0)
+ *    and the clip and transform are dropped in the effect's CLEANUP, i.e. after
+ *    that commit and before the browser paints it. Both states are the same
+ *    pixels, so the hand-off is invisible; clearing them in `onComplete`
+ *    instead would paint one frame of an un-clipped 184px box.
+ *
+ * PERFORMANCE. Still no per-frame layout: `clip-path` on the field and
+ * `transform` on the rows, nothing that reflows the column. `clip-path` does
+ * repaint the field, but the field's backdrop (the hero's static paint) never
+ * changes, so the blur behind it is cached and only the mask moves. Measured
+ * three ways over five rounds each (scratchpad/qa15/README.md): the close as
+ * shipped here 38.2fps, the same close with `clip-path: none !important` 35.1,
+ * and with the field's `backdrop-filter` off 55.0 — i.e. the clip is free and
+ * the cost is the blur the rows were always moving under. A `height` transition,
+ * the obvious alternative, was already measured at 21 layouts / 4ms against this
+ * mechanism's 4 / 0.7 (design-system.md §5.4) and stays banned; the deferred
+ * commit takes it to 5 / 1.12.
+ */
+function useFieldClose(
+  field: React.RefObject<HTMLElement>,
+  chips: React.RefObject<HTMLElement>,
+  attached: boolean,
+): boolean {
+  const reduced = useReducedMotion()
+  const [closing, setClosing] = useState(false)
+  const p = useMotionValue(0)
+  const was = useRef(attached)
+
+  useLayoutEffect(() => {
+    const closed = was.current && !attached
+    was.current = attached
+    /* Re-attached (the pill swaps the template mid-close): the field is going
+       back to 184 anyway, so the close is off and its styles are cleared by
+       this hook's own cleanup. */
+    if (attached) { setClosing(false); return }
+    /* Reduced motion: nothing travels, so there is nothing to keep inside. */
+    if (!closed || reduced) return
+    setClosing(true)
+  }, [attached, reduced])
+
+  useLayoutEffect(() => {
+    if (!closing) return
+    const el = field.current
+    const ch = chips.current
+    if (!el || !ch) { setClosing(false); return }
+
+    const write = (v: number) => {
+      el.style.clipPath = `inset(0 0 ${(SHIFT_ROW * v).toFixed(2)}px 0 round ${FIELD_RADIUS}px)`
+      ch.style.transform = `translateY(${(-SHIFT_ROW * v).toFixed(2)}px)`
+    }
+    write(0)
+    el.style.willChange = 'clip-path'
+    ch.style.willChange = 'transform'
+    p.jump(0)
+    const unsub = p.on('change', write)
+    /* Only the flag flips here. The inline styles come off in the cleanup, one
+       commit later, so the un-clipped box is never painted. */
+    const run = animate(p, 1, { ...FIELD_CLOSE, onComplete: () => setClosing(false) })
+
+    return () => {
+      unsub()
+      run.stop()
+      el.style.removeProperty('clip-path')
+      el.style.removeProperty('will-change')
+      ch.style.removeProperty('transform')
+      ch.style.removeProperty('will-change')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closing])
+
+  return closing
+}
+
+/**
+ * A boolean that follows another one a beat late — Build's ARMED LOOK following
+ * the attachment. Why the paint lags the state at all, with the measured
+ * contrast numbers: `ARM_PAINT_DELAY` in ./attachment.ts.
+ *
+ * The two directions get different beats and neither is a taste choice: arming
+ * waits for the flying object to be visually home (`ARM_PAINT_DELAY`, the same
+ * beat the field's own acknowledgment uses), disarming waits out the field's
+ * close (`DISARM_PAINT_DELAY`). Under reduced motion there is no flight and no
+ * close, so both are immediate.
+ *
+ * ⚠️ TWO DELAYS, NOT A DELAY AND A FLAG. The first cut held the disarm on
+ * `useFieldClose`'s `closing` flag, and it did not work: `closing` is raised in
+ * a LAYOUT effect, so on the detach commit this hook's passive effect had
+ * already been queued with `held: false` and fired the flip immediately —
+ * measured, the pale plate came back at exactly the old frames. A beat that has
+ * to line up with another hook's state cannot be scheduled from a passive
+ * effect. Both beats are therefore read from the motion tokens they belong to.
+ *
+ * On motion's clock, not `setTimeout`: the beat belongs to the choreography's
+ * timeline, so it stays in step when the animation clock is scaled — which is
+ * exactly how this is filmed (a wall timer fires while the object is still the
+ * size of the screen).
+ */
+function useLaggedFlag(value: boolean, delayOn: number, delayOff: number): boolean {
+  const reduced = useReducedMotion()
+  const [shown, setShown] = useState(value)
+  const beat = useMotionValue(0)
+
+  useEffect(() => {
+    if (shown === value) return
+    const delay = value ? delayOn : delayOff
+    if (reduced || !delay) { setShown(value); return }
+    const run = animate(beat, 1, {
+      duration: 0.001,
+      delay: delay / 1000,
+      onComplete: () => setShown(value),
+    })
+    return () => run.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, shown, reduced])
+
+  return shown
 }
 
 function Composer() {
@@ -513,13 +679,29 @@ function Composer() {
    * moved back where they were and spring them home, so nothing animates
    * layout. Distances are the board's: the placeholder line drops 72, the
    * button row and the chip row 46.
+   *
+   * ⚠️ The CLOSE defers the half of that commit which shrinks the box, so the
+   * rows never travel outside the field — `useFieldClose` below owns it, and
+   * owns the chips row outright on that path (hence 'grow').
    */
+  const fieldBox = useRef<HTMLDivElement>(null)
   const textRow = useRef<HTMLDivElement>(null)
   const buttonRow = useRef<HTMLDivElement>(null)
   const chipsRow = useRef<HTMLDivElement>(null)
+  const closing = useFieldClose(fieldBox, chipsRow, hasTile)
   useSnapSlide(textRow, SHIFT_TEXT, hasTile)
   useSnapSlide(buttonRow, SHIFT_ROW, hasTile)
-  useSnapSlide(chipsRow, SHIFT_ROW, hasTile)
+  useSnapSlide(chipsRow, SHIFT_ROW, hasTile, 'grow')
+
+  /*
+   * Build's LOOK, one beat behind Build's BEHAVIOUR — the fix for the "pale
+   * blob". `armed` still drives `disabled` and the guard in `build()`, so the
+   * button stops working the instant the template leaves; only the colours
+   * wait, and only the attachment's half of them (typing arms it at once).
+   * The full argument and the measured contrast floor: ARM_PAINT_DELAY.
+   */
+  const tileArms = useLaggedFlag(hasTile, ARM_PAINT_DELAY, DISARM_PAINT_DELAY)
+  const armedPaint = draft.trim().length > 0 || tileArms
 
   /*
    * THE FIELD ACKNOWLEDGES RECEIVING IT. When the flying template lands, the
@@ -594,6 +776,7 @@ function Composer() {
     <>
       {/* ------------------------------------------- the field (28364:40219) */}
       <div
+        ref={fieldBox}
         className="he-composer relative w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
         /* Figma's padding is 17/16/16/0 on a 138-tall box whose 1px stroke sits
            INSIDE the geometry. A CSS `border` does not: it eats a pixel of the
@@ -607,10 +790,17 @@ function Composer() {
            17 → 16 and the tile's 56px row opens above the text. The box grows
            DOWNWARD — the board keeps the composer container's own y (453.9998 on
            both boards), so everything above the field holds still and the chip
-           row below it moves 46. */
+           row below it moves 46.
+
+           WHILE THE FIELD IS CLOSING the box is still 184 — the extra 46 sits in
+           the bottom padding, under the button row, and the painted edge rides
+           up as a clip (`useFieldClose`). Without it the box shrank first and
+           left the rows hanging on the bare hero for three frames. */
         style={{
           boxShadow: '0 16px 80px 0 rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--white-100)',
-          padding: hasTile ? '16px 16px 16px 0' : '17px 16px 16px 0',
+          padding: hasTile
+            ? `16px 16px ${FIELD_PAD_B}px 0`
+            : `17px 16px ${closing ? FIELD_PAD_B + SHIFT_ROW : FIELD_PAD_B}px 0`,
         }}
       >
         {/* THE ATTACHMENTS ROW (`Attachments bar` 28734:65591): the tile 16px in
@@ -734,8 +924,13 @@ function Composer() {
             <button
               onClick={build}
               disabled={!armed}
+              /* `armed` gates the behaviour, `armedPaint` the colours — they are
+                 the same thing except across an attachment's arrival and its
+                 departure, where the paint waits for the choreography to be
+                 over (ARM_PAINT_DELAY). Still one static box, still one
+                 `--dur-fast` colour cross: no scale, no crossfade, no swap. */
               className={`flex h-9 w-[86px] items-center justify-center gap-1.5 rounded-[12px] pl-[18px] pr-1.5 text-[14px] font-semibold leading-none transition-colors duration-[var(--dur-fast)] ease-std ${
-                armed
+                armedPaint
                   ? 'bg-[var(--gray-50)] text-[var(--gray-950)] hover:bg-[var(--gray-850)] hover:text-[var(--gray-600)]'
                   : 'bg-[var(--white-100)] text-[#ffffff3d]'
               }`}
@@ -762,8 +957,12 @@ function Composer() {
          * row inside it moves 162 → 208, and the slack under it goes 118 → 72.
          * Without this the shared spacers would have taken 26px off the top and
          * shifted the whole hero up.
+         *
+         * It stays on through the close, because through the close the field's
+         * box is still 184 (`useFieldClose`) — the row's own travel up to the
+         * closing edge is a transform written by that hook.
          */
-        style={hasTile ? { marginBottom: -SHIFT_ROW } : undefined}
+        style={hasTile || closing ? { marginBottom: -SHIFT_ROW } : undefined}
       >
         <ScrollArea
           axis="x"
