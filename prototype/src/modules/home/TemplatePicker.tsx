@@ -46,16 +46,22 @@
  *
  * Clicking a card no longer attaches: the board draws a detail step between
  * the card and the attach (spec §12), so the click expands the card's site
- * preview to fill the sheet, and attaching moved to the header's white
- * `Choose a template` pill. Layout as drawn (all §12): a 72px header strip on
- * the sheet's own ground — back ← (32px icon button at 16, 20), the template
- * name (Gilroy Medium 18, cap-trimmed, truly centred — the board's group is
- * 4px left of centre by flex accident, §12.6-Q1) with the pill 32px to its
- * right (40 tall, radius 10, `Gray/50` fill, PN Semibold 14 `#09090b` label,
- * a + in a 24 box), and the usual ✕ untouched at (right 16, top 16). Below:
- * the stage — 4px side margins, flush with the sheet's bottom, top corners
- * radius 8, a 1px `Gray/800` #27272a rim, the site cropped by the bottom edge
- * and scrolling under the house indicator.
+ * preview to fill the sheet, and attaching moved to the header's
+ * `Choose a template` pill.
+ *
+ * ⚠️ THE BAR WAS REDRAWN 26.08.2026 — the designer compressed it a notch and
+ * turned the CTA blue. Layout as drawn now (§12 + the dated update block):
+ * a **64px** header strip on the sheet's own ground (row `gap 16; padding
+ * 12 12 12 0; justify-end` — it was 72 / `16 16 16 0`) — back ← (32px icon
+ * button at **16, 16**), the template name (Gilroy Medium **16**, cap-trimmed)
+ * with the pill 32px to its right (40 tall, radius 10, fill
+ * `Background/Blue/Default` = **#1587ff**, the house action blue, white PN
+ * Semibold 14 label, a + in a 24 box), and the ✕ at **(right 12, top 14),
+ * 36 × 36, radius 10** — plate kept, box shrunk. The group is now genuinely
+ * centred on the board too (both zones 64), so the old 4px flex drift is gone.
+ * Below: the stage — 4px side margins, flush with the sheet's bottom, top
+ * corners radius 8, a 1px **`Gray/750` #33333a** rim (was `Gray/800`), the
+ * site cropped by the bottom edge and scrolling under the house indicator.
  *
  * THE TRANSITION IS THE DELIVERABLE, and it is one FLIP morph: the detail
  * stage mounts at its final layout and flies FROM the clicked thumbnail's
@@ -76,11 +82,14 @@
  * grid fades as one block (~0.18s); the heading and chips fade up ~8px
  * (~0.15s); the ✕'s glass plate "unrolls" leftward — a clone anchored at its
  * right edge springs scaleX/scaleY into the header band (sheet width minus
- * the 16px insets × the 72 header), its fill pouring 0→1→0 so it never
- * doubles the real plate it starts on and dissolves into the sheet's black
- * (the board draws no visible bar); the band carries no rim — a 1px border
- * under a 40× stretch smears, and the static ✕ above it draws the rimmed
- * plate. The ✕ button itself never moves. Header contents arrive a beat later (+60ms, house
+ * the ✕'s own 12px insets × the 64 header — both terms re-derived for the new
+ * bar; the plate's centre line, 14 + 18 = 32, is still exactly the bar's
+ * centre, which is why the band needs no vertical offset term), its fill
+ * pouring 0→1→0 so it never doubles the real plate it starts on and dissolves
+ * into the sheet's black (the board draws no visible bar); the band carries no
+ * rim — a 1px border under a ~44× stretch smears, and the static ✕ above it
+ * draws the rimmed plate. The ✕ button itself never moves — including across
+ * the 26.08 resize, which is why both views ship the new 36 (see PLATE_SIZE). Header contents arrive a beat later (+60ms, house
  * rule): ← slides in from the left, the name and the pill fade up, ~30ms
  * apart. Scrolling switches on only after the spring lands, by swapping the
  * flight clone for the real `ScrollArea` stage in one commit — the two are
@@ -126,14 +135,39 @@ import { Thumb } from './thumbs'
 
 /** The sheet's inset from every viewport edge (board: (16, 16) 1624 × 1164). */
 const SHEET_INSET = 16
-/** Detail header strip — `Buttons` 28637:43245 is 72 tall (not the list's 119). */
-const DETAIL_HEADER_H = 72
+/**
+ * Detail header strip — `Buttons` 28637:43245. **64 tall since the designer's
+ * 26.08.2026 pass** (was 72): the row's padding went `16 16 16 0` → `12 12 12 0`,
+ * so 12 + 40 (the tallest child, the title+pill group) + 12 = 64.
+ */
+const DETAIL_HEADER_H = 64
 /** The stage's side margins — the drawn `Sections` px-4 (spec §12.2). */
 const STAGE_MARGIN_X = 4
 /** The stage's drawn clip radius (top corners; the bottom runs off the sheet). */
 const STAGE_RADIUS = 8
-/** The ✕ plate the header band unrolls from: 40 × 40 at (right 16, top 16). */
-const PLATE_SIZE = 40
+/**
+ * The ✕ plate — the box the header band unrolls from, and the box the band's
+ * right edge stays glued to. **36 × 36 at (right 12, top 14) since 26.08.2026**
+ * (was 40 × 40 at 16/16, radius 12): `Close M` 28640:43357 is a 36-high child of
+ * the py-12 row, so its 14 is derived (12 + (40 − 36) / 2), not authored.
+ *
+ * ⚠️ The picker LIST board (28633:14905) still draws this same physical button at
+ * 40 × 40 / r12 / (16, 16) — the designer updated the detail board only. Shipped
+ * on the NEW numbers in both views and flagged (§12.6-Q9): one static ✕ that
+ * never moves beats two sizes that would make it slide 6 px on every open, and
+ * the sheen rollback (17.08.2026) is the standing lesson about motion the boards
+ * do not draw.
+ */
+const PLATE_SIZE = 36
+/**
+ * The ✕'s right inset — also the header band's left terminus when unrolled.
+ * Its TOP inset, 14, is deliberately not a constant: no math needs it, because
+ * 14 + 36 / 2 = 32 = DETAIL_HEADER_H / 2 is an identity, so the band centred on
+ * the plate is already centred on the bar. It lives as the literal `top-[14px]`
+ * on both the button and the clone (Tailwind purges non-literal class names —
+ * the standing rule in CLAUDE.md), and those two must stay in step.
+ */
+const PLATE_INSET_X = 12
 
 /** Everything the browser lets you Tab to inside the sheet. */
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -152,7 +186,7 @@ interface FlightGeom {
   /** card-thumb size over the stage's layout size */
   sx: number
   sy: number
-  /** header-band width over the plate's 40 */
+  /** header-band width over the plate's 36 */
   plateSX: number
 }
 
@@ -169,7 +203,10 @@ function flightGeometry(sheetEl: HTMLElement, index: number): FlightGeom | null 
     dy: (r.top - s.top) / k - DETAIL_HEADER_H,
     sx: r.width / k / stageW,
     sy: r.height / k / stageH,
-    plateSX: (sheetEl.offsetWidth - 2 * SHEET_INSET) / PLATE_SIZE,
+    /* The band spans the ✕'s own insets (12 … W−12), so its right edge is the
+       plate's right edge by construction — no seam. Measured off PLATE_INSET_X,
+       not SHEET_INSET: those were both 16 until 26.08.2026, and are not now. */
+    plateSX: (sheetEl.offsetWidth - 2 * PLATE_INSET_X) / PLATE_SIZE,
   }
 }
 
@@ -361,6 +398,9 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
       {/* the sheet (28626:534) — opaque, so the spring moves no blur */}
       <motion.div
         ref={sheet}
+        /* The sheet is the origin of every number in spec §12, so it is also the
+           frame QA measures against — same data-hook idiom as the parts below. */
+        data-picker-sheet
         /* focus target for the open, and the box the Tab cycle is trapped in.
            No ring: a focus outline around a 1624px panel is noise, and the
            thing being announced is the dialog, not a control. */
@@ -493,17 +533,20 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
           )}
         </AnimatePresence>
 
-        {/* close (28633:14905, plate 28633:14906): Black/500 + blur 16 + the
-            quiet cut of the Liquid Glass gradient rim (12% → 4% → 8% TL→BR —
-            `.liquid-glass--dim`; the earlier flat 12% was a flattened export read).
-            Its blur is the sheet's single backdrop-filter — 40px square and
-            static, as drawn. Never moves, never distorts: the detail's plate
-            morph is a separate clone that unrolls out from UNDER this button
-            (z below it). */}
+        {/* close (detail board 28640:43357/43358; list board 28633:14905/14906):
+            Black/500 + blur 16 + the quiet cut of the Liquid Glass gradient rim
+            (12% → 4% → 8% TL→BR — `.liquid-glass--dim`; the flat 12% both boards
+            export is the flattening, see spec §2's correction). The PLATE SURVIVED
+            the 26.08 pass — same fill, same blur, same rim token; only the box
+            shrank 40 → 36 and the radius 12 → 10, insets 16/16 → 12/14.
+            Its blur is the sheet's single backdrop-filter — 36px square and
+            static. Never moves, never distorts: the detail's plate morph is a
+            separate clone that unrolls out from UNDER this button (z below it).
+            The 24-box glyph is unchanged on both boards, so IconClose stays 14. */}
         <button
           onClick={onClose}
           aria-label={t({ en: 'Close', uk: 'Закрити' })}
-          className="liquid-glass liquid-glass--dim glass-interactive absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-[12px] text-white"
+          className="liquid-glass liquid-glass--dim glass-interactive absolute right-3 top-[14px] z-10 grid h-9 w-9 place-items-center rounded-[10px] text-white"
         >
           <IconClose size={14} />
         </button>
@@ -577,12 +620,17 @@ function DetailView({
     const bot = STAGE_RADIUS * Math.max(0, 1 - v / 0.4)
     return `${STAGE_RADIUS / sx}px ${STAGE_RADIUS / sx}px ${bot / sx}px ${bot / sx}px / ${STAGE_RADIUS / sy}px ${STAGE_RADIUS / sy}px ${bot / sy}px ${bot / sy}px`
   })
-  /** The stage's 1px #27272a rim — the card has no rim, so it fades in only
-   *  as the flight lands (and out first on the way back). */
+  /** The stage's 1px rim — `Conteiner` 28637:42911's 1px pad, whose fill moved
+   *  from `Gray/800` #27272a to **`Gray/750` #33333a** on 26.08.2026 (one step
+   *  lighter). The card has no rim, so it fades in only as the flight lands
+   *  (and out first on the way back). */
   const rimO = useTransform(p, [0.75, 1], [0, 1])
 
   /* ---- the ✕-plate unroll ---- */
   const plateScaleX = useTransform(pp, (v) => 1 + (geom.current.plateSX - 1) * v)
+  /* 64 / 36 = 1.7778 → the band lands exactly 64 tall, and because the plate's
+     own centre line (14 + 18 = 32) IS the bar's centre, it spans 0…64 — the
+     header, edge to edge, with no offset term. Same identity held at 72/40. */
   const plateScaleY = useTransform(pp, [0, 1], [1, DETAIL_HEADER_H / PLATE_SIZE])
   /**
    * The band's fill pours 0 → 1 → 0: it must START invisible because the
@@ -671,7 +719,7 @@ function DetailView({
      cleanup above stops its animation before finishBack ever runs. */
   useEffect(() => () => { thumbEl()?.style.removeProperty('opacity') }, [])
 
-  const stageBox = 'absolute bottom-0 left-1 right-1 top-[72px]'
+  const stageBox = 'absolute bottom-0 left-1 right-1 top-[64px]'
   const site = (
     /* The SAME drawing the card shows, at the card's drawn aspect — cq units
        scale it proportionally, which is what makes the morph one object. At
@@ -696,14 +744,17 @@ function DetailView({
       <motion.div
         aria-hidden
         data-detail-plate
-        className="absolute right-4 top-4 h-10 w-10"
+        className="absolute right-3 top-[14px] h-9 w-9"
         style={{ scaleX: plateScaleX, scaleY: plateScaleY, transformOrigin: '100% 50%', willChange: 'transform' }}
       >
-        <motion.div className="absolute inset-0 rounded-[12px] bg-[#09090b7a]" style={{ opacity: plateFill }} />
+        <motion.div className="absolute inset-0 rounded-[10px] bg-[#09090b7a]" style={{ opacity: plateFill }} />
       </motion.div>
 
-      {/* header strip (28637:43245): 72 on the sheet's own ground — no bar */}
-      <div className="absolute inset-x-0 top-0 h-[72px]">
+      {/* header strip (28637:43245): 64 on the sheet's own ground — no bar.
+          Row as drawn: `gap 16; padding 12 12 12 0; justify-end`, so the left
+          zone is 48 + 16 = 64 and the right zone 16 + 36 + 12 = 64 — symmetric
+          for the first time (see the group's max-width below). */}
+      <div className="absolute inset-x-0 top-0 h-[64px]">
         <motion.button
           ref={backBtn}
           data-detail-back
@@ -713,25 +764,32 @@ function DetailView({
           animate={isPresent ? 'in' : 'out'}
           onClick={back}
           aria-label={t({ en: 'Back to all templates', uk: 'Назад до всіх шаблонів' })}
-          /* 32×32 at (16, 20), container radius 8, 24-box glyph (28640:43362).
+          /* 32×32 at (16, 16), container radius 8, 24-box glyph (28640:43362).
+             y is 16 now, not 20: a 32-high child centred in the py-12 row.
              No fill until interaction — the component's own rule. */
-          className="absolute left-4 top-5 grid h-8 w-8 place-items-center rounded-[8px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+          className="absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-[8px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
         >
           <IconArrowLeft size={20} />
         </motion.button>
 
-        {/* Name + Choose, gap 32 (28640:43353) — TRULY centred on the sheet;
-            the board's group is 4px left of centre only because its flex row
-            gives the middle 64px on one side and 72 on the other (§12.6-Q1).
+        {/* Name + Choose, gap 32 (28640:43353) — centred on the sheet, and as of
+            26.08.2026 the BOARD agrees: the row's zones are now 64 (48 back + 16
+            gap) and 64 (16 gap + 36 ✕ + 12 pad), so the drawn group centre is
+            812 = 1624/2 exactly. The old 4px drift (§12.6-Q1) is FIXED upstream —
+            we were already shipping true centre, so nothing moves here.
+            max-width follows the zones: 100% − 2 × 64.
             The title gives way first on a narrow sheet: it truncates (the
             board draws its own text-overflow), the pill never shrinks. */}
-        <div className="absolute left-1/2 top-4 flex h-10 max-w-[calc(100%-160px)] -translate-x-1/2 items-center gap-8">
+        <div className="absolute left-1/2 top-3 flex h-10 max-w-[calc(100%-128px)] -translate-x-1/2 items-center gap-8">
           <motion.h2
             custom={1}
             variants={headerBit}
             initial="pre"
             animate={isPresent ? 'in' : 'out'}
-            className="tplpick-heading min-w-0 truncate font-display text-[18px] font-medium leading-none text-white"
+            /* Gilroy Medium 16 (28640:43354) — was 18. Two independent reads
+               agree: the cap box went 13 → 11 (≈0.70 em both times) and the
+               same string's width 284 → 252, i.e. ×0.887 vs 16/18 = 0.889. */
+            className="tplpick-heading min-w-0 truncate font-display text-[16px] font-medium leading-none text-white"
           >
             {tpl.name}
           </motion.h2>
@@ -742,10 +800,24 @@ function DetailView({
             initial="pre"
             animate={isPresent ? 'in' : 'out'}
             onClick={() => onChoose(index)}
-            /* Filled/Dark, Icon=Right (28641:43375): 40 tall, radius 10,
-               Gray/50 plate, PN Semibold 14 #09090b, + in a 24 box; hover is
-               the Build button's drawn third state — same component family. */
-            className="flex h-10 flex-none items-center gap-2 rounded-[10px] bg-[var(--gray-50)] pl-5 pr-2 text-[14px] font-semibold leading-none text-[var(--gray-950)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-850)] hover:text-[var(--gray-600)]"
+            /* Filled, Icon=Right, **Color=Blue** (28641:43375 → component
+               70:464; it was Color=Dark / 70:448 before 26.08.2026): 40 tall,
+               radius 10, fill `Background/Blue/Default` — which resolves in the
+               DARK theme to #1587ff, i.e. EXACTLY the house action blue, so it is
+               `var(--action)` and not a one-off hex. (The reference code's
+               #0073ec is the light-theme trap; that value is our --action-pressed.)
+               Label PN Semibold 14 `Text/Default/White` #ffffff, + in a 24 box,
+               state-layer `pl 20 / pr 8 / gap 7` — the gap really is 7, not the
+               system's 8: get_design_context says 7 and the drawn box width
+               corroborates (177 = 20 + 118 + 7 + 24 + 8; it was 178 at gap 8).
+               Interaction: the board draws NO states (grepped the whole board —
+               no hover/pressed/focus layer anywhere), so this is the house
+               convention for a solid action button, the same one PublishPanel,
+               DomainModal and DomainsSurface use — wash to --action-hover, and
+               press to the already-defined --action-pressed. The Liquid Glass
+               hover/ripple belongs to glass controls; a filled blue button is
+               not one. */
+            className="flex h-10 flex-none items-center gap-[7px] rounded-[10px] bg-[var(--action)] pl-5 pr-2 text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
           >
             {t({ en: 'Choose a template', uk: 'Обрати шаблон' })}
             <span className="grid h-6 w-6 place-items-center"><IconPlus size={20} /></span>
@@ -754,7 +826,10 @@ function DetailView({
       </div>
 
       {/* THE STAGE (spec §12.2): 4px side margins, flush bottom, top corners 8,
-          1px #27272a rim. Until the spring lands it is the flight clone —
+          1px Gray/750 rim, top edge at 64 (the new bar height). Unchanged from
+          the old board apart from those two: margins, radius, flush bottom and
+          the vestigial `Sections` blur/r16 (still not copied) all held.
+          Until the spring lands it is the flight clone —
           overflow visible inside, the outer clip does all the cropping; after,
           the real scroller, pixel-identical, swapped in one commit. */}
       {landed ? (
@@ -762,7 +837,7 @@ function DetailView({
           <ScrollArea axis="y" thumb="auto" className="h-full">
             {site}
           </ScrollArea>
-          <div aria-hidden className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[#27272a]" />
+          <div aria-hidden className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]" />
         </div>
       ) : (
         <motion.div
@@ -777,7 +852,7 @@ function DetailView({
           </motion.div>
           <motion.div
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[#27272a]"
+            className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]"
             style={{ opacity: rimO }}
           />
         </motion.div>
