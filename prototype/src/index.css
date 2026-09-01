@@ -1965,6 +1965,145 @@
   .tplpick-thumb { flex: 1 1 auto; min-height: 0; aspect-ratio: 233.333 / 218; }
 
   /*
+   * ============ THE DRAWING IS LAID OUT ONCE, IN PX, THEN SCALED ============
+   *
+   * THE BUG. Dragging the window edge with the template picker open froze Chrome
+   * («Chrome повис, пришлось перезапустить»). Measured on a 36-step sweep
+   * 1656 → 900 → 1656: main thread blocked 6891-7456ms of an 8.1-8.5s wall (85%),
+   * worst single task 294-359ms — i.e. ~200ms of blocking per tick of the drag.
+   *
+   * WHOSE COST. Four suspects were ablated in isolation. The compacting header's
+   * ramp: 0% (its `wrote` guard early-returns — a resize does not change
+   * `scrollTop`, so it writes NOTHING across a whole sweep). ScrollArea's
+   * indicator: 0% (~4ms of the ~25ms of script the whole sweep spends). The grid
+   * rule: ~0% of the work, but it is the TRIGGER — across six geometry-verified
+   * grid variants the one predictor of cost was «does any card's width change on
+   * this tick». The cost is the 36 card drawings: 2544 of 2807 live nodes.
+   *
+   * THE ROOT CAUSE, and it is narrower than «too many nodes». A style holding a
+   * `cq` unit is RE-RESOLVED ON EVERY VIEWPORT CHANGE, even when its container's
+   * box has not moved. Isolated in a synthetic page — 36 containers pinned at
+   * 233.333 × 218, 70 nodes each: a sweep costs 352-413ms of style recalc with
+   * `cq` units and EXACTLY 0 with px, wall 617-688ms against 119-135ms. Freezing
+   * every ancestor does not help (fixed cell: 334-367ms), so the trigger is the
+   * VIEWPORT, not the resize of anything above. `container-type: size` plus `cq`
+   * units inside is therefore a per-tick tax proportional to node count, and one
+   * drawing repeated 36 times cannot afford it.
+   *
+   * THE FIX, three declarations below.
+   *   1. The drawing's unit BASIS is `--cw` / `--ch` (thumbs.tsx: every dimension
+   *      is `calc(N * var(--cw))` where it was `Ncqw`). A host chooses what the
+   *      basis IS. Fluid hosts leave it as the container's own size and are
+   *      unchanged — proved: 0 of 1 980 576 px differ on the detail stage.
+   *   2. The picker FREEZES the box at the drawn size and hands over two px
+   *      constants, so nothing inside a card depends on a container at all, then
+   *      fits the frozen drawing to its column with one `transform: scale()`.
+   *   3. `content-visibility: auto`, so only the drawings you can see are drawn.
+   *
+   * ⚠️ WHY THE SCALE MAY BE PURE CSS *NOW* AND COULD NOT HAVE BEEN BEFORE (1).
+   * `calc(100cqw / <length>)` is length ÷ length, which Chrome resolves to a
+   * plain number (verified: a 466.666px container gives 1.99996) — so no
+   * ResizeObserver, no JS, no per-card state, and a freshly mounted card is
+   * correct on its first frame. But while the drawing still used `cq` units, this
+   * very declaration cost **+2321ms of layout** (3823 vs 1502ms with a constant
+   * scale): a cq-dependent style re-enters Chrome's interleaved container-query
+   * resolution and relayouts the subtree. Moving it off the container onto the
+   * outer box did not help (2663ms) — only emptying the subtree of `cq` did.
+   * With the drawing in px the same cq-driven transform is free again (synthetic:
+   * 32-49ms against 617ms). So: KEEP THE DRAWING IN PX, or this line turns
+   * expensive again.
+   *
+   * ⚠️ Two things that look like the obvious next step and are MEASURED NOT TO BE.
+   *   · `will-change: transform` on the drawings — 1087ms against 1015ms, i.e.
+   *     nothing. The residual is not raster on this thread (a trace puts
+   *     RasterTask on the pool and VizCompositor thread). Not used, on purpose.
+   *   · Freezing the hover-zoom layer as well — 1322ms, worse. Same for
+   *     `visibility: hidden` on the rim and the veil (1328ms). Left alone.
+   *   · And if a future change ever needs the scale from JS: write `transform` on
+   *     the ELEMENT. Writing a custom property on an ancestor (`--tpl-k` on the
+   *     grid) doubles style recalc, 1007 → 2187ms, by invalidating the subtree.
+   *
+   * ⚠️ THE BASE BOX IS THE CARD'S OWN DRAWN SIZE, not the stage's 1616. Above the
+   * design viewport the drawing is scaled UP (384px card at 2560, k = 1.646),
+   * which is safe because every dimension is a multiple of the basis, so a scaled
+   * 233-wide layout and a native 384-wide layout are the same numbers times k —
+   * and text is not a bitmap, Chrome rasterises glyphs at the composited scale.
+   * Basing it on 1616 to «always scale down» would lay every headline out at
+   * 174px and scale it to 25px, moving the RESTING card off the approved pixel.
+   *
+   * SCOPED TO THE PICKER ON PURPOSE. The dock draws the same picture through boxes
+   * of a DIFFERENT aspect (238.667/216 and 238.667/218 against 233.333/218), and
+   * the drawing genuinely reflows between aspects — its slack lives in weighted
+   * spacers, by design. Freezing one box and scaling it uniformly is exact only
+   * while the aspect is constant, which is true inside `.tplpick-thumb` and there
+   * only. The dock has 1-6 cards, not 36, and measured FASTER after this change
+   * anyway (530 → 391ms) because of the `Preview` pill below.
+   *
+   * Result: blockedMs 7197 → 1206 median (200 → 33ms per tick), worst task
+   * 294-359 → 138-159ms, sweep wall 8.1-8.5s → 2.3-2.4s, style recalc 900 →
+   * 167-211ms, layout 5626-5787 → 1199ms. Full report, the pixel diff and what is
+   * still open: design-system.md §5 «Рисунок верстается ОДИН РАЗ и масштабируется».
+   */
+  .home-thumb-box {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    container-type: size;
+    /* the fluid basis — one percent of the container, i.e. exactly what `cqw` and
+       `cqh` used to mean. Overridden with px by any host that freezes the box. */
+    --cw: 1cqw;
+    --ch: 1cqh;
+  }
+
+  .tplpick-thumb {
+    /* `inline-size`, NOT `size`: this wrapper's height IS its `aspect-ratio`'s
+       output and block-size containment would erase it. Nothing queries height. */
+    container-type: inline-size;
+    /*
+     * The drawn card width, QUANTISED: Chrome lays out in 1/64px, so the drawn
+     * 233.333 is used as 233.328125 (233.333 × 64 = 14933.31 → 14933/64). Naming
+     * the quantised number rather than 233.333 is what makes the scale below
+     * exactly 1.000000 at the design viewport instead of 0.999979 — i.e. what
+     * puts the resting card on the approved pixel rather than near it.
+     * `--ch`'s basis needs no such care: the drawn height 218 is an integer.
+     */
+    --thumb-base-w: 233.328125px;
+  }
+  .tplpick-thumb .home-thumb-draw {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--thumb-base-w);
+    height: 218px;
+    transform-origin: 0 0;
+    /* «fit the frozen drawing to the column» — and the ONLY thing a resize has to
+       touch inside a card. Every card in a `1fr` track resolves its own `100cqw`,
+       so a track that lands 1/64px wider still fills exactly (measured gap across
+       the first row: 0.000px). */
+    transform: scale(calc(100cqw / var(--thumb-base-w)));
+    /*
+     * ⚠️ SAFE HERE, AND ONLY HERE. This box is `position: absolute` with a
+     * DEFINITE px size, so skipped or drawn it contributes exactly nothing to any
+     * scroll range — `contain-intrinsic-size` is not needed and would be a lie
+     * waiting to happen. Do NOT move this onto the card or onto the thumb
+     * wrapper: their heights follow the column's width, a skipped guess would
+     * move the first row, and that is precisely the lurch the compacting header
+     * just closed. Verified after this change: worst per-frame content slip
+     * 0.00px on wheel, fling, programmatic sweep and keyboard.
+     */
+    content-visibility: auto;
+  }
+  .tplpick-thumb .home-thumb-box {
+    /* one percent of the frozen box, as CONSTANTS. This is the line that empties
+       the card of `cq` units, and so the one that actually pays: style recalc for
+       the whole sweep drops 900 → 167-211ms (the floor with no drawings at all is
+       140-183ms). */
+    --cw: 2.33328125px;
+    --ch: 2.18px;
+  }
+
+  /*
    * ============ THE CARD'S OWN HOVER — ZOOM · GLASS EDGE · `Preview` PILL ====
    *
    * Designer's order, 26.08.2026 (night): «но ховер нужен, можешь придумать
@@ -2140,9 +2279,25 @@
     line-height: 1;
     white-space: nowrap;
     opacity: 0;
+    /*
+     * ⚠️ `visibility`, AND IT IS A PERFORMANCE DECLARATION, not a duplicate of
+     * `opacity: 0`. An element carrying `backdrop-filter` is painted and
+     * composited even at zero opacity, and there are 36 of these pills on the
+     * picker's grid: measured on the filter swap, taking them out of the paint
+     * tree is worth 24.8 → 27.9 fps — the single biggest item in the card chrome
+     * once the drawing itself was frozen. `visibility: hidden` is what actually
+     * removes a subtree from paint; `opacity: 0` does not.
+     * It rides the SAME transition so the fade-out still reads: `visibility` is
+     * discrete but transitionable, and toward `visible` any non-zero progress is
+     * already visible — so the pill turns visible the instant the reveal starts,
+     * and on the way out stays visible for the whole 140ms and only then leaves.
+     * No extra timing to keep in step, and nothing to clean up.
+     */
+    visibility: hidden;
     transition:
       opacity 140ms cubic-bezier(0.4, 0, 1, 1),
-      transform 140ms cubic-bezier(0.4, 0, 1, 1);
+      transform 140ms cubic-bezier(0.4, 0, 1, 1),
+      visibility 140ms;
     pointer-events: none;
   }
   .peek-corner .home-thumb-peek {
@@ -2191,6 +2346,7 @@
   .home-card-face:focus-within .home-thumb-peek {
     --peek-rise: 0px;
     opacity: 1;
+    visibility: visible;
     transition-delay: var(--card-hover-dur, 60ms);
   }
 
@@ -2211,6 +2367,7 @@
     .home-card-face:hover .home-thumb-peek {
       --peek-rise: 0px;
       opacity: 1;
+      visibility: visible;
       transition-delay: var(--card-hover-dur, 60ms);
     }
   }
