@@ -1,0 +1,5 @@
+# Scratch space the Claude Code harness creates in the repository root: isolated
+# git worktrees for parallel agents. They are checkouts of this very repository,
+# so committing them would nest the repo inside itself; they are also deleted the
+# moment the agent that owns one finishes. Never project content.
+.claude/worktrees/
