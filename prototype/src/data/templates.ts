@@ -307,3 +307,583 @@ export const libraryIn = (
   TEMPLATE_LIBRARY.map((tpl, index) => ({ tpl, index })).filter(
     ({ tpl }) => category === 'all' || category === 'more' || tpl.category === category,
   )
+
+/* ─────────────────── the template detail panel's copy ───────────────────
+ *
+ * What the expanded template preview shows in its right-hand information panel
+ * (Figma 28637:42088 → `Right` 29179:45884), asked for by the product owner as
+ * "template information".
+ *
+ * ⚠️ EVERY STRING BELOW IS OURS, AND THAT IS NOT A LIBERTY TAKEN. The board's own
+ * copy is placeholder for a DIFFERENT template: it reads `Journal-style blog` /
+ * `A magazine-grade home for long-form writing` / "magazines, journals, and serious
+ * blogs" while the stage beside it draws AURA, the cream SUPPLEMENT store
+ * (`homeware`). So the board specifies the FIELDS, their boxes and their drawn
+ * lengths; the words are ours — the same reading of note 1 that note 5 applies to
+ * the captions, and applied here with more force, because this is a 32px title and
+ * ~450 characters of prose rather than a 12px caption. The ONE string transcribed
+ * verbatim is the second section's heading, `Who it's for` (29186:45890): that one
+ * is chrome, it is identical on all nineteen sites, and it is already plain English.
+ * (Straight `'` in the file, curly `’` here — the prototype's English copy is curly
+ * throughout, e.g. `This week’s menu` in SitePreview. Normalised deliberately, and
+ * flagged to the designer rather than silently chosen.)
+ *
+ * ⚠️ PER SITE, NOT PER ROW. Keyed by `ThumbId`, because the two ⚠️ lines on
+ * TEMPLATE_LIBRARY above ("a site's category is the same in every row"; "and so is
+ * its caption") bind hardest here: `media` occupies three rows and twelve sites
+ * occupy two, so per-row copy would let ONE screenshot carry three different titles
+ * and three different pitches. It also makes the two lists agree for free — they
+ * disagree at index 2 (`campaign` in the dock, `agency` in the picker) and both
+ * doors open this same panel.
+ *
+ * ⚠️ AND THE COPY DESCRIBES THE DRAWING, NOT THE CAPTION. `name` on the board's rows
+ * is placeholder that contradicts its own screenshot (note 1), so nothing here is
+ * derived from it: every paragraph names things that are actually drawn in
+ * `modules/home/thumbs.tsx` — that jar, that $1,799,980 card, that 4.9 badge, those
+ * four bag prices. No feature that is not on the drawing is claimed anywhere: no
+ * subscription, no booking engine, no dashboard unless the drawing has one. That is
+ * the rule the captions added in note 5 already follow, held to a longer text.
+ *
+ * THE BOXES, and the budget each leaves. Every number below was MEASURED in Chromium
+ * in the repo's substitute faces (Outfit for Gilroy, Figtree for Proxima Nova), which
+ * run 1–4% WIDER than the licensed ones — so a string that just fits in Figma can
+ * wrap here, and measuring in the substitutes is the pessimistic case:
+ *   · `title`     Gilroy SemiBold 32 / lh 38 in 394px → ONE line. Widest of the
+ *                 nineteen is `Creative agency landing` at 356px, so ≥ 38px of slack
+ *                 on every title and none of them can wrap and steal 38px from the
+ *                 card below. Sentence case, no full stop.
+ *   · `tagline`   Proxima 15 / lh 21 in 362px (the box is 394 with a deliberate 32px
+ *                 right inset) → the drawn maximum is TWO lines. All nineteen measure
+ *                 exactly two, 52–67 chars, worst line 362 → keep new ones ≤ 67.
+ *   · `categoryTags` Proxima Semibold 14, `whitespace-nowrap`, flush right in a 372px
+ *                 row that already spends 57px on the word `Category`, so it OVERFLOWS
+ *                 rather than wraps: budget ≈ 297px. Widest here is
+ *                 `Tech & SaaS, Developer tools` at 199px. Rule: ≤ 3 tags, ≤ 30 chars
+ *                 joined with ", ".
+ *   · `sections[0].heading` Gilroy Medium 20 / lh 24 in a frame the board FIXES at
+ *                 48px = exactly two lines. A third line does not clip — it overlaps
+ *                 the paragraph below — and a single line leaves 24px of dead air, so
+ *                 this is the one box that must be hit, not merely fitted. Authored to
+ *                 40–50 chars: what decides it is INK, not characters, and one line
+ *                 holds ~372px, so every heading here measures 390–452px of ink and
+ *                 lands on two lines with ≥ 18px of margin over the 1-line threshold
+ *                 (enough that a ~5% narrower licensed Gilroy still wraps).
+ *   · `sections[*].body`  Proxima 14 / lh 20 in 372px, ~58 chars a line, auto height
+ *                 inside the scroller. Section 1 is 283–320 chars over SIX lines where
+ *                 the board draws 359 over seven; section 2 is 128–157 over THREE,
+ *                 where the board draws 155 over three with 0.47px to spare. The
+ *                 shortfall against the board is deliberate headroom, and no line in
+ *                 either paragraph fills more than 99% of its column.
+ *
+ * THE SHAPE OF THE PROSE, taken from the board and held for all nineteen so that no
+ * two fields say the same thing twice (the board's own copy says "long-form" three
+ * times and "magazine" twice, which is the failure to avoid):
+ *   · `title`               what the template IS.
+ *   · `tagline`             how it FEELS. One sentence, full stop.
+ *   · `sections[0].heading` the STRUCTURAL claim — never a restatement of the title.
+ *   · `sections[0].body`    three sentences: what it is and who for · the parts IN
+ *                           PAGE ORDER · a payoff. It does not open with "This
+ *                           template is", which spends five words on nothing.
+ *   · `sections[1].body`    two moves: the audience NAMED, then one imperative about
+ *                           the customer's own material. Those imperatives avoid
+ *                           `Add`, `Connect`, `Publish` and `Update` — the four verbs
+ *                           the glossary reserves for domains and publishing — so the
+ *                           panel cannot teach a second meaning for any of them.
+ *                           (The board writes "Add your features"; we do not.)
+ *
+ * The list is open on purpose — the board's scrollbar thumb is drawn for roughly
+ * 400px more content than the board draws — so a third section can be pushed onto
+ * `sections` with no data migration. Two is what is drawn, and two is what ships.
+ *
+ * ⚠️ `synco` IS HERE THOUGH IT IS NOT A TEMPLATE. It is the customer's own store on
+ * the "My projects" card and appears in neither list, so no door opens this panel for
+ * it today — but `Record<ThumbId, …>` makes the compiler demand all nineteen, and a
+ * missing key would be a blank panel in a demo the day a project card grows a preview.
+ */
+export interface TemplateDetail {
+  /** Panel title — descriptive of the template, in the board's voice ("Journal-style blog"). */
+  title: string
+  /** One line under the title. Two lines at 362px is the drawn maximum. */
+  tagline: string
+  /** Right-aligned in the Category row, comma-joined ("Editorial, Blog"). */
+  categoryTags: string[]
+  /** The drawn pair is heading + paragraph; a repeatable list so a third can be added. */
+  sections: { heading: string; body: string }[]
+}
+
+/**
+ * Verbatim from 29186:45890 (with the house curly apostrophe) — this heading is
+ * chrome, not content, so it is the same string on every site and lives in one place.
+ */
+const WHO_ITS_FOR = 'Who it’s for'
+
+export const TEMPLATE_DETAILS: Record<ThumbId, TemplateDetail> = {
+  // PayNexus — deep green fintech landing page. The white balance card reading
+  // $1,799,980 overlaps the photograph, and it is the thing a person reads on this
+  // drawing before the headline.
+  payments: {
+    title: 'Fintech landing page',
+    tagline: 'A deep green landing page for a product that moves money.',
+    categoryTags: ['Tech & SaaS', 'Fintech'],
+    sections: [
+      {
+        heading: 'The whole proof is a balance card, not a claim',
+        body:
+          'A dark green hero built so a number does the talking. The headline underlines its ' +
+          'last word in lime, a white card reading $1,799,980 overlaps the photograph beside ' +
+          'it, and a row of customer faces closes the fold. A pale strip below opens the next ' +
+          'section. Everything else defers to that card.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Payment products, wallets, and fintech startups that lead with a live number. Swap ' +
+          'in your figure, your lime accent, and the faces of people who use it.',
+      },
+    ],
+  },
+
+  // AURA — cream supplement brand. The hero jar, the four customer faces with a
+  // review count at the top right, and the dark green band of partner logos.
+  homeware: {
+    title: 'Supplement brand store',
+    tagline: 'A warm, unhurried storefront for a brand with one hero product.',
+    categoryTags: ['Ecommerce', 'Supplements'],
+    sections: [
+      {
+        heading: 'Everything here argues from proof, not hype',
+        body:
+          'A cream page for a single item you believe in. It opens on the jar under a centered ' +
+          'headline, with four customer faces and a review count at the top right, then a dark ' +
+          'green band of partner logos, then a closing line under the fold. Nothing shouts, ' +
+          'which is why it reads as something people already buy.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Supplement, skincare, and wellness names with one item they stand behind. Bring your ' +
+          'jar, your review count, and the logos you have already earned.',
+      },
+    ],
+  },
+
+  // The Synco hero on its own: black page, blue wave, the wordmark oversized until
+  // it runs off the right edge. One screen, no second section — that is the card.
+  campaign: {
+    title: 'One-page brand launch',
+    tagline: 'A black page that spends everything it has on one word.',
+    categoryTags: ['Business', 'Launch page'],
+    sections: [
+      {
+        heading: 'Nothing but the wordmark and one blue wave',
+        body:
+          'A single screen for a name people should remember. The wordmark is set big enough to ' +
+          'run off the right edge, a blue wave rolls in behind it from the left, three faint ' +
+          'rules hold the grid, and the nav keeps to three links with the first underlined. ' +
+          'There is no second section, and that is the point.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Launches, teasers, and studios whose name is the whole pitch. Give it your word, ' +
+          'pick the color of the wave, and leave the rest of the screen empty.',
+      },
+    ],
+  },
+
+  // WE MAKE MEDIA — dark olive editorial agency. Oversized display line, the arch
+  // portrait with italic Human over its corner, cream THIS IS UI/UX band at the foot.
+  media: {
+    title: 'Design studio page',
+    tagline: 'Editorial type on olive, for a studio that shows before it explains.',
+    categoryTags: ['Portfolio', 'Creative studio'],
+    sections: [
+      {
+        heading: 'Big type across the top, the work in an arch below',
+        body:
+          'A dark olive page that opens on WE MAKE MEDIA set edge to edge. Under it a portrait ' +
+          'stands in an arch with the word Human in italic across its corner, a short centered ' +
+          'paragraph and one outlined button follow, and a cream band reading THIS IS UI/UX ' +
+          'cuts in at the bottom. Put your own name in the top line.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Design studios and creative agencies with a point of view and one image worth the ' +
+          'whole fold. Trade the arch for a picture of your own.',
+      },
+    ],
+  },
+
+  // ArchiForm — near-white architecture studio. Half the page is the glass facade,
+  // drawn as vertical columns with floor lines, one project card floating over it.
+  // ⚠️ Filed under `ecommerce` because the category came from the board's caption
+  // "Fashion Storefront", not from the screenshot (note 1) — and nothing on this
+  // drawing is for sale: no cart, no price, no product. So these tags describe the
+  // DRAWING and stay silent about the bucket rather than claim a store that is not
+  // there. Raised with the designer, not fixed here.
+  architecture: {
+    title: 'Architecture studio',
+    tagline: 'A calm white page where one building carries the screen.',
+    categoryTags: ['Architecture', 'Services'],
+    sections: [
+      {
+        heading: 'The right half of the page is the building itself',
+        body:
+          'A near-white studio page split down the middle. A navy headline with a small brushed ' +
+          'mark takes the left, two buttons and a row of faces sit under it, and a facade drawn ' +
+          'as vertical glass columns bleeds off the right edge with one project card floating ' +
+          'over it. A short line about the team closes the page.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Architects, interior studios, and builders whose case is one strong facade. Point ' +
+          'the panel at a project of yours and rewrite the closing line.',
+      },
+    ],
+  },
+
+  // Serena — pale sage mental-health site. One full-bleed photograph with a
+  // floating white nav pill, a chip of faces over the middle, headline bottom left.
+  wellness: {
+    title: 'Mental health site',
+    tagline: 'A soft, sky-lit page for care that should feel unhurried.',
+    categoryTags: ['Health & beauty', 'Therapy'],
+    sections: [
+      {
+        heading: 'One photograph, and everything floats on it',
+        body:
+          'A pale sage page built on a single full-bleed photograph. A white nav pill floats at ' +
+          'the top, a small chip of customer faces and a short paragraph sit over the middle, ' +
+          'and the headline lands bottom left with a white button and a dark circle beside it. ' +
+          'One quiet sage line under the photo says what you do.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Therapists, clinics, and calm wellness brands that need warmth before detail. Use a ' +
+          'photograph of your own behind it and keep the copy this short.',
+      },
+    ],
+  },
+
+  // Synco® Creative Agency — the full page behind the same brand. Folded blue ribbon
+  // off the top-left corner, a rail of four services down the right edge, and a
+  // white band whose 50+ / 100+ are cropped mid-digit by the bottom of the screen.
+  agency: {
+    title: 'Creative agency landing',
+    tagline: 'Black ground, blue silk, and three lines that say who you are.',
+    categoryTags: ['Portfolio', 'Agency'],
+    sections: [
+      {
+        heading: 'A ribbon of blue silk poured over a black page',
+        body:
+          'The full agency page behind the name. A folded blue ribbon spills out of the top ' +
+          'left corner, three light lines of type stand beside it, a rail of four services runs ' +
+          'down the right edge, and a white band at the foot carries the manifesto with 50+ and ' +
+          '100+ cropped mid-digit by the bottom of the screen.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Agencies and production studios that sell a roster of services. List yours down the ' +
+          'rail and give the band your own two numbers.',
+      },
+    ],
+  },
+
+  // WorkPro — bright blue SaaS landing. Centered headline with "social media"
+  // underlined, then the white app window: menu column, three cards, a 94,127
+  // counter over its bar chart, and a white claim band under it.
+  saas: {
+    title: 'SaaS product landing',
+    tagline: 'A bright blue page that puts the app on the table right away.',
+    categoryTags: ['Tech & SaaS', 'Product'],
+    sections: [
+      {
+        heading: 'The product window makes the whole argument',
+        body:
+          'A saturated blue page for software you can show. The centered headline underlines ' +
+          'the two words that count, two buttons follow, and a white app window opens under ' +
+          'them with a menu column, three small cards and a 94,127 counter over its own bar ' +
+          'chart. A white claim band ends the fold.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Software teams with a screen worth showing and one sentence to say why. Slot your ' +
+          'own window into the frame and keep the claim band to two lines.',
+      },
+    ],
+  },
+
+  // Burgundy restaurant page. The gold-rimmed platter fills the right and a second
+  // one runs off the top corner, the darker band counts 2k / 1k / 99 / 10, and a
+  // cream gallery strip is cut by the bottom edge. Its board caption is AURA's
+  // (note 1); the category is ours.
+  restaurant: {
+    title: 'Restaurant page',
+    tagline: 'Deep burgundy and gold, with the food doing the selling.',
+    categoryTags: ['Business', 'Restaurant'],
+    sections: [
+      {
+        heading: 'A platter arrives before the first word is read',
+        body:
+          'A burgundy page where the table is the hero. The headline sits left with a gold seal ' +
+          'and four small dishes under it, a rimmed platter fills the right and a second one ' +
+          'runs off the corner, and a darker band counts 2k, 1k, 99 and 10. Discover Our ' +
+          'Complete Range opens the gallery strip the fold cuts.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Restaurants, caterers, and family kitchens with a signature dish and years behind ' +
+          'them. Show your own plates and make the four numbers yours.',
+      },
+    ],
+  },
+
+  // MineMax — near-black crypto-mining landing. Circuit traces run in from both
+  // edges to a violet orb with a crystal at its center; two purple cards enter at
+  // the foot and the crop cuts them.
+  crypto: {
+    title: 'Crypto mining landing',
+    tagline: 'Near-black, lit from the middle, with the rig at its center.',
+    categoryTags: ['Tech & SaaS', 'Crypto'],
+    sections: [
+      {
+        heading: 'Everything on this page points at one violet orb',
+        body:
+          'A near-black page built around one lit object. A tag chip, a centered headline and ' +
+          'two buttons stack above the rig, where circuit lines run in from both edges to a ' +
+          'bright sphere with a crystal at its heart and the ground glows under it. Two purple ' +
+          'cards enter at the bottom and the fold cuts them.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Mining outfits, wallets, and protocols selling something people cannot see. Keep the ' +
+          'orb, write your own two lines above it, and let the dark do the rest.',
+      },
+    ],
+  },
+
+  // MERIDIAN — cream-over-espresso roaster. The four-bag shelf under Single origin
+  // owns more of the page than the hero does, which is the composition's own point.
+  coffee: {
+    title: 'Coffee roaster store',
+    tagline: 'Cream over espresso, with the shelf given more room than the hero.',
+    categoryTags: ['Ecommerce', 'Coffee'],
+    sections: [
+      {
+        heading: 'The shelf gets more of the page than the hero',
+        body:
+          'A roaster’s store that leads with what is in stock. The espresso band up top carries ' +
+          'the nav, a two-line promise and one bag; under it Single origin heads a row of four ' +
+          'bags priced from $16 to $24; an espresso footer closes the page. The cream between ' +
+          'them is the shop’s own light.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Roasters, tea sellers, and small food brands with a handful of bags to ship this ' +
+          'week. Price your four and put your own two days in the promise.',
+      },
+    ],
+  },
+
+  // ODEON — paper-white lookbook store. Hard vertical split: SPRING SUMMER 26 and
+  // three swatches on the left, a full-height image column with a $240 tag right.
+  fashion: {
+    title: 'Lookbook store',
+    tagline: 'A hard split: type on paper, one long image column beside it.',
+    categoryTags: ['Ecommerce', 'Fashion'],
+    sections: [
+      {
+        heading: 'The type on the left, the season on the right',
+        body:
+          'A paper-white spread that reads like a magazine. SPRING SUMMER 26 fills the left ' +
+          'column above three color swatches and one black button, while a tall image column ' +
+          'runs full height on the right with a $240 tag and one small red flash on the shot. ' +
+          'LOOKBOOK 01 sits on the footer rule.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Fashion labels and concept stores that publish a season rather than a catalog. Name ' +
+          'the season, then swap the swatches for your own colors.',
+      },
+    ],
+  },
+
+  // forge — blue-black developer-tools landing. A mono install line starting with a
+  // dollar sign on the left, the editor window with a green 1.4s build panel right.
+  devtools: {
+    title: 'Developer tools page',
+    tagline: 'Blue-black, monospace, and one command you can copy.',
+    categoryTags: ['Tech & SaaS', 'Developer tools'],
+    sections: [
+      {
+        heading: 'One command on the left, the editor on the right',
+        body:
+          'A blue-black page written for people who read terminals. The pitch takes the left ' +
+          'column under a small cyan chip, with an install line that starts with a dollar sign; ' +
+          'the editor on the right shows eight indented lines of syntax, a tab bar above them, ' +
+          'and a green build panel reading 1.4s. Five logo marks close the page.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Open-source projects and developer tools whose install is one line. Put that line in ' +
+          'the box, your version in the nav, your build time in the panel.',
+      },
+    ],
+  },
+
+  // Lumen — cool near-white AI analytics page. The white chart card heads with 48.2k
+  // and plots two series; three tiles under it carry +38%, a column chart and 0.9s.
+  analytics: {
+    title: 'Analytics product page',
+    tagline: 'A light, chart-led page for a tool that explains numbers.',
+    categoryTags: ['Tech & SaaS', 'Analytics'],
+    sections: [
+      {
+        heading: 'One white chart card carries the right side',
+        body:
+          'A cool white page for software whose answer is a chart. The pitch sits left under an ' +
+          'indigo chip, and a white card on the right heads with 48.2k and plots two series ' +
+          'over three gridlines. Three tiles follow: a +38% change, a column chart with one bar ' +
+          'picked out, and 0.9s beside a small donut.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Analytics and reporting tools that have to look trustworthy in one glance. Fill the ' +
+          'card and all three tiles with numbers of your own.',
+      },
+    ],
+  },
+
+  // KORE STUDIO — near-black portfolio. Four columns of pictures and nothing to
+  // read: no headline, no buttons, no CTA. The footer counts 01 / 24 beside
+  // SELECTED WORK, and that absence is the whole design.
+  photography: {
+    title: 'Photography portfolio',
+    tagline: 'Near-black, with no headline and nothing to read but the work.',
+    categoryTags: ['Portfolio', 'Photography'],
+    sections: [
+      {
+        heading: 'No hero, no buttons, no copy — just four columns',
+        body:
+          'A near-black portfolio that skips the pitch. KORE stands large in the top row beside ' +
+          'one amber dot, then four columns of pictures fill everything down to the footer — ' +
+          'one captioned, the rest left silent. The footer counts 01 / 24 beside the words ' +
+          'SELECTED WORK. There is no headline to write.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Photographers, directors, and set designers whose work should arrive before any ' +
+          'words do. Drop in your own frames and keep the count in the footer true.',
+      },
+    ],
+  },
+
+  // HALE & MARCH — deep navy law firm. No image anywhere, not even a gradient
+  // panel: three numbered columns on gold hairlines, and 40+ / $1.2B / 98%.
+  lawfirm: {
+    title: 'Law firm site',
+    tagline: 'Navy and gold, built from type alone, with no photographs.',
+    categoryTags: ['Business', 'Law firm'],
+    sections: [
+      {
+        heading: 'Authority from rules and gold, not from pictures',
+        body:
+          'A deep navy page with no image anywhere. A short gold rule opens the centered ' +
+          'headline, two buttons sit under it, and three numbered columns divided by gold ' +
+          'hairlines name the practice areas. A darker band closes with 40+, $1.2B and 98%. ' +
+          'Nothing here needs a photograph to look expensive.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Law firms, accountants, and advisers who are hired on record rather than on imagery. ' +
+          'Number your practice areas and set your own three figures in the band.',
+      },
+    ],
+  },
+
+  // Still — warm sand yoga studio, one tone from top to bottom. The arch is the
+  // only tonal event; the timetable rows are hairlines with a button on each.
+  yoga: {
+    title: 'Yoga studio site',
+    tagline: 'One warm sand tone from top to bottom, and a very quiet voice.',
+    categoryTags: ['Health & beauty', 'Yoga'],
+    sections: [
+      {
+        heading: 'One tone all the way down, and a single arch',
+        body:
+          'A sand-colored page that never changes tone. Slow flow, every morning. is set in ' +
+          'the largest type on the page, an arch of soft light stands beside it, and a ' +
+          'timetable underneath lists 7:00, 9:30 and 18:00 on hairline rules with a button ' +
+          'at the end of each row. No band breaks it, and the arch is the only tonal event.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Yoga studios, pilates teachers, and retreats whose whole promise is calm. Set your ' +
+          'three classes and let the page stay this empty.',
+      },
+    ],
+  },
+
+  // IRONSIDE — warm charcoal barbershop, vermilion the only accent. Capitals, the
+  // hours ruled off beside them, a 4.9 badge on the interior shot, then the prices.
+  barbershop: {
+    title: 'Barbershop site',
+    tagline: 'Charcoal with one vermilion accent, and prices in plain sight.',
+    categoryTags: ['Health & beauty', 'Barbershop'],
+    sections: [
+      {
+        heading: 'Three words, then the facts a walk-in wants',
+        body:
+          'A charcoal page that gets to the point. SHARP EVERY TIME stacks in capitals with the ' +
+          'last word in vermilion and two buttons under it, the opening hours stand ruled off ' +
+          'beside them, and a shop photograph carries a 4.9 badge. Four services follow at $35, ' +
+          '$28, $45 and $22, over a vermilion footer rule.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Barbers, tattoo studios, and small shops that live on regulars and passing trade. ' +
+          'List your four prices and your real opening hours.',
+      },
+    ],
+  },
+
+  // synco.com — the customer's own store on the project card: the same black hero,
+  // with a pale strip of four captioned products under it. NOT a template row (see
+  // the ⚠️ in the block comment), written so the panel is never blank if one appears.
+  synco: {
+    title: 'Online store',
+    tagline: 'A wordmark at full volume, with a shelf of goods below it.',
+    categoryTags: ['Ecommerce', 'Online store'],
+    sections: [
+      {
+        heading: 'A hard break between the black and the light',
+        body:
+          'A brand hero doing double duty as a shop front. The wordmark still runs off the ' +
+          'right edge over its blue wave and the nav still keeps to three links, but where a ' +
+          'launch page would stop, a pale strip of four products begins, each captioned under ' +
+          'its picture. The shop starts where the poster ends.',
+      },
+      {
+        heading: WHO_ITS_FOR,
+        body:
+          'Small brands with a name worth shouting and a short first collection. Load in four ' +
+          'products and let the hero keep doing the talking.',
+      },
+    ],
+  },
+}
