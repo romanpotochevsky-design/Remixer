@@ -163,6 +163,9 @@
        heading (`We'll remix it.`, boards 28626:542 / 28734:66375); 48% and 70%
        both miss it, and this is a real step in the kit. */
     --white-560: #ffffff8f;
+    /* 72% — Figma Neutral Alpha/800. The template detail panel's body paragraphs
+       (29179:45873 / 29186:45892); the ladder's 70% and 85% both miss it. */
+    --white-720: #ffffffb8;
     --white-900: #fffffff2;
 
     /* action — one hue, all steps */
@@ -2614,16 +2617,13 @@
    * not a break.
    */
   /*
-   * Cap-trim on its own, for the one other place in this sheet that is measured
-   * to the CAP: the detail bar's template name (spec §12.0). It was the whole of
-   * this class before the header gained two states — the heading's own trim now
-   * lives on `.tplpick-title-ink` — and removing it cost the detail bar 763px of
-   * pixel diff before QA caught it.
+   * ⚠️ `.tplpick-heading` LIVED HERE and is gone (01.09.2026). It cap-trimmed the
+   * one other thing in this sheet measured to the CAP — the detail bar's centred
+   * template name — and the designer deleted that node from the board when he
+   * moved the name into the information panel. The panel's own 32px title is
+   * measured to its FULL 38px line box, not to the cap, so it must NOT inherit
+   * this: `text-box-trim` would sit it ~5px high. Deleted rather than orphaned.
    */
-  .tplpick-heading {
-    text-box-trim: trim-both;
-    text-box-edge: cap alphabetic;
-  }
 
   /*
    * THE HEADER IS AN OVERLAY (26.08.2026 night — the designer's scroll jerk).
@@ -2808,6 +2808,130 @@
        `.home-card-scrim` because the same card also lives on the dock, over the
        page's `--gray-950`; see the plate's own note. */
     --card-ground: var(--gray-900);
+  }
+
+  /*
+   * ======== THE TEMPLATE DETAIL PANEL — board 28637:42088 → `Right` 29179:45884
+   *
+   * The detail view's right-hand information panel, drawn 01.09.2026 when the
+   * designer moved the template's name and its CTA out of the 52px bar and gave
+   * them a 436px column of their own. Every number here is a node read, and the
+   * read itself — box by box, with the node id and the arithmetic that closes it
+   * — is in the component's own header: `modules/home/TemplateDetailPanel.tsx`.
+   * The surrounding detail view is `figma-spec-add-template.md` §12, whose §12.1
+   * and §12.2 numbers this pass supersedes (the bar went 64 → 52 and the stage
+   * gave up 444 on its right).
+   *
+   * ⚠️ THE PANEL IS OPAQUE, AS DRAWN — `Gray/800` #27272a, alpha 1, no
+   * `backdrop-filter`, no shadow. Nothing in this panel is glass, and that is a
+   * real negative rather than a missing export: the very same exporter emits
+   * `backdrop-blur-[16px]` for the ✕ plate eleven nodes away on this board and
+   * emits nothing here. It is also the standing project decision — translucent
+   * glass on a large panel was tried on Publish and rolled back. The rule this
+   * board states, and the one to keep: **glass floats over content; a panel is
+   * chrome.**
+   *
+   * ⚠️ EVERY RIM IS AN `inset box-shadow`, never a `border` — the house rule, and
+   * here it is also what makes the numbers work. In the FILE those three strokes
+   * are `strokeAlign: INSIDE` with "include stroke in layout" ON, i.e. they eat a
+   * pixel of the box the way a `border-box` border does (metadata reports the
+   * panel's first child at x=5, not x=4). A shadow rim takes no layout, so each
+   * padding below carries the stroke's pixel itself: the panel is `33/4/4/4` in
+   * Figma and `34/5/5/5` here; the info card is `0` there and `1px` here; the
+   * well is `6` there and `7` here. Same drawn boxes, no reflow risk.
+   */
+  .tpldetail-panel {
+    /* 432 × 1108 at sheet (1188, 52) — the wrapper's 4px right/bottom gutter is
+       on the host element, and its radius 12 is CONCENTRIC with the sheet's 16
+       (same arc centre 1608,1148), which is why the 4 is deliberate. */
+    border-radius: 12px;
+    background: var(--gray-800);
+    box-shadow: inset 0 0 0 1px var(--white-050);
+    /* 33/4/4/4 + the 1px the Figma stroke consumes — see the note above. */
+    padding: 34px 5px 5px;
+  }
+  /*
+   * The CTA tray, `29186:147663` — the one interesting rim in the panel, and a
+   * deliberate hierarchy signal: the tray glows, the two buttons inside it do
+   * not. Fill `Black/200` (16% of #09090b) goes DARKER than the panel, so this
+   * is a recess, not a raised card.
+   *
+   * ⚠️ Its stroke is the only NON-TOKEN paint on the whole panel — a literal
+   * `rgba(255,255,255,0.2)`. 20% is off the `Neutral Alpha` ladder (4/8/12/24)
+   * and is exactly the hot end of `.liquid-glass--pill` (20 → 5 → 15), which is
+   * the canon whose stops are literals; a flattened gradient reports its first
+   * stop. So the ring below is the pill's, drawn with the pill's geometry
+   * (`to bottom right` = handles at the normalised corners, correct at any
+   * aspect — NOT the shell's 150°, which is a different canon).
+   * ⚠️ It takes the pill's RING and nothing else: fill is 16% black, not the
+   * pill's 64%, and there is no blur. Do not "complete" the recipe.
+   * Confirm with the designer — one screenshot of the stroke row settles it, and
+   * the cost of being wrong is this one declaration.
+   */
+  .tpldetail-well {
+    position: relative;
+    border-radius: 16px;
+    background: var(--black-200);
+    padding: 7px;
+  }
+  .tpldetail-well::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  /*
+   * `Preview` `29179:45858` — FLAT 1px 12% white, and that is proven rather than
+   * assumed. `get_variable_defs` reports every stop of a variable-BOUND gradient
+   * stroke separately (the ✕ plate on this same board returns NA/200 + NA/100 +
+   * NA/50 for its documented 12 → 4 → 8 ramp); this button returns `Neutral
+   * Alpha/200` alone. No second rung, no ramp.
+   */
+  .tpldetail-preview {
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px var(--white-200);
+  }
+  /*
+   * The information card `29179:45859` — 4% white over the panel, i.e. one step
+   * LIGHTER (#303033 composited), with a rim of the same 4% token painted on top
+   * of its own fill. Net: the card reads as a fill-only block with a whisper of
+   * an edge. Do not strengthen it into a visible outline.
+   *
+   * `flex: 1` — the drawn 762 is DERIVED, not designed (its own content is 461),
+   * so the ~301px of empty tail below the last paragraph is what the board draws
+   * and the card must GROW and SHRINK with the window: `infoCardH = innerH − 434`.
+   * Below a ~895px window the copy is cut, which is why the scroller inside is
+   * mandatory rather than decorative — the drawn thumb is what a 1440×900 laptop
+   * actually produces.
+   *
+   * ⚠️ `overflow: hidden` is OURS. The board gives this node no clip at all — the
+   * only evidence of where the scroll boundary is, is the scrollbar's own
+   * geometry (info card below the category row, panel y 401…1102).
+   */
+  .tpldetail-info {
+    border-radius: 12px;
+    background: var(--white-050);
+    box-shadow: inset 0 0 0 1px var(--white-050);
+    padding: 1px;
+    overflow: hidden;
+  }
+  /*
+   * The category row's divider — a single 1px BOTTOM edge, `Neutral Alpha/100`
+   * (8% white), spanning the card's full 420 inner width. Not a rectangle, not a
+   * top border on the block below. As a shadow it costs no layout, so the row's
+   * bottom padding carries the pixel: 22 + 17 + 19 + 1 drawn = 22 + 17 + 20 here.
+   * ⚠️ The row's drawn `radius: 16 top` is INERT (it has no fill) and would poke
+   * out of the card's 12 if anyone ever gave it one — the correct value is 11.
+   */
+  .tpldetail-catrow {
+    box-shadow: inset 0 -1px 0 var(--white-100);
   }
 
   body {

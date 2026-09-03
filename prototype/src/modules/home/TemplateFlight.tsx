@@ -51,6 +51,7 @@ import { useUI, type FlightRect, type TemplateFlight as Flight } from '@/state/u
 import { FLIGHT_OPEN, FLIGHT_SEAT } from '@/ui/motion'
 import { Thumb } from './thumbs'
 import { DETAIL_HEADER_H, SHEET_INSET, STAGE_MARGIN_X, STAGE_RADIUS } from './TemplatePicker'
+import { PANEL_RESERVE } from './TemplateDetailPanel'
 import { rectOf, TILE_RADIUS, TILE_RADIUS_TR } from './attachment'
 
 /** The drawn thumbnail ratio — the card's, the stage's and the tile's alike. */
@@ -66,13 +67,21 @@ const CARD_CORNERS = [8, 8, 8, 8] as const
 
 const lerp = (a: number, b: number, v: number) => a + (b - a) * v
 
-/** Where the stage lands, computed from the drawn insets — the fallback for the
- *  one frame in which the sheet has not mounted yet. */
+/**
+ * Where the stage lands, computed from the drawn insets — the fallback for the
+ * one frame in which the sheet has not mounted yet.
+ *
+ * ⚠️ SINCE 01.09.2026 THE STAGE IS NOT THE SHEET MINUS TWO EQUAL MARGINS. The
+ * information panel takes a fixed `PANEL_RESERVE` (4 gutter + 432 panel + 8 row
+ * gap = 444) off its RIGHT, while the 4 on its left is still its own `Sections`
+ * padding — so `STAGE_MARGIN_X` is subtracted once, not twice. At 1656 × 1196:
+ * left 20, top 68, 1176 × 1112, which is the drawn box exactly.
+ */
 function stageRect(): FlightRect {
   return {
     left: SHEET_INSET + STAGE_MARGIN_X,
     top: SHEET_INSET + DETAIL_HEADER_H,
-    width: window.innerWidth - 2 * (SHEET_INSET + STAGE_MARGIN_X),
+    width: window.innerWidth - 2 * SHEET_INSET - STAGE_MARGIN_X - PANEL_RESERVE,
     height: window.innerHeight - 2 * SHEET_INSET - DETAIL_HEADER_H,
   }
 }

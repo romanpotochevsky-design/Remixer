@@ -182,25 +182,38 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import {
-  libraryIn, TEMPLATES, TEMPLATE_LIBRARY,
+  libraryIn, TEMPLATES, TEMPLATE_DETAILS, TEMPLATE_LIBRARY,
   type Template, type TemplateCategoryId,
 } from '@/data/templates'
 import { startBuild } from '@/modules/chat/send'
 import { ScrollArea, type ScrollMetrics } from '@/ui/ScrollArea'
-import { IconArrowLeft, IconClose, IconPlus } from '@/ui/icons'
+import { IconArrowLeft, IconClose } from '@/ui/icons'
 import { modalScrim, fullscreenSheet, fullscreenSheetFade, fullscreenContent, gridSwapBehind, SPRING_SOFT } from '@/ui/motion'
 import { CategoryChips, TemplateCard } from './Dock'
+import { PANEL_RESERVE, TemplateDetailPanel } from './TemplateDetailPanel'
 import { Thumb } from './thumbs'
 import { rectOf } from './attachment'
 
 /** The sheet's inset from every viewport edge (board: (16, 16) 1624 × 1164). */
 export const SHEET_INSET = 16
 /**
- * Detail header strip — `Buttons` 28637:43245. **64 tall since the designer's
- * 26.08.2026 pass** (was 72): the row's padding went `16 16 16 0` → `12 12 12 0`,
- * so 12 + 40 (the tallest child, the title+pill group) + 12 = 64.
+ * Detail header strip — `Buttons` 28637:43245. **52 tall since the designer's
+ * 01.09.2026 pass** (was 64, and 72 before that).
+ *
+ * The 52 is a HUG, not a set height, and knowing that is what makes the number
+ * survive our one deviation: the row is `justify-between; padding 8 8 8 0` around
+ * its tallest child, and with the centred title+CTA group deleted (they moved into
+ * the panel — see TemplateDetailPanel.tsx) the tallest child is the ✕. The board
+ * draws that ✕ 36 × 36, so it draws `8 + 36 + 8 = 52`; we ship it at the legal
+ * **40** and the bar keeps its 52 with `6 + 40 + 6 = 52`, which preserves the one
+ * identity the ✕-plate unroll is built on (`6 + 20 = 26 = 52 / 2`). See PLATE_SIZE.
+ *
+ * ⚠️ This number feeds the stage's top edge, the stage's height, `flightGeometry`'s
+ * `dy`, `TemplateFlight`'s `stageRect()` fallback and `plateScaleY` — so it is the
+ * input every other detail-view number is derived from, and it must not be inlined
+ * anywhere.
  */
-export const DETAIL_HEADER_H = 64
+export const DETAIL_HEADER_H = 52
 /** The stage's side margins — the drawn `Sections` px-4 (spec §12.2). */
 export const STAGE_MARGIN_X = 4
 /** The stage's drawn clip radius (top corners; the bottom runs off the sheet). */
@@ -219,30 +232,48 @@ export const STAGE_RADIUS = 8
  * canon table has said all along (`design-system.md` § «Liquid Glass», the
  * `.liquid-glass--dim` row: "close пикера (40×40 r12)").
  *
+ * ⚠️ AND THE 01.09.2026 BOARD DRAWS 36 / r10 AGAIN, at (right 8, top 8) — so the
+ * same ruling applies a second time, unchanged: **40 / r12**, at (right 8, top 6).
+ * Two facts make it clear this is a slip rather than a decision: the kit's own
+ * `Close M` INSTANCE is still in the file, hidden, at 32 × 32 / r8 (`28637:43249`),
+ * and the visible one is a DETACHED frame that kept the instance's name — the
+ * signature of a hand-resize. The bar's 52 survives the correction because 52 is a
+ * hug of this box and 6 + 40 + 6 = 52 (see DETAIL_HEADER_H). Deviation from the
+ * board: the box is 4px bigger, its radius 2 more, and it sits 2px higher.
+ *
  * ⚠️ ITS POSITION IS ONE PAIR OF INSETS FOR BOTH VIEWS, and that is what makes the
  * numbers below deviate from both boards. This is ONE physical button: it lives on
  * the sheet, above the list and above the detail bar, and it must not jump when
  * the bar arrives (the sheen rollback of 17.08.2026 is the standing lesson about
- * motion no board draws). Of the four drawn candidates only ONE satisfies the bar:
- * the bar is 64 tall with `padding 12 … 12`, and 12 + 40 + 12 = 64 exactly, so
- * top 12 is the only inset at which the 40 box is centred in the bar — i.e. the
- * only one that keeps the plate's centre line ON the bar's (12 + 20 = 32 = 64 / 2),
- * which is the identity the whole unroll is built on. The right inset follows the
- * bar's own `padding-right: 12` for the same reason: it is the band's terminus.
- * The cost is 4px against the list board's 16/16 corner — the smallest deviation
- * available, and the alternative (16/16 in the list, 12/12 in the detail) is a
- * button that slides 4px diagonally on every open.
+ * motion no board draws). Only ONE pair of insets satisfies the bar: it is 52 tall
+ * and hugs this box, so **top 6** is the only inset at which the 40 is centred in
+ * it — i.e. the only one that keeps the plate's centre line ON the bar's
+ * (6 + 20 = 26 = 52 / 2), which is the identity the whole unroll is built on. The
+ * right inset follows the bar's own `padding-right: 8` for the same reason: it is
+ * the band's terminus.
+ * The cost is the list board's 16/16 corner again — 8px across and 10 up — and the
+ * alternative (16/16 in the list, 8/6 in the detail) is a button that slides
+ * diagonally on every open.
  */
 const PLATE_SIZE = 40
 /**
  * The ✕'s right inset — also the header band's left terminus when unrolled.
- * Its TOP inset is the same 12 (see above) and is deliberately not a constant: no
- * math needs it, because 12 + 40 / 2 = 32 = DETAIL_HEADER_H / 2 is an identity, so
- * the band centred on the plate is already centred on the bar. It lives as the
- * literal `top-3` on both the button and the clone (Tailwind purges non-literal
- * class names — the standing rule in CLAUDE.md), and those two must stay in step.
+ * **8 since 01.09.2026** (was 12): the redrawn bar's own `padding-right`.
+ *
+ * Its TOP inset is **6**, and is deliberately not a constant: no math needs it,
+ * because `6 + 40 / 2 = 26 = DETAIL_HEADER_H / 2` is an identity, so a band centred
+ * on the plate is already centred on the bar. It lives as the literal `top-1.5` on
+ * both the button and the clone (Tailwind purges non-literal class names — the
+ * standing rule in CLAUDE.md), and those two must stay in step.
+ *
+ * ⚠️ The bar's two insets are now genuinely ASYMMETRIC — left 12 on the back
+ * button's wrapper (`pl-[12px]`, corroborated by its metadata x=12), right 8 here.
+ * The band still spans the ✕'s own inset on both sides, because that is what makes
+ * its right edge the plate's right edge by construction; the 12 belongs to another
+ * axis entirely and the back button does not move with any of this. Whether the
+ * 12/8 asymmetry is deliberate is a question for the designer.
  */
-const PLATE_INSET_X = 12
+const PLATE_INSET_X = 8
 
 /** Everything the browser lets you Tab to inside the sheet. */
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -485,7 +516,19 @@ function flightGeometry(sheetEl: HTMLElement, index: number): FlightGeom | null 
   const s = sheetEl.getBoundingClientRect()
   const k = s.width / sheetEl.offsetWidth || 1
   const r = thumb.getBoundingClientRect()
-  const stageW = sheetEl.offsetWidth - STAGE_MARGIN_X * 2
+  /*
+   * ⚠️ THE STAGE IS NO LONGER THE SHEET MINUS TWO MARGINS. Since 01.09.2026 the
+   * information panel takes a fixed 444 off its right (4 gutter + 432 panel + 8
+   * row gap — `PANEL_RESERVE`), while the 4 on the LEFT is still the stage's own
+   * `Sections` padding. So `STAGE_MARGIN_X` is subtracted **once**, not twice —
+   * which is exactly the line a symmetry reflex would "fix" wrongly. At the drawn
+   * sheet: 1624 − 4 − 444 = 1176, and 1164 − 52 = 1112.
+   *
+   * Getting this wrong is not subtle: the old form would scale the flight for a
+   * stage 1.375× wider than the box the clone actually lands in, so the morph
+   * would finish 37% too big and snap at the `landed` swap.
+   */
+  const stageW = sheetEl.offsetWidth - STAGE_MARGIN_X - PANEL_RESERVE
   const stageH = sheetEl.offsetHeight - DETAIL_HEADER_H
   return {
     dx: (r.left - s.left) / k - STAGE_MARGIN_X,
@@ -840,7 +883,15 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[70]"
       role="dialog"
       aria-modal="true"
-      aria-label={detailTpl ? detailTpl.name : t({ en: 'Pick a template', uk: 'Вибрати шаблон' })}
+      /* The panel's 32px title is the surface's only heading now that the bar has
+         none, and it is also the string that is actually TRUE of the drawing on
+         the stage — `name` is verbatim placeholder copy that describes a different
+         site on 12 of the 19 rows (see data/templates.ts, note 1). */
+      aria-label={
+        detailTpl
+          ? TEMPLATE_DETAILS[detailTpl.id].title
+          : t({ en: 'Pick a template', uk: 'Вибрати шаблон' })
+      }
       /* Once the surface is only fading out it must stop taking clicks — the
          page underneath is already the live one. */
       style={dissolving ? { pointerEvents: 'none' } : undefined}
@@ -1120,13 +1171,6 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
                  surface boundary (TemplateFlight.tsx), so this view holds still
                  and only hides its stage until that clone lands. */
               external={detailOnly}
-              /* Two doors, two different final actions — and deliberately two
-                 different words (decisions.md, 26.08.2026). */
-              ctaLabel={
-                fromCard
-                  ? t({ en: 'Remix this template', uk: 'Реміксувати цей шаблон' })
-                  : t({ en: 'Choose a template', uk: 'Обрати шаблон' })
-              }
               onCta={fromCard ? onRemix : () => detail !== null && onChoose(detail)}
               onBack={
                 fromTile && detail !== null
@@ -1153,7 +1197,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
         <button
           onClick={dismiss}
           aria-label={t({ en: 'Close', uk: 'Закрити' })}
-          className="liquid-glass liquid-glass--dim glass-interactive absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-[12px] text-white"
+          className="liquid-glass liquid-glass--dim glass-interactive absolute right-2 top-1.5 z-10 grid h-10 w-10 place-items-center rounded-[12px] text-white"
         >
           <IconClose size={14} />
         </button>
@@ -1172,7 +1216,7 @@ function PickerOverlay({ onClose }: { onClose: () => void }) {
  * card's re-measured rect on exit, and restores thumbnail + focus when done.
  */
 function DetailView({
-  tpl, index, sheetRef, geom0, external = false, ctaLabel, onCta, onBack,
+  tpl, index, sheetRef, geom0, external = false, onCta, onBack,
 }: {
   /** The template on screen — passed in rather than looked up, because the three
    *  doors index two different lists (see the THREE DOORS note). */
@@ -1198,9 +1242,15 @@ function DetailView({
    * is no grid to unroll away from), no thumbnail to hide.
    */
   external?: boolean
-  /** `Choose a template` from the library, `Remix this template` from the dock —
-   *  the bar is one component, the final action is the door's. */
-  ctaLabel: string
+  /**
+   * The door's final action, now carried by the panel's `Use Template` rather
+   * than by a bar CTA: attach on the library and tile doors, build on the dock
+   * card's. ⚠️ The BOARD no longer varies the label per door — it draws one label
+   * set and no second variant anywhere in the file — where the shipped code
+   * deliberately said `Choose a template` and `Remix this template` because two
+   * different actions must not share a word (`decisions.md`, 26.08.2026). So the
+   * per-door WORDING is gone and the per-door BEHAVIOUR is kept. Ask.
+   */
   onCta: () => void
   /** ← : back to the grid on the library path, home into the tile or the dock
    *  card on the two external ones. */
@@ -1374,20 +1424,55 @@ function DetailView({
      cleanup above stops its animation before finishBack ever runs. */
   useEffect(() => () => { thumbEl()?.style.removeProperty('opacity') }, [])
 
-  const stageBox = 'absolute bottom-0 left-1 right-1 top-[64px]'
+  /*
+   * THE STAGE'S BOX — 1176 × 1112 at sheet (4, 52) at the drawn size, and the ONE
+   * string both the real stage and the flight clone are laid out with (the whole
+   * design depends on the two being pixel-identical at the `landed` swap). The
+   * `right-[444px]` is `PANEL_RESERVE`, written as a literal because Tailwind
+   * purges class names it cannot find verbatim; the two must be kept in step.
+   */
+  const stageBox = 'absolute bottom-0 left-1 right-[444px] top-[52px]'
   const site = (
-    /* The SAME drawing the card shows, at the card's drawn aspect — cq units
-       scale it proportionally, which is what makes the morph one object. At
-       stage width the box is taller than the stage at every viewport we ship
-       (h ≈ 0.934 × w), so the preview always crops at the bottom, as drawn,
-       and always has somewhere to scroll. */
+    /*
+     * The SAME drawing the card shows, at the card's drawn aspect — cq units
+     * scale it proportionally, which is what makes the morph ONE object rather
+     * than a swap, and what keeps the card→stage landing at 0.0000px.
+     *
+     * ⚠️ `min-h-full` IS THE ANSWER TO THE 01.09 STAGE, AND IT MATTERS.
+     * The stage was 1616 wide and this box was `0.934 × w` = 1510 tall in a 1100
+     * viewport, so the preview always cropped and always had somewhere to scroll.
+     * The panel took 440 of that width: at 1176 the aspect gives **1098.7 in a
+     * 1112 box**, i.e. the drawing now FITS — 13.3px short — so the stage would
+     * stop scrolling entirely and paint a 13px band of the sheet's #18181b under
+     * the site's own bottom edge, which on most of the 19 drawings is white.
+     * `min-height: 100%` closes exactly that gap and nothing else: it engages
+     * only when the aspect would leave the box shorter than the stage (tall
+     * windows), and at every window shorter than `84 + 0.934 × stageW` — a
+     * 1656 × 900 review window included — the aspect still wins and the preview
+     * crops and scrolls as before.
+     *
+     * The board itself lays its site PNG out at `1898/1918` (= 0.98957, which is
+     * the `233.333/235.79` already named in thumbs.tsx), giving 1186 in the 1110
+     * box and 76px of scroll. NOT followed, deliberately: that aspect is a
+     * property of the screenshot the designer pasted, and adopting it would lay
+     * the drawing out 7.5% taller than the card lays the SAME drawing out — the
+     * clone's first frame covers the card pixel-for-pixel today, and a 7.5%
+     * internal reflow at the moment of that swap is a visible pop on the one door
+     * where the seam is currently zero. `min-h-full` costs 1.2% instead, which is
+     * inside the 2.2% the dock card's door already lives with.
+     * ⚠️ The consequence to hand the designer: at his own 1196px window the stage
+     * no longer scrolls, so the 72.8% fold thumbs.tsx composes for is a 100% fold
+     * there, and the sections below it (AURA's closing band and the like) are now
+     * on screen. They are approved from the other side — the CARD shows all 218px
+     * — but the fold contract's numbers are stale and only he can rule on it.
+     */
     /* `select-none`: the stage is a PICTURE of a website, not copy anybody reads
        — same reasoning as the card's face (index.css, «a card is a picture, not a
        document»). Without it a drag across the preview selected the fake site's
        text (measured: `$1,799,980`), which is the designer's original complaint
        one screen later. Scrolling is untouched — the scroller takes the wheel,
        and there is no drag-to-scroll here. */
-    <div className="relative w-full select-none aspect-[233.333/218]">
+    <div className="relative min-h-full w-full select-none aspect-[233.333/218]">
       <Thumb id={tpl.id} className="absolute inset-0" />
     </div>
   )
@@ -1407,7 +1492,7 @@ function DetailView({
       <motion.div
         aria-hidden
         data-detail-plate
-        className="absolute right-3 top-3 h-10 w-10"
+        className="absolute right-2 top-1.5 h-10 w-10"
         style={{ scaleX: plateScaleX, scaleY: plateScaleY, transformOrigin: '100% 50%', willChange: 'transform' }}
       >
         <motion.div className="absolute inset-0 rounded-[12px] bg-[#09090b7a]" style={{ opacity: plateFill }} />
@@ -1418,7 +1503,7 @@ function DetailView({
           zone is 48 + 16 = 64 and the right zone 16 + 40 + 12 = 68 with our
           40px ✕ (the board's 36 made both 64 — see the group's max-width below).
           The 12 of that padding is also why the ✕ sits at top 12: PLATE_SIZE. */}
-      <div className="absolute inset-x-0 top-0 h-[64px]">
+      <div className="absolute inset-x-0 top-0 h-[52px]">
         <motion.button
           ref={backBtn}
           data-detail-back
@@ -1438,84 +1523,38 @@ function DetailView({
              composited layer so hovering no longer repaints the button's
              background; the press adds the positional bloom. The bloom clips to
              this button's own drawn radius 8, not the family's pill shape. */
-          className="glass-interactive absolute left-4 top-4 grid h-8 w-8 place-items-center rounded-[8px] text-white transition-colors duration-[var(--dur-fast)] ease-std"
+          className="glass-interactive absolute left-3 top-2.5 grid h-8 w-8 place-items-center rounded-[8px] text-white transition-colors duration-[var(--dur-fast)] ease-std"
         >
           <IconArrowLeft size={20} />
         </motion.button>
 
-        {/* Name + Choose, gap 32 (28640:43353) — centred on the sheet. The board's
-            own zones came out symmetric on 26.08.2026 (64 = 48 back + 16 gap on
-            the left, 64 = 16 gap + 36 ✕ + 12 pad on the right), fixing the 4px
-            drift of §12.6-Q1 — and our 40px ✕ (PLATE_SIZE) puts the right zone
-            back at 68. Neither number ever moved this group: it has always
-            shipped truly centred, which is where the fixed board now draws it.
-            What the zones DO decide is the clearance, so max-width follows the
-            wider one: 100% − 2 × 68 = 100% − 136. The title gives way first on a
-            narrow sheet: it truncates (the board draws its own text-overflow),
-            the pill never shrinks. */}
-        <div className="absolute left-1/2 top-3 flex h-10 max-w-[calc(100%-136px)] -translate-x-1/2 items-center gap-8">
-          <motion.h2
-            custom={1}
-            variants={headerBit}
-            initial="pre"
-            animate={isPresent ? 'in' : 'out'}
-            /* Gilroy Medium 16 (28640:43354) — was 18. Two independent reads
-               agree: the cap box went 13 → 11 (≈0.70 em both times) and the
-               same string's width 284 → 252, i.e. ×0.887 vs 16/18 = 0.889. */
-            className="tplpick-heading min-w-0 truncate font-display text-[16px] font-medium leading-none text-white"
-          >
-            {tpl.name}
-          </motion.h2>
-          <motion.button
-            data-detail-choose
-            custom={2}
-            variants={headerBit}
-            initial="pre"
-            animate={isPresent ? 'in' : 'out'}
-            onClick={onCta}
-            /* Filled, Icon=Right, **Color=Blue** (28641:43375 → component
-               70:464; it was Color=Dark / 70:448 before 26.08.2026): 40 tall,
-               radius 10, fill `Background/Blue/Default` — which resolves in the
-               DARK theme to #1587ff, i.e. EXACTLY the house action blue, so it is
-               `var(--action)` and not a one-off hex. (The reference code's
-               #0073ec is the light-theme trap; that value is our --action-pressed.)
-               Label PN Semibold 14 `Text/Default/White` #ffffff, + in a 24 box,
-               state-layer `pl 20 / pr 8 / gap 7` — the gap really is 7, not the
-               system's 8: get_design_context says 7 and the drawn box width
-               corroborates (177 = 20 + 118 + 7 + 24 + 8; it was 178 at gap 8).
-               Interaction: the board draws NO states (grepped the whole board —
-               no hover/pressed/focus layer anywhere), so this is the house
-               convention for a solid action button, the same one PublishPanel,
-               DomainModal and DomainsSurface use — wash to --action-hover, and
-               press to the already-defined --action-pressed.
-
-               `press-bloom`: the press ripple, by the designer's name, 26.08.2026
-               evening. This is the button that moved the canon — it used to say
-               here that the Liquid Glass hover and ripple belong to glass and a
-               filled blue button is not one; he asked for the click effect on
-               it, so the bloom left glass. Bloom only, no 8% wash: the two
-               colour steps above are already this button's hover and press. The
-               ink stays the family's 12% white, and that is measured rather than
-               assumed — over `--action-pressed`, the fill actually under the
-               finger, it is ΔE 12.42 in CIE-Lab against 13.13 for the same ink
-               on a glass control (index.css has the whole table). */
-            className="press-bloom flex h-10 flex-none items-center gap-[7px] rounded-[10px] bg-[var(--action)] pl-5 pr-2 text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
-          >
-            {/* The label is the DOOR's, not this bar's — see `ctaLabel`. The glyph
-                stays the drawn `+` in its 24 box in both cases: the board draws
-                one pill and the designer's answer changed the word, not the kit
-                variant. */}
-            {ctaLabel}
-            <span className="grid h-6 w-6 place-items-center"><IconPlus size={20} /></span>
-          </motion.button>
-        </div>
+        {/*
+          ⚠️ THE CENTRED TITLE AND THE BLUE CTA ARE GONE FROM THE BAR (01.09.2026).
+          They are not hidden — they are DELETED from the file: `28640:43353` (the
+          `Name + Choose` group), `28640:43354` (the title text) and `28641:43375`
+          (the `Choose a template` pill) return 0 hits in today's tree, while every
+          other bar node still returns 1. The name reappears in the information
+          panel at 32px and the CTA under it as `Use Template`, one for one — see
+          TemplateDetailPanel.tsx. So the bar now holds ONLY navigation: back, and
+          the ✕ that lives outside this view. Gone with them: the group's
+          `max-w-[calc(100%-136px)]` truncation, the `.tplpick-heading` cap-trim
+          rule in index.css, and `headerBit`'s custom 1 and 2 beats.
+        */}
       </div>
 
-      {/* THE STAGE (spec §12.2): 4px side margins, flush bottom, top corners 8,
-          1px Gray/750 rim, top edge at 64 (the new bar height). Unchanged from
-          the old board apart from those two: margins, radius, flush bottom and
-          the vestigial `Sections` blur/r16 (still not copied) all held.
-          Until the spring lands it is the flight clone —
+      {/* THE STAGE — `Conteiner` 28637:42911, **1176 × 1112 at (4, 52)** since
+          01.09.2026: it keeps its own 4px on the LEFT and gives up 444 on the
+          right to the information panel, and its top edge follows the bar down
+          64 → 52. Radius 8 on the top corners, flush with the sheet's bottom.
+          ⚠️ Its 1px rim is `Gray/800` **#27272a** again — the `Gray/750` #33333a
+          of 26.08.2026 is gone from the file. Proven by subtraction rather than
+          read directly: `get_variable_defs` on this node returns `Gray/800` and
+          on its only visible child does not, so the token is bound to this
+          frame's own paint, and metadata's 1px inset (`List` at (1,1) inside
+          1176 × 1112) says that paint is the stroke. Which makes an invariant
+          worth keeping: **the stage's rim is exactly the panel's fill.** Whether
+          the revert was intentional is a question for the designer.
+          Until the spring lands this box holds the flight clone —
           overflow visible inside, the outer clip does all the cropping; after,
           the real scroller, pixel-identical, swapped in one commit. */}
       {landed ? (
@@ -1530,7 +1569,7 @@ function DetailView({
           <ScrollArea axis="y" thumb="auto" className="h-full">
             {site}
           </ScrollArea>
-          <div aria-hidden data-detail-rim className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]" />
+          <div aria-hidden data-detail-rim className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-800)]" />
         </div>
       ) : (
         <motion.div
@@ -1539,17 +1578,70 @@ function DetailView({
           style={{ x, y, scaleX, scaleY, borderRadius: radius, transformOrigin: '0 0', willChange: 'transform' }}
         >
           {/* the counter-scale: origin top-left — card and stage both show the
-              site's TOP, so the top edge is the fixed edge of the morph */}
-          <motion.div className="w-full" style={{ scaleY: counterY, transformOrigin: '0 0', willChange: 'transform' }}>
+              site's TOP, so the top edge is the fixed edge of the morph.
+              ⚠️ `h-full`: the site box's `min-h-full` is a PERCENTAGE, and a
+              percentage min-height against an `auto`-height parent resolves to
+              nothing — so without this the clone would lay the drawing out 13px
+              shorter than the stage it lands on, and the swap would not be
+              pixel-identical. In the real stage the same percentage resolves
+              against ScrollArea's `h-full` scroller. */}
+          <motion.div className="h-full w-full" style={{ scaleY: counterY, transformOrigin: '0 0', willChange: 'transform' }}>
             {site}
           </motion.div>
           <motion.div
             aria-hidden
-            data-detail-rim className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-750)]"
+            data-detail-rim className="pointer-events-none absolute inset-0 rounded-t-[8px] border border-[var(--gray-800)]"
             style={{ opacity: rimO }}
           />
         </motion.div>
       )}
+
+      {/*
+        THE INFORMATION PANEL — `Right` 29179:45884. It is a SIBLING of the stage
+        and absolutely positioned, so the two share no layout at all: a panel that
+        could move the stage's rect between the flight's layout-effect measurement
+        and its landing would break the tile and dock doors silently. It also lives
+        INSIDE this layer, which is what makes the reduced-motion path (a plain
+        cross-fade of `layerO`) carry it for free.
+      */}
+      <TemplateDetailPanel
+        id={tpl.id}
+        barH={DETAIL_HEADER_H}
+        present={isPresent}
+        /* The door's final action, inherited unchanged from the CTA the designer
+           deleted from the bar: `Choose a template`'s attach on the library and
+           tile doors, `Remix this template`'s build on the dock card's. */
+        onUse={onCta}
+        /*
+         * ⚠️ `Add Prompt` RUNS THE SAME ACT, and that is a question for the
+         * designer rather than a shortcut. On the two doors whose CTA attaches,
+         * "add a prompt" is already what attaching does — HomePage focuses the
+         * composer's field the moment a template lands in it (`attachedIndex`
+         * effect) — and on the dock door, where the CTA starts a build, the
+         * product's own intake step asks for the prompt. So the board draws a
+         * PAIR where today there is one act plus one unnamed second act, and the
+         * two candidate splits (commit now vs attach-and-type) are the highest
+         * value thing to confirm: if `Use Template` is meant to build from inside
+         * the picker, then the composer hand-off — TemplateFlight, ONE SLOT, the
+         * snap-once field growth, the whole week of approved choreography —
+         * becomes the quiet option reached only through this button.
+         */
+        onAddPrompt={onCta}
+        /*
+         * ⚠️ `Preview` HAS NOTHING TO OPEN, and is deliberately inert until the
+         * designer says what it is. We are already inside the full-screen preview
+         * — the stage is 1176 × 1112 of rendered template — so it cannot mean
+         * "open this preview", and the word is already spoken for: the dock
+         * card's hover pill reads `Preview` and lands you on THIS screen, against
+         * this file's own rule that two different actions must not share a word.
+         * The category's usual meaning ("view the live demo") has no artefact in
+         * this prototype: the drawing IS the only rendering that exists. The one
+         * buildable reading left is chrome-off — hide this panel and let the site
+         * fill the sheet — and that would move the stage's box, i.e. add motion no
+         * board draws to the one element the flight measures. Not invented here.
+         */
+        onPreview={() => {}}
+      />
     </motion.div>
   )
 }
