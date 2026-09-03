@@ -139,6 +139,47 @@ export type ThumbId =
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ')
 
+/**
+ * The drawing's own units, as two functions instead of a thousand copies of the
+ * same `calc()` string. Purely mechanical: `cw(4)` emits exactly the text
+ * `calc(4 * var(--cw))` that used to be written out at each of the 1,003 call
+ * sites — same string, byte for byte, so the CSS the browser sees is unchanged
+ * (proved literal by literal, not assumed: all 978 enclosing strings were
+ * re-evaluated against their originals, 0 mismatches).
+ * It exists because those literals are the one thing a minifier cannot touch,
+ * and the single-file artifact has a hard publish ceiling: writing the pattern
+ * once took **15,758 bytes** out of the built artifact. Keep them trivial
+ * concatenation — they render up to 36 drawings at once.
+ */
+const cw = (n: number) => `calc(${n} * var(--cw))`
+const ch = (n: number) => `calc(${n} * var(--ch))`
+
+/**
+ * The structural idioms these drawings repeat, named once.
+ *
+ * Same reason as `cw`/`ch` above — a class string is a literal no minifier can
+ * fold, and these seven were being written out 124 times between them, **3,755
+ * bytes** of the published artifact. Naming them is the cheaper half of the win: `PAGE`
+ * says «this is a drawing's root» far better than its sixteenth copy does.
+ * Full literals on purpose — Tailwind purges anything assembled at runtime, and
+ * it finds these here.
+ */
+/** A drawing's root: the whole card, a column, nothing escaping it. */
+const PAGE = 'relative flex h-full w-full flex-col overflow-hidden font-sans'
+/** A nav/topbar row — fixed height, pushed apart, never squeezed. */
+const BAR = 'flex shrink-0 items-center justify-between'
+/** The default inline run: things sitting on one baseline. */
+const ROW = 'flex items-center'
+/** A headline in the display face. Always nowrap — see the header on why. */
+const DISPLAY = 'whitespace-nowrap font-display font-semibold'
+/** The same, for figures that must not jitter between widths. */
+const DISPLAY_NUM = 'whitespace-nowrap font-display font-semibold tabular-nums'
+/** A free-floating disc: an avatar, a bullet, a status dot. */
+const DOT = 'absolute rounded-full'
+/** A band that hosts absolutely-positioned children, so it must not shrink and
+ *  must stay `relative` — a flow child would print under the block above it. */
+const BAND = 'relative shrink-0'
+
 /* ────────────────────────────── shared primitives ─────────────────────────────
    Every one of these sites is built from the same handful of parts: a nav row, a
    headline, paragraph bars, a pill button, an image block. Drawing them once keeps
@@ -151,7 +192,7 @@ function Bar({ w, h, color, radius = '99em' }: { w: string; h: string; color: st
 
 /** A stack of copy bars. The last one is short, the way a last line of text is. */
 function Copy({
-  rows, color, w, h = 'calc(1.4 * var(--ch))', gap = 'calc(1.5 * var(--ch))', center,
+  rows, color, w, h = ch(1.4), gap = ch(1.5), center,
 }: { rows: number; color: string; w: string; h?: string; gap?: string; center?: boolean }) {
   return (
     <div className={cx('flex flex-col', center && 'items-center')} style={{ gap, width: w }}>
@@ -163,24 +204,24 @@ function Copy({
 }
 
 /** The nav-link cluster. Individual links are illegible at this scale — bars it is. */
-function NavLinks({ n, color, w = 'calc(4.4 * var(--cw))', gap = 'calc(2.6 * var(--cw))' }: { n: number; color: string; w?: string; gap?: string }) {
+function NavLinks({ n, color, w = cw(4.4), gap = cw(2.6) }: { n: number; color: string; w?: string; gap?: string }) {
   return (
-    <div className="flex items-center" style={{ gap }}>
-      {Array.from({ length: n }, (_, i) => <Bar key={i} w={w} h="calc(1.1 * var(--ch))" color={color} />)}
+    <div className={ROW} style={{ gap }}>
+      {Array.from({ length: n }, (_, i) => <Bar key={i} w={w} h={ch(1.1)} color={color} />)}
     </div>
   )
 }
 
 /** A button. Label text under ~6px is noise, so buttons carry a bar instead of a word. */
 function Pill({
-  w, bg, border, label, h = 'calc(5 * var(--ch))',
+  w, bg, border, label, h = ch(5),
 }: { w: string; bg?: string; border?: string; label?: string; h?: string }) {
   return (
     <span
       className="flex shrink-0 items-center justify-center rounded-full"
-      style={{ width: w, height: h, background: bg, boxShadow: border ? `inset 0 0 0 calc(0.4 * var(--cw)) ${border}` : undefined }}
+      style={{ width: w, height: h, background: bg, boxShadow: border ? `inset 0 0 0 ${cw(0.4)} ${border}` : undefined }}
     >
-      <Bar w="52%" h="calc(1.1 * var(--ch))" color={label ?? '#00000000'} />
+      <Bar w="52%" h={ch(1.1)} color={label ?? '#00000000'} />
     </span>
   )
 }
@@ -193,7 +234,7 @@ function Avatars({ size, ring, tones }: { size: string; ring: string; tones?: st
         <span
           key={c}
           className="block rounded-full"
-          style={{ width: size, height: size, background: c, marginLeft: i ? 'calc(-1.1 * var(--cw))' : 0, boxShadow: `0 0 0 calc(0.4 * var(--cw)) ${ring}` }}
+          style={{ width: size, height: size, background: c, marginLeft: i ? cw(-1.1) : 0, boxShadow: `0 0 0 ${cw(0.4)} ${ring}` }}
         />
       ))}
     </div>
@@ -201,10 +242,10 @@ function Avatars({ size, ring, tones }: { size: string; ring: string; tones?: st
 }
 
 /** The brand wordmark — the one piece of small type that must stay real text. */
-function Wordmark({ children, color, size = 'calc(3.8 * var(--cw))' }: { children: ReactNode; color: string; size?: string }) {
+function Wordmark({ children, color, size = cw(3.8) }: { children: ReactNode; color: string; size?: string }) {
   return (
     <span
-      className="whitespace-nowrap font-display font-semibold"
+      className={DISPLAY}
       style={{ color, fontSize: size, letterSpacing: '-0.01em' }}
     >
       {children}
@@ -234,12 +275,12 @@ function Photo({
 function Payments() {
   return (
     <div className="relative flex h-full w-full flex-col font-sans" style={{ background: '#1d2a19' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: 'calc(10 * var(--ch))', paddingInline: 'calc(4 * var(--cw))' }}>
+      <div className={BAR} style={{ height: ch(10), paddingInline: cw(4) }}>
         <Wordmark color="#ffffff">PayNexus</Wordmark>
         <NavLinks n={4} color="#ffffff66" />
-        <div className="flex items-center" style={{ gap: 'calc(2.2 * var(--cw))' }}>
-          <Bar w="calc(3.4 * var(--cw))" h="calc(1.1 * var(--ch))" color="#ffffff8c" />
-          <Pill w="calc(9 * var(--cw))" h="calc(4.6 * var(--ch))" bg="#b4ef4d" label="#1d2a1966" />
+        <div className={ROW} style={{ gap: cw(2.2) }}>
+          <Bar w={cw(3.4)} h={ch(1.1)} color="#ffffff8c" />
+          <Pill w={cw(9)} h={ch(4.6)} bg="#b4ef4d" label="#1d2a1966" />
         </div>
       </div>
 
@@ -254,7 +295,7 @@ function Payments() {
         <Photo
           className="absolute"
           style={{
-            right: 'calc(3.5 * var(--cw))', top: 'calc(3 * var(--ch))', width: 'calc(38 * var(--cw))', height: '78.95%', borderRadius: 'calc(2 * var(--cw))',
+            right: cw(3.5), top: ch(3), width: cw(38), height: '78.95%', borderRadius: cw(2),
             background:
               'radial-gradient(38% 26% at 72% 22%,#f6d7ae 0%,#f6d7ae00 66%),' +
               'linear-gradient(212deg,#d7ddcb 0%,#a7b195 28%,#74805e 60%,#3f4a2b 100%)',
@@ -263,57 +304,57 @@ function Payments() {
           {/* The phone in his hand, hinted rather than drawn. Its own SHAPE is held by
               `aspect-ratio` — as 23% × 46% of a panel that turns landscape at the wide end
               it came out a fat slab, and a slab does not read as a phone. */}
-          <span className="absolute" style={{ right: '15%', top: '30%', height: '46%', aspectRatio: '0.33842', background: '#12180db3', borderRadius: 'calc(1.2 * var(--cw))' }} />
+          <span className="absolute" style={{ right: '15%', top: '30%', height: '46%', aspectRatio: '0.33842', background: '#12180db3', borderRadius: cw(1.2) }} />
         </Photo>
 
         {/* the payment card, overlapping the photo's left edge */}
         <div
           className="absolute flex flex-col bg-white"
-          style={{ left: 'calc(45 * var(--cw))', top: 'calc(15.0072 * var(--ch))', width: 'calc(25 * var(--cw))', padding: 'calc(2.2 * var(--cw))', gap: 'calc(1.5 * var(--ch))', borderRadius: 'calc(1.6 * var(--cw))' }}
+          style={{ left: cw(45), top: ch(15.0072), width: cw(25), padding: cw(2.2), gap: ch(1.5), borderRadius: cw(1.6) }}
         >
-          <div className="flex items-center" style={{ gap: 'calc(1.4 * var(--cw))' }}>
-            <span className="block shrink-0" style={{ width: 'calc(3.2 * var(--cw))', height: 'calc(3.2 * var(--cw))', background: '#1d2a19', borderRadius: 'calc(0.7 * var(--cw))' }} />
-            <Copy rows={2} color="#1d2a1926" w="100%" h="calc(0.85 * var(--ch))" gap="calc(0.8 * var(--ch))" />
+          <div className={ROW} style={{ gap: cw(1.4) }}>
+            <span className="block shrink-0" style={{ width: cw(3.2), height: cw(3.2), background: '#1d2a19', borderRadius: cw(0.7) }} />
+            <Copy rows={2} color="#1d2a1926" w="100%" h={ch(0.85)} gap={ch(0.8)} />
           </div>
-          <p className="font-display font-semibold tabular-nums" style={{ color: '#1d2a19', fontSize: 'calc(4.2 * var(--cw))', letterSpacing: '-0.02em' }}>
+          <p className="font-display font-semibold tabular-nums" style={{ color: '#1d2a19', fontSize: cw(4.2), letterSpacing: '-0.02em' }}>
             $1,799,980
           </p>
-          <Bar w="46%" h="calc(0.95 * var(--ch))" color="#1d2a1926" />
-          <span className="block" style={{ height: 'calc(4 * var(--ch))', background: '#1d2a190f', borderRadius: 'calc(0.7 * var(--cw))' }} />
-          <span className="block" style={{ height: 'calc(4 * var(--ch))', background: '#1d2a190f', borderRadius: 'calc(0.7 * var(--cw))' }} />
-          <Pill w="100%" h="calc(5 * var(--ch))" bg="#1d2a19" label="#ffffff59" />
+          <Bar w="46%" h={ch(0.95)} color="#1d2a1926" />
+          <span className="block" style={{ height: ch(4), background: '#1d2a190f', borderRadius: cw(0.7) }} />
+          <span className="block" style={{ height: ch(4), background: '#1d2a190f', borderRadius: cw(0.7) }} />
+          <Pill w="100%" h={ch(5)} bg="#1d2a19" label="#ffffff59" />
         </div>
 
         {/* the reassurance line the mockup sets over the bottom-right of the photo */}
-        <div className="absolute" style={{ right: 'calc(5 * var(--cw))', bottom: 'calc(8 * var(--ch))', width: 'calc(19 * var(--cw))' }}>
-          <Copy rows={3} color="#ffffff80" w="100%" h="calc(1.1 * var(--ch))" gap="calc(1 * var(--ch))" />
+        <div className="absolute" style={{ right: cw(5), bottom: ch(8), width: cw(19) }}>
+          <Copy rows={3} color="#ffffff80" w="100%" h={ch(1.1)} gap={ch(1)} />
         </div>
 
         {/* hero copy */}
-        <div className="relative" style={{ paddingLeft: 'calc(4.5 * var(--cw))', paddingTop: 'calc(4 * var(--ch))', width: 'calc(45 * var(--cw))' }}>
+        <div className="relative" style={{ paddingLeft: cw(4.5), paddingTop: ch(4), width: cw(45) }}>
           <p
             className="whitespace-nowrap font-display font-semibold text-white"
-            style={{ fontSize: 'calc(5 * var(--cw))', lineHeight: 1.16, letterSpacing: '-0.03em' }}
+            style={{ fontSize: cw(5), lineHeight: 1.16, letterSpacing: '-0.03em' }}
           >
             Fast, Smart &amp;<br />Secure Digital<br />Payment{' '}
-            <span style={{ color: '#b4ef4d', borderBottom: 'calc(0.45 * var(--cw)) solid #b4ef4d', paddingBottom: 'calc(0.3 * var(--ch))' }}>
+            <span style={{ color: '#b4ef4d', borderBottom: `${cw(0.45)} solid #b4ef4d`, paddingBottom: ch(0.3) }}>
               Solutions
             </span>
           </p>
-          <div style={{ marginTop: 'calc(5 * var(--ch))' }}><Copy rows={2} color="#ffffff40" w="calc(30 * var(--cw))" h="calc(1.2 * var(--ch))" gap="calc(1.3 * var(--ch))" /></div>
-          <div style={{ marginTop: 'calc(4.5 * var(--ch))' }}><Pill w="calc(20 * var(--cw))" h="calc(5.6 * var(--ch))" bg="#b4ef4d" label="#1d2a1966" /></div>
-          <div className="flex items-center" style={{ marginTop: 'calc(6 * var(--ch))', gap: 'calc(2.2 * var(--cw))' }}>
-            <Avatars size="calc(4.2 * var(--cw))" ring="#1d2a19" tones={['#e8c9a8', '#b4ef4d', '#8fa8c4', '#d9a89a']} />
-            <Copy rows={2} color="#ffffff4d" w="calc(15 * var(--cw))" h="calc(1 * var(--ch))" gap="calc(1 * var(--ch))" />
+          <div style={{ marginTop: ch(5) }}><Copy rows={2} color="#ffffff40" w={cw(30)} h={ch(1.2)} gap={ch(1.3)} /></div>
+          <div style={{ marginTop: ch(4.5) }}><Pill w={cw(20)} h={ch(5.6)} bg="#b4ef4d" label="#1d2a1966" /></div>
+          <div className={ROW} style={{ marginTop: ch(6), gap: cw(2.2) }}>
+            <Avatars size={cw(4.2)} ring="#1d2a19" tones={['#e8c9a8', '#b4ef4d', '#8fa8c4', '#d9a89a']} />
+            <Copy rows={2} color="#ffffff4d" w={cw(15)} h={ch(1)} gap={ch(1)} />
           </div>
         </div>
       </div>
 
       {/* the next section, cut off by the card's bottom edge */}
-      <div className="relative shrink-0" style={{ height: 'calc(14 * var(--ch))', background: '#f4f4ef' }}>
+      <div className={BAND} style={{ height: ch(14), background: '#f4f4ef' }}>
         <span
           className="absolute"
-          style={{ left: 'calc(4 * var(--cw))', top: '40%', width: 'calc(19 * var(--cw))', height: '100%', background: 'linear-gradient(160deg,#c9a184,#6d5240)', borderRadius: 'calc(1.6 * var(--cw))' }}
+          style={{ left: cw(4), top: '40%', width: cw(19), height: '100%', background: 'linear-gradient(160deg,#c9a184,#6d5240)', borderRadius: cw(1.6) }}
         />
       </div>
     </div>
@@ -329,22 +370,22 @@ function Payments() {
  */
 function Homeware() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#f0ebdf' }}>
-      <div className="relative flex shrink-0 items-center justify-between" style={{ height: 'calc(9 * var(--ch))', paddingInline: 'calc(4.5 * var(--cw))' }}>
-        <Wordmark color="#22331f" size="calc(4.2 * var(--cw))">AURA</Wordmark>
+    <div className={PAGE} style={{ background: '#f0ebdf' }}>
+      <div className="relative flex shrink-0 items-center justify-between" style={{ height: ch(9), paddingInline: cw(4.5) }}>
+        <Wordmark color="#22331f" size={cw(4.2)}>AURA</Wordmark>
         {/* Home · Shop · Products · Benefits · Ingredients · Packages. Centred on the PAGE,
             not between the wordmark and the pill: `justify-between` would push the cluster
             38px right of centre because the pill is wider than the wordmark. 6×4 + 5×2.4 =
             36cqw wide, so (100 − 36) / 2 = 32cqw centres it exactly, with no transform. */}
-        <div className="absolute inset-y-0 flex items-center" style={{ left: 'calc(32 * var(--cw))' }}>
-          <NavLinks n={6} color="#22331f59" w="calc(4 * var(--cw))" gap="calc(2.4 * var(--cw))" />
+        <div className="absolute inset-y-0 flex items-center" style={{ left: cw(32) }}>
+          <NavLinks n={6} color="#22331f59" w={cw(4)} gap={cw(2.4)} />
         </div>
-        <Pill w="calc(12 * var(--cw))" h="calc(4.2 * var(--ch))" bg="#3f6b3a" label="#ffffff8c" />
+        <Pill w={cw(12)} h={ch(4.2)} bg="#3f6b3a" label="#ffffff8c" />
       </div>
 
       <p
         className="shrink-0 whitespace-nowrap text-center font-display font-semibold"
-        style={{ marginTop: 'calc(3.0046 * var(--ch))', color: '#22331f', fontSize: 'calc(5 * var(--cw))', lineHeight: 1.2, letterSpacing: '-0.02em' }}
+        style={{ marginTop: ch(3.0046), color: '#22331f', fontSize: cw(5), lineHeight: 1.2, letterSpacing: '-0.02em' }}
       >
         Fuel Sustainable Growth. Power<br />Exceptional Performance.
       </p>
@@ -362,16 +403,16 @@ function Homeware() {
           35.2cqh the green band lands at 60% and the crop ends on its logos, as drawn.
           The four blocks stay absolute INSIDE the band: the avatars hang off the headline's
           baseline and the jar is centred on the page, not on a flex position. */}
-      <div className="relative shrink-0" style={{ height: 'calc(35.2 * var(--ch))' }}>
+      <div className={BAND} style={{ height: ch(35.2) }}>
         {/* left column: "VITAMINS" + copy + CTA */}
-        <div className="absolute" style={{ left: 'calc(4.5 * var(--cw))', top: 'calc(7.1723 * var(--ch))', width: 'calc(23 * var(--cw))' }}>
+        <div className="absolute" style={{ left: cw(4.5), top: ch(7.1723), width: cw(23) }}>
           {/* line-height explicit: left at `normal` the display face resolves near 1.5,
               which put 26px of air under this word at the size the app renders */}
-          <p className="font-display font-semibold" style={{ color: '#22331f', fontSize: 'calc(4 * var(--cw))', lineHeight: 1.1, letterSpacing: '0.02em' }}>
+          <p className="font-display font-semibold" style={{ color: '#22331f', fontSize: cw(4), lineHeight: 1.1, letterSpacing: '0.02em' }}>
             VITAMINS
           </p>
-          <div style={{ marginTop: 'calc(2.4 * var(--ch))' }}><Copy rows={3} color="#22331f33" w="100%" h="calc(1.1 * var(--ch))" gap="calc(1.3 * var(--ch))" /></div>
-          <div style={{ marginTop: 'calc(3 * var(--ch))' }}><Pill w="calc(14 * var(--cw))" h="calc(4.4 * var(--ch))" bg="#3f6b3a" label="#ffffff8c" /></div>
+          <div style={{ marginTop: ch(2.4) }}><Copy rows={3} color="#22331f33" w="100%" h={ch(1.1)} gap={ch(1.3)} /></div>
+          <div style={{ marginTop: ch(3) }}><Pill w={cw(14)} h={ch(4.4)} bg="#3f6b3a" label="#ffffff8c" /></div>
         </div>
 
         {/* The hero jar — a product, so it can be drawn: lid, body, label. Sized off the
@@ -383,16 +424,16 @@ function Homeware() {
             band before: 41% of the page, half the stage, and everything else pushed out.
             The wrapper exists only to centre it: `translateX(-50%)` on a box holding a
             gradient re-rasterises that gradient on a half-pixel grid (see the header). */}
-        <div className="absolute inset-x-0 flex justify-center" style={{ top: 'calc(3.1723 * var(--ch))', height: '88.5%' }}>
+        <div className="absolute inset-x-0 flex justify-center" style={{ top: ch(3.1723), height: '88.5%' }}>
         <div className="relative h-full" style={{ aspectRatio: '0.7481' }}>
           {/* lid — 78% of the jar's width, as on the board: at 46% the jar read as a
               bottle neck, and a supplement jar is wide-mouthed */}
-          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: 0, width: '78%', height: '9%', background: '#b9cbab', borderRadius: 'calc(0.6 * var(--cw)) calc(0.6 * var(--cw)) calc(0.2 * var(--cw)) calc(0.2 * var(--cw))' }} />
+          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: 0, width: '78%', height: '9%', background: '#b9cbab', borderRadius: `${cw(0.6)} ${cw(0.6)} ${cw(0.2)} ${cw(0.2)}` }} />
           {/* glass body — the sheen lives in the gradient so the silhouette stays clean */}
           <span
             className="absolute inset-x-0"
             style={{
-              top: '7%', bottom: 0, borderRadius: 'calc(3.6 * var(--cw)) calc(3.6 * var(--cw)) calc(2.6 * var(--cw)) calc(2.6 * var(--cw))',
+              top: '7%', bottom: 0, borderRadius: `${cw(3.6)} ${cw(3.6)} ${cw(2.6)} ${cw(2.6)}`,
               background:
                 'linear-gradient(96deg,#ffffff59 0%,#ffffff00 22%),' +
                 'linear-gradient(168deg,#e6eee0 0%,#c2d6b4 34%,#9cbb89 74%,#7b9d6b 100%)',
@@ -400,16 +441,16 @@ function Homeware() {
           />
           {/* label — the board sets the wordmark across the jar's lower half (56–77% of
               its height), not across its middle */}
-          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '52%', width: '64%', height: '22%', background: '#ffffff66', borderRadius: 'calc(0.7 * var(--cw))' }} />
+          <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '52%', width: '64%', height: '22%', background: '#ffffff66', borderRadius: cw(0.7) }} />
         </div>
         </div>
 
         {/* The small product card the mockup pins near the right edge. Top is the board's
             own 34.0% of the page (10.6cqh into a band that starts at 24.8%) — at 8.18cqh
             it sat under the review line above it and the two collided at every size. */}
-        <div className="absolute bg-white" style={{ right: 'calc(7 * var(--cw))', top: 'calc(10.6 * var(--ch))', width: 'calc(13 * var(--cw))', padding: 'calc(1.3 * var(--cw))', borderRadius: 'calc(1.2 * var(--cw))' }}>
-          <span className="block" style={{ height: 'calc(8 * var(--ch))', background: 'linear-gradient(150deg,#dfe8d6,#9fbc8e)', borderRadius: 'calc(0.8 * var(--cw))' }} />
-          <div style={{ marginTop: 'calc(1.3 * var(--ch))' }}><Copy rows={2} color="#22331f26" w="100%" h="calc(0.85 * var(--ch))" gap="calc(0.8 * var(--ch))" /></div>
+        <div className="absolute bg-white" style={{ right: cw(7), top: ch(10.6), width: cw(13), padding: cw(1.3), borderRadius: cw(1.2) }}>
+          <span className="block" style={{ height: ch(8), background: 'linear-gradient(150deg,#dfe8d6,#9fbc8e)', borderRadius: cw(0.8) }} />
+          <div style={{ marginTop: ch(1.3) }}><Copy rows={2} color="#22331f26" w="100%" h={ch(0.85)} gap={ch(0.8)} /></div>
         </div>
         {/* Social proof, where the board puts it: four faces in a ROW at the hero's
             top-right with the review count under them. On the board the row spans
@@ -418,23 +459,23 @@ function Homeware() {
             too, at 2.8cqh into the band. What stood here was the same four circles in a
             COLUMN: 5px of noise on the card, and at the size the app renders, four stray
             black discs against the right edge at mid-height, reading as an artefact. */}
-        <div className="absolute flex flex-col items-end" style={{ right: 'calc(5 * var(--cw))', top: 'calc(2.8 * var(--ch))', gap: 'calc(1.2 * var(--ch))' }}>
-          <Avatars size="calc(2.8 * var(--cw))" ring="#f0ebdf" tones={['#5c7350', '#22331f', '#7d8f6e', '#3f6b3a']} />
+        <div className="absolute flex flex-col items-end" style={{ right: cw(5), top: ch(2.8), gap: ch(1.2) }}>
+          <Avatars size={cw(2.8)} ring="#f0ebdf" tones={['#5c7350', '#22331f', '#7d8f6e', '#3f6b3a']} />
           {/* "24.5k+  Reviews" — two words, so two bars, and the second is the link */}
-          <div className="flex items-end" style={{ gap: 'calc(1.2 * var(--cw))' }}>
-            <Bar w="calc(3.6 * var(--cw))" h="calc(1.1 * var(--ch))" color="#22331f59" />
-            <div className="flex" style={{ borderBottom: 'calc(0.2 * var(--cw)) solid #22331f59', paddingBottom: 'calc(0.4 * var(--ch))' }}>
-              <Bar w="calc(4.2 * var(--cw))" h="calc(1.1 * var(--ch))" color="#22331f99" />
+          <div className="flex items-end" style={{ gap: cw(1.2) }}>
+            <Bar w={cw(3.6)} h={ch(1.1)} color="#22331f59" />
+            <div className="flex" style={{ borderBottom: `${cw(0.2)} solid #22331f59`, paddingBottom: ch(0.4) }}>
+              <Bar w={cw(4.2)} h={ch(1.1)} color="#22331f99" />
             </div>
           </div>
         </div>
       </div>
 
       {/* "Protected and Featured On" — the dark-green band of partner logos */}
-      <div className="relative flex shrink-0 flex-col items-center justify-center" style={{ height: 'calc(16 * var(--ch))', background: '#2f5233', gap: 'calc(2 * var(--ch))' }}>
-        <Bar w="calc(19 * var(--cw))" h="calc(1.1 * var(--ch))" color="#ffffff59" />
-        <div className="flex items-center" style={{ gap: 'calc(3.6 * var(--cw))' }}>
-          {['calc(12 * var(--cw))', 'calc(8 * var(--cw))', 'calc(11 * var(--cw))', 'calc(8 * var(--cw))', 'calc(13 * var(--cw))'].map((w, i) => <Bar key={i} w={w} h="calc(1.7 * var(--ch))" color="#ffffffa6" />)}
+      <div className="relative flex shrink-0 flex-col items-center justify-center" style={{ height: ch(16), background: '#2f5233', gap: ch(2) }}>
+        <Bar w={cw(19)} h={ch(1.1)} color="#ffffff59" />
+        <div className={ROW} style={{ gap: cw(3.6) }}>
+          {[cw(12), cw(8), cw(11), cw(8), cw(13)].map((w, i) => <Bar key={i} w={w} h={ch(1.7)} color="#ffffffa6" />)}
         </div>
       </div>
 
@@ -442,9 +483,9 @@ function Homeware() {
           for the page's slack: `flex-1`, so shortening the product band lands its 10cqh
           here instead of leaving a cream strip along the card's bottom edge. The padding
           stays as a floor for the day the slack collapses. */}
-      <div className="relative flex flex-1 items-center bg-white" style={{ paddingBlock: 'calc(1.3991 * var(--ch))', paddingInline: 'calc(4.5 * var(--cw))', gap: 'calc(4 * var(--cw))' }}>
-        <Photo style={{ width: 'calc(24 * var(--cw))', aspectRatio: '2.40943', borderRadius: 'calc(1.2 * var(--cw))', background: 'linear-gradient(150deg,#d9e2ea,#8f9aa4)' }} />
-        <p className="whitespace-nowrap font-display font-semibold" style={{ color: '#22331f', fontSize: 'calc(4.6 * var(--cw))', lineHeight: 1.14, letterSpacing: '-0.02em' }}>
+      <div className="relative flex flex-1 items-center bg-white" style={{ paddingBlock: ch(1.3991), paddingInline: cw(4.5), gap: cw(4) }}>
+        <Photo style={{ width: cw(24), aspectRatio: '2.40943', borderRadius: cw(1.2), background: 'linear-gradient(150deg,#d9e2ea,#8f9aa4)' }} />
+        <p className={DISPLAY} style={{ color: '#22331f', fontSize: cw(4.6), lineHeight: 1.14, letterSpacing: '-0.02em' }}>
           Pure Power. Zero<br />Compromise.
         </p>
       </div>
@@ -461,16 +502,16 @@ function SyncoHero({
   children, below = 37.2,
 }: { children?: ReactNode; /** air under the wordmark, in cqh — see the hero comment */ below?: number }) {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#050505' }}>
-      <div className="relative z-10 flex shrink-0 items-center justify-between" style={{ height: 'calc(13 * var(--ch))', paddingInline: 'calc(5 * var(--cw))' }}>
-        <Wordmark color="#ffffff" size="calc(4.8 * var(--cw))">Synco</Wordmark>
-        <div className="flex items-center" style={{ gap: 'calc(4 * var(--cw))' }}>
+    <div className={PAGE} style={{ background: '#050505' }}>
+      <div className="relative z-10 flex shrink-0 items-center justify-between" style={{ height: ch(13), paddingInline: cw(5) }}>
+        <Wordmark color="#ffffff" size={cw(4.8)}>Synco</Wordmark>
+        <div className={ROW} style={{ gap: cw(4) }}>
           <span className="relative">
-            <span style={{ color: '#ffffff', fontSize: 'calc(3.2 * var(--cw))' }}>Home</span>
-            <span className="absolute inset-x-0" style={{ bottom: 'calc(-0.9 * var(--ch))', height: 'calc(0.45 * var(--ch))', background: '#ffffff' }} />
+            <span style={{ color: '#ffffff', fontSize: cw(3.2) }}>Home</span>
+            <span className="absolute inset-x-0" style={{ bottom: ch(-0.9), height: ch(0.45), background: '#ffffff' }} />
           </span>
-          <Bar w="calc(5.4 * var(--cw))" h="calc(1.2 * var(--ch))" color="#ffffff8c" />
-          <Bar w="calc(4.2 * var(--cw))" h="calc(1.2 * var(--ch))" color="#ffffff8c" />
+          <Bar w={cw(5.4)} h={ch(1.2)} color="#ffffff8c" />
+          <Bar w={cw(4.2)} h={ch(1.2)} color="#ffffff8c" />
         </div>
       </div>
 
@@ -485,11 +526,11 @@ function SyncoHero({
       <div className="relative flex flex-1 flex-col">
         {/* the faint column rules the mockup shows under the nav */}
         {['16%', '48%', '80%'].map((left) => (
-          <span key={left} className="absolute inset-y-0" style={{ left, width: 'calc(0.25 * var(--cw))', background: '#ffffff14' }} />
+          <span key={left} className="absolute inset-y-0" style={{ left, width: cw(0.25), background: '#ffffff14' }} />
         ))}
 
         <span className="block" style={{ flexGrow: 25, flexBasis: 0 }} />
-        <div className="relative shrink-0" style={{ paddingLeft: 'calc(36 * var(--cw))' }}>
+        <div className={BAND} style={{ paddingLeft: cw(36) }}>
           {/* the blue wave: one blob, made organic by lopsided percentage radii. It rides
               WITH the wordmark (4.1cqh below its centre, as on the board) instead of
               being pinned to the card, and `aspect-ratio` keeps it a wave — sized in both
@@ -499,14 +540,14 @@ function SyncoHero({
             style={{
               // half the blob's own height is 72cqw / 1.63732 / 2 — spelling it out beats
               // translateY(-50%), which re-rasterises the gradient's edge on its own grid
-              left: 'calc(-20 * var(--cw))', top: 'calc(50% - calc(21.9866 * var(--cw)) + calc(4.0908 * var(--ch)))', width: 'calc(72 * var(--cw))', aspectRatio: '1.63732',
+              left: cw(-20), top: `calc(50% - ${cw(21.9866)} + ${ch(4.0908)})`, width: cw(72), aspectRatio: '1.63732',
               background: 'linear-gradient(112deg,#1636b4 0%,#2b66ec 48%,#5f97ff 100%)',
               borderRadius: '38% 62% 34% 66% / 78% 52% 48% 22%',
             }}
           />
           <p
             className="relative whitespace-nowrap font-display font-semibold text-white"
-            style={{ fontSize: 'calc(27 * var(--cw))', lineHeight: 0.86, letterSpacing: '-0.045em' }}
+            style={{ fontSize: cw(27), lineHeight: 0.86, letterSpacing: '-0.045em' }}
           >
             Synco
           </p>
@@ -531,15 +572,15 @@ function Campaign() {
  */
 function Media() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#37422f' }}>
-      <div className="relative z-10 flex shrink-0 items-center justify-between" style={{ height: 'calc(9 * var(--ch))', paddingInline: 'calc(4 * var(--cw))' }}>
-        <div className="flex items-center" style={{ gap: 'calc(1.4 * var(--cw))' }}>
-          <span className="block rounded-full" style={{ width: 'calc(2.8 * var(--cw))', height: 'calc(2.8 * var(--cw))', background: '#efe8da' }} />
-          <Copy rows={2} color="#efe8da8c" w="calc(11 * var(--cw))" h="calc(0.85 * var(--ch))" gap="calc(0.8 * var(--ch))" />
+    <div className={PAGE} style={{ background: '#37422f' }}>
+      <div className="relative z-10 flex shrink-0 items-center justify-between" style={{ height: ch(9), paddingInline: cw(4) }}>
+        <div className={ROW} style={{ gap: cw(1.4) }}>
+          <span className="block rounded-full" style={{ width: cw(2.8), height: cw(2.8), background: '#efe8da' }} />
+          <Copy rows={2} color="#efe8da8c" w={cw(11)} h={ch(0.85)} gap={ch(0.8)} />
         </div>
-        <div className="flex items-center" style={{ gap: 'calc(3 * var(--cw))' }}>
-          <NavLinks n={3} color="#efe8da8c" w="calc(4 * var(--cw))" gap="calc(3 * var(--cw))" />
-          <Pill w="calc(10 * var(--cw))" h="calc(4 * var(--ch))" bg="#efe8da" label="#37422f80" />
+        <div className={ROW} style={{ gap: cw(3) }}>
+          <NavLinks n={3} color="#efe8da8c" w={cw(4)} gap={cw(3)} />
+          <Pill w={cw(10)} h={ch(4)} bg="#efe8da" label="#37422f80" />
         </div>
       </div>
 
@@ -550,7 +591,7 @@ function Media() {
       <div className="relative flex flex-1 flex-col">
         <p
           className="shrink-0 whitespace-nowrap font-display font-semibold"
-          style={{ marginTop: 'calc(4 * var(--ch))', marginLeft: 'calc(3.5 * var(--cw))', color: '#efe8da', fontSize: 'calc(10.8 * var(--cw))', lineHeight: 1, letterSpacing: '-0.035em' }}
+          style={{ marginTop: ch(4), marginLeft: cw(3.5), color: '#efe8da', fontSize: cw(10.8), lineHeight: 1, letterSpacing: '-0.035em' }}
         >
           WE MAKE MEDIA
         </p>
@@ -558,13 +599,13 @@ function Media() {
         {/* The arch row. The bar and `Human` stay absolute — they OVERLAP the portrait on
             the board (Human sits over its top-right corner), which is the one thing flow
             cannot express; both are anchored to this row, so they travel with it. */}
-        <div className="relative shrink-0" style={{ marginTop: 'calc(2.9659 * var(--ch))', height: 'calc(35.5118 * var(--ch))' }}>
-          <div className="absolute z-10" style={{ left: 'calc(4 * var(--cw))', top: 'calc(2.5 * var(--ch))' }}>
-            <Bar w="calc(16 * var(--cw))" h="calc(1.1 * var(--ch))" color="#efe8da73" />
+        <div className={BAND} style={{ marginTop: ch(2.9659), height: ch(35.5118) }}>
+          <div className="absolute z-10" style={{ left: cw(4), top: ch(2.5) }}>
+            <Bar w={cw(16)} h={ch(1.1)} color="#efe8da73" />
           </div>
           <p
             className="absolute z-10 whitespace-nowrap font-display italic"
-            style={{ right: 'calc(9 * var(--cw))', top: 0, color: '#efe8da', fontSize: 'calc(9.6 * var(--cw))', lineHeight: 1, letterSpacing: '-0.02em' }}
+            style={{ right: cw(9), top: 0, color: '#efe8da', fontSize: cw(9.6), lineHeight: 1, letterSpacing: '-0.02em' }}
           >
             Human
           </p>
@@ -578,32 +619,32 @@ function Media() {
           <Photo
             className="absolute left-1/2 -translate-x-1/2"
             style={{
-              top: 'calc(3.5118 * var(--ch))', height: 'calc(32 * var(--ch))', aspectRatio: '1.00205',
-              borderRadius: '50% 50% calc(2.4 * var(--cw)) calc(2.4 * var(--cw)) / 44% 44% calc(2.4 * var(--cw)) calc(2.4 * var(--cw))',
+              top: ch(3.5118), height: ch(32), aspectRatio: '1.00205',
+              borderRadius: `50% 50% ${cw(2.4)} ${cw(2.4)} / 44% 44% ${cw(2.4)} ${cw(2.4)}`,
               background: 'linear-gradient(174deg,#c9a074 0%,#c9a074 34%,#a87a58 44%,#a87a58 58%,#33636e 66%,#254d59 100%)',
             }}
           >
-            <span className="absolute inset-x-0" style={{ top: '22%', height: '15%', background: '#ded8c9b3', filter: 'blur(calc(0.5 * var(--cw)))' }} />
+            <span className="absolute inset-x-0" style={{ top: '22%', height: '15%', background: '#ded8c9b3', filter: `blur(${cw(0.5)})` }} />
           </Photo>
         </div>
 
         <div
           className="relative z-10 flex shrink-0 flex-col items-center"
-          style={{ marginTop: 'calc(4.0097 * var(--ch))', marginInline: 'calc(25 * var(--cw))', gap: 'calc(2.6 * var(--ch))', paddingBottom: 'calc(7.6881 * var(--ch))' }}
+          style={{ marginTop: ch(4.0097), marginInline: cw(25), gap: ch(2.6), paddingBottom: ch(7.6881) }}
         >
-          <Copy rows={3} color="#efe8da73" w="100%" h="calc(1.05 * var(--ch))" gap="calc(1.1 * var(--ch))" center />
-          <Pill w="calc(23 * var(--cw))" h="calc(4.4 * var(--ch))" border="#efe8da59" label="#efe8daa6" />
+          <Copy rows={3} color="#efe8da73" w="100%" h={ch(1.05)} gap={ch(1.1)} center />
+          <Pill w={cw(23)} h={ch(4.4)} border="#efe8da59" label="#efe8daa6" />
         </div>
       </div>
 
       {/* The cream section the card edge cuts into. Its height is the type plus the
           2.89cqh the 13%-tall band had spare on the card, so THIS IS / UI/UX cannot fall
           out of the bottom of it. */}
-      <div className="relative flex shrink-0 items-end" style={{ paddingTop: 'calc(2.9017 * var(--ch))', background: '#efe8da', paddingInline: 'calc(4 * var(--cw))', gap: 'calc(6 * var(--cw))' }}>
-        <p className="font-display font-semibold" style={{ color: '#2a3226', fontSize: 'calc(9 * var(--cw))', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
+      <div className="relative flex shrink-0 items-end" style={{ paddingTop: ch(2.9017), background: '#efe8da', paddingInline: cw(4), gap: cw(6) }}>
+        <p className="font-display font-semibold" style={{ color: '#2a3226', fontSize: cw(9), lineHeight: 1.05, letterSpacing: '-0.03em' }}>
           THIS IS
         </p>
-        <p className="font-display font-semibold" style={{ color: '#2a3226', fontSize: 'calc(9 * var(--cw))', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
+        <p className="font-display font-semibold" style={{ color: '#2a3226', fontSize: cw(9), lineHeight: 1.05, letterSpacing: '-0.03em' }}>
           UI/UX
         </p>
       </div>
@@ -619,15 +660,15 @@ function Media() {
  */
 function Architecture() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#fbfbfd' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: 'calc(9 * var(--ch))', paddingInline: 'calc(4 * var(--cw))' }}>
-        <div className="flex items-center" style={{ gap: 'calc(1.2 * var(--cw))' }}>
-          <span className="block" style={{ width: 'calc(2.6 * var(--cw))', height: 'calc(2.6 * var(--cw))', background: '#1a2340', borderRadius: 'calc(0.5 * var(--cw))' }} />
-          <Wordmark color="#1a2340" size="calc(3.2 * var(--cw))">ArchiForm</Wordmark>
+    <div className={PAGE} style={{ background: '#fbfbfd' }}>
+      <div className={BAR} style={{ height: ch(9), paddingInline: cw(4) }}>
+        <div className={ROW} style={{ gap: cw(1.2) }}>
+          <span className="block" style={{ width: cw(2.6), height: cw(2.6), background: '#1a2340', borderRadius: cw(0.5) }} />
+          <Wordmark color="#1a2340" size={cw(3.2)}>ArchiForm</Wordmark>
         </div>
-        <div className="flex items-center" style={{ gap: 'calc(3 * var(--cw))' }}>
-          <NavLinks n={4} color="#1a234073" w="calc(4 * var(--cw))" gap="calc(3 * var(--cw))" />
-          <Pill w="calc(11 * var(--cw))" h="calc(4.2 * var(--ch))" bg="#1a2340" label="#ffffff8c" />
+        <div className={ROW} style={{ gap: cw(3) }}>
+          <NavLinks n={4} color="#1a234073" w={cw(4)} gap={cw(3)} />
+          <Pill w={cw(11)} h={ch(4.2)} bg="#1a2340" label="#ffffff8c" />
         </div>
       </div>
 
@@ -637,31 +678,31 @@ function Architecture() {
           over each other, and the panel's height is simply what the closing strip leaves.
           The 2cqh/6cqh insets are the old 11%/17% tops, re-expressed: `cqh` is 1% of the
           CONTAINER's height at any nesting depth, so they land on the same pixel. */}
-      <div className="flex flex-1" style={{ paddingTop: 'calc(2 * var(--ch))' }}>
+      <div className="flex flex-1" style={{ paddingTop: ch(2) }}>
       {/* hero copy */}
-      <div className="relative z-10 flex flex-1 flex-col" style={{ paddingLeft: 'calc(4 * var(--cw))', paddingTop: 'calc(6 * var(--ch))' }}>
-        <p className="whitespace-nowrap font-display font-semibold" style={{ color: '#1a2340', fontSize: 'calc(4.9 * var(--cw))', lineHeight: 1.16, letterSpacing: '-0.03em' }}>
+      <div className="relative z-10 flex flex-1 flex-col" style={{ paddingLeft: cw(4), paddingTop: ch(6) }}>
+        <p className={DISPLAY} style={{ color: '#1a2340', fontSize: cw(4.9), lineHeight: 1.16, letterSpacing: '-0.03em' }}>
           Shaping Architecture<br />That Moves You
           <span
             className="inline-block align-middle"
-            style={{ marginLeft: 'calc(1 * var(--cw))', width: 'calc(4.4 * var(--cw))', height: 'calc(1.6 * var(--ch))', background: 'linear-gradient(90deg,#e8483a,#f07a4e)', borderRadius: '99em', transform: 'rotate(-8deg)' }}
+            style={{ marginLeft: cw(1), width: cw(4.4), height: ch(1.6), background: 'linear-gradient(90deg,#e8483a,#f07a4e)', borderRadius: '99em', transform: 'rotate(-8deg)' }}
           />
         </p>
-        <div style={{ marginTop: 'calc(4 * var(--ch))' }}><Copy rows={2} color="#1a234033" w="calc(34 * var(--cw))" h="calc(1.15 * var(--ch))" gap="calc(1.3 * var(--ch))" /></div>
-        <div className="flex items-center" style={{ marginTop: 'calc(4 * var(--ch))', gap: 'calc(1.8 * var(--cw))' }}>
-          <Pill w="calc(16 * var(--cw))" h="calc(5 * var(--ch))" bg="#2b6cff" label="#ffffffa6" />
-          <Pill w="calc(16 * var(--cw))" h="calc(5 * var(--ch))" border="#1a234026" label="#1a234073" />
+        <div style={{ marginTop: ch(4) }}><Copy rows={2} color="#1a234033" w={cw(34)} h={ch(1.15)} gap={ch(1.3)} /></div>
+        <div className={ROW} style={{ marginTop: ch(4), gap: cw(1.8) }}>
+          <Pill w={cw(16)} h={ch(5)} bg="#2b6cff" label="#ffffffa6" />
+          <Pill w={cw(16)} h={ch(5)} border="#1a234026" label="#1a234073" />
         </div>
-        <div className="flex items-center" style={{ marginTop: 'calc(6 * var(--ch))', gap: 'calc(1.8 * var(--cw))' }}>
-          <Avatars size="calc(3.8 * var(--cw))" ring="#fbfbfd" />
-          <Copy rows={2} color="#1a23401f" w="calc(13 * var(--cw))" h="calc(0.95 * var(--ch))" gap="calc(1 * var(--ch))" />
+        <div className={ROW} style={{ marginTop: ch(6), gap: cw(1.8) }}>
+          <Avatars size={cw(3.8)} ring="#fbfbfd" />
+          <Copy rows={2} color="#1a23401f" w={cw(13)} h={ch(0.95)} gap={ch(1)} />
         </div>
       </div>
 
         {/* the facade */}
         <Photo
-          className="relative shrink-0"
-          style={{ width: 'calc(50 * var(--cw))', borderRadius: 'calc(2 * var(--cw)) 0 0 calc(2 * var(--cw))', background: '#20406b' }}
+          className={BAND}
+          style={{ width: cw(50), borderRadius: `${cw(2)} 0 0 ${cw(2)}`, background: '#20406b' }}
         >
           <div className="flex h-full w-full">
             {['#7fa8d8', '#4a7ec0', '#dc8f4e', '#2c5a96', '#8fb6e0', '#e8a86b', '#3a6aa8', '#5f8fc9', '#24486f'].map((c, i) => (
@@ -670,7 +711,7 @@ function Architecture() {
           </div>
           {/* floor lines — the difference between a stripe pattern and a building */}
           {['14%', '31%', '48%', '65%', '82%'].map((top) => (
-            <span key={top} className="absolute inset-x-0" style={{ top, height: 'calc(0.3 * var(--cw))', background: '#0c1a2e40' }} />
+            <span key={top} className="absolute inset-x-0" style={{ top, height: cw(0.3), background: '#0c1a2e40' }} />
           ))}
           {/* The small project card floats over the panel, so it lives INSIDE it now.
               Absolute is right here — the card overlaps the image, the one thing flow
@@ -679,10 +720,10 @@ function Architecture() {
               `top: 52%` to the pixel, and it stays put as the panel resizes. */}
           <div
             className="absolute flex items-center bg-white"
-            style={{ right: 'calc(4 * var(--cw))', top: 'calc(41.0072 * var(--ch))', width: 'calc(27 * var(--cw))', padding: 'calc(1.3 * var(--cw))', gap: 'calc(1.5 * var(--cw))', borderRadius: 'calc(1.4 * var(--cw))' }}
+            style={{ right: cw(4), top: ch(41.0072), width: cw(27), padding: cw(1.3), gap: cw(1.5), borderRadius: cw(1.4) }}
           >
-            <Photo style={{ width: 'calc(7.5 * var(--cw))', height: 'calc(8 * var(--ch))', borderRadius: 'calc(1 * var(--cw))', background: 'linear-gradient(150deg,#e8a86b,#3a6aa8)' }} />
-            <Copy rows={3} color="#1a234026" w="100%" h="calc(0.85 * var(--ch))" gap="calc(0.85 * var(--ch))" />
+            <Photo style={{ width: cw(7.5), height: ch(8), borderRadius: cw(1), background: 'linear-gradient(150deg,#e8a86b,#3a6aa8)' }} />
+            <Copy rows={3} color="#1a234026" w="100%" h={ch(0.85)} gap={ch(0.85)} />
           </div>
         </Photo>
       </div>
@@ -690,9 +731,9 @@ function Architecture() {
       {/* The "Who We Are" strip. Height is its TEXT plus the padding the 18%-tall band
           had spare at card size (3.8532cqh a side) — a fixed 18% clipped the closing
           paragraph the moment the box got wider than ~2.1:1, because the type is cqw. */}
-      <div className="flex shrink-0 flex-col items-center justify-center bg-white" style={{ paddingBlock: 'calc(3.8532 * var(--ch))', gap: 'calc(1.6 * var(--ch))' }}>
-        <Bar w="calc(6.5 * var(--cw))" h="calc(0.95 * var(--ch))" color="#1a234026" />
-        <p className="whitespace-nowrap text-center" style={{ color: '#1a2340', fontSize: 'calc(2.4 * var(--cw))', lineHeight: 1.5 }}>
+      <div className="flex shrink-0 flex-col items-center justify-center bg-white" style={{ paddingBlock: ch(3.8532), gap: ch(1.6) }}>
+        <Bar w={cw(6.5)} h={ch(0.95)} color="#1a234026" />
+        <p className="whitespace-nowrap text-center" style={{ color: '#1a2340', fontSize: cw(2.4), lineHeight: 1.5 }}>
           We are a team of passionate architects and designers committed to<br />crafting beautiful spaces that blend innovation, functionality, and beauty.
         </p>
       </div>
@@ -708,7 +749,7 @@ function Architecture() {
  */
 function Wellness() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#eef1e3' }}>
+    <div className={PAGE} style={{ background: '#eef1e3' }}>
       {/* THE PHOTOGRAPH, and everything the board floats on top of it. The overlays used
           to be absolute siblings of the panel at percentage tops (36 / 32 / 55 / 65) — at
           the wide end those tops kept their fraction of the card while the type grew with
@@ -720,8 +761,8 @@ function Wellness() {
       <Photo
         className="relative flex flex-1 flex-col"
         style={{
-          marginInline: 'calc(2 * var(--cw))', marginTop: 'calc(2 * var(--ch))', borderRadius: 'calc(2 * var(--cw))',
-          paddingInline: 'calc(3 * var(--cw))', paddingTop: 'calc(2 * var(--ch))', paddingBottom: 'calc(11.1193 * var(--ch))',
+          marginInline: cw(2), marginTop: ch(2), borderRadius: cw(2),
+          paddingInline: cw(3), paddingTop: ch(2), paddingBottom: ch(11.1193),
           background: 'linear-gradient(166deg,#a9c8de 0%,#c6d8e4 36%,#e3d8c6 76%,#cdbca3 100%)',
         }}
       >
@@ -734,7 +775,7 @@ function Wellness() {
             left: '26%', top: '20%', height: '92%', aspectRatio: '0.70594',
             background: 'linear-gradient(172deg,#caa78c6b 0%,#b48f7266 40%,#8f725c40 72%,#7d6a5900 100%)',
             borderRadius: '42% 58% 28% 72% / 62% 66% 34% 38%',
-            filter: 'blur(calc(3.2 * var(--cw)))',
+            filter: `blur(${cw(3.2)})`,
           }}
         />
         <span
@@ -745,15 +786,15 @@ function Wellness() {
         {/* the floating glass nav pill */}
         <div
           className="relative flex shrink-0 items-center justify-between"
-          style={{ height: 'calc(9 * var(--ch))', paddingInline: 'calc(2.2 * var(--cw))', borderRadius: '99em', background: '#ffffffd9' }}
+          style={{ height: ch(9), paddingInline: cw(2.2), borderRadius: '99em', background: '#ffffffd9' }}
         >
-          <div className="flex items-center" style={{ gap: 'calc(1.2 * var(--cw))' }}>
-            <span className="block rounded-full" style={{ width: 'calc(2.6 * var(--cw))', height: 'calc(2.6 * var(--cw))', background: '#3f6b3a' }} />
-            <Wordmark color="#2b3a28" size="calc(3 * var(--cw))">Serena</Wordmark>
+          <div className={ROW} style={{ gap: cw(1.2) }}>
+            <span className="block rounded-full" style={{ width: cw(2.6), height: cw(2.6), background: '#3f6b3a' }} />
+            <Wordmark color="#2b3a28" size={cw(3)}>Serena</Wordmark>
           </div>
-          <div className="flex items-center" style={{ gap: 'calc(2.4 * var(--cw))' }}>
-            <NavLinks n={4} color="#2b3a2873" w="calc(3.8 * var(--cw))" gap="calc(2.4 * var(--cw))" />
-            <Pill w="calc(10 * var(--cw))" h="calc(4 * var(--ch))" bg="#3f6b3a" label="#ffffff8c" />
+          <div className={ROW} style={{ gap: cw(2.4) }}>
+            <NavLinks n={4} color="#2b3a2873" w={cw(3.8)} gap={cw(2.4)} />
+            <Pill w={cw(10)} h={ch(4)} bg="#3f6b3a" label="#ffffff8c" />
           </div>
         </div>
 
@@ -763,14 +804,14 @@ function Wellness() {
             over the right of the photo (1cqw further in — the board's own inset) */}
         <div className="relative flex shrink-0 items-start justify-between">
           <div
-            className="flex items-center"
-            style={{ marginTop: 'calc(4 * var(--ch))', padding: 'calc(1.1 * var(--cw))', gap: 'calc(1.3 * var(--cw))', borderRadius: '99em', background: '#ffffffe6' }}
+            className={ROW}
+            style={{ marginTop: ch(4), padding: cw(1.1), gap: cw(1.3), borderRadius: '99em', background: '#ffffffe6' }}
           >
-            <Avatars size="calc(3.2 * var(--cw))" ring="#ffffff" />
-            <Copy rows={2} color="#2b3a2826" w="calc(9 * var(--cw))" h="calc(0.85 * var(--ch))" gap="calc(0.8 * var(--ch))" />
+            <Avatars size={cw(3.2)} ring="#ffffff" />
+            <Copy rows={2} color="#2b3a2826" w={cw(9)} h={ch(0.85)} gap={ch(0.8)} />
           </div>
-          <div style={{ width: 'calc(21 * var(--cw))', marginRight: 'calc(1 * var(--cw))' }}>
-            <Copy rows={3} color="#ffffffbf" w="100%" h="calc(1 * var(--ch))" gap="calc(1 * var(--ch))" />
+          <div style={{ width: cw(21), marginRight: cw(1) }}>
+            <Copy rows={3} color="#ffffffbf" w="100%" h={ch(1)} gap={ch(1)} />
           </div>
         </div>
 
@@ -780,13 +821,13 @@ function Wellness() {
         <div className="relative flex shrink-0 items-end justify-between">
           <p
             className="whitespace-nowrap font-display font-semibold text-white"
-            style={{ marginBottom: 'calc(1.56 * var(--ch))', fontSize: 'calc(5.2 * var(--cw))', lineHeight: 1.2, letterSpacing: '-0.02em' }}
+            style={{ marginBottom: ch(1.56), fontSize: cw(5.2), lineHeight: 1.2, letterSpacing: '-0.02em' }}
           >
             Your mental health is<br />super important.
           </p>
-          <div className="flex items-center" style={{ marginRight: 'calc(1 * var(--cw))', gap: 'calc(1.5 * var(--cw))' }}>
-            <Pill w="calc(14 * var(--cw))" h="calc(4.8 * var(--ch))" bg="#ffffff" label="#2b3a2873" />
-            <span className="block rounded-full" style={{ width: 'calc(4.6 * var(--cw))', height: 'calc(4.6 * var(--cw))', background: '#2b3a28' }} />
+          <div className={ROW} style={{ marginRight: cw(1), gap: cw(1.5) }}>
+            <Pill w={cw(14)} h={ch(4.8)} bg="#ffffff" label="#2b3a2873" />
+            <span className="block rounded-full" style={{ width: cw(4.6), height: cw(4.6), background: '#2b3a28' }} />
           </div>
         </div>
       </Photo>
@@ -794,8 +835,8 @@ function Wellness() {
       {/* The sage caption under the photo. Its height is the text plus the insets the
           16%-tall band had spare at card size; fixed at 16% it cut its own second line
           the moment the box got wider than the card. */}
-      <div className="flex shrink-0 justify-center" style={{ paddingTop: 'calc(5.4 * var(--ch))', paddingBottom: 'calc(4.6347 * var(--ch))' }}>
-        <p className="whitespace-nowrap text-center" style={{ color: '#2b3a28', fontSize: 'calc(2.9 * var(--cw))', lineHeight: 1.45 }}>
+      <div className="flex shrink-0 justify-center" style={{ paddingTop: ch(5.4), paddingBottom: ch(4.6347) }}>
+        <p className="whitespace-nowrap text-center" style={{ color: '#2b3a28', fontSize: cw(2.9), lineHeight: 1.45 }}>
           We combine science-backed tools and AI insights to help you<br />control your mental health.
         </p>
       </div>
@@ -823,7 +864,7 @@ function Synco() {
           over the storefront. */}
       <div
         className="relative flex shrink-0 items-center"
-        style={{ height: 'calc(23 * var(--ch))', background: '#f4f4f5', paddingInline: 'calc(4 * var(--cw))', gap: 'calc(3 * var(--cw))' }}
+        style={{ height: ch(23), background: '#f4f4f5', paddingInline: cw(4), gap: cw(3) }}
       >
         {[
           'linear-gradient(150deg,#dfe4ea,#a9b4c2)',
@@ -832,8 +873,8 @@ function Synco() {
           'linear-gradient(150deg,#e4e4e7,#b0b0b8)',
         ].map((g, i) => (
           <div key={i} className="flex-1">
-            <Photo style={{ height: 'calc(10 * var(--ch))', borderRadius: 'calc(1 * var(--cw))', background: g }} />
-            <div style={{ marginTop: 'calc(1.5 * var(--ch))' }}><Copy rows={2} color="#09090b1f" w="100%" h="calc(0.95 * var(--ch))" gap="calc(0.85 * var(--ch))" /></div>
+            <Photo style={{ height: ch(10), borderRadius: cw(1), background: g }} />
+            <div style={{ marginTop: ch(1.5) }}><Copy rows={2} color="#09090b1f" w="100%" h={ch(0.95)} gap={ch(0.85)} /></div>
           </div>
         ))}
       </div>
@@ -858,7 +899,7 @@ function Synco() {
  */
 function Agency() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#0a0a0a' }}>
+    <div className={PAGE} style={{ background: '#0a0a0a' }}>
       {/* The rail and the ribbon stay absolute children of the CARD, not of the hero
           below: they are the page's background, their percentages are percentages of the
           card, and leaving them alone is also what keeps the card pixel-identical. */}
@@ -871,14 +912,14 @@ function Agency() {
           third bare: 34/52/70/88% of the rail spaces them by the board's own 18% and takes
           the list down to the rail's foot, all four inside the 1100px fold. */}
       <div className="absolute" style={{ left: '81%', right: 0, top: 0, height: '72%', background: '#151517' }}>
-        <span className="absolute" style={{ left: '16%', right: '14%', top: '4.5%', height: '8%', background: '#3d3d42', borderRadius: 'calc(0.7 * var(--cw))' }} />
+        <span className="absolute" style={{ left: '16%', right: '14%', top: '4.5%', height: '8%', background: '#3d3d42', borderRadius: cw(0.7) }} />
         {['34%', '52%', '70%', '88%'].map((top) => (
           <div
             key={top}
             className="absolute flex justify-end"
-            style={{ left: '10%', right: '14%', top, paddingBottom: 'calc(1.5 * var(--ch))', borderBottom: 'calc(0.15 * var(--ch)) solid #ffffff1f' }}
+            style={{ left: '10%', right: '14%', top, paddingBottom: ch(1.5), borderBottom: `${ch(0.15)} solid #ffffff1f` }}
           >
-            <Bar w="calc(8 * var(--cw))" h="calc(1 * var(--ch))" color="#ffffff4d" />
+            <Bar w={cw(8)} h={ch(1)} color="#ffffff4d" />
           </div>
         ))}
       </div>
@@ -889,7 +930,7 @@ function Agency() {
       <span
         className="absolute"
         style={{
-          left: 'calc(-18 * var(--cw))', top: 'calc(-12 * var(--ch))', width: 'calc(58 * var(--cw))', height: '58%',
+          left: cw(-18), top: ch(-12), width: cw(58), height: '58%',
           background: 'linear-gradient(146deg,#7fa6ff 0%,#3a63ea 34%,#1b32c2 62%,#0c1670 100%)',
           borderRadius: '74% 26% 62% 38% / 52% 68% 32% 48%',
           transform: 'rotate(-14deg)',
@@ -898,21 +939,21 @@ function Agency() {
       <span
         className="absolute"
         style={{
-          left: 'calc(-10 * var(--cw))', top: 'calc(-8 * var(--ch))', width: 'calc(30 * var(--cw))', height: '26%',
+          left: cw(-10), top: ch(-8), width: cw(30), height: '26%',
           background: 'linear-gradient(158deg,#dbe7ff 0%,#8cb0ff 52%,#8cb0ff00 100%)',
           borderRadius: '55% 45% 70% 30% / 48% 62% 38% 52%',
           transform: 'rotate(-18deg)',
-          filter: 'blur(calc(1.2 * var(--cw)))',
+          filter: `blur(${cw(1.2)})`,
         }}
       />
       <span
         className="absolute"
         style={{
-          left: 'calc(-12 * var(--cw))', top: '20%', width: 'calc(38 * var(--cw))', height: '26%',
+          left: cw(-12), top: '20%', width: cw(38), height: '26%',
           background: 'linear-gradient(150deg,#101f96 0%,#081048 55%,#08104800 100%)',
           borderRadius: '30% 70% 55% 45% / 62% 38% 62% 38%',
           transform: 'rotate(-10deg)',
-          filter: 'blur(calc(0.9 * var(--cw)))',
+          filter: `blur(${cw(0.9)})`,
         }}
       />
 
@@ -925,42 +966,42 @@ function Agency() {
           1cqh floor rather than letting the type slide under the band. */}
       <div className="relative z-10 flex flex-1 flex-col">
         {/* nav, riding over the ribbon's crest */}
-        <div className="flex shrink-0 items-center justify-between" style={{ marginLeft: 'calc(4 * var(--cw))', marginRight: 'calc(23 * var(--cw))', height: 'calc(8 * var(--ch))' }}>
-          <Wordmark color="#ffffff" size="calc(2.8 * var(--cw))">Synco</Wordmark>
-          <NavLinks n={3} color="#ffffff59" w="calc(3.6 * var(--cw))" gap="calc(2.6 * var(--cw))" />
+        <div className={BAR} style={{ marginLeft: cw(4), marginRight: cw(23), height: ch(8) }}>
+          <Wordmark color="#ffffff" size={cw(2.8)}>Synco</Wordmark>
+          <NavLinks n={3} color="#ffffff59" w={cw(3.6)} gap={cw(2.6)} />
         </div>
 
         {/* the headline is a REGULAR-weight grotesk on the board — no font-semibold here */}
         <p
           className="shrink-0 whitespace-nowrap font-display text-white"
-          style={{ marginTop: 'calc(2.9954 * var(--ch))', marginLeft: '19%', fontSize: 'calc(9.6 * var(--cw))', lineHeight: 1.18, letterSpacing: '-0.015em' }}
+          style={{ marginTop: ch(2.9954), marginLeft: '19%', fontSize: cw(9.6), lineHeight: 1.18, letterSpacing: '-0.015em' }}
         >
           Synco<span style={{ fontSize: '0.38em', verticalAlign: 'super' }}>®</span><br />Creative<br />Agency
         </p>
-        <span className="block" style={{ flexGrow: 23.3, flexShrink: 0, flexBasis: 'calc(1 * var(--ch))' }} />
+        <span className="block" style={{ flexGrow: 23.3, flexShrink: 0, flexBasis: ch(1) }} />
         <div className="shrink-0" style={{ marginLeft: '19%' }}>
-          <Copy rows={2} color="#ffffff40" w="calc(30 * var(--cw))" h="calc(0.95 * var(--ch))" gap="calc(1 * var(--ch))" />
+          <Copy rows={2} color="#ffffff40" w={cw(30)} h={ch(0.95)} gap={ch(1)} />
         </div>
-        <span className="block" style={{ flexGrow: 24.23, flexShrink: 0, flexBasis: 'calc(1 * var(--ch))' }} />
+        <span className="block" style={{ flexGrow: 24.23, flexShrink: 0, flexBasis: ch(1) }} />
       </div>
 
       {/* The white stats band; the 50+/100+ run past the card edge and get clipped. Its
           height stays a fixed 28cqh and its three blocks stay percentages OF THE BAND, so
           the crop through the digits survives at every aspect. */}
-      <div className="relative shrink-0" style={{ height: 'calc(28 * var(--ch))', background: '#f4f4f2' }}>
-        <div className="absolute flex flex-col" style={{ left: 'calc(4 * var(--cw))', top: '22%', gap: 'calc(1 * var(--ch))' }}>
-          <Bar w="calc(8 * var(--cw))" h="calc(0.85 * var(--ch))" color="#0a0a0a40" />
-          <Bar w="calc(5.5 * var(--cw))" h="calc(0.85 * var(--ch))" color="#0a0a0a26" />
+      <div className={BAND} style={{ height: ch(28), background: '#f4f4f2' }}>
+        <div className="absolute flex flex-col" style={{ left: cw(4), top: '22%', gap: ch(1) }}>
+          <Bar w={cw(8)} h={ch(0.85)} color="#0a0a0a40" />
+          <Bar w={cw(5.5)} h={ch(0.85)} color="#0a0a0a26" />
         </div>
-        <p className="absolute whitespace-nowrap" style={{ left: '42%', top: '12%', color: '#17181c', fontSize: 'calc(2.25 * var(--cw))', lineHeight: 1.55 }}>
+        <p className="absolute whitespace-nowrap" style={{ left: '42%', top: '12%', color: '#17181c', fontSize: cw(2.25), lineHeight: 1.55 }}>
           Synco isn&apos;t just about change — we&apos;re<br />
           setting new standards with bold creativity and<br />
           thinking innovation.
         </p>
         {/* top 84% pushes the digits past the card edge — the crop cuts them mid-glyph */}
-        <p className="absolute whitespace-nowrap font-display font-semibold" style={{ left: '42%', top: '84%', color: '#101014', fontSize: 'calc(7 * var(--cw))', letterSpacing: '-0.02em' }}>
+        <p className="absolute whitespace-nowrap font-display font-semibold" style={{ left: '42%', top: '84%', color: '#101014', fontSize: cw(7), letterSpacing: '-0.02em' }}>
           50<span style={{ color: '#3d56f0' }}>+</span>
-          <span style={{ marginLeft: 'calc(9 * var(--cw))' }}>100<span style={{ color: '#3d56f0' }}>+</span></span>
+          <span style={{ marginLeft: cw(9) }}>100<span style={{ color: '#3d56f0' }}>+</span></span>
         </p>
       </div>
     </div>
@@ -977,13 +1018,13 @@ function Agency() {
  */
 function Saas() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#306ef2' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: 'calc(8 * var(--ch))', paddingInline: 'calc(3.5 * var(--cw))' }}>
-        <Wordmark color="#ffffff" size="calc(3.2 * var(--cw))">WorkPro</Wordmark>
-        <NavLinks n={4} color="#ffffff66" w="calc(4 * var(--cw))" gap="calc(2.4 * var(--cw))" />
-        <div className="flex items-center" style={{ gap: 'calc(2 * var(--cw))' }}>
-          <Bar w="calc(3.4 * var(--cw))" h="calc(1 * var(--ch))" color="#ffffff8c" />
-          <Pill w="calc(9.5 * var(--cw))" h="calc(4 * var(--ch))" bg="#ffffff" label="#306ef259" />
+    <div className={PAGE} style={{ background: '#306ef2' }}>
+      <div className={BAR} style={{ height: ch(8), paddingInline: cw(3.5) }}>
+        <Wordmark color="#ffffff" size={cw(3.2)}>WorkPro</Wordmark>
+        <NavLinks n={4} color="#ffffff66" w={cw(4)} gap={cw(2.4)} />
+        <div className={ROW} style={{ gap: cw(2) }}>
+          <Bar w={cw(3.4)} h={ch(1)} color="#ffffff8c" />
+          <Pill w={cw(9.5)} h={ch(4)} bg="#ffffff" label="#306ef259" />
         </div>
       </div>
 
@@ -996,88 +1037,88 @@ function Saas() {
           so it is the honest place for the height to come out of. Once the window is down
           to its own content the closing band drops below the fold instead, which is what
           a real page does in a short window. */}
-      <div className="flex flex-1 flex-col" style={{ paddingTop: 'calc(2 * var(--ch))' }}>
+      <div className="flex flex-1 flex-col" style={{ paddingTop: ch(2) }}>
         <p
           className="w-full shrink-0 whitespace-nowrap text-center font-display font-semibold text-white"
-          style={{ fontSize: 'calc(4.9 * var(--cw))', lineHeight: 1.3, letterSpacing: '-0.02em' }}
+          style={{ fontSize: cw(4.9), lineHeight: 1.3, letterSpacing: '-0.02em' }}
         >
           A powerful tool to automate<br />
-          your <span style={{ borderBottom: 'calc(0.45 * var(--cw)) solid #ffffff', paddingBottom: 'calc(0.2 * var(--ch))' }}>social media</span>
+          your <span style={{ borderBottom: `${cw(0.45)} solid #ffffff`, paddingBottom: ch(0.2) }}>social media</span>
         </p>
 
         {/* centred by transform, not by an auto margin: flex centring snaps the box to
             the layout grid an eighth of a pixel off the board's `left: 50%` and rounds the
             pill ends differently */}
-        <div className="relative left-1/2 flex shrink-0 -translate-x-1/2 flex-col items-center" style={{ marginTop: 'calc(4.8868 * var(--ch))', width: 'calc(46 * var(--cw))', gap: 'calc(1.1 * var(--ch))' }}>
-          <Bar w="100%" h="calc(1 * var(--ch))" color="#ffffff59" />
-          <Bar w="72%" h="calc(1 * var(--ch))" color="#ffffff59" />
+        <div className="relative left-1/2 flex shrink-0 -translate-x-1/2 flex-col items-center" style={{ marginTop: ch(4.8868), width: cw(46), gap: ch(1.1) }}>
+          <Bar w="100%" h={ch(1)} color="#ffffff59" />
+          <Bar w="72%" h={ch(1)} color="#ffffff59" />
         </div>
 
-        <div className="relative left-1/2 flex w-fit shrink-0 -translate-x-1/2 items-center" style={{ marginTop: 'calc(2.4097 * var(--ch))', gap: 'calc(2 * var(--cw))' }}>
-          <Pill w="calc(17 * var(--cw))" h="calc(5 * var(--ch))" bg="#ffffff" label="#306ef259" />
-          <Pill w="calc(15 * var(--cw))" h="calc(5 * var(--ch))" border="#ffffff73" label="#ffffffa6" />
+        <div className="relative left-1/2 flex w-fit shrink-0 -translate-x-1/2 items-center" style={{ marginTop: ch(2.4097), gap: cw(2) }}>
+          <Pill w={cw(17)} h={ch(5)} bg="#ffffff" label="#306ef259" />
+          <Pill w={cw(15)} h={ch(5)} border="#ffffff73" label="#ffffffa6" />
         </div>
 
         {/* the app window; its bottom edge hides under the claim band, as in the crop */}
-        <div className="relative flex flex-1 flex-col overflow-hidden bg-white" style={{ marginTop: 'calc(3.0068 * var(--ch))', marginInline: '11%', borderRadius: 'calc(1.8 * var(--cw)) calc(1.8 * var(--cw)) 0 0' }}>
-        <div className="flex shrink-0 items-center" style={{ height: '9%', paddingInline: 'calc(1.8 * var(--cw))', gap: 'calc(0.9 * var(--cw))' }}>
+        <div className="relative flex flex-1 flex-col overflow-hidden bg-white" style={{ marginTop: ch(3.0068), marginInline: '11%', borderRadius: `${cw(1.8)} ${cw(1.8)} 0 0` }}>
+        <div className="flex shrink-0 items-center" style={{ height: '9%', paddingInline: cw(1.8), gap: cw(0.9) }}>
           {[0, 1, 2].map((i) => (
-            <span key={i} className="block shrink-0 rounded-full" style={{ width: 'calc(1.1 * var(--cw))', height: 'calc(1.1 * var(--cw))', background: '#10182b2e' }} />
+            <span key={i} className="block shrink-0 rounded-full" style={{ width: cw(1.1), height: cw(1.1), background: '#10182b2e' }} />
           ))}
         </div>
         <div className="flex flex-1">
           {/* the menu column; the first item is the selected one, so it goes blue */}
-          <div className="flex shrink-0 flex-col" style={{ width: '15%', paddingTop: 'calc(1.2 * var(--ch))', paddingLeft: 'calc(1.8 * var(--cw))', paddingRight: 'calc(1.8 * var(--cw))', gap: 'calc(1.5 * var(--ch))' }}>
+          <div className="flex shrink-0 flex-col" style={{ width: '15%', paddingTop: ch(1.2), paddingLeft: cw(1.8), paddingRight: cw(1.8), gap: ch(1.5) }}>
             {['100%', '82%', '90%', '74%', '86%', '66%'].map((w, i) => (
-              <Bar key={i} w={w} h="calc(0.8 * var(--ch))" color={i ? '#10182b1f' : '#306ef2'} />
+              <Bar key={i} w={w} h={ch(0.8)} color={i ? '#10182b1f' : '#306ef2'} />
             ))}
           </div>
-          <div className="flex-1" style={{ background: '#edf1f8', padding: 'calc(1.6 * var(--cw))' }}>
+          <div className="flex-1" style={{ background: '#edf1f8', padding: cw(1.6) }}>
             <div className="flex items-center justify-between">
-              <Bar w="calc(9 * var(--cw))" h="calc(0.9 * var(--ch))" color="#10182b40" />
-              <div className="flex items-center" style={{ gap: 'calc(1 * var(--cw))' }}>
-                <Bar w="calc(5 * var(--cw))" h="calc(1.8 * var(--ch))" color="#ffffff" radius="calc(0.5 * var(--cw))" />
-                <Bar w="calc(5 * var(--cw))" h="calc(1.8 * var(--ch))" color="#306ef2" radius="calc(0.5 * var(--cw))" />
+              <Bar w={cw(9)} h={ch(0.9)} color="#10182b40" />
+              <div className={ROW} style={{ gap: cw(1) }}>
+                <Bar w={cw(5)} h={ch(1.8)} color="#ffffff" radius={cw(0.5)} />
+                <Bar w={cw(5)} h={ch(1.8)} color="#306ef2" radius={cw(0.5)} />
               </div>
             </div>
-            <div className="flex" style={{ marginTop: 'calc(1.4 * var(--ch))', gap: 'calc(1.4 * var(--cw))' }}>
-              <div className="flex-1 bg-white" style={{ padding: 'calc(1.2 * var(--cw))', borderRadius: 'calc(0.8 * var(--cw))' }}>
-                <Copy rows={2} color="#10182b1f" w="100%" h="calc(0.75 * var(--ch))" gap="calc(0.8 * var(--ch))" />
+            <div className="flex" style={{ marginTop: ch(1.4), gap: cw(1.4) }}>
+              <div className="flex-1 bg-white" style={{ padding: cw(1.2), borderRadius: cw(0.8) }}>
+                <Copy rows={2} color="#10182b1f" w="100%" h={ch(0.75)} gap={ch(0.8)} />
               </div>
-              <div className="flex flex-1 items-center bg-white" style={{ padding: 'calc(1.2 * var(--cw))', borderRadius: 'calc(0.8 * var(--cw))' }}>
-                <Avatars size="calc(2.6 * var(--cw))" ring="#ffffff" />
+              <div className="flex flex-1 items-center bg-white" style={{ padding: cw(1.2), borderRadius: cw(0.8) }}>
+                <Avatars size={cw(2.6)} ring="#ffffff" />
               </div>
-              <div className="flex-1 bg-white" style={{ padding: 'calc(1.2 * var(--cw))', borderRadius: 'calc(0.8 * var(--cw))' }}>
-                <Copy rows={2} color="#10182b1f" w="100%" h="calc(0.75 * var(--ch))" gap="calc(0.8 * var(--ch))" />
+              <div className="flex-1 bg-white" style={{ padding: cw(1.2), borderRadius: cw(0.8) }}>
+                <Copy rows={2} color="#10182b1f" w="100%" h={ch(0.75)} gap={ch(0.8)} />
               </div>
             </div>
-            <div className="flex" style={{ marginTop: 'calc(1.4 * var(--ch))', gap: 'calc(1.4 * var(--cw))' }}>
-              <div className="bg-white" style={{ width: '58%', padding: 'calc(1.2 * var(--cw))', borderRadius: 'calc(0.8 * var(--cw))' }}>
-                <p className="font-display font-semibold tabular-nums" style={{ color: '#10182b', fontSize: 'calc(3.2 * var(--cw))', letterSpacing: '-0.02em' }}>
+            <div className="flex" style={{ marginTop: ch(1.4), gap: cw(1.4) }}>
+              <div className="bg-white" style={{ width: '58%', padding: cw(1.2), borderRadius: cw(0.8) }}>
+                <p className="font-display font-semibold tabular-nums" style={{ color: '#10182b', fontSize: cw(3.2), letterSpacing: '-0.02em' }}>
                   94,127
                 </p>
-                <div className="flex items-end" style={{ marginTop: 'calc(0.8 * var(--ch))', gap: 'calc(0.9 * var(--cw))' }}>
-                  {['calc(2 * var(--ch))', 'calc(3.2 * var(--ch))', 'calc(2.6 * var(--ch))', 'calc(4 * var(--ch))', 'calc(3 * var(--ch))', 'calc(4.6 * var(--ch))'].map((h, i) => (
-                    <span key={i} className="block" style={{ width: 'calc(2 * var(--cw))', height: h, background: i % 2 ? '#9db9f8' : '#306ef2', borderRadius: 'calc(0.4 * var(--cw)) calc(0.4 * var(--cw)) 0 0' }} />
+                <div className="flex items-end" style={{ marginTop: ch(0.8), gap: cw(0.9) }}>
+                  {[ch(2), ch(3.2), ch(2.6), ch(4), ch(3), ch(4.6)].map((h, i) => (
+                    <span key={i} className="block" style={{ width: cw(2), height: h, background: i % 2 ? '#9db9f8' : '#306ef2', borderRadius: `${cw(0.4)} ${cw(0.4)} 0 0` }} />
                   ))}
                 </div>
               </div>
-              <div className="flex-1 bg-white" style={{ padding: 'calc(1.2 * var(--cw))', borderRadius: 'calc(0.8 * var(--cw))' }}>
-                <p className="font-display font-semibold tabular-nums" style={{ color: '#10182b', fontSize: 'calc(2.6 * var(--cw))', letterSpacing: '-0.02em' }}>
+              <div className="flex-1 bg-white" style={{ padding: cw(1.2), borderRadius: cw(0.8) }}>
+                <p className="font-display font-semibold tabular-nums" style={{ color: '#10182b', fontSize: cw(2.6), letterSpacing: '-0.02em' }}>
                   9,872
                 </p>
-                <div className="flex flex-col" style={{ marginTop: 'calc(0.9 * var(--ch))', gap: 'calc(0.9 * var(--ch))' }}>
-                  <Bar w="86%" h="calc(0.6 * var(--ch))" color="#306ef2" />
-                  <Bar w="100%" h="calc(0.6 * var(--ch))" color="#10182b1f" />
-                  <Bar w="64%" h="calc(0.6 * var(--ch))" color="#10182b1f" />
+                <div className="flex flex-col" style={{ marginTop: ch(0.9), gap: ch(0.9) }}>
+                  <Bar w="86%" h={ch(0.6)} color="#306ef2" />
+                  <Bar w="100%" h={ch(0.6)} color="#10182b1f" />
+                  <Bar w="64%" h={ch(0.6)} color="#10182b1f" />
                 </div>
               </div>
             </div>
             {/* a list card runs under the crop, so the window never ends in blank white */}
-            <div className="bg-white" style={{ marginTop: 'calc(1.4 * var(--ch))', padding: 'calc(1.2 * var(--cw))', borderRadius: 'calc(0.8 * var(--cw))' }}>
-              <div className="flex items-center" style={{ gap: 'calc(1.4 * var(--cw))' }}>
-                <Avatars size="calc(2.2 * var(--cw))" ring="#ffffff" />
-                <Copy rows={2} color="#10182b1f" w="40%" h="calc(0.7 * var(--ch))" gap="calc(0.8 * var(--ch))" />
+            <div className="bg-white" style={{ marginTop: ch(1.4), padding: cw(1.2), borderRadius: cw(0.8) }}>
+              <div className={ROW} style={{ gap: cw(1.4) }}>
+                <Avatars size={cw(2.2)} ring="#ffffff" />
+                <Copy rows={2} color="#10182b1f" w="40%" h={ch(0.7)} gap={ch(0.8)} />
               </div>
             </div>
           </div>
@@ -1088,12 +1129,12 @@ function Saas() {
 
       {/* the claim band: its text plus the 2.18cqh the 14.5%-tall band had spare on the
           card, so the second line cannot fall out of it at another aspect */}
-      <div className="relative flex shrink-0 items-center justify-center" style={{ paddingBlock: 'calc(2.1791 * var(--ch))', background: '#ffffff' }}>
-        <p className="whitespace-nowrap text-center font-display font-semibold" style={{ color: '#0f172c', fontSize: 'calc(3.6 * var(--cw))', lineHeight: 1.32, letterSpacing: '-0.02em' }}>
+      <div className="relative flex shrink-0 items-center justify-center" style={{ paddingBlock: ch(2.1791), background: '#ffffff' }}>
+        <p className="whitespace-nowrap text-center font-display font-semibold" style={{ color: '#0f172c', fontSize: cw(3.6), lineHeight: 1.32, letterSpacing: '-0.02em' }}>
           Engage your audience<br />without wasting your time
         </p>
       </div>
-      <div className="relative shrink-0" style={{ height: 'calc(2.5 * var(--ch))', background: '#0c0d12' }} />
+      <div className={BAND} style={{ height: ch(2.5), background: '#0c0d12' }} />
     </div>
   )
 }
@@ -1110,11 +1151,11 @@ function Saas() {
  */
 function Restaurant() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#6b1613' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: 'calc(7 * var(--ch))', background: '#521010', paddingInline: 'calc(3.5 * var(--cw))' }}>
-        <NavLinks n={4} color="#f2e0b866" w="calc(4 * var(--cw))" gap="calc(2.2 * var(--cw))" />
-        <Pill w="calc(9 * var(--cw))" h="calc(3.2 * var(--ch))" bg="#d9a94f" label="#52101080" />
-        <NavLinks n={3} color="#f2e0b866" w="calc(4 * var(--cw))" gap="calc(2.2 * var(--cw))" />
+    <div className={PAGE} style={{ background: '#6b1613' }}>
+      <div className={BAR} style={{ height: ch(7), background: '#521010', paddingInline: cw(3.5) }}>
+        <NavLinks n={4} color="#f2e0b866" w={cw(4)} gap={cw(2.2)} />
+        <Pill w={cw(9)} h={ch(3.2)} bg="#d9a94f" label="#52101080" />
+        <NavLinks n={3} color="#f2e0b866" w={cw(4)} gap={cw(2.2)} />
       </div>
 
       {/* THE HERO BAND. Copy and food used to be nine absolute blocks on the card (11.5 /
@@ -1124,14 +1165,14 @@ function Restaurant() {
           below. The copy is a flow column now, the band is as tall as that column, and
           every plate is sized as a PERCENTAGE OF THE BAND, so the still life keeps its
           composition instead of outgrowing the page. */}
-      <div className="relative shrink-0" style={{ paddingBottom: 'calc(3.5264 * var(--ch))' }}>
+      <div className={BAND} style={{ paddingBottom: ch(3.5264) }}>
         {/* the food photography, as discs: a warm glow, the big platter (gold rim, brown
             food), a second platter cut by the top-right corner, two side dishes. Absolute
             because they overlap each other and bleed off the corner — the one thing flow
             cannot express. */}
-        <span className="absolute" style={{ left: '42%', top: 'calc(-4.9957 * var(--ch))', height: '110.629%', aspectRatio: '1.15093', background: 'radial-gradient(50% 50% at 50% 50%,#8a2a1a4d 0%,#8a2a1a00 72%)' }} />
+        <span className="absolute" style={{ left: '42%', top: ch(-4.9957), height: '110.629%', aspectRatio: '1.15093', background: 'radial-gradient(50% 50% at 50% 50%,#8a2a1a4d 0%,#8a2a1a00 72%)' }} />
         <Photo
-          className="absolute rounded-full"
+          className={DOT}
           style={{
             left: '54%', top: 0, height: '77.3103%', aspectRatio: '1',
             // Concentric rings, food inside a gold rim. The rim must share the food's
@@ -1142,61 +1183,61 @@ function Restaurant() {
           }}
         />
         <Photo
-          className="absolute rounded-full"
+          className={DOT}
           style={{
-            right: 'calc(-6 * var(--cw))', top: 'calc(-4.9957 * var(--ch))', height: '38.6551%', aspectRatio: '1',
+            right: cw(-6), top: ch(-4.9957), height: '38.6551%', aspectRatio: '1',
             background: 'radial-gradient(circle,#7a4515 0%,#7a4515 52%,#eab54e 57%,#cf8f35 100%)',
           }}
         />
-        <Photo className="absolute rounded-full" style={{ left: '46%', top: '70.2043%', height: '18.1763%', aspectRatio: '1', background: 'radial-gradient(circle at 40% 35%,#6f3a12 0%,#40200a 100%)' }} />
-        <Photo className="absolute rounded-full" style={{ left: '57%', top: '80.8477%', height: '12.5039%', aspectRatio: '1', background: 'radial-gradient(circle at 40% 35%,#d9a355 0%,#8a5a20 100%)' }} />
+        <Photo className={DOT} style={{ left: '46%', top: '70.2043%', height: '18.1763%', aspectRatio: '1', background: 'radial-gradient(circle at 40% 35%,#6f3a12 0%,#40200a 100%)' }} />
+        <Photo className={DOT} style={{ left: '57%', top: '80.8477%', height: '12.5039%', aspectRatio: '1', background: 'radial-gradient(circle at 40% 35%,#d9a355 0%,#8a5a20 100%)' }} />
 
         {/* the copy column */}
-        <div className="relative" style={{ paddingLeft: 'calc(4.5 * var(--cw))' }}>
+        <div className="relative" style={{ paddingLeft: cw(4.5) }}>
           <p
-            className="whitespace-nowrap font-display font-semibold"
-            style={{ marginTop: 'calc(4.5072 * var(--ch))', color: '#f2e0b8', fontSize: 'calc(4.4 * var(--cw))', lineHeight: 1.32, letterSpacing: '-0.01em' }}
+            className={DISPLAY}
+            style={{ marginTop: ch(4.5072), color: '#f2e0b8', fontSize: cw(4.4), lineHeight: 1.32, letterSpacing: '-0.01em' }}
           >
             A Taste of Tradition,<br />A Promise of Quality
           </p>
-          <div style={{ marginTop: 'calc(4.6015 * var(--ch))' }}>
-            <Copy rows={3} color="#f2e0b859" w="calc(30 * var(--cw))" h="calc(1 * var(--ch))" gap="calc(1.2 * var(--ch))" />
+          <div style={{ marginTop: ch(4.6015) }}>
+            <Copy rows={3} color="#f2e0b859" w={cw(30)} h={ch(1)} gap={ch(1.2)} />
           </div>
           {/* the round quality stamp and a small CTA beside it */}
-          <div className="flex items-center" style={{ marginTop: 'calc(2.6161 * var(--ch))', gap: 'calc(2 * var(--cw))' }}>
-            <span className="flex shrink-0 items-center justify-center rounded-full" style={{ width: 'calc(6.5 * var(--cw))', height: 'calc(6.5 * var(--cw))', boxShadow: 'inset 0 0 0 calc(0.45 * var(--cw)) #d9a94f' }}>
-              <span className="block rounded-full" style={{ width: 'calc(2.2 * var(--cw))', height: 'calc(2.2 * var(--cw))', background: '#d9a94f' }} />
+          <div className={ROW} style={{ marginTop: ch(2.6161), gap: cw(2) }}>
+            <span className="flex shrink-0 items-center justify-center rounded-full" style={{ width: cw(6.5), height: cw(6.5), boxShadow: `inset 0 0 0 ${cw(0.45)} #d9a94f` }}>
+              <span className="block rounded-full" style={{ width: cw(2.2), height: cw(2.2), background: '#d9a94f' }} />
             </span>
-            <Pill w="calc(11 * var(--cw))" h="calc(4 * var(--ch))" bg="#d9a94f" label="#52101073" />
+            <Pill w={cw(11)} h={ch(4)} bg="#d9a94f" label="#52101073" />
           </div>
           {/* the little dish carousel under the copy — thumbnails, so gradient tiles */}
-          <div className="flex" style={{ marginTop: 'calc(2.5516 * var(--ch))', gap: 'calc(1.6 * var(--cw))' }}>
+          <div className="flex" style={{ marginTop: ch(2.5516), gap: cw(1.6) }}>
             {['linear-gradient(150deg,#c98a3b,#7a4515)', 'linear-gradient(150deg,#8a2a1a,#4f1108)', 'linear-gradient(150deg,#e3b054,#a4652b)', 'linear-gradient(150deg,#a4652b,#5f3110)'].map((g, i) => (
-              <Photo key={i} style={{ width: 'calc(8.5 * var(--cw))', aspectRatio: '2.0207', borderRadius: 'calc(0.8 * var(--cw))', background: g }} />
+              <Photo key={i} style={{ width: cw(8.5), aspectRatio: '2.0207', borderRadius: cw(0.8), background: g }} />
             ))}
           </div>
         </div>
       </div>
 
       {/* the stats band — the numbers are the site's four proof points */}
-      <div className="relative flex shrink-0" style={{ height: 'calc(20 * var(--ch))', background: '#5a100d' }}>
+      <div className="relative flex shrink-0" style={{ height: ch(20), background: '#5a100d' }}>
         {['2k', '1k', '99', '10'].map((n) => (
-          <div key={n} className="flex flex-1 flex-col items-center justify-center" style={{ gap: 'calc(1.2 * var(--ch))' }}>
-            <p className="font-display font-semibold" style={{ color: '#f2e0b8', fontSize: 'calc(4.6 * var(--cw))', letterSpacing: '-0.01em' }}>{n}</p>
-            <Bar w="calc(10 * var(--cw))" h="calc(0.85 * var(--ch))" color="#f2e0b84d" />
+          <div key={n} className="flex flex-1 flex-col items-center justify-center" style={{ gap: ch(1.2) }}>
+            <p className="font-display font-semibold" style={{ color: '#f2e0b8', fontSize: cw(4.6), letterSpacing: '-0.01em' }}>{n}</p>
+            <Bar w={cw(10)} h={ch(0.85)} color="#f2e0b84d" />
           </div>
         ))}
       </div>
 
-      <div className="relative flex shrink-0 flex-col items-center" style={{ marginTop: 'calc(3.0046 * var(--ch))', gap: 'calc(1.4 * var(--ch))' }}>
-        <p className="whitespace-nowrap font-display font-semibold" style={{ color: '#f2e0b8', fontSize: 'calc(3.6 * var(--cw))', letterSpacing: '-0.01em' }}>
+      <div className="relative flex shrink-0 flex-col items-center" style={{ marginTop: ch(3.0046), gap: ch(1.4) }}>
+        <p className={DISPLAY} style={{ color: '#f2e0b8', fontSize: cw(3.6), letterSpacing: '-0.01em' }}>
           Discover Our Complete Range
         </p>
-        <Bar w="calc(24 * var(--cw))" h="calc(0.9 * var(--ch))" color="#f2e0b840" />
+        <Bar w={cw(24)} h={ch(0.9)} color="#f2e0b840" />
       </div>
 
       {/* the cream gallery strip, its tiles taller than the card leaves room for */}
-      <div className="relative flex shrink-0" style={{ marginTop: 'calc(3.9421 * var(--ch))', height: 'calc(11 * var(--ch))', background: '#f2e8d4', paddingInline: 'calc(3 * var(--cw))', paddingTop: 'calc(1.2 * var(--ch))', gap: 'calc(2 * var(--cw))' }}>
+      <div className="relative flex shrink-0" style={{ marginTop: ch(3.9421), height: ch(11), background: '#f2e8d4', paddingInline: cw(3), paddingTop: ch(1.2), gap: cw(2) }}>
         {[
           'linear-gradient(150deg,#e8c07a,#a4652b)',
           'linear-gradient(150deg,#d9a355,#8a4f1f)',
@@ -1204,7 +1245,7 @@ function Restaurant() {
           'linear-gradient(150deg,#e3b054,#96581f)',
           'linear-gradient(150deg,#d0913f,#7a4515)',
         ].map((g, i) => (
-          <Photo key={i} className="flex-1" style={{ height: 'calc(14 * var(--ch))', borderRadius: 'calc(1 * var(--cw))', background: g }} />
+          <Photo key={i} className="flex-1" style={{ height: ch(14), borderRadius: cw(1), background: g }} />
         ))}
       </div>
     </div>
@@ -1220,16 +1261,16 @@ function Restaurant() {
  */
 function Crypto() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#07060b' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: 'calc(7 * var(--ch))', paddingInline: 'calc(3.5 * var(--cw))' }}>
-        <div className="flex items-center" style={{ gap: 'calc(1.2 * var(--cw))' }}>
-          <span className="block shrink-0 rounded-full" style={{ width: 'calc(2.4 * var(--cw))', height: 'calc(2.4 * var(--cw))', background: '#7c57f2' }} />
-          <Wordmark color="#ffffff" size="calc(3 * var(--cw))">MineMax</Wordmark>
+    <div className={PAGE} style={{ background: '#07060b' }}>
+      <div className={BAR} style={{ height: ch(7), paddingInline: cw(3.5) }}>
+        <div className={ROW} style={{ gap: cw(1.2) }}>
+          <span className="block shrink-0 rounded-full" style={{ width: cw(2.4), height: cw(2.4), background: '#7c57f2' }} />
+          <Wordmark color="#ffffff" size={cw(3)}>MineMax</Wordmark>
         </div>
-        <NavLinks n={4} color="#ffffff4d" w="calc(3.8 * var(--cw))" gap="calc(2.4 * var(--cw))" />
-        <div className="flex items-center" style={{ gap: 'calc(1.6 * var(--cw))' }}>
-          <Pill w="calc(8 * var(--cw))" h="calc(3.6 * var(--ch))" border="#ffffff33" label="#ffffff8c" />
-          <Pill w="calc(9 * var(--cw))" h="calc(3.6 * var(--ch))" bg="#7c57f2" label="#ffffffa6" />
+        <NavLinks n={4} color="#ffffff4d" w={cw(3.8)} gap={cw(2.4)} />
+        <div className={ROW} style={{ gap: cw(1.6) }}>
+          <Pill w={cw(8)} h={ch(3.6)} border="#ffffff33" label="#ffffff8c" />
+          <Pill w={cw(9)} h={ch(3.6)} bg="#7c57f2" label="#ffffffa6" />
         </div>
       </div>
 
@@ -1240,53 +1281,53 @@ function Crypto() {
           than the box on purpose — the two feature cards are cut by the bottom edge on the
           board too, so the overflow is the crop, and a shorter box simply shows less of
           them. */}
-      <div className="flex flex-1 flex-col" style={{ paddingTop: 'calc(2.5072 * var(--ch))' }}>
+      <div className="flex flex-1 flex-col" style={{ paddingTop: ch(2.5072) }}>
         {/* the little tag chip above the headline */}
         {/* centred by transform for the same reason as the buttons below */}
-        <span className="relative left-1/2 flex shrink-0 -translate-x-1/2 items-center justify-center rounded-full" style={{ width: 'calc(12 * var(--cw))', height: 'calc(3.4 * var(--ch))', boxShadow: 'inset 0 0 0 calc(0.35 * var(--cw)) #7c57f259' }}>
-          <Bar w="55%" h="calc(0.85 * var(--ch))" color="#a98ef7" />
+        <span className="relative left-1/2 flex shrink-0 -translate-x-1/2 items-center justify-center rounded-full" style={{ width: cw(12), height: ch(3.4), boxShadow: `inset 0 0 0 ${cw(0.35)} #7c57f259` }}>
+          <Bar w="55%" h={ch(0.85)} color="#a98ef7" />
         </span>
 
         <p
           className="shrink-0 whitespace-nowrap text-center font-display font-semibold"
-          style={{ marginTop: 'calc(2.1072 * var(--ch))', color: '#eae6f8', fontSize: 'calc(5.4 * var(--cw))', lineHeight: 1.24, letterSpacing: '-0.02em' }}
+          style={{ marginTop: ch(2.1072), color: '#eae6f8', fontSize: cw(5.4), lineHeight: 1.24, letterSpacing: '-0.02em' }}
         >
           AI Revolutionizing<br />Crypto Mining
         </p>
 
-        <div className="relative left-1/2 flex shrink-0 -translate-x-1/2 flex-col items-center" style={{ marginTop: 'calc(3.7 * var(--ch))', width: 'calc(40 * var(--cw))', gap: 'calc(1.1 * var(--ch))' }}>
-          <Bar w="100%" h="calc(1 * var(--ch))" color="#ffffff38" />
-          <Bar w="66%" h="calc(1 * var(--ch))" color="#ffffff38" />
+        <div className="relative left-1/2 flex shrink-0 -translate-x-1/2 flex-col items-center" style={{ marginTop: ch(3.7), width: cw(40), gap: ch(1.1) }}>
+          <Bar w="100%" h={ch(1)} color="#ffffff38" />
+          <Bar w="66%" h={ch(1)} color="#ffffff38" />
         </div>
 
-        <div className="relative left-1/2 flex w-fit shrink-0 -translate-x-1/2 items-center" style={{ marginTop: 'calc(4.41 * var(--ch))', gap: 'calc(1.8 * var(--cw))' }}>
-          <Pill w="calc(13 * var(--cw))" h="calc(4.6 * var(--ch))" bg="#7c57f2" label="#ffffffa6" />
-          <Pill w="calc(12 * var(--cw))" h="calc(4.6 * var(--ch))" border="#ffffff2e" label="#ffffff8c" />
+        <div className="relative left-1/2 flex w-fit shrink-0 -translate-x-1/2 items-center" style={{ marginTop: ch(4.41), gap: cw(1.8) }}>
+          <Pill w={cw(13)} h={ch(4.6)} bg="#7c57f2" label="#ffffffa6" />
+          <Pill w={cw(12)} h={ch(4.6)} border="#ffffff2e" label="#ffffff8c" />
         </div>
 
       {/* the rig: ground glow, circuit traces brightening toward the centre,
           two satellite nodes, then the orb with its halo and crystal glyph */}
-      <div className="relative shrink-0" style={{ marginTop: 'calc(0.9072 * var(--ch))', height: 'calc(27 * var(--ch))' }}>
+      <div className={BAND} style={{ marginTop: ch(0.9072), height: ch(27) }}>
         <span className="absolute" style={{ left: '18%', right: '18%', top: '40%', bottom: '-34%', background: 'radial-gradient(50% 46% at 50% 58%,#6d3df059 0%,#6d3df000 72%)' }} />
-        <span className="absolute" style={{ left: 0, width: '34%', top: '48%', height: 'calc(0.35 * var(--ch))', background: 'linear-gradient(90deg,#171226 0%,#5646a0 100%)' }} />
-        <span className="absolute" style={{ right: 0, width: '34%', top: '48%', height: 'calc(0.35 * var(--ch))', background: 'linear-gradient(270deg,#171226 0%,#5646a0 100%)' }} />
-        <span className="absolute" style={{ left: '6%', width: '18%', top: '20%', height: 'calc(0.35 * var(--ch))', background: '#221a3d' }} />
-        <span className="absolute" style={{ right: '6%', width: '18%', top: '76%', height: 'calc(0.35 * var(--ch))', background: '#221a3d' }} />
-        <span className="absolute rounded-full" style={{ left: '21%', top: '34%', width: 'calc(4.6 * var(--cw))', height: 'calc(4.6 * var(--cw))', background: '#120c22', boxShadow: 'inset 0 0 0 calc(0.35 * var(--cw)) #4a3f78' }} />
-        <span className="absolute rounded-full" style={{ right: '21%', top: '34%', width: 'calc(4.6 * var(--cw))', height: 'calc(4.6 * var(--cw))', background: '#120c22', boxShadow: 'inset 0 0 0 calc(0.35 * var(--cw)) #4a3f78' }} />
-        <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '-18%', width: 'calc(44 * var(--cw))', height: '136%', background: 'radial-gradient(50% 50% at 50% 50%,#7b4df066 0%,#7b4df000 70%)' }} />
+        <span className="absolute" style={{ left: 0, width: '34%', top: '48%', height: ch(0.35), background: 'linear-gradient(90deg,#171226 0%,#5646a0 100%)' }} />
+        <span className="absolute" style={{ right: 0, width: '34%', top: '48%', height: ch(0.35), background: 'linear-gradient(270deg,#171226 0%,#5646a0 100%)' }} />
+        <span className="absolute" style={{ left: '6%', width: '18%', top: '20%', height: ch(0.35), background: '#221a3d' }} />
+        <span className="absolute" style={{ right: '6%', width: '18%', top: '76%', height: ch(0.35), background: '#221a3d' }} />
+        <span className={DOT} style={{ left: '21%', top: '34%', width: cw(4.6), height: cw(4.6), background: '#120c22', boxShadow: `inset 0 0 0 ${cw(0.35)} #4a3f78` }} />
+        <span className={DOT} style={{ right: '21%', top: '34%', width: cw(4.6), height: cw(4.6), background: '#120c22', boxShadow: `inset 0 0 0 ${cw(0.35)} #4a3f78` }} />
+        <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '-18%', width: cw(44), height: '136%', background: 'radial-gradient(50% 50% at 50% 50%,#7b4df066 0%,#7b4df000 70%)' }} />
         {/* The orb is sized off the RIG's height (59.36% of it, a circle by aspect-ratio),
             not in `cqw`: at 15cqw it was 242px in a 217px band at the wide end, so it
             spilled out of the illustration and printed through the label below it. */}
-        <span className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full" style={{ top: '8%', height: '59.36%', aspectRatio: '1', background: 'radial-gradient(circle at 50% 38%,#241946 0%,#0d0918 76%)', boxShadow: 'inset 0 0 0 calc(0.45 * var(--cw)) #8b5cf6' }}>
-          <span className="block" style={{ width: '24%', aspectRatio: '1', boxShadow: 'inset 0 0 0 calc(0.4 * var(--cw)) #cabdf8', transform: 'rotate(45deg)' }} />
+        <span className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full" style={{ top: '8%', height: '59.36%', aspectRatio: '1', background: 'radial-gradient(circle at 50% 38%,#241946 0%,#0d0918 76%)', boxShadow: `inset 0 0 0 ${cw(0.45)} #8b5cf6` }}>
+          <span className="block" style={{ width: '24%', aspectRatio: '1', boxShadow: `inset 0 0 0 ${cw(0.4)} #cabdf8`, transform: 'rotate(45deg)' }} />
         </span>
       </div>
 
       {/* ⚠️ no explicit line-height, deliberately: `normal` resolves to ~1.5 here and that
           1.5 line box is baked into the signed-off card — the feature cards below are
           positioned off the bottom of it. Pinning a number would move them. */}
-      <p className="relative shrink-0 text-center font-display font-semibold" style={{ marginTop: 'calc(0.5072 * var(--ch))', color: '#ffffffd9', fontSize: 'calc(3 * var(--cw))' }}>
+      <p className="relative shrink-0 text-center font-display font-semibold" style={{ marginTop: ch(0.5072), color: '#ffffffd9', fontSize: cw(3) }}>
         {/* Verbatim from the board per figma-spec-add-template.md §6.1. ⚠️ Both
             that transcription and this QA's re-read are by eye off a 233px MCP
             render (the proxy blocks the full-resolution asset), so "Ask" vs an
@@ -1297,18 +1338,18 @@ function Crypto() {
       </div>
 
       {/* the two purple feature cards, cut by the card's bottom edge */}
-      <div className="relative flex shrink-0" style={{ marginTop: 'calc(0.7072 * var(--ch))', marginInline: 'calc(3.5 * var(--cw))', gap: 'calc(2.4 * var(--cw))' }}>
-        <div className="relative flex-1 overflow-hidden" style={{ height: 'calc(30 * var(--ch))', borderRadius: 'calc(2 * var(--cw))', background: 'linear-gradient(150deg,#1a1130 0%,#241a3f 100%)' }}>
-          <span className="absolute rounded-full" style={{ left: '14%', top: '30%', width: 'calc(7 * var(--cw))', height: 'calc(7 * var(--cw))', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
-          <span className="absolute rounded-full" style={{ left: '42%', top: '55%', width: 'calc(5.5 * var(--cw))', height: 'calc(5.5 * var(--cw))', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
-          <span className="absolute rounded-full" style={{ left: '66%', top: '22%', width: 'calc(6 * var(--cw))', height: 'calc(6 * var(--cw))', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+      <div className="relative flex shrink-0" style={{ marginTop: ch(0.7072), marginInline: cw(3.5), gap: cw(2.4) }}>
+        <div className="relative flex-1 overflow-hidden" style={{ height: ch(30), borderRadius: cw(2), background: 'linear-gradient(150deg,#1a1130 0%,#241a3f 100%)' }}>
+          <span className={DOT} style={{ left: '14%', top: '30%', width: cw(7), height: cw(7), background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+          <span className={DOT} style={{ left: '42%', top: '55%', width: cw(5.5), height: cw(5.5), background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+          <span className={DOT} style={{ left: '66%', top: '22%', width: cw(6), height: cw(6), background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
         </div>
-        <div className="relative flex-1 overflow-hidden" style={{ height: 'calc(30 * var(--ch))', borderRadius: 'calc(2 * var(--cw))', background: 'linear-gradient(150deg,#191128 0%,#221739 100%)' }}>
-          <span className="absolute rounded-full" style={{ left: '8%', top: '18%', width: 'calc(4.6 * var(--cw))', height: 'calc(4.6 * var(--cw))', background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
-          <div className="absolute flex flex-col" style={{ left: '8%', top: '48%', right: '10%', gap: 'calc(1 * var(--ch))' }}>
-            <Bar w="60%" h="calc(1 * var(--ch))" color="#ffffffbf" />
-            <Bar w="100%" h="calc(0.8 * var(--ch))" color="#ffffff33" />
-            <Bar w="78%" h="calc(0.8 * var(--ch))" color="#ffffff33" />
+        <div className="relative flex-1 overflow-hidden" style={{ height: ch(30), borderRadius: cw(2), background: 'linear-gradient(150deg,#191128 0%,#221739 100%)' }}>
+          <span className={DOT} style={{ left: '8%', top: '18%', width: cw(4.6), height: cw(4.6), background: 'radial-gradient(circle at 38% 32%,#a688f7 0%,#6d47e0 58%,#4c2fae 100%)' }} />
+          <div className="absolute flex flex-col" style={{ left: '8%', top: '48%', right: '10%', gap: ch(1) }}>
+            <Bar w="60%" h={ch(1)} color="#ffffffbf" />
+            <Bar w="100%" h={ch(0.8)} color="#ffffff33" />
+            <Bar w="78%" h={ch(0.8)} color="#ffffff33" />
           </div>
         </div>
       </div>
@@ -1345,17 +1386,17 @@ function Crypto() {
  * itself is a wireframe bar, because a real caption under a stat is unreadable here.
  */
 function Stat({
-  value, color, label, size = 'calc(5 * var(--cw))', labelW = 'calc(9 * var(--cw))', center,
+  value, color, label, size = cw(5), labelW = cw(9), center,
 }: { value: string; color: string; label: string; size?: string; labelW?: string; center?: boolean }) {
   return (
-    <div className={cx('flex flex-col', center && 'items-center')} style={{ gap: 'calc(1.2 * var(--ch))' }}>
+    <div className={cx('flex flex-col', center && 'items-center')} style={{ gap: ch(1.2) }}>
       <p
-        className="whitespace-nowrap font-display font-semibold tabular-nums"
+        className={DISPLAY_NUM}
         style={{ color, fontSize: size, lineHeight: 1, letterSpacing: '-0.02em' }}
       >
         {value}
       </p>
-      <Bar w={labelW} h="calc(0.9 * var(--ch))" color={label} />
+      <Bar w={labelW} h={ch(0.9)} color={label} />
     </div>
   )
 }
@@ -1373,82 +1414,82 @@ function Stat({
  */
 function Coffee() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#f7ece0' }}>
+    <div className={PAGE} style={{ background: '#f7ece0' }}>
       {/* the espresso band: nav + hero, 44% of the card */}
       <div className="relative flex shrink-0 flex-col overflow-hidden" style={{ height: '44%', background: '#2e1b10' }}>
         <span
           className="absolute"
-          style={{ right: 'calc(-10 * var(--cw))', top: '-40%', width: 'calc(54 * var(--cw))', height: '180%', background: 'radial-gradient(50% 50% at 50% 50%,#c2551f4d 0%,#c2551f00 70%)' }}
+          style={{ right: cw(-10), top: '-40%', width: cw(54), height: '180%', background: 'radial-gradient(50% 50% at 50% 50%,#c2551f4d 0%,#c2551f00 70%)' }}
         />
-        <div className="flex shrink-0 items-center justify-between" style={{ height: '24%', paddingInline: 'calc(4 * var(--cw))' }}>
-          <Wordmark color="#f7ece0" size="calc(3.6 * var(--cw))">MERIDIAN</Wordmark>
-          <NavLinks n={4} color="#f7ece066" w="calc(4 * var(--cw))" gap="calc(2.6 * var(--cw))" />
-          <div className="flex items-center" style={{ gap: 'calc(1.8 * var(--cw))' }}>
-            <Bar w="calc(3 * var(--cw))" h="calc(1 * var(--ch))" color="#f7ece08c" />
-            <Pill w="calc(8.5 * var(--cw))" h="calc(3.6 * var(--ch))" bg="#c2551f" label="#ffffffa6" />
+        <div className={BAR} style={{ height: '24%', paddingInline: cw(4) }}>
+          <Wordmark color="#f7ece0" size={cw(3.6)}>MERIDIAN</Wordmark>
+          <NavLinks n={4} color="#f7ece066" w={cw(4)} gap={cw(2.6)} />
+          <div className={ROW} style={{ gap: cw(1.8) }}>
+            <Bar w={cw(3)} h={ch(1)} color="#f7ece08c" />
+            <Pill w={cw(8.5)} h={ch(3.6)} bg="#c2551f" label="#ffffffa6" />
           </div>
         </div>
-        <div className="relative flex flex-1 items-start justify-between" style={{ paddingInline: 'calc(4 * var(--cw))' }}>
-          <div className="flex flex-col" style={{ gap: 'calc(2.6 * var(--ch))' }}>
+        <div className="relative flex flex-1 items-start justify-between" style={{ paddingInline: cw(4) }}>
+          <div className="flex flex-col" style={{ gap: ch(2.6) }}>
             <p
-              className="whitespace-nowrap font-display font-semibold"
-              style={{ color: '#f7ece0', fontSize: 'calc(4.2 * var(--cw))', lineHeight: 1.14, letterSpacing: '-0.025em' }}
+              className={DISPLAY}
+              style={{ color: '#f7ece0', fontSize: cw(4.2), lineHeight: 1.14, letterSpacing: '-0.025em' }}
             >
               Roasted Monday.<br />On your shelf Wednesday.
             </p>
-            <Copy rows={2} color="#f7ece033" w="calc(28 * var(--cw))" h="calc(1.1 * var(--ch))" gap="calc(1.2 * var(--ch))" />
-            <Pill w="calc(17 * var(--cw))" h="calc(5 * var(--ch))" bg="#c2551f" label="#2e1b1080" />
+            <Copy rows={2} color="#f7ece033" w={cw(28)} h={ch(1.1)} gap={ch(1.2)} />
+            <Pill w={cw(17)} h={ch(5)} bg="#c2551f" label="#2e1b1080" />
           </div>
           {/* the hero bag, shape held by aspect-ratio */}
-          <div className="relative shrink-0" style={{ height: '86%', aspectRatio: '0.66', alignSelf: 'flex-end' }}>
+          <div className={BAND} style={{ height: '86%', aspectRatio: '0.66', alignSelf: 'flex-end' }}>
             <span
               className="absolute inset-x-0 top-0"
-              style={{ height: '12%', background: '#f0d7ba', borderRadius: 'calc(0.6 * var(--cw)) calc(0.6 * var(--cw)) calc(0.2 * var(--cw)) calc(0.2 * var(--cw))' }}
+              style={{ height: '12%', background: '#f0d7ba', borderRadius: `${cw(0.6)} ${cw(0.6)} ${cw(0.2)} ${cw(0.2)}` }}
             />
             <span
               className="absolute inset-x-0"
               style={{
-                top: '9%', bottom: 0, borderRadius: 'calc(0.8 * var(--cw))',
+                top: '9%', bottom: 0, borderRadius: cw(0.8),
                 background: 'linear-gradient(102deg,#ffffff26 0%,#ffffff00 26%),linear-gradient(168deg,#4a3121 0%,#33200f 52%,#1b1008 100%)',
               }}
             />
-            <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '40%', width: '72%', height: '26%', background: '#c2551f', borderRadius: 'calc(0.5 * var(--cw))' }} />
+            <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '40%', width: '72%', height: '26%', background: '#c2551f', borderRadius: cw(0.5) }} />
           </div>
         </div>
       </div>
 
       {/* the shelf: section head, four bags, then the footer strip */}
-      <div className="flex shrink-0 items-end justify-between" style={{ height: '9%', paddingInline: 'calc(4 * var(--cw))' }}>
-        <p className="whitespace-nowrap font-display font-semibold" style={{ color: '#2e1b10', fontSize: 'calc(3.2 * var(--cw))', lineHeight: 1, letterSpacing: '-0.02em' }}>
+      <div className="flex shrink-0 items-end justify-between" style={{ height: '9%', paddingInline: cw(4) }}>
+        <p className={DISPLAY} style={{ color: '#2e1b10', fontSize: cw(3.2), lineHeight: 1, letterSpacing: '-0.02em' }}>
           Single origin
         </p>
-        <Bar w="calc(8 * var(--cw))" h="calc(1 * var(--ch))" color="#2e1b1040" />
+        <Bar w={cw(8)} h={ch(1)} color="#2e1b1040" />
       </div>
-      <div className="flex flex-1 items-stretch" style={{ paddingInline: 'calc(4 * var(--cw))', paddingTop: 'calc(2 * var(--ch))', paddingBottom: 'calc(2 * var(--ch))', gap: 'calc(2.4 * var(--cw))' }}>
+      <div className="flex flex-1 items-stretch" style={{ paddingInline: cw(4), paddingTop: ch(2), paddingBottom: ch(2), gap: cw(2.4) }}>
         {[
           { bag: 'linear-gradient(166deg,#4a3121,#1d120b)', price: '$18' },
           { bag: 'linear-gradient(166deg,#8a4a24,#4a2412)', price: '$22' },
           { bag: 'linear-gradient(166deg,#c2551f,#7a3210)', price: '$16' },
           { bag: 'linear-gradient(166deg,#5d6b4a,#2c3423)', price: '$24' },
         ].map((p) => (
-          <div key={p.price} className="flex flex-1 flex-col" style={{ gap: 'calc(1.4 * var(--ch))' }}>
-            <div className="relative flex flex-1 items-end justify-center overflow-hidden" style={{ background: '#efe0cd', borderRadius: 'calc(1.2 * var(--cw))' }}>
-              <div className="relative" style={{ height: '74%', aspectRatio: '0.66', background: p.bag, borderRadius: 'calc(0.7 * var(--cw)) calc(0.7 * var(--cw)) calc(0.4 * var(--cw)) calc(0.4 * var(--cw))' }}>
-                <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '38%', width: '70%', height: '22%', background: '#f7ece0a6', borderRadius: 'calc(0.3 * var(--cw))' }} />
+          <div key={p.price} className="flex flex-1 flex-col" style={{ gap: ch(1.4) }}>
+            <div className="relative flex flex-1 items-end justify-center overflow-hidden" style={{ background: '#efe0cd', borderRadius: cw(1.2) }}>
+              <div className="relative" style={{ height: '74%', aspectRatio: '0.66', background: p.bag, borderRadius: `${cw(0.7)} ${cw(0.7)} ${cw(0.4)} ${cw(0.4)}` }}>
+                <span className="absolute left-1/2 -translate-x-1/2" style={{ top: '38%', width: '70%', height: '22%', background: '#f7ece0a6', borderRadius: cw(0.3) }} />
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <Bar w="58%" h="calc(1 * var(--ch))" color="#2e1b1033" />
-              <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#2e1b10', fontSize: 'calc(2.7 * var(--cw))', lineHeight: 1 }}>{p.price}</p>
+              <Bar w="58%" h={ch(1)} color="#2e1b1033" />
+              <p className={DISPLAY_NUM} style={{ color: '#2e1b10', fontSize: cw(2.7), lineHeight: 1 }}>{p.price}</p>
             </div>
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: '13%', background: '#2e1b10', paddingInline: 'calc(4 * var(--cw))' }}>
-        <Wordmark color="#f7ece0" size="calc(2.8 * var(--cw))">MERIDIAN</Wordmark>
-        <div className="flex items-center" style={{ gap: 'calc(3 * var(--cw))' }}>
-          <NavLinks n={3} color="#f7ece040" w="calc(5 * var(--cw))" gap="calc(3 * var(--cw))" />
-          <Pill w="calc(10 * var(--cw))" h="calc(3.4 * var(--ch))" border="#f7ece033" label="#f7ece073" />
+      <div className={BAR} style={{ height: '13%', background: '#2e1b10', paddingInline: cw(4) }}>
+        <Wordmark color="#f7ece0" size={cw(2.8)}>MERIDIAN</Wordmark>
+        <div className={ROW} style={{ gap: cw(3) }}>
+          <NavLinks n={3} color="#f7ece040" w={cw(5)} gap={cw(3)} />
+          <Pill w={cw(10)} h={ch(3.4)} border="#f7ece033" label="#f7ece073" />
         </div>
       </div>
     </div>
@@ -1478,14 +1519,14 @@ function Fashion() {
             it against the panel's overflow at one size or the other. */}
         <div
           className="absolute flex items-center justify-center"
-          style={{ left: '7%', top: '9%', width: 'calc(11 * var(--cw))', height: 'calc(5 * var(--ch))', background: '#e5321a', transform: 'rotate(-6deg)', borderRadius: 'calc(0.4 * var(--cw))' }}
+          style={{ left: '7%', top: '9%', width: cw(11), height: ch(5), background: '#e5321a', transform: 'rotate(-6deg)', borderRadius: cw(0.4) }}
         >
-          <Bar w="62%" h="calc(1 * var(--ch))" color="#ffffffd9" />
+          <Bar w="62%" h={ch(1)} color="#ffffffd9" />
         </div>
         {/* the price tag the board floats over the shot */}
-        <div className="absolute flex items-center bg-white" style={{ left: '10%', bottom: '9%', padding: 'calc(1 * var(--cw))', gap: 'calc(1.2 * var(--cw))', borderRadius: 'calc(0.6 * var(--cw))' }}>
-          <Bar w="calc(7 * var(--cw))" h="calc(0.9 * var(--ch))" color="#0a0a0a33" />
-          <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#0a0a0a', fontSize: 'calc(2.4 * var(--cw))', lineHeight: 1 }}>$240</p>
+        <div className="absolute flex items-center bg-white" style={{ left: '10%', bottom: '9%', padding: cw(1), gap: cw(1.2), borderRadius: cw(0.6) }}>
+          <Bar w={cw(7)} h={ch(0.9)} color="#0a0a0a33" />
+          <p className={DISPLAY_NUM} style={{ color: '#0a0a0a', fontSize: cw(2.4), lineHeight: 1 }}>$240</p>
         </div>
       </Photo>
       <Photo
@@ -1494,42 +1535,42 @@ function Fashion() {
       />
       {/* the type side */}
       <div className="absolute flex flex-col" style={{ left: 0, top: 0, bottom: 0, width: '58%' }}>
-        <div className="flex shrink-0 items-center justify-between" style={{ height: '13%', paddingInline: 'calc(4 * var(--cw))' }}>
-          <NavLinks n={3} color="#0a0a0a59" w="calc(3.6 * var(--cw))" gap="calc(2.4 * var(--cw))" />
-          <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#0a0a0a', fontSize: 'calc(3.4 * var(--cw))', lineHeight: 1, letterSpacing: '0.26em' }}>
+        <div className={BAR} style={{ height: '13%', paddingInline: cw(4) }}>
+          <NavLinks n={3} color="#0a0a0a59" w={cw(3.6)} gap={cw(2.4)} />
+          <span className={DISPLAY} style={{ color: '#0a0a0a', fontSize: cw(3.4), lineHeight: 1, letterSpacing: '0.26em' }}>
             ODEON
           </span>
-          <div className="flex items-center" style={{ gap: 'calc(1.4 * var(--cw))' }}>
-            <Bar w="calc(3 * var(--cw))" h="calc(1 * var(--ch))" color="#0a0a0a59" />
-            <span className="block rounded-full" style={{ width: 'calc(2.4 * var(--cw))', height: 'calc(2.4 * var(--cw))', background: '#0a0a0a' }} />
+          <div className={ROW} style={{ gap: cw(1.4) }}>
+            <Bar w={cw(3)} h={ch(1)} color="#0a0a0a59" />
+            <span className="block rounded-full" style={{ width: cw(2.4), height: cw(2.4), background: '#0a0a0a' }} />
           </div>
         </div>
-        <span className="shrink-0" style={{ marginInline: 'calc(4 * var(--cw))', height: 'calc(0.25 * var(--cw))', background: '#0a0a0a1f' }} />
+        <span className="shrink-0" style={{ marginInline: cw(4), height: cw(0.25), background: '#0a0a0a1f' }} />
 
-        <div className="flex flex-1 flex-col justify-center" style={{ paddingInline: 'calc(4 * var(--cw))', gap: 'calc(3 * var(--ch))' }}>
+        <div className="flex flex-1 flex-col justify-center" style={{ paddingInline: cw(4), gap: ch(3) }}>
           <p
-            className="whitespace-nowrap font-display font-semibold"
-            style={{ color: '#0a0a0a', fontSize: 'calc(9.6 * var(--cw))', lineHeight: 0.94, letterSpacing: '-0.045em' }}
+            className={DISPLAY}
+            style={{ color: '#0a0a0a', fontSize: cw(9.6), lineHeight: 0.94, letterSpacing: '-0.045em' }}
           >
             SPRING<br />SUMMER<br />26
           </p>
-          <Copy rows={2} color="#0a0a0a26" w="calc(26 * var(--cw))" h="calc(1.1 * var(--ch))" gap="calc(1.2 * var(--ch))" />
-          <div className="flex items-center" style={{ gap: 'calc(2 * var(--cw))' }}>
-            <Pill w="calc(20 * var(--cw))" h="calc(5.4 * var(--ch))" bg="#0a0a0a" label="#ffffffa6" />
-            <div className="flex items-center" style={{ gap: 'calc(1.2 * var(--cw))' }}>
+          <Copy rows={2} color="#0a0a0a26" w={cw(26)} h={ch(1.1)} gap={ch(1.2)} />
+          <div className={ROW} style={{ gap: cw(2) }}>
+            <Pill w={cw(20)} h={ch(5.4)} bg="#0a0a0a" label="#ffffffa6" />
+            <div className={ROW} style={{ gap: cw(1.2) }}>
               {['#1c1c1e', '#b9a288', '#7d8a76'].map((c) => (
-                <span key={c} className="block" style={{ width: 'calc(4 * var(--cw))', height: 'calc(4 * var(--cw))', background: c, borderRadius: 'calc(0.4 * var(--cw))' }} />
+                <span key={c} className="block" style={{ width: cw(4), height: cw(4), background: c, borderRadius: cw(0.4) }} />
               ))}
             </div>
           </div>
         </div>
 
         {/* the lookbook index the crop catches at the bottom */}
-        <div className="flex shrink-0 items-center justify-between" style={{ height: '13%', paddingInline: 'calc(4 * var(--cw))', borderTop: 'calc(0.25 * var(--cw)) solid #0a0a0a1f' }}>
-          <p className="whitespace-nowrap tabular-nums" style={{ color: '#0a0a0a', fontSize: 'calc(2.5 * var(--cw))', lineHeight: 1, letterSpacing: '0.1em' }}>
+        <div className={BAR} style={{ height: '13%', paddingInline: cw(4), borderTop: `${cw(0.25)} solid #0a0a0a1f` }}>
+          <p className="whitespace-nowrap tabular-nums" style={{ color: '#0a0a0a', fontSize: cw(2.5), lineHeight: 1, letterSpacing: '0.1em' }}>
             LOOKBOOK 01
           </p>
-          <NavLinks n={2} color="#0a0a0a33" w="calc(5 * var(--cw))" gap="calc(2 * var(--cw))" />
+          <NavLinks n={2} color="#0a0a0a33" w={cw(5)} gap={cw(2)} />
         </div>
       </div>
     </div>
@@ -1547,98 +1588,98 @@ function Fashion() {
  */
 function Devtools() {
   const code: { pad: string; toks: [string, string][] }[] = [
-    { pad: 'calc(0 * var(--cw))', toks: [['calc(4 * var(--cw))', '#c792ea'], ['calc(7 * var(--cw))', '#82aaff'], ['calc(3 * var(--cw))', '#59708a']] },
-    { pad: 'calc(2.4 * var(--cw))', toks: [['calc(3 * var(--cw))', '#3ddbd9'], ['calc(8 * var(--cw))', '#ecc48d']] },
-    { pad: 'calc(2.4 * var(--cw))', toks: [['calc(5 * var(--cw))', '#c792ea'], ['calc(4 * var(--cw))', '#e6e6ea'], ['calc(6 * var(--cw))', '#82aaff']] },
-    { pad: 'calc(4.8 * var(--cw))', toks: [['calc(6 * var(--cw))', '#ecc48d'], ['calc(3 * var(--cw))', '#59708a']] },
-    { pad: 'calc(4.8 * var(--cw))', toks: [['calc(4 * var(--cw))', '#3ddbd9'], ['calc(5 * var(--cw))', '#e6e6ea'], ['calc(3 * var(--cw))', '#c792ea']] },
-    { pad: 'calc(2.4 * var(--cw))', toks: [['calc(3 * var(--cw))', '#e6e6ea']] },
-    { pad: 'calc(0 * var(--cw))', toks: [['calc(5 * var(--cw))', '#c792ea'], ['calc(6 * var(--cw))', '#82aaff'], ['calc(4 * var(--cw))', '#ecc48d']] },
-    { pad: 'calc(2.4 * var(--cw))', toks: [['calc(7 * var(--cw))', '#3ddbd9'], ['calc(4 * var(--cw))', '#e6e6ea']] },
+    { pad: cw(0), toks: [[cw(4), '#c792ea'], [cw(7), '#82aaff'], [cw(3), '#59708a']] },
+    { pad: cw(2.4), toks: [[cw(3), '#3ddbd9'], [cw(8), '#ecc48d']] },
+    { pad: cw(2.4), toks: [[cw(5), '#c792ea'], [cw(4), '#e6e6ea'], [cw(6), '#82aaff']] },
+    { pad: cw(4.8), toks: [[cw(6), '#ecc48d'], [cw(3), '#59708a']] },
+    { pad: cw(4.8), toks: [[cw(4), '#3ddbd9'], [cw(5), '#e6e6ea'], [cw(3), '#c792ea']] },
+    { pad: cw(2.4), toks: [[cw(3), '#e6e6ea']] },
+    { pad: cw(0), toks: [[cw(5), '#c792ea'], [cw(6), '#82aaff'], [cw(4), '#ecc48d']] },
+    { pad: cw(2.4), toks: [[cw(7), '#3ddbd9'], [cw(4), '#e6e6ea']] },
   ]
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#0b1016' }}>
+    <div className={PAGE} style={{ background: '#0b1016' }}>
       <span
         className="absolute"
-        style={{ left: '18%', top: '-30%', width: 'calc(70 * var(--cw))', height: '110%', background: 'radial-gradient(50% 50% at 50% 50%,#3ddbd91f 0%,#3ddbd900 70%)' }}
+        style={{ left: '18%', top: '-30%', width: cw(70), height: '110%', background: 'radial-gradient(50% 50% at 50% 50%,#3ddbd91f 0%,#3ddbd900 70%)' }}
       />
-      <div className="relative flex shrink-0 items-center justify-between" style={{ height: '9%', paddingInline: 'calc(3.5 * var(--cw))' }}>
-        <div className="flex items-center" style={{ gap: 'calc(1.4 * var(--cw))' }}>
-          <span className="block" style={{ width: 'calc(2.6 * var(--cw))', height: 'calc(2.6 * var(--cw))', background: '#3ddbd9', borderRadius: 'calc(0.5 * var(--cw))', transform: 'rotate(45deg)' }} />
-          <span className="whitespace-nowrap font-mono" style={{ color: '#ffffff', fontSize: 'calc(3 * var(--cw))', lineHeight: 1, letterSpacing: '-0.02em' }}>forge</span>
+      <div className="relative flex shrink-0 items-center justify-between" style={{ height: '9%', paddingInline: cw(3.5) }}>
+        <div className={ROW} style={{ gap: cw(1.4) }}>
+          <span className="block" style={{ width: cw(2.6), height: cw(2.6), background: '#3ddbd9', borderRadius: cw(0.5), transform: 'rotate(45deg)' }} />
+          <span className="whitespace-nowrap font-mono" style={{ color: '#ffffff', fontSize: cw(3), lineHeight: 1, letterSpacing: '-0.02em' }}>forge</span>
         </div>
-        <NavLinks n={4} color="#ffffff4d" w="calc(3.8 * var(--cw))" gap="calc(2.4 * var(--cw))" />
-        <div className="flex items-center" style={{ gap: 'calc(1.6 * var(--cw))' }}>
-          <span className="whitespace-nowrap font-mono" style={{ color: '#ffffff59', fontSize: 'calc(2.2 * var(--cw))', lineHeight: 1 }}>v2.4</span>
-          <Pill w="calc(9 * var(--cw))" h="calc(3.6 * var(--ch))" bg="#3ddbd9" label="#06222699" />
+        <NavLinks n={4} color="#ffffff4d" w={cw(3.8)} gap={cw(2.4)} />
+        <div className={ROW} style={{ gap: cw(1.6) }}>
+          <span className="whitespace-nowrap font-mono" style={{ color: '#ffffff59', fontSize: cw(2.2), lineHeight: 1 }}>v2.4</span>
+          <Pill w={cw(9)} h={ch(3.6)} bg="#3ddbd9" label="#06222699" />
         </div>
       </div>
 
-      <div className="relative flex flex-1" style={{ paddingInline: 'calc(3.5 * var(--cw))', paddingTop: 'calc(3 * var(--ch))', gap: 'calc(3 * var(--cw))' }}>
+      <div className="relative flex flex-1" style={{ paddingInline: cw(3.5), paddingTop: ch(3), gap: cw(3) }}>
         {/* left: the pitch */}
-        <div className="flex flex-col justify-center" style={{ width: '38%', gap: 'calc(2.4 * var(--ch))' }}>
-          <span className="flex items-center self-start rounded-full" style={{ padding: 'calc(1 * var(--cw))', gap: 'calc(1.2 * var(--cw))', boxShadow: 'inset 0 0 0 calc(0.3 * var(--cw)) #3ddbd93d' }}>
-            <span className="block rounded-full" style={{ width: 'calc(1.4 * var(--cw))', height: 'calc(1.4 * var(--cw))', background: '#3ddbd9' }} />
-            <Bar w="calc(8 * var(--cw))" h="calc(0.9 * var(--ch))" color="#3ddbd9a6" />
+        <div className="flex flex-col justify-center" style={{ width: '38%', gap: ch(2.4) }}>
+          <span className="flex items-center self-start rounded-full" style={{ padding: cw(1), gap: cw(1.2), boxShadow: `inset 0 0 0 ${cw(0.3)} #3ddbd93d` }}>
+            <span className="block rounded-full" style={{ width: cw(1.4), height: cw(1.4), background: '#3ddbd9' }} />
+            <Bar w={cw(8)} h={ch(0.9)} color="#3ddbd9a6" />
           </span>
           <p
-            className="whitespace-nowrap font-display font-semibold"
-            style={{ color: '#eef4f7', fontSize: 'calc(4.6 * var(--cw))', lineHeight: 1.16, letterSpacing: '-0.03em' }}
+            className={DISPLAY}
+            style={{ color: '#eef4f7', fontSize: cw(4.6), lineHeight: 1.16, letterSpacing: '-0.03em' }}
           >
             Ship your backend<br />in <span style={{ color: '#3ddbd9' }}>one command</span>
           </p>
-          <Copy rows={2} color="#ffffff33" w="100%" h="calc(1.1 * var(--ch))" gap="calc(1.2 * var(--ch))" />
+          <Copy rows={2} color="#ffffff33" w="100%" h={ch(1.1)} gap={ch(1.2)} />
           {/* the install line: a real mono $, then bars — the command is texture, not text */}
           <div
             className="flex items-center justify-between"
-            style={{ height: 'calc(6 * var(--ch))', paddingInline: 'calc(1.4 * var(--cw))', background: '#111a24', borderRadius: 'calc(0.8 * var(--cw))', boxShadow: 'inset 0 0 0 calc(0.25 * var(--cw)) #ffffff14' }}
+            style={{ height: ch(6), paddingInline: cw(1.4), background: '#111a24', borderRadius: cw(0.8), boxShadow: `inset 0 0 0 ${cw(0.25)} #ffffff14` }}
           >
-            <div className="flex items-center" style={{ gap: 'calc(1.2 * var(--cw))' }}>
-              <span className="whitespace-nowrap font-mono" style={{ color: '#3ddbd9', fontSize: 'calc(2.4 * var(--cw))', lineHeight: 1 }}>$</span>
-              <Bar w="calc(7 * var(--cw))" h="calc(1 * var(--ch))" color="#ffffff59" />
-              <Bar w="calc(4 * var(--cw))" h="calc(1 * var(--ch))" color="#ffffff2e" />
+            <div className={ROW} style={{ gap: cw(1.2) }}>
+              <span className="whitespace-nowrap font-mono" style={{ color: '#3ddbd9', fontSize: cw(2.4), lineHeight: 1 }}>$</span>
+              <Bar w={cw(7)} h={ch(1)} color="#ffffff59" />
+              <Bar w={cw(4)} h={ch(1)} color="#ffffff2e" />
             </div>
-            <span className="block shrink-0" style={{ width: 'calc(2 * var(--cw))', height: 'calc(2 * var(--cw))', boxShadow: 'inset 0 0 0 calc(0.25 * var(--cw)) #ffffff3d', borderRadius: 'calc(0.3 * var(--cw))' }} />
+            <span className="block shrink-0" style={{ width: cw(2), height: cw(2), boxShadow: `inset 0 0 0 ${cw(0.25)} #ffffff3d`, borderRadius: cw(0.3) }} />
           </div>
-          <div className="flex items-center" style={{ gap: 'calc(1.8 * var(--cw))' }}>
-            <Pill w="calc(14 * var(--cw))" h="calc(5 * var(--ch))" bg="#3ddbd9" label="#06222699" />
-            <Pill w="calc(12 * var(--cw))" h="calc(5 * var(--ch))" border="#ffffff26" label="#ffffff8c" />
+          <div className={ROW} style={{ gap: cw(1.8) }}>
+            <Pill w={cw(14)} h={ch(5)} bg="#3ddbd9" label="#06222699" />
+            <Pill w={cw(12)} h={ch(5)} border="#ffffff26" label="#ffffff8c" />
           </div>
         </div>
 
         {/* right: the editor window, cut by the bottom band */}
-        <div className="relative flex flex-1 flex-col overflow-hidden" style={{ background: '#0f1621', borderRadius: 'calc(1.4 * var(--cw)) calc(1.4 * var(--cw)) 0 0', boxShadow: 'inset 0 0 0 calc(0.25 * var(--cw)) #ffffff14' }}>
-          <div className="flex shrink-0 items-center" style={{ height: '13%', paddingInline: 'calc(1.6 * var(--cw))', gap: 'calc(1 * var(--cw))', borderBottom: 'calc(0.25 * var(--cw)) solid #ffffff0f' }}>
+        <div className="relative flex flex-1 flex-col overflow-hidden" style={{ background: '#0f1621', borderRadius: `${cw(1.4)} ${cw(1.4)} 0 0`, boxShadow: `inset 0 0 0 ${cw(0.25)} #ffffff14` }}>
+          <div className="flex shrink-0 items-center" style={{ height: '13%', paddingInline: cw(1.6), gap: cw(1), borderBottom: `${cw(0.25)} solid #ffffff0f` }}>
             {['#ffffff26', '#ffffff1f', '#ffffff1f'].map((c, i) => (
-              <span key={i} className="block shrink-0 rounded-full" style={{ width: 'calc(1.2 * var(--cw))', height: 'calc(1.2 * var(--cw))', background: c }} />
+              <span key={i} className="block shrink-0 rounded-full" style={{ width: cw(1.2), height: cw(1.2), background: c }} />
             ))}
-            <Bar w="calc(7 * var(--cw))" h="calc(1.6 * var(--ch))" color="#ffffff0f" radius="calc(0.4 * var(--cw))" />
-            <Bar w="calc(5 * var(--cw))" h="calc(1.6 * var(--ch))" color="#ffffff08" radius="calc(0.4 * var(--cw))" />
+            <Bar w={cw(7)} h={ch(1.6)} color="#ffffff0f" radius={cw(0.4)} />
+            <Bar w={cw(5)} h={ch(1.6)} color="#ffffff08" radius={cw(0.4)} />
           </div>
-          <div className="flex flex-1 flex-col" style={{ paddingTop: 'calc(1.2 * var(--ch))', paddingBottom: 'calc(1.2 * var(--ch))', paddingRight: 'calc(2 * var(--cw))' }}>
+          <div className="flex flex-1 flex-col" style={{ paddingTop: ch(1.2), paddingBottom: ch(1.2), paddingRight: cw(2) }}>
             {code.map((row, i) => (
               <div key={i} className="flex flex-1 items-center">
-                <span className="flex shrink-0 justify-end" style={{ width: '10%', paddingRight: 'calc(1 * var(--cw))' }}>
-                  <Bar w="calc(1.6 * var(--cw))" h="calc(0.85 * var(--ch))" color="#ffffff1f" />
+                <span className="flex shrink-0 justify-end" style={{ width: '10%', paddingRight: cw(1) }}>
+                  <Bar w={cw(1.6)} h={ch(0.85)} color="#ffffff1f" />
                 </span>
-                <div className="flex items-center" style={{ paddingLeft: row.pad, gap: 'calc(1.2 * var(--cw))' }}>
-                  {row.toks.map(([w, c], j) => <Bar key={j} w={w} h="calc(0.85 * var(--ch))" color={c} />)}
+                <div className={ROW} style={{ paddingLeft: row.pad, gap: cw(1.2) }}>
+                  {row.toks.map(([w, c], j) => <Bar key={j} w={w} h={ch(0.85)} color={c} />)}
                 </div>
               </div>
             ))}
           </div>
           {/* the build panel, pinned to the pane's bottom-right */}
-          <div className="absolute flex items-center" style={{ right: 'calc(2 * var(--cw))', bottom: 'calc(2 * var(--ch))', padding: 'calc(1.2 * var(--cw))', gap: 'calc(1.4 * var(--cw))', background: '#070c12', borderRadius: 'calc(0.8 * var(--cw))', boxShadow: 'inset 0 0 0 calc(0.25 * var(--cw)) #ffffff14' }}>
-            <span className="block rounded-full" style={{ width: 'calc(1.6 * var(--cw))', height: 'calc(1.6 * var(--cw))', background: '#4ade80' }} />
-            <Bar w="calc(6 * var(--cw))" h="calc(0.9 * var(--ch))" color="#ffffff59" />
-            <span className="whitespace-nowrap font-mono tabular-nums" style={{ color: '#4ade80', fontSize: 'calc(2.2 * var(--cw))', lineHeight: 1 }}>1.4s</span>
+          <div className="absolute flex items-center" style={{ right: cw(2), bottom: ch(2), padding: cw(1.2), gap: cw(1.4), background: '#070c12', borderRadius: cw(0.8), boxShadow: `inset 0 0 0 ${cw(0.25)} #ffffff14` }}>
+            <span className="block rounded-full" style={{ width: cw(1.6), height: cw(1.6), background: '#4ade80' }} />
+            <Bar w={cw(6)} h={ch(0.9)} color="#ffffff59" />
+            <span className="whitespace-nowrap font-mono tabular-nums" style={{ color: '#4ade80', fontSize: cw(2.2), lineHeight: 1 }}>1.4s</span>
           </div>
         </div>
       </div>
 
       {/* the "trusted by" strip */}
-      <div className="relative flex shrink-0 items-center justify-center" style={{ height: '12%', background: '#080d13', gap: 'calc(4 * var(--cw))', borderTop: 'calc(0.25 * var(--cw)) solid #ffffff0f' }}>
-        {['calc(9 * var(--cw))', 'calc(7 * var(--cw))', 'calc(10 * var(--cw))', 'calc(7 * var(--cw))', 'calc(8 * var(--cw))'].map((w, i) => <Bar key={i} w={w} h="calc(1.5 * var(--ch))" color="#ffffff26" />)}
+      <div className="relative flex shrink-0 items-center justify-center" style={{ height: '12%', background: '#080d13', gap: cw(4), borderTop: `${cw(0.25)} solid #ffffff0f` }}>
+        {[cw(9), cw(7), cw(10), cw(7), cw(8)].map((w, i) => <Bar key={i} w={w} h={ch(1.5)} color="#ffffff26" />)}
       </div>
     </div>
   )
@@ -1663,98 +1704,98 @@ function Analytics() {
   const line = `polygon(${ridge.join(',')},${series.map((y, i) => `${at(i)} ${y + 6}%`).reverse().join(',')})`
   const areaBack = `polygon(${back.map((y, i) => `${at(i)} ${y}%`).join(',')},100% 100%,0% 100%)`
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#f4f5fb' }}>
-      <div className="flex shrink-0 items-center justify-between bg-white" style={{ height: '10%', paddingInline: 'calc(3.5 * var(--cw))', borderBottom: 'calc(0.25 * var(--cw)) solid #171a2b0f' }}>
-        <div className="flex items-center" style={{ gap: 'calc(1.4 * var(--cw))' }}>
-          <span className="block" style={{ width: 'calc(2.8 * var(--cw))', height: 'calc(2.8 * var(--cw))', background: 'linear-gradient(140deg,#6366f1,#4f46e5)', borderRadius: 'calc(0.7 * var(--cw))' }} />
-          <Wordmark color="#171a2b" size="calc(3.2 * var(--cw))">Lumen</Wordmark>
+    <div className={PAGE} style={{ background: '#f4f5fb' }}>
+      <div className="flex shrink-0 items-center justify-between bg-white" style={{ height: '10%', paddingInline: cw(3.5), borderBottom: `${cw(0.25)} solid #171a2b0f` }}>
+        <div className={ROW} style={{ gap: cw(1.4) }}>
+          <span className="block" style={{ width: cw(2.8), height: cw(2.8), background: 'linear-gradient(140deg,#6366f1,#4f46e5)', borderRadius: cw(0.7) }} />
+          <Wordmark color="#171a2b" size={cw(3.2)}>Lumen</Wordmark>
         </div>
-        <NavLinks n={4} color="#171a2b59" w="calc(4 * var(--cw))" gap="calc(2.6 * var(--cw))" />
-        <div className="flex items-center" style={{ gap: 'calc(1.8 * var(--cw))' }}>
-          <Bar w="calc(3.4 * var(--cw))" h="calc(1 * var(--ch))" color="#171a2b73" />
-          <Pill w="calc(9.5 * var(--cw))" h="calc(3.8 * var(--ch))" bg="#4f46e5" label="#ffffffa6" />
+        <NavLinks n={4} color="#171a2b59" w={cw(4)} gap={cw(2.6)} />
+        <div className={ROW} style={{ gap: cw(1.8) }}>
+          <Bar w={cw(3.4)} h={ch(1)} color="#171a2b73" />
+          <Pill w={cw(9.5)} h={ch(3.8)} bg="#4f46e5" label="#ffffffa6" />
         </div>
       </div>
 
-      <div className="flex flex-1" style={{ paddingInline: 'calc(3.5 * var(--cw))', paddingTop: 'calc(3.5 * var(--ch))', gap: 'calc(3 * var(--cw))' }}>
+      <div className="flex flex-1" style={{ paddingInline: cw(3.5), paddingTop: ch(3.5), gap: cw(3) }}>
         {/* the pitch */}
-        <div className="flex flex-col" style={{ width: '35%', gap: 'calc(2.4 * var(--ch))' }}>
-          <span className="flex items-center self-start rounded-full bg-white" style={{ padding: 'calc(1 * var(--cw))', gap: 'calc(1.2 * var(--cw))', boxShadow: 'inset 0 0 0 calc(0.25 * var(--cw)) #4f46e526' }}>
-            <span className="block rounded-full" style={{ width: 'calc(1.4 * var(--cw))', height: 'calc(1.4 * var(--cw))', background: '#4f46e5' }} />
-            <Bar w="calc(8 * var(--cw))" h="calc(0.9 * var(--ch))" color="#4f46e58c" />
+        <div className="flex flex-col" style={{ width: '35%', gap: ch(2.4) }}>
+          <span className="flex items-center self-start rounded-full bg-white" style={{ padding: cw(1), gap: cw(1.2), boxShadow: `inset 0 0 0 ${cw(0.25)} #4f46e526` }}>
+            <span className="block rounded-full" style={{ width: cw(1.4), height: cw(1.4), background: '#4f46e5' }} />
+            <Bar w={cw(8)} h={ch(0.9)} color="#4f46e58c" />
           </span>
           <p
-            className="whitespace-nowrap font-display font-semibold"
-            style={{ color: '#171a2b', fontSize: 'calc(4.6 * var(--cw))', lineHeight: 1.16, letterSpacing: '-0.03em' }}
+            className={DISPLAY}
+            style={{ color: '#171a2b', fontSize: cw(4.6), lineHeight: 1.16, letterSpacing: '-0.03em' }}
           >
             Every metric,<br />explained by <span style={{ color: '#4f46e5' }}>AI</span>
           </p>
-          <Copy rows={2} color="#171a2b26" w="100%" h="calc(1.1 * var(--ch))" gap="calc(1.2 * var(--ch))" />
-          <div className="flex items-center" style={{ gap: 'calc(1.8 * var(--cw))' }}>
-            <Pill w="calc(15 * var(--cw))" h="calc(5 * var(--ch))" bg="#4f46e5" label="#ffffffa6" />
-            <Bar w="calc(8 * var(--cw))" h="calc(1.1 * var(--ch))" color="#171a2b40" />
+          <Copy rows={2} color="#171a2b26" w="100%" h={ch(1.1)} gap={ch(1.2)} />
+          <div className={ROW} style={{ gap: cw(1.8) }}>
+            <Pill w={cw(15)} h={ch(5)} bg="#4f46e5" label="#ffffffa6" />
+            <Bar w={cw(8)} h={ch(1.1)} color="#171a2b40" />
           </div>
         </div>
 
         {/* the chart card */}
-        <div className="relative flex flex-1 flex-col overflow-hidden bg-white" style={{ padding: 'calc(2 * var(--cw))', gap: 'calc(1.6 * var(--ch))', borderRadius: 'calc(1.6 * var(--cw))', boxShadow: '0 calc(1.4 * var(--ch)) calc(3 * var(--cw)) #171a2b14' }}>
-          <div className="flex shrink-0 items-center justify-between">
-            <div className="flex flex-col" style={{ gap: 'calc(1 * var(--ch))' }}>
-              <Bar w="calc(12 * var(--cw))" h="calc(1.2 * var(--ch))" color="#171a2b40" />
+        <div className="relative flex flex-1 flex-col overflow-hidden bg-white" style={{ padding: cw(2), gap: ch(1.6), borderRadius: cw(1.6), boxShadow: `0 ${ch(1.4)} ${cw(3)} #171a2b14` }}>
+          <div className={BAR}>
+            <div className="flex flex-col" style={{ gap: ch(1) }}>
+              <Bar w={cw(12)} h={ch(1.2)} color="#171a2b40" />
               <p
-                className="whitespace-nowrap font-display font-semibold tabular-nums"
-                style={{ color: '#171a2b', fontSize: 'calc(3.6 * var(--cw))', lineHeight: 1, letterSpacing: '-0.02em' }}
+                className={DISPLAY_NUM}
+                style={{ color: '#171a2b', fontSize: cw(3.6), lineHeight: 1, letterSpacing: '-0.02em' }}
               >
                 48.2k
               </p>
             </div>
-            <div className="flex items-center" style={{ gap: 'calc(1 * var(--cw))' }}>
-              <Bar w="calc(5 * var(--cw))" h="calc(2 * var(--ch))" color="#4f46e5" radius="calc(0.5 * var(--cw))" />
-              <Bar w="calc(5 * var(--cw))" h="calc(2 * var(--ch))" color="#171a2b0f" radius="calc(0.5 * var(--cw))" />
+            <div className={ROW} style={{ gap: cw(1) }}>
+              <Bar w={cw(5)} h={ch(2)} color="#4f46e5" radius={cw(0.5)} />
+              <Bar w={cw(5)} h={ch(2)} color="#171a2b0f" radius={cw(0.5)} />
             </div>
           </div>
           {/* the plot: gridlines, the teal series behind, the indigo series in front */}
           <div className="relative flex-1">
             {['22%', '48%', '74%'].map((top) => (
-              <span key={top} className="absolute inset-x-0" style={{ top, height: 'calc(0.2 * var(--cw))', background: '#171a2b14' }} />
+              <span key={top} className="absolute inset-x-0" style={{ top, height: cw(0.2), background: '#171a2b14' }} />
             ))}
             <span className="absolute inset-0" style={{ clipPath: areaBack, background: 'linear-gradient(180deg,#14b8a640 0%,#14b8a600 78%)' }} />
             <span className="absolute inset-0" style={{ clipPath: area, background: 'linear-gradient(180deg,#4f46e559 0%,#4f46e500 82%)' }} />
             <span className="absolute inset-0" style={{ clipPath: line, background: '#4f46e5' }} />
           </div>
-          <div className="flex shrink-0 items-center justify-between">
-            {['calc(4 * var(--cw))', 'calc(4 * var(--cw))', 'calc(4 * var(--cw))', 'calc(4 * var(--cw))', 'calc(4 * var(--cw))', 'calc(4 * var(--cw))', 'calc(4 * var(--cw))'].map((w, i) => <Bar key={i} w={w} h="calc(0.8 * var(--ch))" color="#171a2b1f" />)}
+          <div className={BAR}>
+            {[cw(4), cw(4), cw(4), cw(4), cw(4), cw(4), cw(4)].map((w, i) => <Bar key={i} w={w} h={ch(0.8)} color="#171a2b1f" />)}
           </div>
         </div>
       </div>
 
       {/* the three metric tiles; the middle one carries the only column chart */}
-      <div className="flex shrink-0" style={{ paddingInline: 'calc(3.5 * var(--cw))', paddingTop: 'calc(2.5 * var(--ch))', paddingBottom: 'calc(3 * var(--ch))', height: '30%', gap: 'calc(2.4 * var(--cw))' }}>
-        <div className="flex flex-1 items-center justify-between bg-white" style={{ padding: 'calc(1.8 * var(--cw))', borderRadius: 'calc(1.2 * var(--cw))' }}>
-          <Stat value="+38%" color="#171a2b" label="#171a2b26" size="calc(4 * var(--cw))" labelW="calc(11 * var(--cw))" />
-          <span className="block rounded-full" style={{ width: 'calc(4.6 * var(--cw))', height: 'calc(4.6 * var(--cw))', background: '#4f46e514' }} />
+      <div className="flex shrink-0" style={{ paddingInline: cw(3.5), paddingTop: ch(2.5), paddingBottom: ch(3), height: '30%', gap: cw(2.4) }}>
+        <div className="flex flex-1 items-center justify-between bg-white" style={{ padding: cw(1.8), borderRadius: cw(1.2) }}>
+          <Stat value="+38%" color="#171a2b" label="#171a2b26" size={cw(4)} labelW={cw(11)} />
+          <span className="block rounded-full" style={{ width: cw(4.6), height: cw(4.6), background: '#4f46e514' }} />
         </div>
-        <div className="flex flex-1 flex-col justify-between bg-white" style={{ padding: 'calc(1.8 * var(--cw))', borderRadius: 'calc(1.2 * var(--cw))' }}>
-          <Bar w="calc(9 * var(--cw))" h="calc(1 * var(--ch))" color="#171a2b26" />
+        <div className="flex flex-1 flex-col justify-between bg-white" style={{ padding: cw(1.8), borderRadius: cw(1.2) }}>
+          <Bar w={cw(9)} h={ch(1)} color="#171a2b26" />
           {/* Bars measured as percentages of their own row, not in cqh: the tile's
               height is a percentage of the card, so cqh bars would drift against the
               tile as the aspect changes. Inline rather than a primitive — one site
               needs a column chart, and this file only promotes a part on the second
               caller. */}
-          <div className="flex w-full items-end" style={{ height: '52%', gap: 'calc(0.9 * var(--cw))' }}>
+          <div className="flex w-full items-end" style={{ height: '52%', gap: cw(0.9) }}>
             {[38, 62, 44, 78, 56, 92, 70].map((v, i) => (
               <span
                 key={i}
                 className="block flex-1"
-                style={{ height: `${v}%`, background: i === 5 ? '#4f46e5' : '#c7c9f5', borderRadius: 'calc(0.4 * var(--cw)) calc(0.4 * var(--cw)) 0 0' }}
+                style={{ height: `${v}%`, background: i === 5 ? '#4f46e5' : '#c7c9f5', borderRadius: `${cw(0.4)} ${cw(0.4)} 0 0` }}
               />
             ))}
           </div>
         </div>
-        <div className="flex flex-1 items-center justify-between bg-white" style={{ padding: 'calc(1.8 * var(--cw))', borderRadius: 'calc(1.2 * var(--cw))' }}>
-          <Stat value="0.9s" color="#171a2b" label="#171a2b26" size="calc(4 * var(--cw))" labelW="calc(9 * var(--cw))" />
+        <div className="flex flex-1 items-center justify-between bg-white" style={{ padding: cw(1.8), borderRadius: cw(1.2) }}>
+          <Stat value="0.9s" color="#171a2b" label="#171a2b26" size={cw(4)} labelW={cw(9)} />
           {/* the donut: a conic gradient with a white plug — no arithmetic, no repaint */}
-          <span className="relative block rounded-full" style={{ width: 'calc(6.4 * var(--cw))', height: 'calc(6.4 * var(--cw))', background: 'conic-gradient(#4f46e5 0turn 0.62turn,#14b8a6 0.62turn 0.84turn,#171a2b14 0.84turn 1turn)' }}>
+          <span className="relative block rounded-full" style={{ width: cw(6.4), height: cw(6.4), background: 'conic-gradient(#4f46e5 0turn 0.62turn,#14b8a6 0.62turn 0.84turn,#171a2b14 0.84turn 1turn)' }}>
             <span className="absolute left-1/2 top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" style={{ width: '54%', height: '54%' }} />
           </span>
         </div>
@@ -1780,32 +1821,32 @@ function Photography() {
     [['linear-gradient(210deg,#9aa3a8 0%,#3c4348 56%,#171a1c 100%)', 1]],
   ]
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#0b0b0c' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: '16%', paddingInline: 'calc(3.5 * var(--cw))' }}>
-        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#f4f2ee', fontSize: 'calc(6.2 * var(--cw))', lineHeight: 1, letterSpacing: '0.02em' }}>
+    <div className={PAGE} style={{ background: '#0b0b0c' }}>
+      <div className={BAR} style={{ height: '16%', paddingInline: cw(3.5) }}>
+        <span className={DISPLAY} style={{ color: '#f4f2ee', fontSize: cw(6.2), lineHeight: 1, letterSpacing: '0.02em' }}>
           KORE
         </span>
-        <div className="flex items-center" style={{ gap: 'calc(2.6 * var(--cw))' }}>
-          <span className="flex items-center" style={{ gap: 'calc(1.2 * var(--cw))' }}>
-            <span className="block rounded-full" style={{ width: 'calc(1.4 * var(--cw))', height: 'calc(1.4 * var(--cw))', background: '#d8a35c' }} />
-            <Bar w="calc(7 * var(--cw))" h="calc(1 * var(--ch))" color="#f4f2ee59" />
+        <div className={ROW} style={{ gap: cw(2.6) }}>
+          <span className={ROW} style={{ gap: cw(1.2) }}>
+            <span className="block rounded-full" style={{ width: cw(1.4), height: cw(1.4), background: '#d8a35c' }} />
+            <Bar w={cw(7)} h={ch(1)} color="#f4f2ee59" />
           </span>
-          <NavLinks n={3} color="#f4f2ee59" w="calc(4 * var(--cw))" gap="calc(2.4 * var(--cw))" />
-          <Pill w="calc(11 * var(--cw))" h="calc(4 * var(--ch))" border="#f4f2ee33" label="#f4f2eea6" />
+          <NavLinks n={3} color="#f4f2ee59" w={cw(4)} gap={cw(2.4)} />
+          <Pill w={cw(11)} h={ch(4)} border="#f4f2ee33" label="#f4f2eea6" />
         </div>
       </div>
 
       {/* the mosaic */}
-      <div className="flex flex-1" style={{ paddingInline: 'calc(3.5 * var(--cw))', gap: 'calc(1.6 * var(--cw))' }}>
+      <div className="flex flex-1" style={{ paddingInline: cw(3.5), gap: cw(1.6) }}>
         {panels.map((col, ci) => (
-          <div key={ci} className="flex flex-1 flex-col" style={{ gap: 'calc(1.6 * var(--cw))' }}>
+          <div key={ci} className="flex flex-1 flex-col" style={{ gap: cw(1.6) }}>
             {col.map(([g, grow], ri) => (
-              <Photo key={ri} className="relative" style={{ flex: grow, background: g, borderRadius: 'calc(0.8 * var(--cw))' }}>
+              <Photo key={ri} className="relative" style={{ flex: grow, background: g, borderRadius: cw(0.8) }}>
                 {/* one panel carries a caption, so the mosaic reads as captioned work */}
                 {ci === 1 && ri === 0 ? (
-                  <div className="absolute flex flex-col" style={{ left: '9%', bottom: '8%', gap: 'calc(0.9 * var(--ch))' }}>
-                    <Bar w="calc(9 * var(--cw))" h="calc(1 * var(--ch))" color="#f4f2eecc" />
-                    <Bar w="calc(6 * var(--cw))" h="calc(0.85 * var(--ch))" color="#f4f2ee73" />
+                  <div className="absolute flex flex-col" style={{ left: '9%', bottom: '8%', gap: ch(0.9) }}>
+                    <Bar w={cw(9)} h={ch(1)} color="#f4f2eecc" />
+                    <Bar w={cw(6)} h={ch(0.85)} color="#f4f2ee73" />
                   </div>
                 ) : null}
               </Photo>
@@ -1815,14 +1856,14 @@ function Photography() {
       </div>
 
       {/* the index footer */}
-      <div className="flex shrink-0 items-center justify-between" style={{ height: '15%', paddingInline: 'calc(3.5 * var(--cw))' }}>
-        <p className="whitespace-nowrap tabular-nums" style={{ color: '#f4f2ee', fontSize: 'calc(2.6 * var(--cw))', lineHeight: 1, letterSpacing: '0.14em' }}>
+      <div className={BAR} style={{ height: '15%', paddingInline: cw(3.5) }}>
+        <p className="whitespace-nowrap tabular-nums" style={{ color: '#f4f2ee', fontSize: cw(2.6), lineHeight: 1, letterSpacing: '0.14em' }}>
           01 / 24
         </p>
-        <p className="whitespace-nowrap" style={{ color: '#f4f2ee73', fontSize: 'calc(2.5 * var(--cw))', lineHeight: 1, letterSpacing: '0.18em' }}>
+        <p className="whitespace-nowrap" style={{ color: '#f4f2ee73', fontSize: cw(2.5), lineHeight: 1, letterSpacing: '0.18em' }}>
           SELECTED WORK
         </p>
-        <span className="block" style={{ width: 'calc(3 * var(--cw))', height: 'calc(3 * var(--cw))', borderTop: 'calc(0.3 * var(--cw)) solid #f4f2ee', borderRight: 'calc(0.3 * var(--cw)) solid #f4f2ee', transform: 'rotate(45deg)' }} />
+        <span className="block" style={{ width: cw(3), height: cw(3), borderTop: `${cw(0.3)} solid #f4f2ee`, borderRight: `${cw(0.3)} solid #f4f2ee`, transform: 'rotate(45deg)' }} />
       </div>
     </div>
   )
@@ -1841,53 +1882,53 @@ function Photography() {
  */
 function Lawfirm() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#0e1c38' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: '11%', paddingInline: 'calc(4 * var(--cw))', borderBottom: 'calc(0.25 * var(--cw)) solid #ffffff14' }}>
-        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#eef1f7', fontSize: 'calc(3.2 * var(--cw))', lineHeight: 1, letterSpacing: '0.14em' }}>
+    <div className={PAGE} style={{ background: '#0e1c38' }}>
+      <div className={BAR} style={{ height: '11%', paddingInline: cw(4), borderBottom: `${cw(0.25)} solid #ffffff14` }}>
+        <span className={DISPLAY} style={{ color: '#eef1f7', fontSize: cw(3.2), lineHeight: 1, letterSpacing: '0.14em' }}>
           HALE &amp; MARCH
         </span>
-        <NavLinks n={4} color="#eef1f759" w="calc(4 * var(--cw))" gap="calc(2.6 * var(--cw))" />
-        <Pill w="calc(13 * var(--cw))" h="calc(4 * var(--ch))" border="#c8a35c73" label="#c8a35c" />
+        <NavLinks n={4} color="#eef1f759" w={cw(4)} gap={cw(2.6)} />
+        <Pill w={cw(13)} h={ch(4)} border="#c8a35c73" label="#c8a35c" />
       </div>
 
       {/* the centred hero — flex-1, so a taller headline squeezes the air, not the band below */}
-      <div className="flex flex-1 flex-col items-center justify-center" style={{ paddingInline: 'calc(8 * var(--cw))', gap: 'calc(2.6 * var(--ch))' }}>
-        <Bar w="calc(8 * var(--cw))" h="calc(0.4 * var(--cw))" color="#c8a35c" radius="0" />
+      <div className="flex flex-1 flex-col items-center justify-center" style={{ paddingInline: cw(8), gap: ch(2.6) }}>
+        <Bar w={cw(8)} h={cw(0.4)} color="#c8a35c" radius="0" />
         <p
           className="whitespace-nowrap text-center font-display font-semibold"
-          style={{ color: '#eef1f7', fontSize: 'calc(4.9 * var(--cw))', lineHeight: 1.2, letterSpacing: '-0.01em' }}
+          style={{ color: '#eef1f7', fontSize: cw(4.9), lineHeight: 1.2, letterSpacing: '-0.01em' }}
         >
           Counsel that holds<br />under pressure
         </p>
-        <Copy rows={2} color="#eef1f733" w="calc(40 * var(--cw))" h="calc(1.1 * var(--ch))" gap="calc(1.2 * var(--ch))" center />
-        <div className="flex items-center" style={{ gap: 'calc(2 * var(--cw))' }}>
-          <Pill w="calc(17 * var(--cw))" h="calc(5.2 * var(--ch))" bg="#c8a35c" label="#0e1c3899" />
-          <Pill w="calc(15 * var(--cw))" h="calc(5.2 * var(--ch))" border="#eef1f733" label="#eef1f7a6" />
+        <Copy rows={2} color="#eef1f733" w={cw(40)} h={ch(1.1)} gap={ch(1.2)} center />
+        <div className={ROW} style={{ gap: cw(2) }}>
+          <Pill w={cw(17)} h={ch(5.2)} bg="#c8a35c" label="#0e1c3899" />
+          <Pill w={cw(15)} h={ch(5.2)} border="#eef1f733" label="#eef1f7a6" />
         </div>
       </div>
 
       {/* practice areas, divided by gold rules */}
-      <div className="flex shrink-0" style={{ height: '25%', paddingInline: 'calc(4 * var(--cw))', borderTop: 'calc(0.25 * var(--cw)) solid #ffffff14' }}>
+      <div className="flex shrink-0" style={{ height: '25%', paddingInline: cw(4), borderTop: `${cw(0.25)} solid #ffffff14` }}>
         {['01', '02', '03'].map((n, i) => (
           <div
             key={n}
             className="flex flex-1 flex-col justify-center"
-            style={{ paddingInline: 'calc(2.4 * var(--cw))', gap: 'calc(1.4 * var(--ch))', borderLeft: i ? 'calc(0.25 * var(--cw)) solid #c8a35c3d' : undefined }}
+            style={{ paddingInline: cw(2.4), gap: ch(1.4), borderLeft: i ? `${cw(0.25)} solid #c8a35c3d` : undefined }}
           >
-            <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#c8a35c', fontSize: 'calc(2.8 * var(--cw))', lineHeight: 1, letterSpacing: '0.08em' }}>
+            <p className={DISPLAY_NUM} style={{ color: '#c8a35c', fontSize: cw(2.8), lineHeight: 1, letterSpacing: '0.08em' }}>
               {n}
             </p>
-            <Bar w="62%" h="calc(1.2 * var(--ch))" color="#eef1f7a6" />
-            <Copy rows={2} color="#eef1f726" w="100%" h="calc(0.9 * var(--ch))" gap="calc(0.9 * var(--ch))" />
+            <Bar w="62%" h={ch(1.2)} color="#eef1f7a6" />
+            <Copy rows={2} color="#eef1f726" w="100%" h={ch(0.9)} gap={ch(0.9)} />
           </div>
         ))}
       </div>
 
       {/* the proof band */}
-      <div className="flex shrink-0 items-center justify-around" style={{ height: '20%', background: '#0a1428', borderTop: 'calc(0.25 * var(--cw)) solid #c8a35c3d' }}>
-        <Stat value="40+" color="#c8a35c" label="#eef1f733" size="calc(4.6 * var(--cw))" labelW="calc(10 * var(--cw))" center />
-        <Stat value="$1.2B" color="#c8a35c" label="#eef1f733" size="calc(4.6 * var(--cw))" labelW="calc(12 * var(--cw))" center />
-        <Stat value="98%" color="#c8a35c" label="#eef1f733" size="calc(4.6 * var(--cw))" labelW="calc(9 * var(--cw))" center />
+      <div className="flex shrink-0 items-center justify-around" style={{ height: '20%', background: '#0a1428', borderTop: `${cw(0.25)} solid #c8a35c3d` }}>
+        <Stat value="40+" color="#c8a35c" label="#eef1f733" size={cw(4.6)} labelW={cw(10)} center />
+        <Stat value="$1.2B" color="#c8a35c" label="#eef1f733" size={cw(4.6)} labelW={cw(12)} center />
+        <Stat value="98%" color="#c8a35c" label="#eef1f733" size={cw(4.6)} labelW={cw(9)} center />
       </div>
     </div>
   )
@@ -1906,33 +1947,33 @@ function Lawfirm() {
  */
 function Yoga() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#e7ddcc' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: '10%', paddingInline: 'calc(4.5 * var(--cw))' }}>
-        <Wordmark color="#3d372e" size="calc(4 * var(--cw))">Still</Wordmark>
-        <NavLinks n={4} color="#3d372e59" w="calc(4 * var(--cw))" gap="calc(2.6 * var(--cw))" />
-        <Pill w="calc(13 * var(--cw))" h="calc(4 * var(--ch))" bg="#a2603f" label="#ffffffa6" />
+    <div className={PAGE} style={{ background: '#e7ddcc' }}>
+      <div className={BAR} style={{ height: '10%', paddingInline: cw(4.5) }}>
+        <Wordmark color="#3d372e" size={cw(4)}>Still</Wordmark>
+        <NavLinks n={4} color="#3d372e59" w={cw(4)} gap={cw(2.6)} />
+        <Pill w={cw(13)} h={ch(4)} bg="#a2603f" label="#ffffffa6" />
       </div>
 
-      <div className="flex flex-1 items-center" style={{ paddingInline: 'calc(4.5 * var(--cw))', gap: 'calc(3 * var(--cw))' }}>
-        <div className="flex flex-1 flex-col" style={{ gap: 'calc(3 * var(--ch))' }}>
+      <div className="flex flex-1 items-center" style={{ paddingInline: cw(4.5), gap: cw(3) }}>
+        <div className="flex flex-1 flex-col" style={{ gap: ch(3) }}>
           <p
-            className="whitespace-nowrap font-display font-semibold"
-            style={{ color: '#3d372e', fontSize: 'calc(6.4 * var(--cw))', lineHeight: 1.1, letterSpacing: '-0.03em' }}
+            className={DISPLAY}
+            style={{ color: '#3d372e', fontSize: cw(6.4), lineHeight: 1.1, letterSpacing: '-0.03em' }}
           >
             Slow flow,<br />every morning.
           </p>
-          <Copy rows={2} color="#3d372e2e" w="80%" h="calc(1.1 * var(--ch))" gap="calc(1.2 * var(--ch))" />
-          <div className="flex items-center" style={{ gap: 'calc(2 * var(--cw))' }}>
-            <Pill w="calc(17 * var(--cw))" h="calc(5.2 * var(--ch))" bg="#3d372e" label="#e7ddccbf" />
-            <Bar w="calc(8 * var(--cw))" h="calc(1.1 * var(--ch))" color="#3d372e59" />
+          <Copy rows={2} color="#3d372e2e" w="80%" h={ch(1.1)} gap={ch(1.2)} />
+          <div className={ROW} style={{ gap: cw(2) }}>
+            <Pill w={cw(17)} h={ch(5.2)} bg="#3d372e" label="#e7ddccbf" />
+            <Bar w={cw(8)} h={ch(1.1)} color="#3d372e59" />
           </div>
         </div>
         {/* the arch */}
         <Photo
-          className="relative shrink-0"
+          className={BAND}
           style={{
             height: '88%', aspectRatio: '0.62',
-            borderRadius: '50% 50% calc(1.2 * var(--cw)) calc(1.2 * var(--cw)) / 34% 34% calc(1.2 * var(--cw)) calc(1.2 * var(--cw))',
+            borderRadius: `50% 50% ${cw(1.2)} ${cw(1.2)} / 34% 34% ${cw(1.2)} ${cw(1.2)}`,
             background: 'linear-gradient(168deg,#efe7d8 0%,#c9c3ac 42%,#98a086 74%,#6f7861 100%)',
           }}
         >
@@ -1941,20 +1982,20 @@ function Yoga() {
       </div>
 
       {/* the timetable — three rows, hairline-ruled, no band and no colour change */}
-      <div className="flex shrink-0 flex-col" style={{ height: '34%', paddingInline: 'calc(4.5 * var(--cw))', paddingBottom: 'calc(2 * var(--ch))' }}>
+      <div className="flex shrink-0 flex-col" style={{ height: '34%', paddingInline: cw(4.5), paddingBottom: ch(2) }}>
         {[
-          { t: '7:00', w: 'calc(22 * var(--cw))' },
-          { t: '9:30', w: 'calc(18 * var(--cw))' },
-          { t: '18:00', w: 'calc(24 * var(--cw))' },
+          { t: '7:00', w: cw(22) },
+          { t: '9:30', w: cw(18) },
+          { t: '18:00', w: cw(24) },
         ].map((r) => (
-          <div key={r.t} className="flex flex-1 items-center" style={{ gap: 'calc(2.4 * var(--cw))', borderTop: 'calc(0.25 * var(--cw)) solid #3d372e26' }}>
-            <p className="shrink-0 whitespace-nowrap font-display font-semibold tabular-nums" style={{ width: '14%', color: '#3d372e', fontSize: 'calc(3 * var(--cw))', lineHeight: 1 }}>
+          <div key={r.t} className="flex flex-1 items-center" style={{ gap: cw(2.4), borderTop: `${cw(0.25)} solid #3d372e26` }}>
+            <p className="shrink-0 whitespace-nowrap font-display font-semibold tabular-nums" style={{ width: '14%', color: '#3d372e', fontSize: cw(3), lineHeight: 1 }}>
               {r.t}
             </p>
-            <Bar w={r.w} h="calc(1.2 * var(--ch))" color="#3d372e73" />
+            <Bar w={r.w} h={ch(1.2)} color="#3d372e73" />
             <span className="flex-1" />
-            <Bar w="calc(6 * var(--cw))" h="calc(1 * var(--ch))" color="#3d372e40" />
-            <Pill w="calc(9 * var(--cw))" h="calc(3.6 * var(--ch))" border="#3d372e33" label="#3d372e8c" />
+            <Bar w={cw(6)} h={ch(1)} color="#3d372e40" />
+            <Pill w={cw(9)} h={ch(3.6)} border="#3d372e33" label="#3d372e8c" />
           </div>
         ))}
       </div>
@@ -1984,54 +2025,54 @@ function Yoga() {
  */
 function Barbershop() {
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden font-sans" style={{ background: '#171413' }}>
-      <div className="flex shrink-0 items-center justify-between" style={{ height: '10%', paddingInline: 'calc(4 * var(--cw))' }}>
-        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#f3efe9', fontSize: 'calc(3.2 * var(--cw))', lineHeight: 1, letterSpacing: '0.16em' }}>
+    <div className={PAGE} style={{ background: '#171413' }}>
+      <div className={BAR} style={{ height: '10%', paddingInline: cw(4) }}>
+        <span className={DISPLAY} style={{ color: '#f3efe9', fontSize: cw(3.2), lineHeight: 1, letterSpacing: '0.16em' }}>
           IRONSIDE
         </span>
-        <NavLinks n={4} color="#f3efe959" w="calc(4 * var(--cw))" gap="calc(2.6 * var(--cw))" />
-        <Pill w="calc(11 * var(--cw))" h="calc(4 * var(--ch))" bg="#ff4d24" label="#ffffffbf" />
+        <NavLinks n={4} color="#f3efe959" w={cw(4)} gap={cw(2.6)} />
+        <Pill w={cw(11)} h={ch(4)} bg="#ff4d24" label="#ffffffbf" />
       </div>
 
       {/* justify-between, and the type column is shrink-0 rather than flex-1: with a
           flex-1 headline every pixel of slack pooled into one gap beside it, which is
           the void again in a smaller size. Spread between three blocks it reads as
           margin. */}
-      <div className="flex flex-1 items-center justify-between" style={{ paddingInline: 'calc(4 * var(--cw))', gap: 'calc(3 * var(--cw))' }}>
-        <div className="flex shrink-0 flex-col" style={{ gap: 'calc(3 * var(--ch))' }}>
+      <div className="flex flex-1 items-center justify-between" style={{ paddingInline: cw(4), gap: cw(3) }}>
+        <div className="flex shrink-0 flex-col" style={{ gap: ch(3) }}>
           <p
-            className="whitespace-nowrap font-display font-semibold"
-            style={{ color: '#f3efe9', fontSize: 'calc(7 * var(--cw))', lineHeight: 0.96, letterSpacing: '-0.03em' }}
+            className={DISPLAY}
+            style={{ color: '#f3efe9', fontSize: cw(7), lineHeight: 0.96, letterSpacing: '-0.03em' }}
           >
             SHARP<br />EVERY<br /><span style={{ color: '#ff4d24' }}>TIME</span>
           </p>
-          <div className="flex items-center" style={{ gap: 'calc(2 * var(--cw))' }}>
-            <Pill w="calc(16 * var(--cw))" h="calc(5.2 * var(--ch))" bg="#ff4d24" label="#ffffffbf" />
-            <Pill w="calc(13 * var(--cw))" h="calc(5.2 * var(--ch))" border="#f3efe926" label="#f3efe98c" />
+          <div className={ROW} style={{ gap: cw(2) }}>
+            <Pill w={cw(16)} h={ch(5.2)} bg="#ff4d24" label="#ffffffbf" />
+            <Pill w={cw(13)} h={ch(5.2)} border="#f3efe926" label="#f3efe98c" />
           </div>
         </div>
 
         {/* the opening hours, ruled off the headline. The divider stretches with the
             hero, so it is `self-stretch` inside a padded wrapper rather than a
             percentage height against an auto-height parent (which collapses) */}
-        <div className="flex shrink-0 self-stretch items-center" style={{ gap: 'calc(2.4 * var(--cw))', paddingTop: 'calc(7 * var(--ch))', paddingBottom: 'calc(7 * var(--ch))' }}>
-          <span className="block self-stretch shrink-0" style={{ width: 'calc(0.25 * var(--cw))', background: '#f3efe91f' }} />
-          <div className="flex flex-col justify-center" style={{ width: 'calc(21 * var(--cw))', gap: 'calc(1.5 * var(--ch))' }}>
-            <div className="flex items-center" style={{ gap: 'calc(1.2 * var(--cw))' }}>
-              <span className="block shrink-0 rounded-full" style={{ width: 'calc(1.5 * var(--cw))', height: 'calc(1.5 * var(--cw))', background: '#ff4d24' }} />
-              <Bar w="calc(12 * var(--cw))" h="calc(1 * var(--ch))" color="#f3efe9a6" />
+        <div className="flex shrink-0 self-stretch items-center" style={{ gap: cw(2.4), paddingTop: ch(7), paddingBottom: ch(7) }}>
+          <span className="block self-stretch shrink-0" style={{ width: cw(0.25), background: '#f3efe91f' }} />
+          <div className="flex flex-col justify-center" style={{ width: cw(21), gap: ch(1.5) }}>
+            <div className={ROW} style={{ gap: cw(1.2) }}>
+              <span className="block shrink-0 rounded-full" style={{ width: cw(1.5), height: cw(1.5), background: '#ff4d24' }} />
+              <Bar w={cw(12)} h={ch(1)} color="#f3efe9a6" />
             </div>
-            {[['calc(8 * var(--cw))', 'calc(5 * var(--cw))'], ['calc(6.5 * var(--cw))', 'calc(5 * var(--cw))'], ['calc(7 * var(--cw))', 'calc(4 * var(--cw))']].map(([day, hrs], i) => (
+            {[[cw(8), cw(5)], [cw(6.5), cw(5)], [cw(7), cw(4)]].map(([day, hrs], i) => (
               <div
                 key={i}
                 className="flex items-center justify-between"
-                style={{ paddingTop: 'calc(1.2 * var(--ch))', borderTop: 'calc(0.25 * var(--cw)) solid #f3efe914' }}
+                style={{ paddingTop: ch(1.2), borderTop: `${cw(0.25)} solid #f3efe914` }}
               >
-                <Bar w={day} h="calc(0.9 * var(--ch))" color="#f3efe973" />
-                <Bar w={hrs} h="calc(0.9 * var(--ch))" color="#f3efe94d" />
+                <Bar w={day} h={ch(0.9)} color="#f3efe973" />
+                <Bar w={hrs} h={ch(0.9)} color="#f3efe94d" />
               </div>
             ))}
-            <Pill w="calc(14 * var(--cw))" h="calc(4 * var(--ch))" border="#f3efe926" label="#f3efe98c" />
+            <Pill w={cw(14)} h={ch(4)} border="#f3efe926" label="#f3efe98c" />
           </div>
         </div>
 
@@ -2040,9 +2081,9 @@ function Barbershop() {
             the yoga arch, which are objects and need `aspect-ratio` to keep their shape.
             Held to aspect it went narrow at 1600×880 and left a dead zone mid-hero. */}
         <Photo
-          className="relative shrink-0"
+          className={BAND}
           style={{
-            width: '30%', height: '92%', borderRadius: 'calc(1.2 * var(--cw))',
+            width: '30%', height: '92%', borderRadius: cw(1.2),
             background: 'linear-gradient(202deg,#6b5140 0%,#3a2b22 46%,#171110 100%)',
           }}
         >
@@ -2053,12 +2094,12 @@ function Barbershop() {
           <span
             className="absolute flex items-center"
             style={{
-              left: '8%', bottom: '8%', height: 'calc(5 * var(--ch))', paddingInline: 'calc(1.2 * var(--cw))', gap: 'calc(1 * var(--cw))',
-              background: '#0f0d0ce6', borderRadius: 'calc(0.5 * var(--cw))', boxShadow: 'inset 0 0 0 calc(0.25 * var(--cw)) #f3efe91f',
+              left: '8%', bottom: '8%', height: ch(5), paddingInline: cw(1.2), gap: cw(1),
+              background: '#0f0d0ce6', borderRadius: cw(0.5), boxShadow: `inset 0 0 0 ${cw(0.25)} #f3efe91f`,
             }}
           >
-            <span className="block shrink-0" style={{ width: 'calc(1.6 * var(--cw))', height: 'calc(1.6 * var(--cw))', background: '#ff4d24', transform: 'rotate(45deg)' }} />
-            <span className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#f3efe9', fontSize: 'calc(2.4 * var(--cw))', lineHeight: 1 }}>
+            <span className="block shrink-0" style={{ width: cw(1.6), height: cw(1.6), background: '#ff4d24', transform: 'rotate(45deg)' }} />
+            <span className={DISPLAY_NUM} style={{ color: '#f3efe9', fontSize: cw(2.4), lineHeight: 1 }}>
               4.9
             </span>
           </span>
@@ -2068,33 +2109,33 @@ function Barbershop() {
       {/* the price list, two columns */}
       <div
         className="grid shrink-0"
-        style={{ height: '31%', paddingInline: 'calc(4 * var(--cw))', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', columnGap: 'calc(7 * var(--cw))' }}
+        style={{ height: '31%', paddingInline: cw(4), gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', columnGap: cw(7) }}
       >
         {[
-          { w: 'calc(20 * var(--cw))', p: '$35' },
-          { w: 'calc(16 * var(--cw))', p: '$28' },
-          { w: 'calc(24 * var(--cw))', p: '$45' },
-          { w: 'calc(18 * var(--cw))', p: '$22' },
+          { w: cw(20), p: '$35' },
+          { w: cw(16), p: '$28' },
+          { w: cw(24), p: '$45' },
+          { w: cw(18), p: '$22' },
         ].map((r) => (
-          <div key={r.p} className="flex items-center" style={{ gap: 'calc(2 * var(--cw))', borderTop: 'calc(0.25 * var(--cw)) solid #f3efe91a' }}>
-            <Bar w={r.w} h="calc(1.2 * var(--ch))" color="#f3efe999" />
-            <span className="flex-1" style={{ height: 'calc(0.2 * var(--cw))', background: '#f3efe914' }} />
-            <p className="whitespace-nowrap font-display font-semibold tabular-nums" style={{ color: '#f3efe9', fontSize: 'calc(3 * var(--cw))', lineHeight: 1 }}>{r.p}</p>
+          <div key={r.p} className={ROW} style={{ gap: cw(2), borderTop: `${cw(0.25)} solid #f3efe91a` }}>
+            <Bar w={r.w} h={ch(1.2)} color="#f3efe999" />
+            <span className="flex-1" style={{ height: cw(0.2), background: '#f3efe914' }} />
+            <p className={DISPLAY_NUM} style={{ color: '#f3efe9', fontSize: cw(3), lineHeight: 1 }}>{r.p}</p>
           </div>
         ))}
       </div>
 
       {/* the footer: a darker band under a vermilion rule */}
       <div
-        className="flex shrink-0 items-center justify-between"
-        style={{ height: '12%', background: '#0f0d0c', paddingInline: 'calc(4 * var(--cw))', borderTop: 'calc(0.35 * var(--cw)) solid #ff4d24' }}
+        className={BAR}
+        style={{ height: '12%', background: '#0f0d0c', paddingInline: cw(4), borderTop: `${cw(0.35)} solid #ff4d24` }}
       >
-        <span className="whitespace-nowrap font-display font-semibold" style={{ color: '#f3efe9', fontSize: 'calc(2.6 * var(--cw))', lineHeight: 1, letterSpacing: '0.16em' }}>
+        <span className={DISPLAY} style={{ color: '#f3efe9', fontSize: cw(2.6), lineHeight: 1, letterSpacing: '0.16em' }}>
           IRONSIDE
         </span>
-        <div className="flex items-center" style={{ gap: 'calc(2.6 * var(--cw))' }}>
-          <NavLinks n={3} color="#f3efe940" w="calc(5 * var(--cw))" gap="calc(2.6 * var(--cw))" />
-          <Pill w="calc(10 * var(--cw))" h="calc(3.6 * var(--ch))" bg="#ff4d24" label="#2b0f06bf" />
+        <div className={ROW} style={{ gap: cw(2.6) }}>
+          <NavLinks n={3} color="#f3efe940" w={cw(5)} gap={cw(2.6)} />
+          <Pill w={cw(10)} h={ch(3.6)} bg="#ff4d24" label="#2b0f06bf" />
         </div>
       </div>
     </div>

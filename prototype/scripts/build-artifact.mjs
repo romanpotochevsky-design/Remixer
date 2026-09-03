@@ -79,6 +79,15 @@ function subsetFont(path, text, dir) {
       `--output-file=${out}`,
       '--flavor=woff2',
       `--text=${text}`,
+      /* `*` keeps the WHOLE GSUB/GPOS table, and it stays that way. Trimming to
+         the shaping features saved 4.3 KB and silently killed `tabular-nums`:
+         the detail panel's `$1,799,980` reflowed to proportional figures. The
+         check that missed it grepped index.css for `font-variant` — but Tailwind
+         GENERATES the activation, so the only honest place to look is the BUILT
+         css. Keeping the numeric family back (tnum/pnum/lnum/onum/ordn/zero/
+         frac/afrc) leaves just 453 bytes of the saving, which is not worth a
+         hand-maintained list that breaks the first time someone types
+         `slashed-zero`. */
       '--layout-features=*',
       '--no-hinting',
       '--desubroutinize',
@@ -134,6 +143,29 @@ css = css.replace(/@font-face\{[^}]*\}/g, (block) => {
   return ''
 })
 
+// 4. Tailwind's preflight declares its ~40 `--tw-*` defaults twice: once on
+//    `*,:before,:after` and once on `::backdrop`. The second copy only ever
+//    matches an element in the TOP LAYER — a `<dialog>` opened with showModal,
+//    fullscreen, or the Popover API — and this app has none of those, so it is
+//    1.1 KB that can never apply. Dropped only after checking the built bundle
+//    for them, so the day someone adds a `<dialog>` the rule comes straight
+//    back instead of silently going missing (the same mistake the font trim
+//    made: a saving is only free while nothing can reach what it removed).
+//    Only three things actually put an element in the top layer. `role="dialog"`
+//    is NOT one of them — it is an ARIA role on a plain div, which both the
+//    publish panel and the domain modal use, and matching on it kept the rule
+//    for no reason. Nor is a `<dialog>` that is merely rendered: it gets a
+//    backdrop only once `showModal()` opens it.
+const topLayer = /\bshowModal\b|\brequestFullscreen\b|\bpopover\b/.test(js)
+let backdropDropped = 0
+if (!topLayer) {
+  css = css.replace(/::backdrop\{[^}]*\}/g, (block) => {
+    if (!block.includes('--tw-')) return block
+    backdropDropped += block.length
+    return ''
+  })
+}
+
 // The artifact host supplies <!doctype>/<html>/<head>/<body>, so emit page
 // content only. index.html carries class="dark" on <html>; re-apply it here.
 const page = `<title>Remixer — prototype</title>
@@ -154,6 +186,11 @@ console.log(`fonts embedded: ${embedded} — ${GLYPHS.length} glyphs kept`)
 console.log(`  ${subsetReport.join(' · ')}`)
 console.log(`  font payload ${(fontBytesBefore / 1024).toFixed(1)} → ${(fontBytesAfter / 1024).toFixed(1)} KB raw`)
 console.log(`fonts absent (rules dropped): ${missing.length ? missing.join(', ') : 'none'}`)
+console.log(
+  topLayer
+    ? '::backdrop preflight KEPT — the bundle can reach the top layer'
+    : `::backdrop preflight dropped: ${backdropDropped} bytes (nothing here reaches the top layer)`,
+)
 console.log(`wrote ${OUT} — ${bytes.toLocaleString('en-US')} bytes (${(bytes / 1024).toFixed(1)} KB)`)
 const headroom = CEILING - bytes
 console.log(
