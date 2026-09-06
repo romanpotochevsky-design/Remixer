@@ -333,3 +333,43 @@ export const IconSparkleAI = ({ size = 20, className }: IconProps) => (
     />
   </svg>
 )
+
+/* ---- added 06.09.2026 for the pre-build brief and the collapsible preview ---- */
+
+export const IconChevronLeft = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m14 7-5 5 5 5" />
+  </svg>
+)
+
+export const IconChevronRight = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m10 7 5 5-5 5" />
+  </svg>
+)
+
+export const IconChevronUp = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m7 14 5-5 5 5" />
+  </svg>
+)
+
+/** Two arrows pointing outward — "open the preview" (Lovable parks it top-right). */
+export const IconExpand = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M14 4h6v6" />
+    <path d="m20 4-6 6" />
+    <path d="M10 20H4v-6" />
+    <path d="m4 20 6-6" />
+  </svg>
+)
+
+/** The same arrows pointing inward — "hide the preview". */
+export const IconCollapse = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20 10h-6V4" />
+    <path d="m14 10 6-6" />
+    <path d="M4 14h6v6" />
+    <path d="m10 14-6 6" />
+  </svg>
+)
