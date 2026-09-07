@@ -137,26 +137,42 @@ check('the chat takes the whole shell', (await asideWidth()) > 1200, `aside=${Ma
 await p.waitForTimeout(4600)
 await shot('03-question-1')
 const askedBody = await text()
-check('Remixer asks for direction instead of guessing', askedBody.includes('I’d love to build you a website'))
+check('Remixer asks for direction instead of guessing', askedBody.includes('a guess costs you a build'))
 check('the reply carries its thinking time', askedBody.includes('Thought for 5s'))
 check('the question panel docks above the composer', await panelUp())
 check('the composer relabels itself as the escape hatch',
   (await p.getAttribute('textarea', 'placeholder'))?.startsWith('Tell Remixer'))
 
-await p.fill('section input', 'design portfolio'); await p.click('text=Next'); await p.waitForTimeout(400); await shot('04-q2')
-await p.fill('section input', 'landing'); await p.click('text=Next'); await p.waitForTimeout(400); await shot('05-q3-palette')
-/* Back and forward again: paging must not eat an answer (Lovable lets you revise). */
+/*
+ * The four questions are ours (brief.ts): a goal, how many pages, the colour grid, the
+ * lettering. Answered here the way the demo answers them — every one a PICKED option, so
+ * the summary prints real names and both drawn shapes of the panel get exercised.
+ */
+await p.click('section button[aria-label="Sell something"]'); await p.waitForTimeout(200)
+await p.click('text=Next'); await p.waitForTimeout(400); await shot('04-q2-pages')
+await p.click('section button[aria-label="A few pages"]'); await p.waitForTimeout(200)
+await p.click('text=Next'); await p.waitForTimeout(400); await shot('05-q3-palette')
+/* Back and forward again: paging must not eat an answer. */
 await p.click('button[aria-label="Previous question"]'); await p.waitForTimeout(300)
-check('paging back keeps the answer', (await p.inputValue('section input')) === 'landing')
+check('paging back keeps the answer',
+  (await p.getAttribute('section button[aria-label="A few pages"]', 'aria-pressed')) === 'true')
 await p.click('button[aria-label="Next question"]'); await p.waitForTimeout(300)
-await p.click('section button[aria-label="Midnight Indigo"]'); await p.click('text=Next'); await p.waitForTimeout(400); await shot('06-q4-typography')
-await p.click('section button:has-text("Editorial")'); await p.waitForTimeout(200)
-await shot('07-q4-picked')
-await p.click('text=Submit'); await p.waitForTimeout(700); await shot('08-summary')
+{
+  /* The colour question is the drawn GRID (25732:139123), not rows: four plates of four
+     cells, and its own field with no radio beside it. */
+  const plates = await p.$$eval('section [aria-label="Warm Clay"] span', (els) => els.length)
+  check('the colour question is a grid of four-cell plates', plates === 4, `${plates} cells`)
+}
+await p.click('section button[aria-label="Warm Clay"]'); await p.waitForTimeout(250); await shot('06-palette-picked')
+check('a picked plate shows it', (await p.getAttribute('section button[aria-label="Warm Clay"]', 'aria-pressed')) === 'true')
+await p.click('text=Next'); await p.waitForTimeout(400); await shot('07-q4-lettering')
+await p.click('section button[aria-label="Friendly"]'); await p.waitForTimeout(250)
+await p.click('text=Submit'); await p.waitForTimeout(900); await shot('08-summary')
 {
   const body = await text()
-  check('the summary card prints the answers', body.includes('Other: design portfolio') && body.includes('Midnight Indigo'),
-    body.includes('Remixer’s pick') ? 'shows Remixer’s pick where an answer was given' : '')
+  check('the summary card prints the answers',
+    body.includes('Sell something') && body.includes('A few pages') && body.includes('Warm Clay') && body.includes('Friendly'))
+  check('nothing is left as Remixer’s pick when every question was answered', !body.includes('Remixer’s pick'))
   check('the panel is gone after Submit', !(await panelUp()))
 }
 
@@ -168,8 +184,10 @@ check('the questions cost nothing — only the build is metered',
 await p.waitForTimeout(6200); await shot('10-built')
 {
   const body = await text()
-  check('the first version lands and is announced', body.includes('Done —') && body.includes('design portfolio'))
-  check('the brief is still readable after the build', body.includes('Midnight Indigo') && body.includes('Editorial'))
+  check('the first version lands and is announced', body.includes('Done —') && body.includes('built to sell'))
+  check('the acknowledgement reads as one sentence',
+    body.includes('a site built to sell, across a few pages, in Warm Clay with friendly lettering'))
+  check('the brief is still readable after the build', body.includes('Warm Clay') && body.includes('Friendly'))
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
 }
 

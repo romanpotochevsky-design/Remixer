@@ -18,9 +18,11 @@
  * copy drawn on the node), and it is what the designer meant by "the component where you
  * choose answers, palette, fonts".
  *
- * Where the board is silent, this file says so at the point of the decision:
- *  - the palette rows carry their swatches in the description slot (undrawn — §palette)
- *  - a text-only question renders the field alone, with no radio beside it (§text)
+ * The COLOUR question has a second drawn shape (25732:139123): a 2×2 grid of swatch
+ * plates instead of rows, and its "Write your own…" field runs full width with no radio.
+ *
+ * Where the board is still silent, this file says so at the point of the decision:
+ *  - a selected plate has no drawn state, so it takes a 2px ring in `--action`
  *  - there is no collapse chevron: the board does not draw one (Lovable's had one)
  */
 import { useEffect, useRef } from 'react'
@@ -95,23 +97,13 @@ function Row({ q, o, on, last }: { q: BriefQuestion; o: BriefOption; on: boolean
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-[15px] font-medium leading-[1.4] text-white">{t(o.name)}</span>
-        {/* §palette — UNDRAWN, our call, flagged to the designer: the board has no palette
-            variant of this row, so the four colours ride in the consequence slot. A strip
-            keeps the row's height and the eye still gets the thing it is choosing. */}
-        {o.swatches ? (
-          <span className="mt-1 flex h-4 w-40 overflow-hidden rounded-[4px]">
-            {o.swatches.map((c) => (
-              <span key={c} className="flex-1" style={{ background: c }} />
-            ))}
-          </span>
-        ) : (
-          // `detail` already names the pair — "Instrument Serif headings + Work Sans
-          // body. Magazine-quality, refined." — so it prints as written; prefixing the
-          // typefaces here said each of them twice.
-          <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">
-            {o.detail ? t(o.detail) : null}
-          </span>
-        )}
+        {/* the consequence — what changes on the page if this is picked (29464:34362).
+            For the type rows it also names the pair, since the real faces are not
+            embedded and a specimen would be a fake one. */}
+        <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">
+          {o.detail ? t(o.detail) : null}
+          {o.heading ? <span className="text-[#ffffff7a]">{` ${o.heading} + ${o.body}.`}</span> : null}
+        </span>
       </span>
     </button>
   )
@@ -133,19 +125,50 @@ function Body({ q }: { q: BriefQuestion }) {
     if (e.key === 'Enter') { e.preventDefault(); briefNext() }
   }
 
+  /*
+   * The colour question is the one with nothing to read, so the board gives it a shape of
+   * its own (25732:139123): a 2×2 grid of 40px plates, four cells each, 8px between them,
+   * and — this is the tell — the "Write your own…" field full width with NO radio beside
+   * it. On the radio list the field is one option among several and needs its dot; here
+   * selection lives on the plate, so a radio would be a second, contradictory control.
+   * That is also why a text-only question renders its field alone.
+   */
+  const grid = q.kind === 'palette' && options.length > 0
+
   return (
     /* The answers card — 29464:34354: Black/600 over the shell, an 8% white rim, radius 16.
        It is the only surface inside the shell; the question and the footer sit on the glass. */
     <div className="mt-[18px] overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
-      {options.map((o, i) => (
-        <Row key={o.id} q={q} o={o} on={picked === o.id} last={i === options.length - 1} />
-      ))}
+      {grid ? (
+        <div className="grid grid-cols-2 gap-2 px-4 pb-2 pt-4">
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => answerBrief(q.key, o.id)}
+              aria-pressed={picked === o.id}
+              aria-label={t(o.name)}
+              title={t(o.name)}
+              /* Selection cue is OURS — the board draws no selected plate. A 2px ring in
+                 `--action` outside the plate: the same blue the radio uses, and a
+                 box-shadow rather than a border so nothing in the grid moves. */
+              className="flex h-10 overflow-hidden rounded-[8px] border border-[#ffffff0a] transition-shadow duration-[var(--dur-fast)] ease-std"
+              style={picked === o.id ? { boxShadow: '0 0 0 2px var(--action)' } : undefined}
+            >
+              {o.swatches!.map((c) => (
+                <span key={c} className="h-full flex-1" style={{ background: c }} />
+              ))}
+            </button>
+          ))}
+        </div>
+      ) : (
+        options.map((o, i) => (
+          <Row key={o.id} q={q} o={o} on={picked === o.id} last={i === options.length - 1} />
+        ))
+      )}
 
-      {/* §text — a question with nothing to choose between gets the field alone. The board's
-          last row pairs the field with a radio, which only means anything as one option
-          among several; beside a lone field it would be a control with one setting. */}
-      <div className={options.length ? 'flex items-start gap-3 px-4 pb-4 pt-2' : 'p-4'}>
-        {options.length > 0 && (
+      <div className={options.length && !grid ? 'flex items-start gap-3 px-4 pb-4 pt-2' : 'px-4 pb-4 pt-2'}>
+        {options.length > 0 && !grid && (
           <span className="flex h-10 items-center">
             <Radio on={!!own} />
           </span>

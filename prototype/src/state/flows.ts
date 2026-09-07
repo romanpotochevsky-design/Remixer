@@ -43,12 +43,23 @@ export interface Flow {
 
 /* The thin-prompt flow is scripted from real messages, so the thread reads as it would live. */
 const THIN_PROMPT: Message = { id: 1, who: 'user', text: 'Build me a website.' }
-const THIN_ASK: Message = { id: 2, who: 'ai', kind: 'clarify', thought: 3, text: BRIEF_INTRO }
+const THIN_ASK: Message = { id: 2, who: 'ai', kind: 'clarify', thought: 5, text: BRIEF_INTRO }
+/*
+ * The demo's answers, and they are chosen to tell ONE story rather than to show off the
+ * form: a person with nothing to say picks the plainest commercial goal, a small site, a
+ * warm palette and friendly lettering — and the site that then appears on the canvas (a
+ * food business, two-tone, priced) is exactly that. Lovable's own demo answered "design
+ * portfolio" and then built a meal-prep page; a demo whose summary contradicts its own
+ * canvas teaches the room to distrust the summary.
+ *
+ * All four are PICKED options rather than typed text, so the summary prints real names and
+ * the panel gets to show both of its drawn shapes — the radio rows and the palette grid.
+ */
 const THIN_ANSWERS: BriefAnswers = {
-  type: 'other:design portfolio',
-  sections: 'other:landing',
-  palette: 'midnight-indigo',
-  typography: 'editorial',
+  goal: 'sell',
+  pages: 'few',
+  palette: 'warm-clay',
+  type: 'friendly',
 }
 const THIN_CARD: Message = { id: 3, who: 'ai', kind: 'brief', text: BRIEF_STATUS }
 const THIN_ACK: Message = { id: 4, who: 'ai', kind: 'ack', text: briefAck(THIN_ANSWERS) }
@@ -59,30 +70,30 @@ export const FLOWS: Flow[] = [
     id: 'thin-prompt',
     label: { en: 'Thin prompt → questions → first build', uk: 'Слабкий промпт → запитання → перша збірка' },
     note: {
-      en: 'Copied 1:1 from Lovable (recording, 06.09.2026): nothing to build from, so Remixer asks first. The preview stays collapsed until the build starts.',
-      uk: 'Скопійовано 1:1 з Lovable (запис, 06.09.2026): будувати нема з чого, тож Remixer спершу питає. Прев’ю згорнуте, доки не почнеться збірка.',
+      en: 'Nothing to build from, so Remixer asks first — the flow off Lovable\'s recording (06.09.2026), the questions and the copy ours. The preview stays collapsed until the build starts.',
+      uk: 'Будувати нема з чого, тож Remixer спершу питає — флоу з запису Lovable (06.09.2026), запитання й копірайт наші. Прев’ю згорнуте, доки не почнеться збірка.',
     },
     setup: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], brief: EMPTY_BRIEF, domain: 'staging', inventory: 'none', unpublished: 0 },
     steps: [
       { id: 'typed', label: { en: '"Build me a website." is sent — Remixer thinks', uk: 'Надіслано «Build me a website.» — Remixer думає' },
-        patch: { sent: [THIN_PROMPT], chat: 'working', brief: EMPTY_BRIEF }, ms: 2600,
+        patch: { sent: [THIN_PROMPT], chat: 'working', brief: EMPTY_BRIEF }, ms: 5200,
         note: { en: 'Preview collapsed: nothing to show yet, the chat owns the shell', uk: 'Прев’ю згорнуте: показувати нічого, чат займає весь шелл' } },
       { id: 'asks', label: { en: 'Instead of building, it asks for direction', uk: 'Замість збірки — просить напрямок' },
         patch: { sent: [THIN_PROMPT, THIN_ASK], chat: 'long', brief: { status: 'asking', step: 0, answers: {} } }, awaitUser: true,
         note: { en: 'The question panel docks above the composer; the composer becomes "Tell Remixer what to do instead…"', uk: 'Панель запитань стає над композером; композер — «Tell Remixer what to do instead…»' } },
-      { id: 'q1', label: { en: 'Q1 answered — website type', uk: 'В1 — тип сайту' },
-        patch: { brief: { status: 'asking', step: 1, answers: { type: THIN_ANSWERS.type } } }, ms: 1400 },
-      { id: 'q2', label: { en: 'Q2 answered — sections', uk: 'В2 — розділи' },
-        patch: { brief: { status: 'asking', step: 2, answers: { type: THIN_ANSWERS.type, sections: THIN_ANSWERS.sections } } }, ms: 1400 },
-      { id: 'q3', label: { en: 'Q3 — colour palette picked', uk: 'В3 — обрано палітру' },
-        patch: { brief: { status: 'asking', step: 3, answers: { type: THIN_ANSWERS.type, sections: THIN_ANSWERS.sections, palette: THIN_ANSWERS.palette } } }, ms: 1400 },
-      { id: 'q4', label: { en: 'Q4 — typography picked, ready to submit', uk: 'В4 — обрано типографіку, можна надсилати' },
+      { id: 'q1', label: { en: 'Q1 — what the site is for', uk: 'В1 — для чого сайт' },
+        patch: { brief: { status: 'asking', step: 1, answers: { goal: THIN_ANSWERS.goal } } }, ms: 1400 },
+      { id: 'q2', label: { en: 'Q2 — how much there is to say', uk: 'В2 — скільки треба розповісти' },
+        patch: { brief: { status: 'asking', step: 2, answers: { goal: THIN_ANSWERS.goal, pages: THIN_ANSWERS.pages } } }, ms: 1400 },
+      { id: 'q3', label: { en: 'Q3 — a colour plate is picked from the grid', uk: 'В3 — обрано плитку кольорів' },
+        patch: { brief: { status: 'asking', step: 3, answers: { goal: THIN_ANSWERS.goal, pages: THIN_ANSWERS.pages, palette: THIN_ANSWERS.palette } } }, ms: 1400 },
+      { id: 'q4', label: { en: 'Q4 — lettering picked, ready to submit', uk: 'В4 — обрано шрифти, можна надсилати' },
         patch: { brief: { status: 'asking', step: 3, answers: THIN_ANSWERS } }, awaitUser: true,
         note: { en: '"Submit" is the user\'s decision — nothing is built until they press it', uk: '«Submit» — рішення користувача: до нього нічого не будується' } },
       { id: 'summary', label: { en: 'Answers compiled into a brief card', uk: 'Відповіді зібрано в картку брифу' },
-        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'working', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS } }, ms: 1400 },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'working', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS } }, ms: 2000 },
       { id: 'ack', label: { en: '"Got it — …" and the build starts; the preview opens', uk: '«Got it — …» — починається збірка, прев’ю відкривається' },
-        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK], chat: 'working', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS }, project: 'generating' }, ms: 4200,
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK], chat: 'working', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS }, project: 'generating' }, ms: 5600,
         note: { en: 'The glow is the only progress indicator — no skeleton, no dimming', uk: 'Свічення — єдиний індикатор прогресу: без скелетону й затемнення' } },
       { id: 'built', label: { en: 'First version is up', uk: 'Перша версія готова' },
         patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK, THIN_DONE], chat: 'long', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS }, project: 'built', credits: 1990, unpublished: 1 }, awaitUser: true },
