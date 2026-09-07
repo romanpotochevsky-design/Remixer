@@ -31,19 +31,15 @@
  *  - there is no collapse chevron: the board does not draw one (Lovable's had one)
  */
 import { useEffect, useRef } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
 import { IconCaretLeft, IconCaretRight } from '@/ui/icons'
-import { SPRING_SOFT, EXIT } from '@/ui/motion'
+import { SPRING_SOFT, sheetRise, sheetRiseFade, sheetFooter } from '@/ui/motion'
 import { BRIEF_QUESTIONS, OTHER, type BriefQuestion, type BriefOption } from './brief'
 import { answerBrief, briefGoTo, briefNext, briefSkipAll, asOther } from './send'
+import { useDockSheet } from './dock'
 
-const panelIn = {
-  initial: { opacity: 0, y: 14, scale: 0.985 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: SPRING_SOFT },
-  exit: { opacity: 0, y: 10, scale: 0.99, transition: EXIT },
-}
 
 /** A step arriving: rises a touch, the way the domain lists hand over. */
 const stepIn = {
@@ -237,20 +233,27 @@ function Body({ q }: { q: BriefQuestion }) {
   )
 }
 
+/**
+ * The sheet of questions. Mounted and unmounted by the dock's AnimatePresence in
+ * ChatPanel (mode="wait", shared with the plan card), so the two sheets never overlap in
+ * the dock and each one gets its own rise and fall.
+ */
 export function BriefPanel() {
   const { t } = useT()
+  const reduce = useReducedMotion()
   const brief = useWorld((s) => s.world.brief)
-  const open = brief.status === 'asking'
   const step = brief.step
-  const q = BRIEF_QUESTIONS[step]
+  const q = BRIEF_QUESTIONS[step] ?? BRIEF_QUESTIONS[0]
   const last = step === BRIEF_QUESTIONS.length - 1
+  const sheet = useDockSheet<HTMLElement>()
 
   return (
-    <AnimatePresence>
-      {open && q && (
         <motion.section
-          key="brief"
-          variants={panelIn}
+          ref={sheet.ref}
+          onAnimationStart={sheet.onAnimationStart}
+          /* The sheet rises inside the dock's own clip (index.css `.dock-rise`, driven by
+             useDockSheet); this is only what the content does under that edge. */
+          variants={reduce ? sheetRiseFade : sheetRise}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -266,8 +269,10 @@ export function BriefPanel() {
             <Body q={q} />
           </motion.div>
 
-          {/* footer 29464:34378 — paging left, Skip all + Next right, both on the glass */}
-          <footer className="flex items-end justify-between pb-4 pl-1.5 pr-2.5 pt-3">
+          {/* footer 29464:34378 — paging left, Skip all + Next right, both on the glass.
+              It lands LAST: the buttons are the decision, and they should not be there
+              before the question is. */}
+          <motion.footer variants={sheetFooter} className="flex items-end justify-between pb-4 pl-1.5 pr-2.5 pt-3">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -305,9 +310,7 @@ export function BriefPanel() {
                 {last ? t({ en: 'Submit', uk: 'Готово' }) : t({ en: 'Next', uk: 'Далі' })}
               </button>
             </div>
-          </footer>
+          </motion.footer>
         </motion.section>
-      )}
-    </AnimatePresence>
   )
 }

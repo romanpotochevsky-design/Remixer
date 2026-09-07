@@ -17,29 +17,32 @@
  * four questions' answer; a button that means "build without the thing I just asked you
  * for" would undo the flow. Flagged to the designer rather than shipped as a no-op.
  */
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
-import { SPRING_SOFT, EXIT } from '@/ui/motion'
+import { sheetRise, sheetRiseFade, sheetFooter } from '@/ui/motion'
 import { buildPlan, PLAN_LABEL } from './plan'
 import { approvePlan, reviewPlan } from './send'
+import { useDockSheet } from './dock'
 
-const cardIn = {
-  initial: { opacity: 0, y: 14, scale: 0.985 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: SPRING_SOFT },
-  exit: { opacity: 0, y: 10, scale: 0.99, transition: EXIT },
-}
 
 export function PlanCard() {
   const { t } = useT()
+  const reduce = useReducedMotion()
   const answers = useWorld((s) => s.world.brief.answers)
   const plan = buildPlan(answers)
   const first = plan.sections[0]
 
+  const sheet = useDockSheet<HTMLElement>()
+
   return (
     <motion.section
-      key="plan"
-      variants={cardIn}
+      ref={sheet.ref}
+      onAnimationStart={sheet.onAnimationStart}
+      /* Same sheet as the questions: it rises inside the dock's clip (index.css
+         `.dock-rise`, driven by useDockSheet) and this is only what the content does
+         under that edge. */
+      variants={reduce ? sheetRiseFade : sheetRise}
       initial="initial"
       animate="animate"
       exit="exit"
@@ -78,7 +81,7 @@ export function PlanCard() {
       {/* No price line here. It read as a warning attached to the button rather than as
           information, and the footer is a decision — Review or Approve — not a receipt.
           (Designer, 07.09.2026: "этот текст нужно убрать".) */}
-      <footer className="flex items-center justify-between pb-4 pl-1.5 pr-2.5 pt-3">
+      <motion.footer variants={sheetFooter} className="flex items-center justify-between pb-4 pl-1.5 pr-2.5 pt-3">
         <button
           type="button"
           onClick={reviewPlan}
@@ -93,7 +96,7 @@ export function PlanCard() {
         >
           {t({ en: 'Approve', uk: 'Підтвердити' })}
         </button>
-      </footer>
+      </motion.footer>
     </motion.section>
   )
 }

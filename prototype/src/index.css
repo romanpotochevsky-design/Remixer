@@ -3102,6 +3102,21 @@ html[data-drag] .shell-aside { transition: none; }
   margin-left: auto;
   margin-right: auto;
 }
+/* The composer's column — the one `.chat-col` that can become the dock. Scoped to its own
+   class because the thread's column is a `.chat-col` too, and it must not grow a shell. */
+.dock {
+  /* The shell's paint lives on ::before (see the dock block), so it can fade without
+     fading what it wraps; `isolation` keeps that layer above the parent's own ground. */
+  position: relative;
+  isolation: isolate;
+  /*
+   * THE SKIN INFLATES. The 7px of shell around the field is applied as padding, and
+   * transitioning it is what makes the composer visibly get WRAPPED rather than jump
+   * inward by 7px in one frame. It is a one-shot relayout of the dock and its two
+   * children over half a second — measured, not assumed (see design-system.md).
+   */
+  transition: padding 0.52s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
 
 /* ------------------------------------------------------------------------
  * The Home → builder corridor (ui/BootCover.tsx).
@@ -3138,7 +3153,11 @@ html[data-drag] .shell-aside { transition: none; }
  *
  * NO top padding: the question's own pt-20 is the shell's top inset, exactly as drawn.
  * ---------------------------------------------------------------------- */
-.brief-dock {
+.dock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   border-radius: 24px 24px 28px 28px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   /*
@@ -3151,31 +3170,93 @@ html[data-drag] .shell-aside { transition: none; }
    * behind it. So `backdrop-filter` bought one composited layer and zero pixels. Diffed on
    * identical content: bare glass 24,24,27 blurred against 26,26,28 flat, the answers card
    * 15,15,17 against 16,16,18, the composer band identical — Δ ≤ 2/255 everywhere flat.
-   * The only real difference in the frame is glyph antialiasing, which shifts a hair when
-   * text stops being rasterised into its own composited layer.
    *
-   * What the layer DID buy was an artifact. The shell's height changes with the question
-   * (measured 536 → 407 → 536 as the palette grid replaces a radio list), and a resizing
-   * backdrop-filtered box leaves Chromium showing the previous box's blur — a lighter
-   * rectangle with soft edges stopping short of the panel's right and bottom, exactly what
-   * the designer photographed. A fresh screenshot repaints and hides it, which is why it
-   * only ever showed up live.
-   *
-   * If content is ever put BEHIND this shell, the blur has to come back — and then the
-   * resize needs solving another way (a fixed-height shell, or a promoted layer).
+   * What the layer DID buy was an artifact: a resizing backdrop-filtered box leaves
+   * Chromium showing the previous box's blur, and this shell resizes with every question
+   * (536 → 407 → 536). Now it also resizes on ENTRY, every time — so the blur stays out.
+   * If content is ever put BEHIND this shell, the blur has to come back and the resize
+   * needs solving another way (a fixed-height shell, or a promoted layer).
    */
   background: #1a1a1c;
-  padding: 0 6px 6px;
+  opacity: 0;
+  transition: opacity 0.34s cubic-bezier(0.2, 0.9, 0.25, 1);
+  pointer-events: none;
 }
+/*
+ * The dock: the question panel (or the plan) and the composer as ONE glass object —
+ * Figma 29464:34334. Rim 15%, fill 7% white baked flat, radius 24 on top and 28 at the
+ * bottom (the field's own 24 needs shell around it to read as inside). The rim is drawn
+ * INSIDE the 7px, so the field sits 6px off it — the same 1+6 the old `border + padding`
+ * gave, without a border that fades in from currentColor.
+ */
+.brief-dock { padding: 0 7px 7px; }
+.brief-dock::before { opacity: 1; }
 /* Inside the shell the field is 8% white ON the glass, not its own dark plate: the board
    draws the composer LIGHTER than the shell body (Neutral Alpha/100 over Neutral Alpha/70),
-   and `.composer-field`'s 80%-black base would invert that and read as a hole. The rim and
-   the radius are the field's own either way. */
+   and `.composer-field`'s 80%-black base would invert that and read as a hole. The colour
+   eases in with the shell; the blur snaps off, invisibly — what it sampled was flat. */
+.composer-field { transition: background-color 0.3s ease-out, box-shadow 0.3s ease-out; }
 .brief-dock .composer-field {
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ------------------------------------------------------------------------
+ * THE BUBBLE — how the dock appears (designer, 07.09.2026: "пузырь, который обволакивает
+ * наше поле ввода… в стиле Apple Liquid Glass").
+ *
+ * The layout SNAPS once — the sheet mounts at full height, the thread above is clipped a
+ * little more at its bottom and does not move — and everything the eye sees is a clip and
+ * a few transforms. `--rise` is the sheet's measured height (ChatPanel sets it in a layout
+ * effect, before the first paint), so the clip's top edge starts exactly at the collar
+ * around the field and travels up to the top of the dock. The rounded corners ride WITH
+ * the edge, which is what makes it a bubble growing rather than a curtain lifting. The
+ * field is inside the unclipped zone throughout.
+ *
+ * Why not animate the height: that is a relayout of the dock AND the thread's scroller on
+ * every frame, the exact per-frame layout this project's contract forbids (see FIELD_GROW
+ * in ui/motion.ts for the same call on the Home composer). Clip is composited and, measured
+ * on this build, free.
+ *
+ * ⚠️ The fall is the same clip in reverse over the sheet's exit — the sheet folds back INTO
+ * the collar. It runs SHORTER than the sheet's exit variant (260 against 300ms) on purpose:
+ * the dock snaps to collar height the instant the sheet unmounts, and a clip still set to
+ * `inset(var(--rise) …)` on that shorter box would cut the composer away for a frame. See
+ * modules/chat/dock.ts.
+ * ---------------------------------------------------------------------- */
+.dock-rise { animation: dock-rise 0.56s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.dock-fall { animation: dock-fall 0.26s cubic-bezier(0.4, 0, 0.6, 1) both; }
+@keyframes dock-rise {
+  from { clip-path: inset(var(--rise, 0px) 0 0 0 round 24px 24px 28px 28px); }
+  to   { clip-path: inset(0 0 0 0 round 24px 24px 28px 28px); }
+}
+@keyframes dock-fall {
+  from { clip-path: inset(0 0 0 0 round 24px 24px 28px 28px); }
+  to   { clip-path: inset(var(--rise, 0px) 0 0 0 round 24px 24px 28px 28px); }
+}
+/* Light catches the glass as it forms: one soft highlight from the top-left, fading out
+   over the rise. Opacity only, and the layer leaves with the class. */
+.dock-rise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 24px 24px 28px 28px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.03) 42%, transparent 70%);
+  animation: dock-glint 0.56s ease-out both;
+  pointer-events: none;
+}
+@keyframes dock-glint {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* `transition: none`, not a .01ms stub — the stub leaves a live micro-transition that
+     hands stale values back to synchronous layout reads (the spacer lesson in CLAUDE.md). */
+  .dock, .dock::before, .composer-field { transition: none; }
+  .dock-rise, .dock-fall, .dock-rise::after { animation: none; }
 }
 
 /* The reopen grip while the preview is collapsed: a hairline at the chat's right

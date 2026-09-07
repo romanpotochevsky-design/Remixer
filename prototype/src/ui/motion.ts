@@ -211,6 +211,41 @@ export const FIELD_GROW = { type: 'spring', duration: 0.5, bounce: 0.12 } as con
 export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
 
 /*
+ * A sheet rising in the composer's dock — the questions, the plan (modules/chat).
+ *
+ * The dock itself grows by a CLIP (index.css, `.dock-rise`): the layout snaps once and a
+ * rounded edge travels up from the collar around the field to the top of the dock. What
+ * the sheet's own content does under that edge is this: it condenses — arriving a beat
+ * after the shell starts, from a little lower and a little smaller, on the same spring the
+ * Home composer grows with. Content lags container by ~60ms, the house rule for overlays.
+ *
+ * The exit is the fall: flat, quicker, no bounce, timed to `.dock-fall` (300ms) so the
+ * content is gone by the time the clip has folded the sheet back into the collar.
+ *
+ * ⚠️ `sheetRiseFade` is the reduced-motion variant and drops the OFFSETS, not just the
+ * spring: MotionConfig would otherwise jump y and scale to their targets and fade from
+ * there (the shelf-of-the-dock lesson, 26.08.2026).
+ */
+export const DOCK_FALL_MS = 300
+export const sheetRise = {
+  initial: { opacity: 0, y: 14, scale: 0.985 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { ...FIELD_GROW, delay: 0.06 } },
+  exit: { opacity: 0, y: 6, scale: 0.995, transition: { duration: DOCK_FALL_MS / 1000, ease: [0.4, 0, 0.6, 1] } },
+} as const
+export const sheetRiseFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.26 } },
+  exit: { opacity: 0, transition: { duration: 0.18 } },
+} as const
+/* The sheet's footer lands last — the buttons are the decision, and they should not be
+   there before the question is. */
+export const sheetFooter = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.28, delay: 0.3 } },
+  exit: { opacity: 0, transition: { duration: 0.12 } },
+} as const
+
+/*
  * THE SCROLL-COMPACTING HEADER USED TO HAVE A SPRING HERE — `HEADER_COMPACT`
  * (duration .44 / bounce 0), the `FIELD_GROW` law one size up: the picker's
  * header snapped 215 → 146 in one commit and everything that moved was put back

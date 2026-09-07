@@ -25,6 +25,7 @@ import { bubbleSend, messageIn } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
 import { PlanCard } from './PlanCard'
 import { BuildProgress } from './BuildProgress'
+import { clearDockMotion } from './dock'
 import { PLAN_WAITING } from './plan'
 import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
 
@@ -504,11 +505,24 @@ export function ChatPanel() {
           * on top and 28 at the bottom. Without the questions the composer stands alone,
           * the way its own board (28016:43526) draws it, so the shell is conditional.
           */}
-        <div className={`chat-col${asking || planning ? ' brief-dock' : ''}`}>
-        <BriefPanel />
-        {/* The plan takes the questions' place in the same shell — same object, next
-            step. It gates the build: nothing generates until Approve. */}
-        <AnimatePresence>{planning && <PlanCard />}</AnimatePresence>
+        <div
+          className={`chat-col dock${asking || planning ? ' brief-dock' : ''}`}
+          /* The dock's rise/fall is a CSS clip started by the sheet (dock.ts); once it has
+             played, the class goes so the composer's own effects are not clipped by it. */
+          onAnimationEnd={(e) => {
+            if (e.animationName === 'dock-rise' || e.animationName === 'dock-fall') clearDockMotion(e.currentTarget)
+          }}
+        >
+        {/*
+          * ONE presence for both sheets, mode="wait": the questions fold fully into the
+          * collar before the plan rises out of it. Overlapping them put both in the dock
+          * at once for the length of an exit, and the shell's top edge jumped by a card's
+          * height. The plan takes the questions' place in the same shell — same object,
+          * next step — and gates the build: nothing generates until Approve.
+          */}
+        <AnimatePresence mode="wait">
+          {asking ? <BriefPanel key="brief" /> : planning ? <PlanCard key="plan" /> : null}
+        </AnimatePresence>
         <div ref={composerBox} className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}
           {flash > 0 && (
