@@ -269,9 +269,3 @@ export const BUILD_INTRO: Text = {
   en: 'Starting on your home page — layout first, then the hero, the content blocks and the footer. It appears here the moment that page is finished; the other pages come after.',
   uk: 'Починаю з головної — спершу каркас, тоді герой, змістові блоки і футер. Вона з’явиться тут, щойно сторінка буде готова; інші сторінки — після неї.',
 }
-
-/** The card's own label — the page being built, and the beat under it. */
-export const ASSEMBLING: Text = {
-  en: 'Putting the page together',
-  uk: 'Збираю сторінку докупи',
-}

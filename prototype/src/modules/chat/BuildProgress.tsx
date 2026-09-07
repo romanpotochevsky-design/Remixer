@@ -40,7 +40,7 @@ import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
 import { IconPage, IconStepDone, IconStepQueued, IconStepRunning } from '@/ui/icons'
 import { SPRING_SOFT } from '@/ui/motion'
-import { ASSEMBLING, buildOutline } from './build'
+import { buildOutline } from './build'
 
 const LINE = 'var(--gray-750)'
 
@@ -127,25 +127,14 @@ export function BuildProgress() {
       <div className="rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
         {/* 56, not the 24 of padding the export reports: the board's row is a
             fixed-height frame with its 20px icon centred in it (icon at y=18 of 56).
-            It only grows for the assembling line, which is why min-height and not
-            height. */}
-        <div className="flex min-h-[56px] items-center gap-2 py-3 pl-[14px] pr-2">
-          {/* self-start once the assembling line is under the title: centring a 20px
-              icon against a two-line block drops it between the lines, reading as if it
-              belonged to neither. */}
-          <IconPage
-            size={20}
-            className={`flex-none text-[#ffffff7a] ${assembling ? 'self-start' : ''}`}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-[16px] font-semibold leading-[1.2] text-white">{t(home.name)}</p>
-            {/* The assembling beat has no drawn state on the board. It belongs to the
-                page rather than to any one section — every section is done by then — so
-                the shimmer moves up here for the last few seconds. */}
-            <AnimatePresence initial={false}>
-              {assembling && <WorkLine text={t(ASSEMBLING)} beat="assembling" />}
-            </AnimatePresence>
-          </div>
+            ⚠️ NOTHING BUT THE NAME GOES HERE. It briefly carried a shimmering "Putting
+            the page together" through the assembling beat — my invention, not on the
+            board, and the designer cut it (07.09.2026: "вот это лишнее"). By then every
+            section is green and the page is on its way; a line saying so is a caption on
+            something already said. */}
+        <div className="flex h-[56px] items-center gap-2 pl-[14px] pr-2">
+          <IconPage size={20} className="flex-none text-[#ffffff7a]" />
+          <p className="text-[16px] font-semibold leading-[1.2] text-white">{t(home.name)}</p>
         </div>
 
         <div
