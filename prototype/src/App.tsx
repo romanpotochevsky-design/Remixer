@@ -23,6 +23,7 @@ import { DomainModal } from '@/modules/domains/DomainModal'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
+import { buildSections } from '@/modules/chat/build'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -67,6 +68,27 @@ export default function App() {
   const working = world.chat === 'working'
   const [glow, setGlow] = useState(false)
   /*
+   * THE FIRST GENERATION DOES NOT HOLD THE GLOW ON — it pulses once per section.
+   *
+   * The rule this bends is a real one ("the glow is the only loading indicator"), and it
+   * was written when the first build was 5.6 seconds. It is now a MINUTE, and there is a
+   * progress card in the chat that names the section in hand (modules/chat/build.ts).
+   *
+   * MEASURED on this build, same page, same second (07.09.2026, software renderer):
+   *   mid-section, glow off .... 60.6 fps
+   *   during a glow pulse ...... 9.5 – 10.3 fps
+   * The card's animations ARE the deliverable here — a shimmering work line, a spinning
+   * ring, rows changing height — and sixty seconds at 10fps would have killed every one
+   * of them. That is the same failure as the original 9fps lesson, just spread over a
+   * minute instead of a second.
+   *
+   * So the glow says what it is good at saying: something landed. One ~0.9s pulse as each
+   * section completes, and a longer one on the assembling beat that runs into the page
+   * appearing — six events over the minute, ~8% of it, instead of one continuous burn.
+   */
+  const beat = world.build.at
+  const building = world.project === 'generating' && beat >= 0
+  /*
    * `working` is a dependency ON PURPOSE, not just `busy`. busy is a union of
    * three sources, and unions hide transitions: send during a reload pulse and
    * busy never flips, so the old [busy]-only effect kept the glow burning at
@@ -83,11 +105,27 @@ export default function App() {
     // keeps busy true; a plain reload/generating start keeps the tuned 700.
     const revealNeedsRoom = wasWorking.current && !working
     wasWorking.current = working
-    if (!busy) { setGlow(false); return }
+    // `building` drives its own pulses below; holding the glow here as well would put
+    // both on the same element and the pulses would never be seen going out.
+    if (!busy || building) { setGlow(false); return }
     setGlow(false)
     const t = window.setTimeout(() => setGlow(true), revealNeedsRoom ? 1200 : 700)
     return () => window.clearTimeout(t)
-  }, [busy, working])
+  }, [busy, working, building])
+
+  /* One pulse per section. Depends on `at` and not on the whole `build` object, so the
+     work lines inside a section (which change every few seconds) do not re-fire it. */
+  const sectionCount = buildSections(world.brief.answers).length
+  useEffect(() => {
+    if (!building) return
+    setGlow(true)
+    /* The assembling beat is the last one, and the page appears out of it — its pulse
+       runs long enough to still be lit when the site lands, so the reveal has the
+       flourish the rest of the minute deliberately does without. */
+    const hold = beat >= sectionCount ? 2200 : 900
+    const t = window.setTimeout(() => setGlow(false), hold)
+    return () => window.clearTimeout(t)
+  }, [building, beat, sectionCount])
 
   // The resizer writes --chat-w straight to <html> during a drag; this keeps the
   // stored value authoritative everywhere else (reset, reload, another session).
@@ -358,8 +396,18 @@ export default function App() {
                   ) : (
                     <div className="grid h-full place-items-center bg-[var(--gray-900)] px-6 text-center">
                       {world.project === 'generating' ? (
+                        /* "pages", plural, was a lie: this pass builds ONE page and the
+                           site appears when that page is done (designer, 07.09.2026).
+                           The board draws this canvas bare, and bare in a static frame
+                           is fine; live, an unexplained dark rectangle for a minute
+                           reads as broken. One quiet line, and the detail — which
+                           section, what is happening to it — stays in the chat where
+                           the card already carries it. */
                         <p className="text-[14px] text-[var(--white-400)]">
-                          {t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })}
+                          {t({
+                            en: 'Your home page appears here as soon as it’s built',
+                            uk: 'Головна з’явиться тут, щойно буде готова',
+                          })}
                         </p>
                       ) : (
                         <p className="text-[14px] text-[var(--white-300)]">

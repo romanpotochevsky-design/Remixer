@@ -483,6 +483,71 @@
   }
 
   /*
+   * The generation outline (Figma 29480:48478) — the work line under the section
+   * being written, and the ring that says which one it is.
+   *
+   * THE GRADIENT IS THE DESIGNER'S, off the board: `background-clip: text` over
+   * linear-gradient(90deg, NA/300 0%, NA/800 21.6%, NA/300 52.4%, NA/800 99.5%) —
+   * two bright crests of 72% white in a 24% ground. Read in the DARK theme; the
+   * export resolves those tokens to near-black, which would paint the line invisible.
+   *
+   * ⚠️ The board's stop positions are one FRAME of a moving wave, and tiling them
+   * verbatim puts a hard 72%→24% step at the seam, which flickers once per period.
+   * The period below carries the same two alphas and the same two crests, spaced so
+   * it repeats seamlessly. The animation is what the designer asked for; the frame
+   * he drew is one moment of it.
+   *
+   * This is the second and last place in the prototype where per-frame repaint is
+   * allowed (the first is `.thinking`, and for the same reason): it is ONE line of
+   * 14px text, only ever one of them on screen at a time, and it exists only while
+   * that section is being written. The glow is deliberately NOT running alongside it
+   * (App.tsx pulses it per section instead of holding it) — a minute of blurred
+   * surfaces would take the frames this line needs.
+   */
+  .gen-work {
+    background-image: linear-gradient(
+      90deg,
+      #ffffff3d 0%,
+      #ffffffb8 25%,
+      #ffffff3d 50%,
+      #ffffffb8 75%,
+      #ffffff3d 100%
+    );
+    background-size: 220% 100%;
+    background-repeat: repeat-x;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gen-work-sweep 3.4s linear infinite;
+  }
+  @keyframes gen-work-sweep {
+    from { background-position: 110% 0; }
+    to   { background-position: 0 0; }
+  }
+
+  .step-spin {
+    transform-origin: 12px 12px;
+    animation: step-spin 1s linear infinite;
+  }
+  @keyframes step-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Both indicators stop, and both stay READABLE rather than disappearing: the
+       shimmer settles on its bright value, the ring stops as a plain arc. A stopped
+       gradient parked mid-sweep would leave half the sentence at 24% white. */
+    .gen-work {
+      animation: none;
+      background-image: none;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
+      color: #ffffffb8;
+    }
+    .step-spin { animation: none; }
+  }
+
+  /*
    * The send flash. Material and thinness are still measured off Google's AI
    * Mode recording — a THIN iridescent band hugging the box, the interior
    * perfectly clean — but the choreography was redesigned to the designer's

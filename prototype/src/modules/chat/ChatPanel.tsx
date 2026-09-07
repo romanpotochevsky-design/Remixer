@@ -24,6 +24,7 @@ import { sendMessage, resumeInterrupted } from './send'
 import { bubbleSend, messageIn } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
 import { PlanCard } from './PlanCard'
+import { BuildProgress } from './BuildProgress'
 import { PLAN_WAITING } from './plan'
 import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
 
@@ -422,6 +423,8 @@ export function ChatPanel() {
                 </UserBubble>
               ) : m.kind === 'brief' ? (
                 <BriefSummary key={m.id} animate={isFresh(m.id)} />
+              ) : m.kind === 'build' ? (
+                <BuildProgress key={m.id} />
               ) : (
                 <AiMessage
                   key={m.id}
@@ -438,8 +441,13 @@ export function ChatPanel() {
           {asking && <BriefStatusRow />}
 
           {/* While the brief card is settling its own title carries the shimmer —
-              a second "Thinking" under it would be two spinners for one wait. */}
-          {working && thread[thread.length - 1]?.kind !== 'brief' && (
+              a second "Thinking" under it would be two spinners for one wait. The
+              generation outline is the same case for a whole minute: it names the
+              section in hand and shimmers the line under it, so a "Thinking" below it
+              would be a second, vaguer answer to a question already answered. */}
+          {working
+            && thread[thread.length - 1]?.kind !== 'brief'
+            && thread[thread.length - 1]?.kind !== 'build' && (
             <div className="pr-8">
               <p className="thinking text-[15px] leading-[25px]">
                 {t({ en: 'Thinking', uk: 'Думаю' })}

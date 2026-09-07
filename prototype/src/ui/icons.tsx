@@ -463,3 +463,60 @@ export const IconCollapse = ({ size = 20, className }: IconProps) => (
     <path d="m10 14-6 6" />
   </svg>
 )
+
+/* ------------------------------------------ the generation outline (29480:48478) */
+
+/**
+ * A page in the site outline. The board sets it at 20 in the row and 20 in the page
+ * headers, so it is drawn on the 24 grid like everything else and sized by the caller.
+ */
+export const IconPage = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.6">
+    <path d="M13.5 3.5H7A2 2 0 0 0 5 5.5v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z" />
+    <path d="M13.5 3.5V7a2 2 0 0 0 2 2H19" />
+  </svg>
+)
+
+/**
+ * The three states of a section, all on one geometry so the row never shifts as it
+ * changes: a ring of the same centre and stroke, and only the colour and what is
+ * inside it move. The board draws the finished and running rings on a 24 frame and
+ * the queued ones on a 20 frame, so the waiting ring really is the smaller one —
+ * the row reads as "not started" before you have read a word of it.
+ */
+export const IconStepDone = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.6">
+    <circle cx="12" cy="12" r="9.2" />
+    <path d="m7.9 12.3 2.8 2.8 5.4-5.9" strokeWidth="1.8" />
+  </svg>
+)
+
+/**
+ * The section in hand. One arc of the ring, spinning.
+ *
+ * The gap is what makes it read as motion rather than as a dot: a full ring turning
+ * looks identical to a still one. Rotation is a transform, so this costs the
+ * compositor a matrix and the main thread nothing — the one animation in the card
+ * that can run for a whole minute without being thought about.
+ */
+export const IconStepRunning = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.9">
+    <circle
+      cx="12"
+      cy="12"
+      r="9.2"
+      strokeDasharray="40 18"
+      /* class, not an inline animation: `prefers-reduced-motion` can only stop a
+         CSS animation it can select, and motion/react's MotionConfig does not
+         reach SVG keyframes. */
+      className="step-spin"
+    />
+  </svg>
+)
+
+/** Queued: the same ring, smaller and unlit. */
+export const IconStepQueued = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.6">
+    <circle cx="12" cy="12" r="7.8" />
+  </svg>
+)

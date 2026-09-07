@@ -63,7 +63,11 @@ const THIN_ANSWERS: BriefAnswers = {
 }
 const THIN_CARD: Message = { id: 3, who: 'ai', kind: 'brief', text: BRIEF_STATUS }
 const THIN_ACK: Message = { id: 4, who: 'ai', kind: 'ack', text: briefAck(THIN_ANSWERS) }
-const THIN_DONE: Message = { id: 5, who: 'ai', text: briefDone(THIN_ANSWERS) }
+const THIN_BUILD: Message = { id: 5, who: 'ai', kind: 'build', text: '' }
+const THIN_DONE: Message = { id: 6, who: 'ai', text: briefDone(THIN_ANSWERS) }
+/** The transcript at the point the outline card is up — every step from here uses it. */
+const THIN_BUILDING = [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK, THIN_BUILD]
+const THIN_BRIEF_READY = { status: 'ready' as const, step: 3, answers: THIN_ANSWERS }
 
 export const FLOWS: Flow[] = [
   {
@@ -98,11 +102,41 @@ export const FLOWS: Flow[] = [
           en: 'Where Remixer parts ways with Lovable: the answers are compiled into a plan and the customer approves it. `Review` moves the document into the canvas at full size.',
           uk: 'Тут Remixer розходиться з Lovable: відповіді збираються в план, і клієнт його підтверджує. «Review» переносить документ у канвас на повний розмір.',
         } },
-      { id: 'ack', label: { en: 'Approved — "Got it — …", the build starts, the preview opens', uk: 'Підтверджено — «Got it — …», збірка стартує, прев’ю відкривається' },
-        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK], chat: 'working', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS }, project: 'generating' }, ms: 5600,
-        note: { en: 'The glow is the only progress indicator — no skeleton, no dimming', uk: 'Свічення — єдиний індикатор прогресу: без скелетону й затемнення' } },
-      { id: 'built', label: { en: 'First version is up', uk: 'Перша версія готова' },
-        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK, THIN_DONE], chat: 'long', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS }, project: 'built', credits: 1990, unpublished: 1 }, awaitUser: true },
+      { id: 'ack', label: { en: 'Approved — "Got it — …", and the canvas opens EMPTY', uk: 'Підтверджено — «Got it — …», канвас відкривається ПОРОЖНІМ' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK], chat: 'working', brief: THIN_BRIEF_READY, project: 'generating' }, ms: 2200,
+        note: {
+          en: 'This pass builds the home page, and the preview is a preview OF that page — so there is nothing in the canvas yet',
+          uk: 'Цей прохід збирає головну, а прев’ю — це прев’ю САМЕ ЦІЄЇ сторінки, тож у канвасі поки нічого',
+        } },
+      /*
+       * The generation, in four beats instead of its real minute.
+       *
+       * A scripted flow is for showing the SHAPE of a thing to a room — the real clock
+       * (build.ts) is one click away from the Home page for anyone who wants to sit
+       * through it. What must survive the compression is the shape itself: the whole
+       * site outlined, one section in hand at a time, and the canvas empty until the
+       * page it previews actually exists.
+       */
+      { id: 'outline', label: { en: 'The whole site is outlined — the home page first', uk: 'Показано план усього сайту — спершу головна' },
+        patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 0, line: 0 } }, ms: 2600,
+        note: {
+          en: 'Only the first page is generated in this pass — About, Services and Contact are named and visibly waiting (Figma 29480:48478)',
+          uk: 'У цьому проході генерується лише перша сторінка — About, Services і Contact названі й видимо чекають (Figma 29480:48478)',
+        } },
+      { id: 'sections', label: { en: 'Section by section, with the work named', uk: 'Секція за секцією, з назвою роботи' },
+        patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 2, line: 1 } }, ms: 2600,
+        note: {
+          en: 'Done above, in hand in the middle with the line that says what is happening to it, waiting below',
+          uk: 'Готове вище, у роботі — посередині, з рядком про те, що саме відбувається; те, що в черзі — нижче',
+        } },
+      { id: 'assembling', label: { en: 'Every section done — the page is put together', uk: 'Усі секції готові — сторінка збирається' },
+        patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 5, line: 0 } }, ms: 2200 },
+      { id: 'built', label: { en: 'The home page appears in the canvas', uk: 'Головна з’являється в канвасі' },
+        patch: { sent: [...THIN_BUILDING, THIN_DONE], chat: 'long', brief: THIN_BRIEF_READY, project: 'built', build: { at: 5, line: 0 }, credits: 1990, unpublished: 1 }, awaitUser: true,
+        note: {
+          en: 'The outline stays in the transcript: it is the record of what was built, and of which pages have not been',
+          uk: 'План лишається у стрічці: це запис про те, що зібрано і які сторінки ще ні',
+        } },
     ],
   },
   {

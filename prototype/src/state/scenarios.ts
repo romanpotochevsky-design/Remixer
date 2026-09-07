@@ -38,9 +38,39 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'generating',
-    label: { en: 'Generating', uk: 'Іде генерація' },
-    note: { en: 'The site assembles in front of you', uk: 'Сайт збирається на очах' },
-    patch: { account: 'trial', trialDay: 1, credits: 1880, project: 'generating', chat: 'working', domain: 'staging', unpublished: 0, projects: [] },
+    label: { en: 'Generating — mid-build', uk: 'Іде генерація — середина' },
+    note: {
+      en: 'The outline card frozen on the hero, so the states can be looked at without waiting out the minute (Figma 29480:48478)',
+      uk: 'Картка плану, заморожена на герої — можна розглянути стани, не чекаючи хвилину (Figma 29480:48478)',
+    },
+    /*
+     * A STAGED mid-generation, and deliberately frozen: no clock runs behind a preset,
+     * so every state of the outline — done, in hand with its shimmering work line,
+     * waiting, and the pages this pass does not build — is on screen to be looked at.
+     * The live minute is one click away from the Home page; this is for the design.
+     *
+     * ⚠️ `sent`, `brief` and `build` all ride in the patch. `world.set` reads a `chat`
+     * move with an empty transcript as staging a fresh situation and clears the brief and
+     * the build with it — which is right for every other preset here and would leave this
+     * one showing a generating project with no card in it.
+     */
+    patch: {
+      account: 'trial', trialDay: 1, credits: 1880, project: 'generating', chat: 'working',
+      domain: 'staging', unpublished: 0, projects: [],
+      brief: { status: 'ready', step: 0, answers: { goal: 'sell', pages: 'few', palette: 'warm-clay', type: 'friendly' } },
+      build: { at: 1, line: 1 },
+      sent: [
+        { id: 1001, who: 'user', text: 'A shop for my ceramics studio' },
+        {
+          id: 1002, who: 'ai', kind: 'ack',
+          text: {
+            en: 'Got it — a site built to sell, across a few pages, in Warm Clay with friendly lettering. Let me build that for you.',
+            uk: 'Зрозумів — сайт, який продає, на кілька сторінок, у палітрі Warm Clay і дружніми шрифтами. Збираю.',
+          },
+        },
+        { id: 1003, who: 'ai', kind: 'build', text: '' },
+      ],
+    },
   },
   {
     id: 'trial-mid',

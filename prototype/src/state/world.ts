@@ -68,8 +68,12 @@ export interface Message {
    *  - 'clarify' — the agent asking for direction instead of building (opens the brief)
    *  - 'brief'   — the summary card of the answered questions (renders from `world.brief`)
    *  - 'ack'     — "Got it — …", the line that hands over to the build
+   *  - 'build'   — the generation outline (renders from `world.build`). A MESSAGE and
+   *                not a floating panel on purpose: it stays in the transcript once the
+   *                page is done, as the record of what was built and of which pages are
+   *                still waiting, and it scrolls away like any other turn.
    */
-  kind?: 'text' | 'clarify' | 'brief' | 'ack'
+  kind?: 'text' | 'clarify' | 'brief' | 'ack' | 'build'
   /** Seconds the agent "thought" before this turn — Lovable prints "Thought for 21s". */
   thought?: number
 }
@@ -134,6 +138,29 @@ export interface Brief {
 }
 export const EMPTY_BRIEF: Brief = { status: 'none', step: 0, answers: {} }
 
+/**
+ * How far the FIRST generation has got — the axis behind the progress card
+ * (modules/chat/build.ts, Figma 29480:48478).
+ *
+ * A generation is not one wait, it is a queue of named pieces of work, and the customer
+ * is entitled to see which one is in hand. `at` indexes the section of the FIRST page
+ * being written; `line` picks which of that section's work lines is on screen. `at`
+ * equal to the section count means every section is done and the page is being
+ * assembled — the beat just before the site appears in the canvas.
+ *
+ * Why it lives in the World and not in the card: the card must be inspectable without
+ * waiting out a minute of clock, and staging "half-way through the hero" is exactly
+ * what the scenario console is for. It also means a reload mid-build comes back where
+ * it left (send.ts resumes the remaining beats from `at`).
+ */
+export interface Build {
+  /** Section under construction. -1 = nothing is being generated. */
+  at: number
+  /** Which of that section's work lines is showing. */
+  line: number
+}
+export const EMPTY_BUILD: Build = { at: -1, line: 0 }
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -163,6 +190,8 @@ export interface World {
   sent: Message[]
   /** Where the pre-build brief stands. Lives with the transcript, dies with it. */
   brief: Brief
+  /** How far the first generation has got. Lives with the transcript, dies with it. */
+  build: Build
 }
 
 export const DEFAULT_WORLD: World = {
@@ -180,6 +209,7 @@ export const DEFAULT_WORLD: World = {
   projects: DEMO_PROJECTS,
   sent: [],
   brief: EMPTY_BRIEF,
+  build: EMPTY_BUILD,
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -352,6 +382,11 @@ export const useWorld = create<Store>((set, get) => ({
     // the summary card renders from it long after the questions are answered.
     if (patch.chat !== undefined && patch.brief === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
       patch = { ...patch, brief: EMPTY_BRIEF }
+    }
+    // …and any generation in flight. Same test, same reason: a progress card left over
+    // from the previous situation would tick against a project that no longer exists.
+    if (patch.chat !== undefined && patch.build === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
+      patch = { ...patch, build: EMPTY_BUILD }
     }
     const world = { ...get().world, ...patch }
     syncUrl(world)

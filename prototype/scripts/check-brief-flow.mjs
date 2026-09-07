@@ -23,9 +23,17 @@
  *      dock above the composer, the answers survive paging, Submit compiles the summary
  *      card — and then the PLAN, which is Remixer's own step: nothing generates until
  *      Approve. Review moves it into the canvas at full size and ✕ brings it back. Then
- *      the build, the site, and the three ways to work the divider.
+ *      the GENERATION: one hardcoded minute with the outline card naming every section
+ *      of the home page, one in hand at a time, the canvas empty until that page is
+ *      finished. Then the site, and the three ways to work the divider.
+ *
+ * ⚠️ The run is ~3 minutes now, and most of it is the two builds. That is the point of
+ * the case rather than an accident: the generation IS a minute (Figma 29480:48478), and
+ * the check that matters most is the negative one — that the site does not appear before
+ * the page it is a preview of.
  *   B. strong prompt ("Bella's Bakery" — the composer's own example) → straight to the
- *      build with the canvas OPEN and no questions anywhere.
+ *      build with the canvas OPEN and no questions anywhere, and the same generation
+ *      outline over a brief that was never answered (every question on its fallback).
  *   C. a template from the dock ("Use Template") → the seeded prompt is a brief in
  *      itself, so it builds too.
  *   D. the escape hatch: a message typed into the composer while the questions are open
@@ -82,6 +90,30 @@ const text = () => p.evaluate(() => document.body.innerText)
 const onHome = () => p.$('input[aria-label="Describe the site you want"]').then(Boolean)
 const panelUp = () => p.$('section[aria-label="Questions before building"]').then(Boolean)
 const planUp = () => p.$('section[aria-label="Plan, waiting for your approval"]').then(Boolean)
+const cardUp = () => p.$('section[aria-label="What Remixer is building"]').then(Boolean)
+/**
+ * The generation outline, as the DOM has it: the page being built, every section with
+ * the state it is in, the work line under the one in hand, and the pages queued below.
+ * `data-state` is read rather than inferred from a colour, so a restyle cannot make
+ * this check quietly meaningless.
+ */
+const outline = () =>
+  p.evaluate(() => {
+    const c = document.querySelector('section[aria-label="What Remixer is building"]')
+    if (!c) return null
+    return {
+      page: c.querySelector('p').innerText,
+      rows: [...c.querySelectorAll('li')].map((li) => ({
+        name: li.querySelector('span.block').innerText,
+        state: li.dataset.state,
+        work: li.querySelector('.gen-work')?.innerText ?? null,
+      })),
+      pages: [...c.querySelectorAll('div.h-12')].map((d) => d.innerText),
+      shimmer: !!c.querySelector('.gen-work'),
+    }
+  })
+/** Is the demo site actually rendered in the canvas, or is the stage still empty? */
+const siteUp = () => p.$('.site-stage h1').then(Boolean)
 /**
  * The measure of the chat's content and how it sits in the column that holds it.
  *
@@ -224,13 +256,49 @@ check('closing the plan puts the canvas away again', (await previewState()) === 
 check('the plan card is still there after closing the review', await planUp())
 
 await p.click('section[aria-label="Plan, waiting for your approval"] >> text=Approve')
-await p.waitForTimeout(2600); await shot('11-ack-building')
+await p.waitForTimeout(3400); await shot('11-ack-building')
 check('Approve is what starts the build', !(await planUp()))
 check('the canvas opens by itself when the build starts', (await previewState()) === 'open')
 
-await p.waitForTimeout(6200); await shot('12-built')
+/* ---- the generation: one minute, named section by section (Figma 29480:48478) ---- */
+check('the outline card lands when the build starts', await cardUp())
+{
+  const o = await outline()
+  check('the outline names the page being built', o?.page === 'Home', JSON.stringify(o?.page))
+  check('the sections come from the answers, not a fixed list',
+    o?.rows.map((r) => r.name).join(' · ') === 'Layout & navigation · Hero · Product grid · Cart & checkout · Footer',
+    o?.rows.map((r) => r.name).join(' · '))
+  check('the pages this pass does NOT build are named and waiting',
+    o?.pages.join(' · ') === 'About · Services · Contact', o?.pages.join(' · '))
+  check('exactly one section is in hand', o?.rows.filter((r) => r.state === 'active').length === 1)
+  check('the section in hand says what is happening to it', !!o?.rows.find((r) => r.state === 'active')?.work)
+}
+/*
+ * THE CANVAS STAYS EMPTY FOR THE WHOLE MINUTE. This pass builds the home page and the
+ * preview appears when that page is done (designer, 07.09.2026) — a site on screen at
+ * second three would make the outline card a decoration over an already-finished job.
+ */
+check('the canvas is open but the site is NOT there yet', (await previewState()) === 'open' && !(await siteUp()))
+
+await p.waitForTimeout(20000); await shot('12a-mid-build')
+{
+  const o = await outline()
+  const done = o?.rows.filter((r) => r.state === 'done').length ?? 0
+  check('sections finish as the minute runs', done >= 1 && done < 5, `${done} done after ~24s`)
+  check('…and still exactly one is in hand', o?.rows.filter((r) => r.state === 'active').length === 1)
+  check('the site has still not appeared', !(await siteUp()))
+  check('Publish stays dead while the page is being written',
+    await p.$eval('button:has-text("Publish")', (el) => el.disabled))
+}
+
+/* Out to the far side of the hardcoded minute (5 sections + the assembling beat). */
+await p.waitForTimeout(45000); await shot('12-built')
 {
   const body = await text()
+  check('the site appears when the page is finished', await siteUp())
+  check('every section of the page is done',
+    (await outline())?.rows.every((r) => r.state === 'done'), JSON.stringify((await outline())?.rows.map((r) => r.state)))
+  check('the outline stays in the transcript as the record of what was built', await cardUp())
   check('the first version lands and is announced', body.includes('Done —') && body.includes('built to sell'))
   check('the acknowledgement reads as one sentence',
     body.includes('a site built to sell, across a few pages, in Warm Clay with friendly lettering'))
@@ -264,8 +332,22 @@ await buildFromHome('Bella’s Bakery')
 await shot('16-strong-prompt')
 check('“Bella’s Bakery” goes straight to the build', (await previewState()) === 'open')
 check('no questions for a prompt with substance in it', !(await panelUp()))
-await p.waitForTimeout(4200); await shot('17-strong-built')
-check('the strong prompt produces a site', (await text()).includes('Bella'))
+/* 3.4s of thinking, then the hand-over line, then 0.9s to the card. */
+await p.waitForTimeout(5200); await shot('17-strong-building')
+{
+  const body = await text()
+  check('the line before the build names the work, not a business it cannot know',
+    body.includes('Starting on your home page'))
+  check('a prompt that skips the brief still gets the outline', await cardUp())
+  const o = await outline()
+  /* No brief behind this path, so every question falls back to its first option —
+     goal=enquiries, pages=one. The same rule the plan uses for a skipped question. */
+  check('the fallback outline is the one-page landing site',
+    o?.rows.map((r) => r.name).join(' · ') === 'Layout & navigation · Hero · What you offer · Enquiry form · Footer'
+      && o?.pages.length === 0,
+    `${o?.rows.map((r) => r.name).join(' · ')} | pages=${o?.pages.length}`)
+  check('the canvas waits for the page here too', !(await siteUp()))
+}
 
 /* ================================================== C. a template from the dock */
 
@@ -283,6 +365,8 @@ await p.waitForTimeout(1800)
 await shot('19-template-building')
 check('a template seeds a brief of its own, so it builds', (await previewState()) === 'open' && !(await panelUp()))
 check('the template names itself in the first message', (await text()).includes('template'))
+await p.waitForTimeout(3600)
+check('the template path runs the same generation', await cardUp())
 
 /* ============================= D. the composer overrides the open question panel */
 

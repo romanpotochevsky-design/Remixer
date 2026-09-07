@@ -19,6 +19,7 @@ import {
   isWeakPrompt, BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS, briefAck, briefDone, OTHER,
   type BriefKey, type BriefAnswers,
 } from './brief'
+import { buildBeats, BUILD_INTRO } from './build'
 
 /*
  * The demo's clock — slowed on 07.09.2026 at the designer's call ("медленнее, ближе к
@@ -38,8 +39,15 @@ const CLARIFY_MS = 5200
 const PLAN_MS = 2400
 /** Approve → "Got it — …". */
 const ACK_MS = 2000
-/** "Got it" → the first version. The glow carries this stretch. */
-const BUILD_MS = 5600
+/** "Got it" → the outline card appearing, so the two arrivals read as two beats. */
+const CARD_MS = 900
+/*
+ * The generation itself is NOT a single wait any more — it is a minute of named beats
+ * driven by `buildBeats` (build.ts, Figma 29480:48478). The old constant here was 5.6
+ * seconds of edge glow, which is fine for a fake and useless as a design: the real thing
+ * takes five to ten minutes, and an unlabelled spinner that long is indistinguishable
+ * from a hang. One minute, hardcoded, is the designer's call (07.09.2026).
+ */
 
 /** Credits per chat edit. Illustrative — no published per-message price exists;
  *  what matters is that the toolbar balance visibly moves when AI does work.
@@ -52,6 +60,51 @@ let pending: ReturnType<typeof setTimeout> | null = null
 function schedule(fn: () => void, ms: number) {
   if (pending) clearTimeout(pending)
   pending = setTimeout(() => { pending = null; fn() }, ms)
+}
+
+/*
+ * The generation's own clock, separate from `pending`.
+ *
+ * `pending` is one slot, and the build is a CHAIN of thirteen beats — it needs a timer
+ * of its own or each beat would cancel whatever else the flow had queued. Kept module
+ * level, like `pending`, so it can be stopped from anywhere that invalidates the run.
+ */
+let buildTimer: ReturnType<typeof setTimeout> | null = null
+
+function stopBuildClock() {
+  if (buildTimer) { clearTimeout(buildTimer); buildTimer = null }
+}
+
+/**
+ * Walk the beats of the first generation, writing each one to `world.build`.
+ *
+ * The schedule is expanded up front (build.ts) rather than chained closure by closure,
+ * which is what makes it resumable: a reload mid-build restores `world.build` from
+ * storage and this picks up at that index instead of restarting the minute.
+ *
+ * ⚠️ Every tick re-reads the store and bails unless the project is still generating.
+ * `world.set` treats a staged `chat` axis as a new situation and wipes `build` with it
+ * (world.ts), so the scenario console — or a new site started from the Home page — can
+ * pull the ground out from under a running clock. Without this guard the old run would
+ * keep writing beats into a project that no longer exists.
+ */
+function runBuild(answers: BriefAnswers, from = 0) {
+  stopBuildClock()
+  const list = buildBeats(answers)
+  const step = (i: number) => {
+    const now = useWorld.getState()
+    if (now.world.project !== 'generating') { stopBuildClock(); return }
+    if (i >= list.length) { finishBuild(answers); return }
+    const beat = list[i]
+    now.set({ build: { at: beat.at, line: beat.line } }, now.preset)
+    buildTimer = setTimeout(() => { buildTimer = null; step(i + 1) }, beat.hold)
+  }
+  step(Math.max(0, Math.min(from, list.length - 1)))
+}
+
+/** Where in the schedule a restored `world.build` sits. -1 → start from the top. */
+function beatIndex(answers: BriefAnswers, at: number, line: number) {
+  return buildBeats(answers).findIndex((b) => b.at === at && b.line === line)
 }
 
 /**
@@ -111,8 +164,59 @@ export function sendMessage(raw: string) {
     preset,
   )
   // Building needs a canvas: a collapsed preview opens itself for the first build.
+  // It opens EMPTY and stays empty for the minute the page takes — the site lands in
+  // it when the page is finished, which is the designer's rule (07.09.2026) and what
+  // the board draws (29480:48478: chat at split width, canvas dark).
   if (fresh) useUI.getState().setPreviewOpen(true)
-  schedule(() => deliverAnswer(text), THINKING_MS)
+  // A first build and an edit are different jobs and no longer share a reply. An edit
+  // gets its canned answer and is done in 3.4s; a first build gets a minute of named
+  // work, because that is what the real one costs.
+  if (fresh) schedule(startFirstBuild, THINKING_MS)
+  else schedule(() => deliverAnswer(text), THINKING_MS)
+}
+
+/**
+ * The first generation on a prompt strong enough to skip the brief — "Bella's Bakery"
+ * typed into the Home page, say. Remixer says what it is doing, the outline card lands,
+ * and the minute starts.
+ *
+ * There is no brief behind this path, so the outline falls back to the first option of
+ * every question, exactly as the plan does when a question is skipped.
+ */
+function startFirstBuild() {
+  const now = useWorld.getState()
+  const intro: Message = {
+    id: nextId(now.world.sent),
+    who: 'ai',
+    /* 'ack' rather than plain text: it is a hand-over line, not an answer to rate. */
+    kind: 'ack',
+    thought: Math.round(THINKING_MS / 1000),
+    text: BUILD_INTRO,
+  }
+  now.set({ sent: [...now.world.sent, intro], chat: 'working' }, now.preset)
+  schedule(() => openOutline(now.world.brief.answers), CARD_MS)
+}
+
+/**
+ * The outline card arrives and the clock starts.
+ *
+ * Both entry points land here — the brief's `Approve` and the strong-prompt path — so
+ * the generation has exactly one beginning however the customer got to it.
+ */
+function openOutline(answers: BriefAnswers) {
+  const now = useWorld.getState()
+  const card: Message = { id: nextId(now.world.sent), who: 'ai', kind: 'build', text: '' }
+  now.set(
+    {
+      sent: [...now.world.sent, card],
+      chat: 'working',
+      project: 'generating',
+      brief: now.world.brief,
+      build: { at: 0, line: 0 },
+    },
+    now.preset,
+  )
+  runBuild(answers)
 }
 
 function deliverAnswer(prompt: string) {
@@ -249,13 +353,27 @@ export function approvePlan() {
 function acknowledge(answers: BriefAnswers) {
   const now = useWorld.getState()
   const ack: Message = { id: nextId(now.world.sent), who: 'ai', kind: 'ack', text: briefAck(answers) }
-  now.set({ sent: [...now.world.sent, ack], chat: 'working', project: 'generating' }, now.preset)
-  // The canvas opens for the build — the glow is the only progress indicator we have.
+  now.set({ sent: [...now.world.sent, ack], chat: 'working', brief: now.world.brief }, now.preset)
+  /* The canvas opens for the build and stays EMPTY: this pass builds the home page and
+     the site appears when that page is done. The progress indicator is the outline card
+     in the chat, not the glow — see App.tsx on why the glow no longer burns through. */
   useUI.getState().setPreviewOpen(true)
-  schedule(() => finishBuild(answers), BUILD_MS)
+  /* Two beats, not one: the line types itself, and then the card springs in under it.
+     Landing both in the same frame made the arrival read as a single jump. */
+  schedule(() => openOutline(answers), CARD_MS)
 }
 
+/**
+ * The page is finished: the site appears in the canvas and the turn goes back.
+ *
+ * ⚠️ `build` rides along unchanged ON PURPOSE. The outline card stays in the transcript
+ * as the record of what was built — every section green, the other pages still waiting —
+ * so it must keep the state it ended on. Left out of the patch it would survive anyway
+ * (a `chat` move WITH a non-empty transcript is not a staged situation), but stating it
+ * is the difference between a decision and an accident.
+ */
 function finishBuild(answers: BriefAnswers) {
+  stopBuildClock()
   const now = useWorld.getState()
   const done: Message = { id: nextId(now.world.sent), who: 'ai', text: briefDone(answers) }
   now.set(
@@ -263,6 +381,8 @@ function finishBuild(answers: BriefAnswers) {
       sent: [...now.world.sent, done],
       chat: 'long',
       project: 'built',
+      brief: now.world.brief,
+      build: now.world.build,
       credits: Math.max(0, now.world.credits - COST),
       unpublished: now.world.unpublished + 1,
     },
@@ -289,6 +409,9 @@ export function startBuild(prompt: string) {
   const text = prompt.trim()
   if (!text) return
   const { set, preset } = useWorld.getState()
+  /* A generation still ticking from the previous site would keep writing beats into
+     this one; the staged `chat` axis clears `world.build`, but not the timer behind it. */
+  stopBuildClock()
   set({ project: 'empty', chat: 'empty', sent: [], unpublished: 0 }, preset)
   sendMessage(text)
 }
@@ -316,7 +439,15 @@ export function resumeInterrupted() {
        resuming a build the customer never approved. */
     if (last.kind === 'brief' && world.brief.status === 'planning') { schedule(offerPlan, 900); return }
     if (last.kind === 'brief') { schedule(() => acknowledge(world.brief.answers), 1400); return }
-    if (last.kind === 'ack') { schedule(() => finishBuild(world.brief.answers), 2400); return }
+    /* Reloaded mid-generation: `world.build` came back from storage, so continue from
+       the beat it stopped on rather than replaying the whole minute. */
+    if (last.kind === 'build') {
+      const from = beatIndex(world.brief.answers, world.build.at, world.build.line)
+      runBuild(world.brief.answers, from < 0 ? 0 : from)
+      return
+    }
+    /* An 'ack' with no card under it never got the outline open — start it. */
+    if (last.kind === 'ack') { schedule(() => openOutline(world.brief.answers), 1400); return }
     // A 'working' flag over a transcript that already ends in an answer is a
     // leftover from a state saved by an older build — nothing to resume, just
     // settle it so the glow stops and the composer unlocks.
@@ -325,5 +456,6 @@ export function resumeInterrupted() {
   }
   const text = typeof last.text === 'string' ? last.text : ''
   if (world.project === 'empty' && isWeakPrompt(text)) schedule(askForDirection, 1400)
+  else if (world.project === 'generating') schedule(startFirstBuild, 1400)
   else schedule(() => deliverAnswer(text), 1400)
 }
