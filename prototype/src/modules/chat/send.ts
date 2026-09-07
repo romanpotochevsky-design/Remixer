@@ -76,6 +76,14 @@ export function sendMessage(raw: string) {
   // The fork. Nothing built yet and nothing to build from → ask, don't guess.
   if (fresh && isWeakPrompt(text)) {
     set({ sent: [...base, mine], chat: 'working', brief: EMPTY_BRIEF }, preset)
+    // The mirror of the line below: a build needs a canvas, and asking does not.
+    // Nothing will be generated for as long as this turn lasts, so the canvas
+    // collapses and the chat takes the whole shell — which is where the questions
+    // are read. Said HERE rather than derived downstream because this send is also
+    // the doorway from the Home page: `startBuild` runs the fork and only then does
+    // `openBuilder` mount the shell, so by the time the shell exists the answer is
+    // already in hand and it never opens on a canvas it has to take back.
+    useUI.getState().setPreviewOpen(false)
     schedule(askForDirection, CLARIFY_MS)
     return
   }

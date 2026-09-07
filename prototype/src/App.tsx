@@ -102,7 +102,14 @@ export default function App() {
    * the user open or close it whenever they like.
    */
   const fresh = world.project === 'empty' && world.sent.length === 0 && world.chat === 'empty'
-  useEffect(() => { if (fresh) setPreviewOpen(false) }, [fresh, setPreviewOpen])
+  /* An open brief is the same situation with a transcript in front of it: still
+     nothing generated, so still nothing to preview. Kept as a derived default and
+     not a one-shot write, so that a reload landing mid-questions comes back the way
+     it left — this store is not persisted, and its default is "open". Both are
+     defaults, not locks: they only re-run when the SITUATION changes, so a user who
+     opens the canvas mid-brief keeps it open. */
+  const asking = world.brief.status === 'asking'
+  useEffect(() => { if (fresh || asking) setPreviewOpen(false) }, [fresh, asking, setPreviewOpen])
   useEffect(() => { if (world.project === 'generating') setPreviewOpen(true) }, [world.project, setPreviewOpen])
   const { t } = useT()
 
