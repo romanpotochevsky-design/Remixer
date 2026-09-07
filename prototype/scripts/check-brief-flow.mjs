@@ -43,7 +43,15 @@ const OUT = process.env.OUT || '/tmp/check-brief'
 fs.mkdirSync(OUT, { recursive: true })
 
 /** A brand-new trial customer with one site on the shelf (URL keys: p project, h chat, a account…). */
-const NEW_PROJECT = '?p=empty&h=empty&a=trial&t=1&c=2000&i=none'
+const NEW_PROJECT = 'p=empty&h=empty&a=trial&t=1&c=2000&i=none'
+
+/**
+ * BASE may be a directory (`vite preview`) or the single published FILE — point it at
+ * `…/remixer-prototype.html` and the same run checks the artifact Roman actually looks
+ * at, which is not the same page as a dev tab (see the note about the preview panel's
+ * frame budget in CLAUDE.md). So the query is appended, never path-joined.
+ */
+const at = (q = NEW_PROJECT) => `${BASE}${BASE.includes('?') ? '&' : '?'}${q}`
 
 const results = []
 const check = (name, ok, extra = '') => {
@@ -60,6 +68,16 @@ p.on('pageerror', (e) => errors.push(e.message))
 const shot = (n) => p.screenshot({ path: `${OUT}/${n}.png` })
 const previewState = () => p.evaluate(() => document.querySelector('[data-preview]')?.getAttribute('data-preview'))
 const asideWidth = () => p.$eval('aside', (el) => el.getBoundingClientRect().width)
+/**
+ * What is actually ON SCREEN.
+ *
+ * `textContent` is a trap here: the published artifact is ONE file with the whole JS
+ * bundle inlined inside `<body>`, so every string the app can render is in the body's
+ * text whether it was drawn or not — `includes('Editorial')` would have passed on the
+ * source literal and the artifact run would have proved nothing. `innerText` is
+ * rendered text only, script and style excluded.
+ */
+const text = () => p.evaluate(() => document.body.innerText)
 const onHome = () => p.$('input[aria-label="Describe the site you want"]').then(Boolean)
 const panelUp = () => p.$('section[aria-label="Questions before building"]').then(Boolean)
 /**
@@ -80,7 +98,7 @@ const chatCol = () =>
 
 /** Type into the hero composer and press Build — the one hand-off under test. */
 async function buildFromHome(prompt) {
-  await p.goto(`${BASE}/${NEW_PROJECT}`, { waitUntil: 'networkidle' })
+  await p.goto(at(), { waitUntil: 'networkidle' })
   await p.waitForTimeout(700)
   await p.fill('input[aria-label="Describe the site you want"]', prompt)
   await p.click('button:has-text("Build")')
@@ -89,7 +107,7 @@ async function buildFromHome(prompt) {
 
 /* =============================================== A. thin prompt from the hero */
 
-await p.goto(`${BASE}/${NEW_PROJECT}`, { waitUntil: 'networkidle' })
+await p.goto(at(), { waitUntil: 'networkidle' })
 await p.waitForTimeout(700)
 await shot('01-home')
 check('the prototype opens on the Home page', await onHome())
@@ -109,7 +127,7 @@ check('the chat takes the whole shell', (await asideWidth()) > 1200, `aside=${Ma
 
 await p.waitForTimeout(2600)
 await shot('03-question-1')
-const askedBody = await p.textContent('body')
+const askedBody = await text()
 check('Remixer asks for direction instead of guessing', askedBody.includes('I’d love to build you a website'))
 check('the reply carries its thinking time', askedBody.includes('Thought for 3s'))
 check('the question panel docks above the composer', await panelUp())
@@ -127,7 +145,7 @@ await p.click('section button:has-text("Editorial")'); await p.waitForTimeout(20
 await shot('07-q4-picked')
 await p.click('text=Submit'); await p.waitForTimeout(700); await shot('08-summary')
 {
-  const body = await p.textContent('body')
+  const body = await text()
   check('the summary card prints the answers', body.includes('Other: design portfolio') && body.includes('Midnight Indigo'),
     body.includes('Remixer’s pick') ? 'shows Remixer’s pick where an answer was given' : '')
   check('the panel is gone after Submit', !(await panelUp()))
@@ -136,11 +154,11 @@ await p.click('text=Submit'); await p.waitForTimeout(700); await shot('08-summar
 await p.waitForTimeout(1600); await shot('09-ack-building')
 check('the canvas opens by itself when the build starts', (await previewState()) === 'open')
 check('the questions cost nothing — only the build is metered',
-  (await p.textContent('body')).includes('2 000'), 'the toolbar should still read 2 000 while building')
+  (await text()).includes('2 000'), 'the toolbar should still read 2 000 while building')
 
 await p.waitForTimeout(4600); await shot('10-built')
 {
-  const body = await p.textContent('body')
+  const body = await text()
   check('the first version lands and is announced', body.includes('Done —') && body.includes('design portfolio'))
   check('the brief is still readable after the build', body.includes('Midnight Indigo') && body.includes('Editorial'))
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
@@ -166,11 +184,11 @@ await shot('14-strong-prompt')
 check('“Bella’s Bakery” goes straight to the build', (await previewState()) === 'open')
 check('no questions for a prompt with substance in it', !(await panelUp()))
 await p.waitForTimeout(3200); await shot('15-strong-built')
-check('the strong prompt produces a site', (await p.textContent('body')).includes('Bella'))
+check('the strong prompt produces a site', (await text()).includes('Bella'))
 
 /* ================================================== C. a template from the dock */
 
-await p.goto(`${BASE}/${NEW_PROJECT}`, { waitUntil: 'networkidle' })
+await p.goto(at(), { waitUntil: 'networkidle' })
 await p.waitForTimeout(700)
 await p.click('button:has-text("Templates")')
 await p.waitForTimeout(500)
@@ -183,7 +201,7 @@ await p.click('button:has-text("Use Template")')
 await p.waitForTimeout(1200)
 await shot('17-template-building')
 check('a template seeds a brief of its own, so it builds', (await previewState()) === 'open' && !(await panelUp()))
-check('the template names itself in the first message', (await p.textContent('body')).includes('template'))
+check('the template names itself in the first message', (await text()).includes('template'))
 
 /* ============================= D. the composer overrides the open question panel */
 
