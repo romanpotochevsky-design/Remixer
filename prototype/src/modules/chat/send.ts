@@ -163,11 +163,13 @@ export function sendMessage(raw: string) {
     },
     preset,
   )
-  // Building needs a canvas: a collapsed preview opens itself for the first build.
-  // It opens EMPTY and stays empty for the minute the page takes — the site lands in
-  // it when the page is finished, which is the designer's rule (07.09.2026) and what
-  // the board draws (29480:48478: chat at split width, canvas dark).
-  if (fresh) useUI.getState().setPreviewOpen(true)
+  /* THE CANVAS STAYS AWAY FOR THE BUILD. A preview is a preview OF a page, and for the
+     minute the first one takes there is no page — so the chat keeps the whole shell and
+     the outline card gets its 800 (designer, 07.09.2026: "нет смысла показывать превью
+     сайта, пока не сгенерируется страница первая"). It opens by itself the moment that
+     page exists (App.tsx). Said here as well as there because this send is the doorway
+     from the Home page and runs before the shell mounts. */
+  if (fresh) useUI.getState().setPreviewOpen(false)
   // A first build and an edit are different jobs and no longer share a reply. An edit
   // gets its canned answer and is done in 3.4s; a first build gets a minute of named
   // work, because that is what the real one costs.
@@ -354,10 +356,10 @@ function acknowledge(answers: BriefAnswers) {
   const now = useWorld.getState()
   const ack: Message = { id: nextId(now.world.sent), who: 'ai', kind: 'ack', text: briefAck(answers) }
   now.set({ sent: [...now.world.sent, ack], chat: 'working', brief: now.world.brief }, now.preset)
-  /* The canvas opens for the build and stays EMPTY: this pass builds the home page and
-     the site appears when that page is done. The progress indicator is the outline card
-     in the chat, not the glow — see App.tsx on why the glow no longer burns through. */
-  useUI.getState().setPreviewOpen(true)
+  /* No canvas for the build — see sendMessage. The outline card is the whole of it, and
+     the chat's full width is where it reads. The user can still pull the canvas open with
+     the arrow; this is a default, not a lock. */
+  useUI.getState().setPreviewOpen(false)
   /* Two beats, not one: the line types itself, and then the card springs in under it.
      Landing both in the same frame made the arrival read as a single jump. */
   schedule(() => openOutline(answers), CARD_MS)

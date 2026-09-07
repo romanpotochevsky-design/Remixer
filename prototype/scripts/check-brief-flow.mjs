@@ -24,21 +24,20 @@
  *      card — and then the PLAN, which is Remixer's own step: nothing generates until
  *      Approve. Review moves it into the canvas at full size and ✕ brings it back. Then
  *      the GENERATION: one hardcoded minute with the outline card naming every section
- *      of the home page, one in hand at a time, the canvas empty until that page is
- *      finished. Then the site, and the three ways to work the divider.
- *
- * ⚠️ The run is ~3 minutes now, and most of it is the two builds. That is the point of
- * the case rather than an accident: the generation IS a minute (Figma 29480:48478), and
- * the check that matters most is the negative one — that the site does not appear before
- * the page it is a preview of.
+ *      of the home page, one in hand at a time, and NO CANVAS AT ALL until that page is
+ *      finished — then the canvas opens on it. Then the three ways to work the divider.
  *   B. strong prompt ("Bella's Bakery" — the composer's own example) → straight to the
- *      build with the canvas OPEN and no questions anywhere, and the same generation
- *      outline over a brief that was never answered (every question on its fallback).
+ *      build with no questions anywhere, and the same generation outline over a brief
+ *      that was never answered (every question on its fallback).
  *   C. a template from the dock ("Use Template") → the seeded prompt is a brief in
  *      itself, so it builds too.
  *   D. the escape hatch: a message typed into the composer while the questions are open
  *      takes over — the panel goes away and the prompt is built as given.
  *
+ * ⚠️ The run is ~3 minutes, and most of it is the two builds. That is the point of the
+ * case rather than an accident: the generation IS a minute (Figma 29480:48478), and the
+ * check that matters most is the negative one — the site does not appear, anywhere,
+ * before the page it is a preview of.
  * PASS/FAIL per check, exit code 1 on any FAIL.
  */
 import fs from 'node:fs'
@@ -261,7 +260,10 @@ check('the plan card is still there after closing the review', await planUp())
 await p.click('section[aria-label="Plan, waiting for your approval"] >> text=Approve')
 await p.waitForTimeout(3400); await shot('11-ack-building')
 check('Approve is what starts the build', !(await planUp()))
-check('the canvas opens by itself when the build starts', (await previewState()) === 'open')
+/* THE CANVAS STAYS AWAY FOR THE MINUTE. A preview is a preview OF a page, and there
+   is no page yet; the outline card carries the wait and gets the chat's full width to
+   do it in (designer, 07.09.2026). It opens by itself when that page exists. */
+check('the canvas stays away while the page is being written', (await previewState()) === 'closed')
 
 /* ---- the generation: one minute, named section by section (Figma 29480:48478) ---- */
 check('the outline card lands when the build starts', await cardUp())
@@ -281,7 +283,7 @@ check('the outline card lands when the build starts', await cardUp())
  * preview appears when that page is done (designer, 07.09.2026) — a site on screen at
  * second three would make the outline card a decoration over an already-finished job.
  */
-check('the canvas is open but the site is NOT there yet', (await previewState()) === 'open' && !(await siteUp()))
+check('there is no site anywhere while the page is being written', !(await siteUp()))
 /* The rail's tools all act on a site, and there is none for the whole minute. */
 check('the rail offers no site tools while there is no site', (await railTools()) === 0,
   `${await railTools()} up`)
@@ -301,6 +303,8 @@ await p.waitForTimeout(20000); await shot('12a-mid-build')
 await p.waitForTimeout(45000); await shot('12-built')
 {
   const body = await text()
+  check('the canvas opens by itself on the page it is a preview of',
+    (await previewState()) === 'open')
   check('the site appears when the page is finished', await siteUp())
   check('every section of the page is done',
     (await outline())?.rows.every((r) => r.state === 'done'), JSON.stringify((await outline())?.rows.map((r) => r.state)))
@@ -321,6 +325,9 @@ await p.waitForTimeout(45000); await shot('12-built')
    */
   check('NO preview arrow anywhere in the shell while the canvas is open',
     (await p.$$('button[aria-label="Hide preview"], button[aria-label="Show preview"]')).length === 0)
+  check('…and the chat header keeps its own two controls there',
+    !!(await p.$('aside > header button[aria-label="Version history"]'))
+      && !!(await p.$('aside > header button[aria-label="Collapse chat"]')))
 }
 
 /* Collapsing is a DRAG, not a button (designer, 07.09.2026, said twice): pulling the
@@ -332,6 +339,16 @@ await p.waitForTimeout(45000); await shot('12-built')
   await p.mouse.up(); await p.waitForTimeout(500); await shot('13-hidden')
 }
 check('dragging the divider past the canvas minimum collapses it', (await previewState()) === 'closed')
+{
+  /* With the chat filling the shell, the header pill holds ONE control — the arrow that
+     brings the canvas back. "Collapse chat" would have nothing to collapse to, and
+     version history would sit a thousand pixels from the thread it belongs to. */
+  const pill = await p.$$eval('aside > header button[aria-label]', (els) =>
+    els.map((e) => e.getAttribute('aria-label')))
+  check('with the chat at full width the header offers only "bring the canvas back"',
+    !pill.includes('Version history') && !pill.includes('Collapse chat') && pill.includes('Show preview'),
+    pill.join(' · '))
+}
 {
   /* The board's 416 is the width of the message column it was drawn in, not the card's
      own size: with the canvas away the column is 800 and every other turn spans it. */
@@ -364,7 +381,7 @@ check('the grip brings it back', (await previewState()) === 'open')
 
 await buildFromHome('Bella’s Bakery')
 await shot('16-strong-prompt')
-check('“Bella’s Bakery” goes straight to the build', (await previewState()) === 'open')
+check('“Bella’s Bakery” goes straight to the build', (await previewState()) === 'closed' && !(await siteUp()))
 check('no questions for a prompt with substance in it', !(await panelUp()))
 /* 3.4s of thinking, then the hand-over line, then 0.9s to the card. */
 await p.waitForTimeout(5200); await shot('17-strong-building')
@@ -384,7 +401,8 @@ await p.waitForTimeout(5200); await shot('17-strong-building')
     o?.rows.map((r) => r.name).join(' · ') === 'Layout & navigation · Hero · What you offer · Enquiry form · Footer'
       && o?.pages.join(' · ') === 'About · Services · Contact',
     `${o?.rows.map((r) => r.name).join(' · ')} | pages=${o?.pages.join(' · ')}`)
-  check('the canvas waits for the page here too', !(await siteUp()))
+  check('the canvas waits for the page here too',
+    (await previewState()) === 'closed' && !(await siteUp()))
 }
 
 /* ================================================== C. a template from the dock */
@@ -401,7 +419,7 @@ await shot('18-template-preview')
 await p.click('button:has-text("Use Template")')
 await p.waitForTimeout(1800)
 await shot('19-template-building')
-check('a template seeds a brief of its own, so it builds', (await previewState()) === 'open' && !(await panelUp()))
+check('a template seeds a brief of its own, so it builds', !(await panelUp()) && !(await siteUp()))
 check('the template names itself in the first message', (await text()).includes('template'))
 await p.waitForTimeout(3600)
 check('the template path runs the same generation', await cardUp())
@@ -415,7 +433,10 @@ await p.fill('textarea', 'A one-page site for my ceramics studio in Odesa')
 await p.keyboard.press('Enter')
 await p.waitForTimeout(700); await shot('20-override')
 check('typing into the composer dismisses the questions', !(await panelUp()))
-check('…and the typed prompt is built as given', (await previewState()) === 'open')
+/* THINKING_MS + CARD_MS before the outline lands — the same two beats every other
+   first build takes, which is the point of the check. */
+await p.waitForTimeout(4200)
+check('…and the typed prompt is built as given', await cardUp())
 
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
 await b.close()

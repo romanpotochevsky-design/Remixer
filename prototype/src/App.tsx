@@ -24,7 +24,6 @@ import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
 import { SPRING } from '@/ui/motion'
-import { buildSections } from '@/modules/chat/build'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -87,8 +86,7 @@ export default function App() {
    * section completes, and a longer one on the assembling beat that runs into the page
    * appearing — six events over the minute, ~8% of it, instead of one continuous burn.
    */
-  const beat = world.build.at
-  const building = world.project === 'generating' && beat >= 0
+  const building = world.project === 'generating'
   /*
    * `working` is a dependency ON PURPOSE, not just `busy`. busy is a union of
    * three sources, and unions hide transitions: send during a reload pulse and
@@ -116,17 +114,21 @@ export default function App() {
 
   /* One pulse per section. Depends on `at` and not on the whole `build` object, so the
      work lines inside a section (which change every few seconds) do not re-fire it. */
-  const sectionCount = buildSections(world.brief.answers).length
+  /*
+   * ONE PULSE, ON ARRIVAL. With the canvas away for the whole generation there is nothing
+   * for a running glow to run along — the outline card carries the minute, row by row. So
+   * the glow does the job it was invented for and does cheaply: it marks the preview
+   * appearing, once, as the canvas opens on the finished page.
+   */
+  const wasBuilding = useRef(false)
   useEffect(() => {
-    if (!building) return
+    const landed = wasBuilding.current && !building && world.project === 'built'
+    wasBuilding.current = building
+    if (!landed) return
     setGlow(true)
-    /* The assembling beat is the last one, and the page appears out of it — its pulse
-       runs long enough to still be lit when the site lands, so the reveal has the
-       flourish the rest of the minute deliberately does without. */
-    const hold = beat >= sectionCount ? 2200 : 900
-    const t = window.setTimeout(() => setGlow(false), hold)
+    const t = window.setTimeout(() => setGlow(false), 1600)
     return () => window.clearTimeout(t)
-  }, [building, beat, sectionCount])
+  }, [building, world.project])
 
   // The resizer writes --chat-w straight to <html> during a drag; this keeps the
   // stored value authoritative everywhere else (reset, reload, another session).
@@ -151,9 +153,18 @@ export default function App() {
   /* 'planning' joins it: the plan is docked, nothing is generated, and the canvas has
      nothing to show — the same situation. Review opens it deliberately, and because this
      only re-runs when the SITUATION changes, that choice survives. */
-  const waiting = world.brief.status === 'asking' || world.brief.status === 'planning'
+  /* 'generating' joins them, and this REPLACES the earlier "canvas opens when the build
+     starts" (designer, 07.09.2026, on seeing the minute for himself: "нет смысла показывать
+     превью сайта, пока не сгенерируется страница первая"). That decision was made when the
+     first build was 5.6 seconds and there was nothing else to look at; it is now a minute,
+     and the outline card is the thing to look at — which it does far better at the chat's
+     800 than squeezed into 432 beside an empty rectangle. Same situation as the brief and
+     the plan: nothing generated, so nothing to preview. */
+  const waiting =
+    world.brief.status === 'asking' || world.brief.status === 'planning' || world.project === 'generating'
   useEffect(() => { if (fresh || waiting) setPreviewOpen(false) }, [fresh, waiting, setPreviewOpen])
-  useEffect(() => { if (world.project === 'generating') setPreviewOpen(true) }, [world.project, setPreviewOpen])
+  /* …and it opens on the page it is a preview OF, at the moment that page exists. */
+  useEffect(() => { if (world.project === 'built') setPreviewOpen(true) }, [world.project, setPreviewOpen])
   const { t } = useT()
 
   const address =
@@ -191,44 +202,45 @@ export default function App() {
             </div>
             <span className="font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
           </button>
+          {/*
+            * THE PILL HOLDS ONE THING OR THE OTHER, never both (designer, 07.09.2026:
+            * "кнопок история и скрыть чат тут быть не может").
+            *
+            *  · canvas open  — the chat is a 432 column beside it, and these two controls
+            *    are ABOUT that column: its history, and putting it away.
+            *  · canvas away  — the chat IS the shell. "Collapse chat" has nothing left to
+            *    collapse to, and version history ends up a thousand pixels from the thread
+            *    it belongs to, pinned to the far right of the window. All that is left to
+            *    say here is "bring the canvas back", and that is the ONE arrow in the whole
+            *    shell (there is none on the canvas side either — collapsing is a drag of
+            *    the divider). Do not put a second one anywhere.
+            */}
           <Glass className="gap-0.5 p-0.5">
-            <button
-              aria-label={t({ en: 'Version history', uk: 'Історія версій' })}
-              className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-            >
-              <IconHistory size={18} />
-            </button>
-            <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-            <button
-              aria-label={t({ en: 'Collapse chat', uk: 'Згорнути чат' })}
-              className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-            >
-              <IconSidebar size={18} />
-            </button>
-            {/*
-              * ONE DIRECTION ONLY: this button exists while the preview is AWAY, and it
-              * brings it back. Collapsing is the canvas toolbar's job, next to the thing
-              * being collapsed.
-              *
-              * ⚠️ It was briefly in both states, and the designer's call on 07.09.2026 is
-              * that it should not be — "эта стрелка не нужна тут, она видна только когда
-              * скрыто превью точно так же как у лавбл". Lovable is the reference: the arrow
-              * appears in the chat header only once there is no canvas, because a control
-              * that hides the canvas belongs ON the canvas. Do not add the collapse
-              * direction back here.
-              */}
-            {!previewOpen && (
+            {previewOpen ? (
               <>
+                <button
+                  aria-label={t({ en: 'Version history', uk: 'Історія версій' })}
+                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+                >
+                  <IconHistory size={18} />
+                </button>
                 <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
                 <button
-                  onClick={() => setPreviewOpen(true)}
-                  aria-label={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
-                  title={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
-                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                  aria-label={t({ en: 'Collapse chat', uk: 'Згорнути чат' })}
+                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
                 >
-                  <IconExpand size={17} />
+                  <IconSidebar size={18} />
                 </button>
               </>
+            ) : (
+              <button
+                onClick={() => setPreviewOpen(true)}
+                aria-label={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                title={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+              >
+                <IconExpand size={17} />
+              </button>
             )}
           </Glass>
         </header>
