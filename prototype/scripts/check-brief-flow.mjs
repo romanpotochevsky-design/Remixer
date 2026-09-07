@@ -21,8 +21,9 @@
  *   A. thin prompt ("website", 7 chars) → no build. The builder opens with the canvas
  *      COLLAPSED and the chat centred at 800, Remixer asks for direction, the four questions
  *      dock above the composer, the answers survive paging, Submit compiles the summary
- *      card, the canvas opens by itself for the build, the site lands. Then the three
- *      ways to work the divider: Hide preview, the grip, and a drag past the minimum.
+ *      card — and then the PLAN, which is Remixer's own step: nothing generates until
+ *      Approve. Review moves it into the canvas at full size and ✕ brings it back. Then
+ *      the build, the site, and the three ways to work the divider.
  *   B. strong prompt ("Bella's Bakery" — the composer's own example) → straight to the
  *      build with the canvas OPEN and no questions anywhere.
  *   C. a template from the dock ("Use Template") → the seeded prompt is a brief in
@@ -80,6 +81,7 @@ const asideWidth = () => p.$eval('aside', (el) => el.getBoundingClientRect().wid
 const text = () => p.evaluate(() => document.body.innerText)
 const onHome = () => p.$('input[aria-label="Describe the site you want"]').then(Boolean)
 const panelUp = () => p.$('section[aria-label="Questions before building"]').then(Boolean)
+const planUp = () => p.$('section[aria-label="Plan, waiting for your approval"]').then(Boolean)
 /**
  * The measure of the chat's content and how it sits in the column that holds it.
  *
@@ -176,12 +178,41 @@ await p.click('text=Submit'); await p.waitForTimeout(900); await shot('08-summar
   check('the panel is gone after Submit', !(await panelUp()))
 }
 
-await p.waitForTimeout(2600); await shot('09-ack-building')
-check('the canvas opens by itself when the build starts', (await previewState()) === 'open')
-check('the questions cost nothing — only the build is metered',
-  (await text()).includes('2 000'), 'the toolbar should still read 2 000 while building')
+/* ---- the plan: Remixer's own step, and the one that gates the build ---- */
+await p.waitForTimeout(2600); await shot('09-plan-card')
+check('the plan is docked where the questions were', await planUp())
+{
+  const body = await text()
+  check('the plan is compiled from the answers, not canned',
+    body.includes('A site that sells') && body.includes('Four pages'),
+    'title and structure should follow goal=sell, pages=few')
+  check('the price of Approve is said where the decision is made', body.includes('Approving spends 10 credits'))
+}
+check('NOTHING is generated while the plan waits', (await previewState()) === 'closed')
+check('the questions and the plan cost nothing', (await text()).includes('2 000'))
 
-await p.waitForTimeout(6200); await shot('10-built')
+/* Review: the chat narrows back to the split and the document takes the canvas. */
+await p.click('text=Review'); await p.waitForTimeout(900); await shot('10-plan-review')
+check('Review opens the canvas on the plan', (await previewState()) === 'open')
+check('…with the chat back at its split width', (await asideWidth()) < 480, `aside=${Math.round(await asideWidth())}px`)
+{
+  const doc = await text()
+  check('the document carries what the card could only start',
+    doc.includes('What we’ll check before handing it back') && doc.includes('#c4553d'),
+    'the checks section and the palette hexes')
+  check('the plan is still awaiting approval, not building', await planUp())
+}
+/* ✕ hands the canvas back and returns to the card. */
+await p.click('button[aria-label="Close the plan"]'); await p.waitForTimeout(700)
+check('closing the plan puts the canvas away again', (await previewState()) === 'closed')
+check('the plan card is still there after closing the review', await planUp())
+
+await p.click('section[aria-label="Plan, waiting for your approval"] >> text=Approve')
+await p.waitForTimeout(2600); await shot('11-ack-building')
+check('Approve is what starts the build', !(await planUp()))
+check('the canvas opens by itself when the build starts', (await previewState()) === 'open')
+
+await p.waitForTimeout(6200); await shot('12-built')
 {
   const body = await text()
   check('the first version lands and is announced', body.includes('Done —') && body.includes('built to sell'))
@@ -191,26 +222,26 @@ await p.waitForTimeout(6200); await shot('10-built')
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
 }
 
-await p.click('button[aria-label="Hide preview"]'); await p.waitForTimeout(600); await shot('11-hidden')
+await p.click('button[aria-label="Hide preview"]'); await p.waitForTimeout(600); await shot('13-hidden')
 check('Hide preview collapses the canvas', (await previewState()) === 'closed')
-await p.click('.chat-reopen'); await p.waitForTimeout(600); await shot('12-reopened')
+await p.click('.chat-reopen'); await p.waitForTimeout(600); await shot('14-reopened')
 check('the grip brings it back', (await previewState()) === 'open')
 
 {
   const bb = await (await p.$('.chat-resizer')).boundingBox()
   await p.mouse.move(bb.x, bb.y + 300); await p.mouse.down()
   for (let x = bb.x; x < 1500; x += 60) { await p.mouse.move(x, bb.y + 300); await p.waitForTimeout(16) }
-  await p.mouse.up(); await p.waitForTimeout(300); await shot('13-dragged-shut')
+  await p.mouse.up(); await p.waitForTimeout(300); await shot('15-dragged-shut')
   check('dragging past the canvas minimum collapses it', (await previewState()) === 'closed')
 }
 
 /* ========================================= B. the composer's own example builds */
 
 await buildFromHome('Bella’s Bakery')
-await shot('14-strong-prompt')
+await shot('16-strong-prompt')
 check('“Bella’s Bakery” goes straight to the build', (await previewState()) === 'open')
 check('no questions for a prompt with substance in it', !(await panelUp()))
-await p.waitForTimeout(4200); await shot('15-strong-built')
+await p.waitForTimeout(4200); await shot('17-strong-built')
 check('the strong prompt produces a site', (await text()).includes('Bella'))
 
 /* ================================================== C. a template from the dock */
@@ -221,12 +252,12 @@ await p.click('button:has-text("Templates")')
 await p.waitForTimeout(500)
 await p.click('[aria-label="Open Marketing Campaign Hub"]')
 await p.waitForTimeout(1200)
-await shot('16-template-preview')
+await shot('18-template-preview')
 /* `Use Template` is the panel's CTA on every door; on the DOCK CARD's door it means
    build (TemplatePicker's `onRemix`), which is the path under test here. */
 await p.click('button:has-text("Use Template")')
 await p.waitForTimeout(1800)
-await shot('17-template-building')
+await shot('19-template-building')
 check('a template seeds a brief of its own, so it builds', (await previewState()) === 'open' && !(await panelUp()))
 check('the template names itself in the first message', (await text()).includes('template'))
 
@@ -237,7 +268,7 @@ await p.waitForTimeout(4600)
 check('the panel is up before the override', await panelUp())
 await p.fill('textarea', 'A one-page site for my ceramics studio in Odesa')
 await p.keyboard.press('Enter')
-await p.waitForTimeout(700); await shot('18-override')
+await p.waitForTimeout(700); await shot('20-override')
 check('typing into the composer dismisses the questions', !(await panelUp()))
 check('…and the typed prompt is built as given', (await previewState()) === 'open')
 

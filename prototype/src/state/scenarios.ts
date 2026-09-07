@@ -288,6 +288,7 @@ export function describe(w: World): Text {
 
   if (!w.projects.length) { en.push('no sites yet'); uk.push('сайтів ще немає') }
   if (w.brief.status === 'asking') { en.push('asking for direction'); uk.push('уточнює напрямок') }
+  else if (w.brief.status === 'planning') { en.push('plan awaiting approval'); uk.push('план очікує підтвердження') }
   else if (w.project === 'empty') { en.push('empty project'); uk.push('проєкт порожній') }
   else if (w.project === 'generating') { en.push('generating'); uk.push('іде генерація') }
   else if (w.unpublished > 0) {

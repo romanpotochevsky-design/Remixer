@@ -70,8 +70,8 @@ export const FLOWS: Flow[] = [
     id: 'thin-prompt',
     label: { en: 'Thin prompt → questions → first build', uk: 'Слабкий промпт → запитання → перша збірка' },
     note: {
-      en: 'Nothing to build from, so Remixer asks first — the flow off Lovable\'s recording (06.09.2026), the questions and the copy ours. The preview stays collapsed until the build starts.',
-      uk: 'Будувати нема з чого, тож Remixer спершу питає — флоу з запису Lovable (06.09.2026), запитання й копірайт наші. Прев’ю згорнуте, доки не почнеться збірка.',
+      en: 'Nothing to build from, so Remixer asks first, then shows the PLAN it compiled and waits for Approve — that last step is ours, not Lovable\'s. The preview stays collapsed until the build starts.',
+      uk: 'Будувати нема з чого: Remixer спершу питає, потім показує зібраний ПЛАН і чекає Approve — цей крок наш, не Lovable. Прев’ю згорнуте, доки не почнеться збірка.',
     },
     setup: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], brief: EMPTY_BRIEF, domain: 'staging', inventory: 'none', unpublished: 0 },
     steps: [
@@ -91,8 +91,14 @@ export const FLOWS: Flow[] = [
         patch: { brief: { status: 'asking', step: 3, answers: THIN_ANSWERS } }, awaitUser: true,
         note: { en: '"Submit" is the user\'s decision — nothing is built until they press it', uk: '«Submit» — рішення користувача: до нього нічого не будується' } },
       { id: 'summary', label: { en: 'Answers compiled into a brief card', uk: 'Відповіді зібрано в картку брифу' },
-        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'working', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS } }, ms: 2000 },
-      { id: 'ack', label: { en: '"Got it — …" and the build starts; the preview opens', uk: '«Got it — …» — починається збірка, прев’ю відкривається' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'working', brief: { status: 'planning', step: 3, answers: THIN_ANSWERS } }, ms: 2400 },
+      { id: 'plan', label: { en: 'The PLAN is offered — nothing builds until Approve', uk: 'Показано ПЛАН — до Approve нічого не збирається' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'long', brief: { status: 'planning', step: 3, answers: THIN_ANSWERS } }, awaitUser: true,
+        note: {
+          en: 'Where Remixer parts ways with Lovable: the answers are compiled into a plan and the customer approves it. `Review` moves the document into the canvas at full size.',
+          uk: 'Тут Remixer розходиться з Lovable: відповіді збираються в план, і клієнт його підтверджує. «Review» переносить документ у канвас на повний розмір.',
+        } },
+      { id: 'ack', label: { en: 'Approved — "Got it — …", the build starts, the preview opens', uk: 'Підтверджено — «Got it — …», збірка стартує, прев’ю відкривається' },
         patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK], chat: 'working', brief: { status: 'ready', step: 3, answers: THIN_ANSWERS }, project: 'generating' }, ms: 5600,
         note: { en: 'The glow is the only progress indicator — no skeleton, no dimming', uk: 'Свічення — єдиний індикатор прогресу: без скелетону й затемнення' } },
       { id: 'built', label: { en: 'First version is up', uk: 'Перша версія готова' },

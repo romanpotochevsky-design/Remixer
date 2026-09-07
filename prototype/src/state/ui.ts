@@ -34,6 +34,12 @@ export type Surface =
   | 'preview'
   /** The domain module: search, buy, connect, manage. */
   | 'domains'
+  /**
+   * The plan document, full size, in place of the site (modules/chat/PlanSurface.tsx).
+   * Reached from `Review` on the plan card: there is no site to preview yet, so the
+   * canvas is free — and a plan worth approving is worth more room than a dock card.
+   */
+  | 'plan'
 
 /** Steps inside the domains surface. Kept here (not in world): it is navigation. */
 export type DomainScreen =

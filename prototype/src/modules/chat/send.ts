@@ -34,7 +34,9 @@ import {
 const THINKING_MS = 3400
 /** Thinking before the questions — and the number printed as "Thought for Ns". */
 const CLARIFY_MS = 5200
-/** Summary card → "Got it — …". */
+/** Summary card → the plan appearing. Remixer is "writing" it in this window. */
+const PLAN_MS = 2400
+/** Approve → "Got it — …". */
 const ACK_MS = 2000
 /** "Got it" → the first version. The glow carries this stretch. */
 const BUILD_MS = 5600
@@ -174,18 +176,73 @@ export function briefSkipAll() {
 }
 
 /**
- * Submit. The panel goes away, a summary card lands in the thread, the agent
- * acknowledges the brief in one line and — only now — the build starts.
+ * Submit. The panel goes away, a summary card lands in the thread — and then the PLAN,
+ * which is where this flow stops being a copy of Lovable's.
+ *
+ * Nothing is generated here. The answers are compiled into a document (plan.ts), it is
+ * docked where the questions were, and the build waits for `approvePlan`. Asking four
+ * questions and then building silently would ask the customer to trust that the answers
+ * landed; the plan makes them checkable, before a build is spent on them.
  */
 export function briefSubmit() {
   const now = useWorld.getState()
   if (now.world.brief.status !== 'asking') return
-  const answers = now.world.brief.answers
   const card: Message = { id: nextId(now.world.sent), who: 'ai', kind: 'brief', text: BRIEF_STATUS }
   now.set(
-    { sent: [...now.world.sent, card], chat: 'working', brief: { ...now.world.brief, status: 'ready' } },
+    { sent: [...now.world.sent, card], chat: 'working', brief: { ...now.world.brief, status: 'planning' } },
     now.preset,
   )
+  schedule(offerPlan, PLAN_MS)
+}
+
+/**
+ * The plan has finished "writing" — it is on screen and the turn is the customer's.
+ *
+ * ⚠️ `sent` AND `brief` ride along even though neither changes. `world.set` reads a patch
+ * that moves the `chat` axis without a transcript as STAGING A SITUATION: it clears `sent`
+ * and closes the brief. Written as `set({ chat: 'long' })` this line wiped both — the
+ * thread fell back to the scenario's demo transcript and the plan card never mounted,
+ * because the brief it renders from was gone. Any live write that touches `chat` has to
+ * hand over the transcript with it.
+ */
+function offerPlan() {
+  const now = useWorld.getState()
+  /* `chat` leaves 'working': the shimmer and the locked composer would say Remixer is
+     busy, when in fact it is waiting. The plan card is the only thing moving now. */
+  now.set({ chat: 'long', sent: now.world.sent, brief: now.world.brief }, now.preset)
+}
+
+/**
+ * `Review` — read the plan at full size. There is no site to preview yet, so the canvas
+ * is free; the chat narrows back to its split width and the document takes the rest.
+ * Exactly the shape the designer asked for (07.09.2026).
+ */
+export function reviewPlan() {
+  const ui = useUI.getState()
+  ui.setPreviewOpen(true)
+  ui.openSurface('plan')
+}
+
+/** ✕ in the plan surface — back to the dock card, canvas out of the way again. */
+export function closePlanReview() {
+  const ui = useUI.getState()
+  ui.closeSurface()
+  ui.setPreviewOpen(false)
+}
+
+/**
+ * `Approve` — the one press that spends a build. From the dock card or from the plan
+ * surface; both land here, and the surface closes itself on the way through so the canvas
+ * is showing the site by the time the glow starts.
+ */
+export function approvePlan() {
+  const now = useWorld.getState()
+  if (now.world.brief.status !== 'planning') return
+  const answers = now.world.brief.answers
+  const ui = useUI.getState()
+  if (ui.surface === 'plan') ui.closeSurface()
+  /* `sent` again: see offerPlan — a `chat` patch without it empties the transcript. */
+  now.set({ chat: 'working', sent: now.world.sent, brief: { ...now.world.brief, status: 'ready' } }, now.preset)
   schedule(() => acknowledge(answers), ACK_MS)
 }
 
@@ -255,6 +312,9 @@ export function resumeInterrupted() {
   const last = world.sent[world.sent.length - 1]
   if (!last) return
   if (last.who === 'ai') {
+    /* A reload during the plan's writing window: finish writing it and wait, rather than
+       resuming a build the customer never approved. */
+    if (last.kind === 'brief' && world.brief.status === 'planning') { schedule(offerPlan, 900); return }
     if (last.kind === 'brief') { schedule(() => acknowledge(world.brief.answers), 1400); return }
     if (last.kind === 'ack') { schedule(() => finishBuild(world.brief.answers), 2400); return }
     // A 'working' flag over a transcript that already ends in an answer is a

@@ -183,11 +183,12 @@ writeFileSync(OUT, page)
 /*
  * The largest page this host has actually accepted, in bytes — a FLOOR on the limit, never
  * the limit itself, which is why the line below reports headroom rather than a verdict.
- * 707,289 went through on 07.09.2026, one publish after this same script had called
- * 704,239 "2.3 KB under" and 754,259 doomed. Raise it whenever a bigger file publishes;
- * do not lower it to be safe, because the number's only job is to be evidence.
+ * 724,265 went through on 07.09.2026 — the third data point that day, after 707,289 also
+ * went through and this same script had called 704,239 "2.3 KB under" and 754,259 doomed.
+ * Raise it whenever a bigger file publishes; do not lower it to be safe, because the
+ * number's only job is to be evidence.
  */
-const CEILING = 707_289
+const CEILING = 724_265
 const bytes = Buffer.byteLength(page)
 console.log(`fonts embedded: ${embedded} — ${GLYPHS.length} glyphs kept`)
 console.log(`  ${subsetReport.join(' · ')}`)

@@ -117,10 +117,15 @@ export const DEMO_PROJECTS: HomeProject[] = [
 
 /**
  * The pre-build brief: the questions Remixer asks when the first prompt is too thin
- * to build from (see modules/chat/brief.ts). 'asking' docks the question panel above
- * the composer; 'ready' means the answers were submitted and the build may start.
+ * to build from (see modules/chat/brief.ts).
+ *
+ *  - 'asking'   the question panel is docked above the composer
+ *  - 'planning' the answers are compiled into a PLAN and it is waiting to be approved
+ *               (modules/chat/plan.ts) — nothing is generated in this state, which is
+ *               the whole point: this is where Remixer differs from Lovable's brief
+ *  - 'ready'    approved; the build may start
  */
-export type BriefStatus = 'none' | 'asking' | 'ready'
+export type BriefStatus = 'none' | 'asking' | 'planning' | 'ready'
 export interface Brief {
   status: BriefStatus
   /** Which question the panel shows, 0-based. */

@@ -18,6 +18,7 @@ import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
+import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
@@ -108,8 +109,11 @@ export default function App() {
      it left — this store is not persisted, and its default is "open". Both are
      defaults, not locks: they only re-run when the SITUATION changes, so a user who
      opens the canvas mid-brief keeps it open. */
-  const asking = world.brief.status === 'asking'
-  useEffect(() => { if (fresh || asking) setPreviewOpen(false) }, [fresh, asking, setPreviewOpen])
+  /* 'planning' joins it: the plan is docked, nothing is generated, and the canvas has
+     nothing to show — the same situation. Review opens it deliberately, and because this
+     only re-runs when the SITUATION changes, that choice survives. */
+  const waiting = world.brief.status === 'asking' || world.brief.status === 'planning'
+  useEffect(() => { if (fresh || waiting) setPreviewOpen(false) }, [fresh, waiting, setPreviewOpen])
   useEffect(() => { if (world.project === 'generating') setPreviewOpen(true) }, [world.project, setPreviewOpen])
   const { t } = useT()
 
@@ -294,7 +298,12 @@ export default function App() {
             390px frame centred on the ground, not a scaled-down desktop. */}
         <main className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
           {(() => {
-            return surface === 'domains' ? (
+            /* The plan document takes the canvas the same way the domains dashboard
+               does — a surface in place of the site, not a modal over it. There is no
+               site to preview at this point in the flow, so nothing is being covered. */
+            return surface === 'plan' ? (
+              <PlanSurface />
+            ) : surface === 'domains' ? (
               <DomainsSurface />
             ) : (
               <div className="flex h-full items-center justify-center">

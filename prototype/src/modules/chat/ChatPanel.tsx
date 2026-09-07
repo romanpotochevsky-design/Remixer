@@ -11,7 +11,7 @@
  * from a canned set (modules/chat/thread.ts). See send.ts for what one message moves.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, canUseAI } from '@/state/world'
 import { useT } from '@/i18n'
 import {
@@ -23,6 +23,8 @@ import { baselineThread } from './thread'
 import { sendMessage, resumeInterrupted } from './send'
 import { bubbleSend, messageIn } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
+import { PlanCard } from './PlanCard'
+import { PLAN_WAITING } from './plan'
 import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
 
 /** Where a freshly sent message parks: just clear of the 48px top fade. */
@@ -173,12 +175,17 @@ function AiMessage({ text, actions, animate, thought }: { text: string; actions?
 function BriefSummary({ animate }: { animate: boolean }) {
   const { world } = useWorld()
   const { t, lang } = useT()
+  /* The shimmer says "Remixer is working". While the plan waits for Approve it is NOT
+     working — the turn is the customer's — so the title goes still and says so. */
+  const waiting = world.brief.status === 'planning' && world.chat !== 'working'
   const settling = world.chat === 'working' && world.project !== 'built'
   const title = world.project === 'built'
     ? t({ en: 'Acknowledged brief and preferences', uk: 'Бриф і вподобання прийнято' })
     : world.project === 'generating'
       ? t({ en: 'Reviewing page layout and style choices', uk: 'Переглядаю лейаут і стилістичні рішення' })
-      : t(BRIEF_STATUS)
+      : waiting
+        ? t(PLAN_WAITING)
+        : t(BRIEF_STATUS)
   return (
     <motion.div
       variants={messageIn}
@@ -260,6 +267,7 @@ export function ChatPanel() {
   /* The questions are open: the composer becomes the escape hatch ("Tell Remixer
      what to do instead…") and the thread shows the agent holding. */
   const asking = world.brief.status === 'asking'
+  const planning = world.brief.status === 'planning'
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
@@ -470,8 +478,11 @@ export function ChatPanel() {
           * on top and 28 at the bottom. Without the questions the composer stands alone,
           * the way its own board (28016:43526) draws it, so the shell is conditional.
           */}
-        <div className={`chat-col${asking ? ' brief-dock' : ''}`}>
+        <div className={`chat-col${asking || planning ? ' brief-dock' : ''}`}>
         <BriefPanel />
+        {/* The plan takes the questions' place in the same shell — same object, next
+            step. It gates the build: nothing generates until Approve. */}
+        <AnimatePresence>{planning && <PlanCard />}</AnimatePresence>
         <div ref={composerBox} className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}
           {flash > 0 && (
