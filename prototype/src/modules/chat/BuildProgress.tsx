@@ -92,14 +92,32 @@ export function BuildProgress() {
       initial="initial"
       animate="animate"
       aria-label={t({ en: 'What Remixer is building', uk: 'Що збирає Remixer' })}
-      /* No inner padding: the board's blocks sit at (1,1) of the 416 card, and that
-         1px IS the card's stroke — Figma draws it inside the geometry while CSS adds
-         it outside. Padding on top of the border double-counts it (the repo's own
-         lesson from the Home composer). */
-      className="w-full max-w-[416px] overflow-hidden rounded-[16px] border border-[var(--gray-800)] bg-[#ffffff08]"
+      /*
+       * The card is a STROKE, not a surface. `iteration` sits at (1,1) of the 416 card
+       * and its blocks fill it completely (414 wide, 334+48+48 = 430 tall), so whatever
+       * fill the card has never shows — the lighter surface in the board belongs to the
+       * PAGE BLOCK below, and putting it here instead lit the waiting pages too.
+       *
+       * No inner padding: that 1px IS the card's stroke, which Figma draws inside the
+       * geometry and CSS adds outside. Padding on top of the border double-counts it
+       * (the repo's own lesson from the Home composer).
+       *
+       * Radius 21 is DERIVED, not read: the board does not expose this frame's corner,
+       * and 21 is what nests concentrically over the page block's 20 across a 1px stroke.
+       */
+      className="w-full max-w-[416px] overflow-hidden rounded-[21px] border border-[var(--gray-800)]"
     >
       {/* ----------------------------------------- the page being built */}
-      <div className="rounded-b-[12px] border-b border-l border-r border-[var(--gray-800)] px-0.5 pb-0.5">
+      {/*
+        * The page being built (29612:24965): `Neutral Alpha/50` fill, a full 1px stroke,
+        * radius 20 ALL ROUND — not a bottom-rounded strip, which is how I first read it
+        * from the render. Read in the DARK theme: the export resolves NA/50 to
+        * `rgba(9,9,11,0.04)`, which over this ground is invisible.
+        *
+        * `px-px pb-px` insets the list box by a pixel on three sides; the header sits
+        * flush at the top.
+        */}
+      <div className="rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
         {/* 56, not the 24 of padding the export reports: the board's row is a
             fixed-height frame with its 20px icon centred in it (icon at y=18 of 56).
             It only grows for the assembling line, which is why min-height and not
@@ -216,6 +234,10 @@ export function BuildProgress() {
       {rest.map((page) => (
         <div
           key={page.id}
+          /* Stroke on three sides and radius 12 at the bottom only (29612:24911) — the
+             block above supplies the line over it. NO fill: these are transparent over
+             the chat's ground, which is what makes the page being built the one lighter
+             surface in the card. */
           className="flex h-12 items-center gap-2 rounded-b-[12px] border-b border-l border-r border-[var(--gray-800)] pl-3 pr-2"
         >
           <IconPage size={20} className="flex-none text-[#ffffff3d]" />

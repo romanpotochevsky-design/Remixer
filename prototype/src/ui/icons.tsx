@@ -479,15 +479,24 @@ export const IconPage = ({ size = 20, className }: IconProps) => (
 
 /**
  * The three states of a section, all on one geometry so the row never shifts as it
- * changes: a ring of the same centre and stroke, and only the colour and what is
- * inside it move. The board draws the finished and running rings on a 24 frame and
- * the queued ones on a 20 frame, so the waiting ring really is the smaller one —
- * the row reads as "not started" before you have read a word of it.
+ * changes: a ring of the same centre, and only the colour and what is inside it move.
+ *
+ * ⚠️ THE RINGS ARE SMALLER THAN A 24-GRID CIRCLE, and that is measured off the board
+ * rather than assumed. Figma gives the finished and running icons a 24 frame and the
+ * queued ones a 20 frame, so the obvious reading is "a circle filling each frame" —
+ * which is what the first cut drew, at 20px of ink. In the board's own render all three
+ * rings come out around 16-17px: the artwork does not fill its frame. r=8 with a 1.5
+ * stroke is 17.5, r=7.25 is 16.
+ *
+ * The SVG exports would settle it exactly, but figma.com asset URLs are unreachable
+ * from this environment (403 at the proxy, for curl and download_assets alike), so
+ * these are drawn against the render. If the icons ever get here as files, check the
+ * ring diameters first.
  */
 export const IconStepDone = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className} strokeWidth="1.6">
-    <circle cx="12" cy="12" r="9.2" />
-    <path d="m7.9 12.3 2.8 2.8 5.4-5.9" strokeWidth="1.8" />
+  <svg {...base(size)} className={className} strokeWidth="1.5">
+    <circle cx="12" cy="12" r="8" />
+    <path d="m8.7 12.2 2.4 2.4 4.5-4.9" strokeWidth="1.6" />
   </svg>
 )
 
@@ -500,12 +509,13 @@ export const IconStepDone = ({ size = 24, className }: IconProps) => (
  * that can run for a whole minute without being thought about.
  */
 export const IconStepRunning = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className} strokeWidth="1.9">
+  <svg {...base(size)} className={className} strokeWidth="1.7">
     <circle
       cx="12"
       cy="12"
-      r="9.2"
-      strokeDasharray="40 18"
+      r="8"
+      /* 2πr = 50.3, so this is roughly 300° of arc and a 60° gap. */
+      strokeDasharray="42 9"
       /* class, not an inline animation: `prefers-reduced-motion` can only stop a
          CSS animation it can select, and motion/react's MotionConfig does not
          reach SVG keyframes. */
@@ -514,9 +524,9 @@ export const IconStepRunning = ({ size = 24, className }: IconProps) => (
   </svg>
 )
 
-/** Queued: the same ring, smaller and unlit. */
+/** Queued: the same ring, a shade smaller and unlit (a 20 frame against a 24). */
 export const IconStepQueued = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className} strokeWidth="1.6">
-    <circle cx="12" cy="12" r="7.8" />
+  <svg {...base(size)} className={className} strokeWidth="1.5">
+    <circle cx="12" cy="12" r="7.25" />
   </svg>
 )
