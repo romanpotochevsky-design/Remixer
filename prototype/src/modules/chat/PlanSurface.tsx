@@ -24,7 +24,7 @@ import { useT } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { IconClose } from '@/ui/icons'
 import { SPRING_SOFT, EXIT } from '@/ui/motion'
-import { buildPlan, PLAN_LABEL, PLAN_COST } from './plan'
+import { buildPlan, PLAN_LABEL } from './plan'
 import { approvePlan, closePlanReview } from './send'
 
 const surfaceIn = {
@@ -105,9 +105,6 @@ export function PlanSurface() {
               </div>
             ))}
 
-            <p className="mt-10 border-t border-[var(--white-100)] pt-5 text-[13px] leading-[1.5] text-[#ffffff7a]">
-              {t(PLAN_COST)}
-            </p>
           </div>
         </ScrollArea>
       </div>

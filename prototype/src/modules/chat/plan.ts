@@ -80,10 +80,6 @@ const GOAL_PITCH: Record<string, Text> = {
     en: 'Put the work first. The pictures carry the page and the words stay out of their way.',
     uk: 'Поставити роботи на перше місце. Сторінку несуть зображення, а текст їм не мішає.',
   },
-  explain: {
-    en: 'Answer the questions people actually arrive with: what this is, where you are, and when you are open.',
-    uk: 'Відповісти на питання, з якими люди приходять: що це, де ви і коли працюєте.',
-  },
 }
 
 const GOAL_BLOCKS: Record<string, Text[]> = {
@@ -102,18 +98,12 @@ const GOAL_BLOCKS: Record<string, Text[]> = {
     { en: 'A page per project, with room for a few paragraphs and more images.', uk: 'Сторінка на проєкт, з місцем на кілька абзаців і додаткові зображення.' },
     { en: 'An about section with one photo and a way to get in touch.', uk: 'Розділ «про мене» з одним фото і способом зв’язатися.' },
   ],
-  explain: [
-    { en: 'A hero that says what the business is in one line.', uk: 'Герой, який одним рядком каже, що це за бізнес.' },
-    { en: 'A short section on what you do, in plain words.', uk: 'Короткий розділ про те, що ви робите, простими словами.' },
-    { en: 'Address, opening hours and a map link at the foot of the page.', uk: 'Адреса, години роботи і посилання на карту в кінці сторінки.' },
-  ],
 }
 
 const GOAL_CHECK: Record<string, Text> = {
   enquiries: { en: 'The form sends, and its thank-you state actually appears.', uk: 'Форма відправляється, і стан «дякуємо» справді з’являється.' },
   sell: { en: 'Add to cart and checkout work end to end, with the total adding up.', uk: 'Додавання в кошик і оплата працюють від початку до кінця, сума збігається.' },
   work: { en: 'Every image loads at full size without stretching or cropping the subject.', uk: 'Кожне зображення відкривається на повний розмір без розтягування й обрізання.' },
-  explain: { en: 'The address and hours are readable on a phone without zooming.', uk: 'Адресу й години видно на телефоні без зуму.' },
 }
 
 const PAGES_STRUCTURE: Record<string, Text> = {
@@ -146,7 +136,6 @@ export function buildPlan(a: BriefAnswers): Plan {
     enquiries: { en: 'A site that brings in enquiries', uk: 'Сайт, який приводить звернення' },
     sell: { en: 'A site that sells', uk: 'Сайт, який продає' },
     work: { en: 'A site built around the work', uk: 'Сайт навколо робіт' },
-    explain: { en: 'A site that explains the business', uk: 'Сайт, який розповідає про бізнес' },
   }
   const title = goal.own
     ? { en: `A site for ${goal.own}`, uk: `Сайт для ${goal.own}` }
@@ -247,8 +236,3 @@ export const PLAN_APPROVED: Text = {
   uk: 'Підтверджено — збираю.',
 }
 
-/** Under the buttons: the honest price of pressing Approve (COST in send.ts is 10). */
-export const PLAN_COST: Text = {
-  en: 'Approving spends 10 credits. Everything up to here was free.',
-  uk: 'Підтвердження витрачає 10 кредитів. Усе до цього було безкоштовно.',
-}

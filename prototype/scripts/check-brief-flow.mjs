@@ -186,7 +186,6 @@ check('the plan is docked where the questions were', await planUp())
   check('the plan is compiled from the answers, not canned',
     body.includes('A site that sells') && body.includes('Four pages'),
     'title and structure should follow goal=sell, pages=few')
-  check('the price of Approve is said where the decision is made', body.includes('Approving spends 10 credits'))
 }
 check('NOTHING is generated while the plan waits', (await previewState()) === 'closed')
 check('the questions and the plan cost nothing', (await text()).includes('2 000'))

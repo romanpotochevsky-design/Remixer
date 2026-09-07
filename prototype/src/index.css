@@ -3031,9 +3031,30 @@ html[data-drag] .shell-aside { transition: none; }
 .brief-dock {
   border-radius: 24px 24px 28px 28px;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  /*
+   * ⚠️ THE BOARD'S 7% WHITE + blur(16) IS BAKED INTO A FLAT COLOUR ON PURPOSE, and the
+   * designer's "визуальный глюк" is why (07.09.2026).
+   *
+   * There is nothing behind this shell to blur. Measured: its parent is the composer dock
+   * at `--black-900` (rgba(9,9,11,.8)) over the shell's own `--gray-950` (#09090b), which
+   * composites to a FLAT #09090b — and the thread is a flex sibling above the dock, never
+   * behind it. So `backdrop-filter` bought one composited layer and zero pixels. Diffed on
+   * identical content: bare glass 24,24,27 blurred against 26,26,28 flat, the answers card
+   * 15,15,17 against 16,16,18, the composer band identical — Δ ≤ 2/255 everywhere flat.
+   * The only real difference in the frame is glyph antialiasing, which shifts a hair when
+   * text stops being rasterised into its own composited layer.
+   *
+   * What the layer DID buy was an artifact. The shell's height changes with the question
+   * (measured 536 → 407 → 536 as the palette grid replaces a radio list), and a resizing
+   * backdrop-filtered box leaves Chromium showing the previous box's blur — a lighter
+   * rectangle with soft edges stopping short of the panel's right and bottom, exactly what
+   * the designer photographed. A fresh screenshot repaints and hides it, which is why it
+   * only ever showed up live.
+   *
+   * If content is ever put BEHIND this shell, the blur has to come back — and then the
+   * resize needs solving another way (a fixed-height shell, or a promoted layer).
+   */
+  background: #1a1a1c;
   padding: 0 6px 6px;
 }
 /* Inside the shell the field is 8% white ON the glass, not its own dark plate: the board

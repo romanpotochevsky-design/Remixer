@@ -21,7 +21,7 @@ import { motion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
 import { SPRING_SOFT, EXIT } from '@/ui/motion'
-import { buildPlan, PLAN_LABEL, PLAN_COST } from './plan'
+import { buildPlan, PLAN_LABEL } from './plan'
 import { approvePlan, reviewPlan } from './send'
 
 const cardIn = {
@@ -75,19 +75,10 @@ export function PlanCard() {
         </div>
       </div>
 
-      {/*
-        * The price gets its OWN row rather than a slot between the buttons. Squeezed in
-        * there it collided with Review the moment the chat went back to its 432 split
-        * width — and `sm:` would not have saved it either: Tailwind's breakpoints read the
-        * VIEWPORT, and this column is narrow inside a 1600px window.
-        *
-        * It is worth a row: the opening sentence promised the questions were free, so the
-        * moment that stops being true is the moment to say so — right under the button
-        * that spends the credits.
-        */}
-      <p className="px-4 pt-3 text-[12px] leading-[1.4] text-[#ffffff7a]">{t(PLAN_COST)}</p>
-
-      <footer className="flex items-center justify-between pb-4 pl-1.5 pr-2.5 pt-2">
+      {/* No price line here. It read as a warning attached to the button rather than as
+          information, and the footer is a decision — Review or Approve — not a receipt.
+          (Designer, 07.09.2026: "этот текст нужно убрать".) */}
+      <footer className="flex items-center justify-between pb-4 pl-1.5 pr-2.5 pt-3">
         <button
           type="button"
           onClick={reviewPlan}

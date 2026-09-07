@@ -26,6 +26,24 @@
  *   3. `palette` — the drawn 2×2 swatch grid; the only question with no words to read.
  *   4. `type`    — lettering, by the feel of it, with the pair named in the consequence.
  *
+ * ⚠️ AT MOST THREE OPTIONS PER RADIO QUESTION — the designer's rule, 07.09.2026. `goal` and
+ * `type` each had four and are cut to three; the write-your-own field is the escape hatch
+ * and is not counted as one of them (see the note in BriefPanel about that field having no
+ * radio where selection lives elsewhere). Which one went, and why that one:
+ *
+ *  - `goal` loses "Explain the business". Of the four it was the least distinct OUTCOME —
+ *    an information page with contact details at the end is what the other three already
+ *    include — so cutting it costs the least coverage. Enquiries / sell / show-the-work are
+ *    three genuinely different page architectures.
+ *  - `type` loses "Bold statement" (DM Serif Display + Fira Sans). It was Editorial's
+ *    nearest neighbour — both a serif headline over a sans body — so it was the cut that
+ *    loses the least distance between the remaining three: neutral sans, serif magazine,
+ *    rounded warm.
+ *
+ * Anyone who wanted either can still type it into the field, which is exactly what the
+ * field is for. The PALETTE grid keeps its four plates: the board draws four (25732:139123,
+ * a 2×2), so the rule is read as being about the radio rows.
+ *
  * ⚠️ `goal` and `pages` deliberately do NOT ask "what kind of business is this". That is not
  * squeamishness: the prototype renders ONE hard-coded demo site, so any answer naming a
  * business would be contradicted by the site that appears (Lovable's own demo says "design
@@ -109,15 +127,6 @@ export const BRIEF_QUESTIONS: BriefQuestion[] = [
           uk: 'Роботи спершу і великими, тексту мало — галерея, не есе.',
         },
         ack: { en: 'built around the work', uk: 'навколо робіт' },
-      },
-      {
-        id: 'explain',
-        name: { en: 'Explain the business', uk: 'Розповідати про бізнес' },
-        detail: {
-          en: 'One clear page that ends with your address and opening hours.',
-          uk: 'Одна зрозуміла сторінка, що завершується адресою і годинами роботи.',
-        },
-        ack: { en: 'built to explain the business', uk: 'щоб розповідав про бізнес' },
       },
     ],
   },
@@ -237,17 +246,6 @@ export const BRIEF_QUESTIONS: BriefQuestion[] = [
           uk: 'Округло і тепло, легко читати дрібним. Пасує локальному бізнесу.',
         },
         ack: { en: 'friendly lettering', uk: 'дружніми шрифтами' },
-      },
-      {
-        id: 'statement',
-        name: { en: 'Bold statement', uk: 'Гучна заява' },
-        heading: 'DM Serif Display',
-        body: 'Fira Sans',
-        detail: {
-          en: 'Big display headlines, quiet text. One idea per screen.',
-          uk: 'Великі display-заголовки, тихий текст. Одна думка на екран.',
-        },
-        ack: { en: 'bold display lettering', uk: 'гучними display-шрифтами' },
       },
     ],
   },
