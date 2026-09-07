@@ -187,27 +187,45 @@ function BriefSummary({ animate }: { animate: boolean }) {
       : waiting
         ? t(PLAN_WAITING)
         : t(BRIEF_STATUS)
+  /*
+   * SAME MATERIAL AS THE GENERATION OUTLINE, and full width (designer, 07.09.2026:
+   * "вот в макете дизайн для этой формы … и он на всю ширину чата как в макете",
+   * pointing at 29480:48478). The two cards are the same object at two moments of one
+   * turn — what was agreed, then what is being built from it — so they are built from
+   * the same anatomy the board gives that one: a hairline shell, a 56px header carrying
+   * the title, and a darker inset box holding the rows.
+   *
+   * ⚠️ NOT `w-fit`. It used to shrink to its content, which made the widest row set the
+   * card's width — the same card came out a different size on every run, and in the
+   * collapsed chat it sat as a small box in an 800px column while every other turn
+   * spanned it.
+   */
   return (
     <motion.div
       variants={messageIn}
       initial={animate ? 'initial' : false}
       animate="animate"
-      className="w-fit max-w-full rounded-[12px] border border-[var(--white-100)] bg-[#ffffff08]"
+      className="w-full overflow-hidden rounded-[21px] border border-[var(--gray-800)]"
     >
-      <p className={`border-b border-[var(--white-100)] px-4 py-3 text-[13px] font-semibold leading-[18px] ${settling ? 'thinking' : 'text-white'}`}>
-        {title}
-      </p>
-      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 px-4 py-3 text-[13px] leading-[18px]">
-        {BRIEF_QUESTIONS.map((q) => {
-          const a = answerText(q, world.brief.answers[q.key], lang)
-          return (
-            <div key={q.key} className="contents">
-              <dt className="text-[var(--white-400)]">{t(q.label)}</dt>
-              <dd className={a.muted ? 'italic text-[var(--white-400)]' : 'text-white'}>{a.text}</dd>
-            </div>
-          )
-        })}
-      </dl>
+      <div className="rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
+        <p className={`flex h-[56px] items-center pl-[14px] pr-2 text-[16px] font-semibold leading-[1.2] ${settling ? 'thinking' : 'text-white'}`}>
+          {title}
+        </p>
+        <dl
+          className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-6 gap-y-[10px] rounded-[18px] border border-[var(--gray-800)] px-4 py-4 text-[14px] leading-[1.4]"
+          style={{ background: 'var(--gray-950)' }}
+        >
+          {BRIEF_QUESTIONS.map((q) => {
+            const a = answerText(q, world.brief.answers[q.key], lang)
+            return (
+              <div key={q.key} className="contents">
+                <dt className="text-[#ffffff7a]">{t(q.label)}</dt>
+                <dd className={a.muted ? 'italic text-[#ffffff7a]' : 'font-medium text-white'}>{a.text}</dd>
+              </div>
+            )
+          })}
+        </dl>
+      </div>
     </motion.div>
   )
 }

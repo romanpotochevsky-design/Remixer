@@ -132,6 +132,30 @@ const chatCol = () =>
     })
   })
 
+/**
+ * Pull the divider right until the canvas is gone — the only way to collapse it.
+ *
+ * ⚠️ WAIT FOR THE STATE, not for a fixed pause. A flat `waitForTimeout` after mouse-up
+ * made this flake: the collapse fires inside a pointermove, and on a loaded machine the
+ * moves coalesce and land late. Two runs failed and the third passed on identical code,
+ * which is worse than a red check — it teaches you to ignore the run. The wait is
+ * swallowed so a genuinely broken collapse still reports FAIL rather than throwing.
+ */
+async function dragShut() {
+  const bb = await (await p.$('.chat-resizer')).boundingBox()
+  const far = await p.evaluate(() => window.innerWidth - 20)
+  await p.mouse.move(bb.x, bb.y + 300)
+  await p.mouse.down()
+  for (let x = bb.x; x < far; x += 60) { await p.mouse.move(x, bb.y + 300); await p.waitForTimeout(16) }
+  await p.mouse.move(far, bb.y + 300)
+  await p.mouse.up()
+  await p
+    .waitForFunction(() => document.querySelector('[data-preview]')?.getAttribute('data-preview') === 'closed',
+      null, { timeout: 4000 })
+    .catch(() => {})
+  await p.waitForTimeout(450)
+}
+
 /** Type into the hero composer and press Build — the one hand-off under test. */
 async function buildFromHome(prompt) {
   await p.goto(at(), { waitUntil: 'networkidle' })
@@ -333,10 +357,8 @@ await p.waitForTimeout(45000); await shot('12-built')
 /* Collapsing is a DRAG, not a button (designer, 07.09.2026, said twice): pulling the
    divider past the canvas minimum puts the preview away. */
 {
-  const bb = await (await p.$('.chat-resizer')).boundingBox()
-  await p.mouse.move(bb.x, bb.y + 300); await p.mouse.down()
-  for (let x = bb.x; x < 1500; x += 60) { await p.mouse.move(x, bb.y + 300); await p.waitForTimeout(16) }
-  await p.mouse.up(); await p.waitForTimeout(500); await shot('13-hidden')
+  await dragShut()
+  await shot('13-hidden')
 }
 check('dragging the divider past the canvas minimum collapses it', (await previewState()) === 'closed')
 {
@@ -363,6 +385,15 @@ check('dragging the divider past the canvas minimum collapses it', (await previe
   })
   check('the outline card fills the chat column, whatever its width',
     fits.card === fits.inner && fits.card > 700, JSON.stringify(fits))
+  /* The brief summary is the same object one moment earlier — what was agreed, then what
+     is being built from it — so it is the same material and the same width. */
+  const sum = await p.evaluate(() => {
+    const dl = document.querySelector('dl')
+    const card = dl && dl.parentElement.parentElement
+    return card && Math.round(card.getBoundingClientRect().width)
+  })
+  check('the brief summary is built to match, and matches its width',
+    sum === fits.card, `summary=${sum} outline=${fits.card}`)
 }
 check('…and only then does the chat header offer to bring it back',
   !!(await p.$('aside > header button[aria-label="Show preview"]')))
@@ -370,10 +401,8 @@ await p.click('.chat-reopen'); await p.waitForTimeout(600); await shot('14-reope
 check('the grip brings it back', (await previewState()) === 'open')
 
 {
-  const bb = await (await p.$('.chat-resizer')).boundingBox()
-  await p.mouse.move(bb.x, bb.y + 300); await p.mouse.down()
-  for (let x = bb.x; x < 1500; x += 60) { await p.mouse.move(x, bb.y + 300); await p.waitForTimeout(16) }
-  await p.mouse.up(); await p.waitForTimeout(300); await shot('15-dragged-shut')
+  await dragShut()
+  await shot('15-dragged-shut')
   check('…and does so again from a reopened canvas', (await previewState()) === 'closed')
 }
 
