@@ -166,20 +166,28 @@ export default function App() {
             >
               <IconSidebar size={18} />
             </button>
-            {!previewOpen && (
-              <>
-                <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-                {/* Lovable parks exactly this control top-right while the preview is away */}
-                <button
-                  onClick={() => setPreviewOpen(true)}
-                  aria-label={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
-                  title={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
-                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
-                >
-                  <IconExpand size={17} />
-                </button>
-              </>
-            )}
+            {/*
+              * The preview toggle lives here in BOTH states (designer, 07.09.2026: with the
+              * chat at the side "стрелки схлопнуть превью нет"). It used to appear only
+              * while the preview was away, so the control jumped the width of the window
+              * depending on state — expand on the left, collapse over in the canvas
+              * toolbar — and on the chat side, where he looked, there was nothing. One
+              * button, one place, both directions. The canvas keeps its own copy: that is
+              * where the eye is when the site is what you are looking at.
+              */}
+            <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+            <button
+              onClick={() => setPreviewOpen(!previewOpen)}
+              aria-label={previewOpen
+                ? t({ en: 'Hide preview', uk: 'Сховати прев’ю' })
+                : t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+              title={previewOpen
+                ? t({ en: 'Hide preview', uk: 'Сховати прев’ю' })
+                : t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+              className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+            >
+              {previewOpen ? <IconCollapse size={17} /> : <IconExpand size={17} />}
+            </button>
           </Glass>
         </header>
 
@@ -279,9 +287,30 @@ export default function App() {
                 <IconChevronDown size={16} />
               </span>
             </div>
+            {/*
+              * Publish is DEAD until there is a site to publish (designer, 07.09.2026).
+              * `built` is the only state that qualifies: on an empty project there is
+              * nothing, and during `generating` there is not yet anything — a live blue
+              * Publish through the whole brief and the whole build invites the one press
+              * that cannot work, right where the flow is trying to teach a sequence.
+              *
+              * Greyed with the same pair the Home page's Build uses when it is not armed
+              * (`--white-100` plate, 24%-white label), so "not yet" looks the same
+              * everywhere in the product.
+              */}
             <button
               onClick={() => togglePublish()}
-              className="h-9 rounded-[10px] bg-[var(--action)] px-4 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+              disabled={world.project !== 'built'}
+              title={
+                world.project !== 'built'
+                  ? t({ en: 'Nothing to publish yet', uk: 'Публікувати поки нічого' })
+                  : undefined
+              }
+              className={`h-9 rounded-[10px] px-4 text-[13px] font-semibold leading-[1.4] transition-colors duration-[var(--dur-fast)] ease-std ${
+                world.project === 'built'
+                  ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
+                  : 'cursor-not-allowed bg-[var(--white-100)] text-[#ffffff3d]'
+              }`}
             >
               {t(publishLabel)}
               {world.unpublished > 0 && <span className="ml-1.5 tabular-nums opacity-70">{world.unpublished}</span>}

@@ -24,7 +24,7 @@
  *   1. `goal`    — what the site is for. The one answer that changes the most.
  *   2. `pages`   — how much there is to say, instead of asking for a list of sections.
  *   3. `palette` — the drawn 2×2 swatch grid; the only question with no words to read.
- *   4. `type`    — lettering, by the feel of it, with the pair named in the consequence.
+ *   4. `type`    — lettering, shown as itself: each card sets its pair's name in that pair.
  *
  * ⚠️ AT MOST THREE OPTIONS PER RADIO QUESTION — the designer's rule, 07.09.2026. `goal` and
  * `type` each had four and are cut to three; the write-your-own field is the escape hatch
@@ -35,14 +35,16 @@
  *    an information page with contact details at the end is what the other three already
  *    include — so cutting it costs the least coverage. Enquiries / sell / show-the-work are
  *    three genuinely different page architectures.
- *  - `type` loses "Bold statement" (DM Serif Display + Fira Sans). It was Editorial's
- *    nearest neighbour — both a serif headline over a sans body — so it was the cut that
- *    loses the least distance between the remaining three: neutral sans, serif magazine,
- *    rounded warm.
  *
- * Anyone who wanted either can still type it into the field, which is exactly what the
- * field is for. The PALETTE grid keeps its four plates: the board draws four (25732:139123,
- * a 2×2), so the rule is read as being about the radio rows.
+ * `type` is NOT capped, because it is not a radio list: on 07.09.2026 the designer asked for
+ * Lovable's treatment of it — a 2×2 grid of cards, each setting its pair's own name IN that
+ * pair — and a 2×2 grid holds four. So the reading is: A GRID HOLDS FOUR, A RADIO LIST HOLDS
+ * THREE. The palette grid says the same thing and it is the designer's own board
+ * (25732:139123, four plates in two rows). "Bold statement" (DM Serif Display + Fira Sans)
+ * was cut when `type` was still a list and came back when it became a grid.
+ *
+ * Anyone who wanted the dropped goal can still type it into the field, which is what the
+ * field is for.
  *
  * ⚠️ `goal` and `pages` deliberately do NOT ask "what kind of business is this". That is not
  * squeamishness: the prototype renders ONE hard-coded demo site, so any answer naming a
@@ -68,8 +70,13 @@ export interface BriefOption {
   detail?: Text
   /** Four colours, left to right — the drawn palette plate (25732:139125). */
   swatches?: string[]
-  /** Font pairing, named in the consequence line rather than shown as a specimen: the real
-   *  faces are not embedded in the prototype, so a specimen would be a fake one. */
+  /**
+   * The pair, and the cards SET THEIR OWN NAME IN IT — "Title - Space Grotesk" in Space
+   * Grotesk, "Body - DM Sans" in DM Sans. All six faces are bundled (OFL, subset to the
+   * one line each draws — see src/fonts/OFL.txt); Outfit and Figtree are the app's own
+   * stand-ins and were already there. The family name here is the display name; the CSS
+   * stack appends " Specimen" to reach the subset face.
+   */
   heading?: string
   body?: string
   /** The fragment this answer contributes to the "Got it — …" sentence. */
@@ -78,7 +85,14 @@ export interface BriefOption {
 
 export interface BriefQuestion {
   key: BriefKey
-  kind: 'text' | 'palette' | 'typography'
+  /**
+   * Which of the three drawn shapes the answers take:
+   *  - 'radio'      a list of rows, radio + title + consequence (29464:34354). Max THREE.
+   *  - 'palette'    the 2×2 swatch grid (25732:139123). Four plates, as drawn.
+   *  - 'typography' the 2×2 specimen cards — each pair's name set IN that pair.
+   * A grid holds four; only the radio list is capped at three (see the rule below).
+   */
+  kind: 'radio' | 'palette' | 'typography'
   question: Text
   /** Placeholder of the free-text field. */
   placeholder: Text
@@ -93,7 +107,7 @@ export const OTHER = 'other:'
 export const BRIEF_QUESTIONS: BriefQuestion[] = [
   {
     key: 'goal',
-    kind: 'typography', // a radio list; `kind` only separates the palette grid from the rest
+    kind: 'radio',
     label: { en: 'Goal', uk: 'Мета' },
     question: {
       en: 'What should this site do for you?',
@@ -132,7 +146,7 @@ export const BRIEF_QUESTIONS: BriefQuestion[] = [
   },
   {
     key: 'pages',
-    kind: 'typography',
+    kind: 'radio',
     label: { en: 'Pages', uk: 'Сторінки' },
     question: {
       en: 'How much is there to say?',
@@ -246,6 +260,17 @@ export const BRIEF_QUESTIONS: BriefQuestion[] = [
           uk: 'Округло і тепло, легко читати дрібним. Пасує локальному бізнесу.',
         },
         ack: { en: 'friendly lettering', uk: 'дружніми шрифтами' },
+      },
+      {
+        id: 'statement',
+        name: { en: 'Bold statement', uk: 'Гучна заява' },
+        heading: 'DM Serif Display',
+        body: 'Fira Sans',
+        detail: {
+          en: 'Big display headlines, quiet text. One idea per screen.',
+          uk: 'Великі display-заголовки, тихий текст. Одна думка на екран.',
+        },
+        ack: { en: 'bold display lettering', uk: 'гучними display-шрифтами' },
       },
     ],
   },

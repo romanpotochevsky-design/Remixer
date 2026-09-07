@@ -18,8 +18,13 @@
  * copy drawn on the node), and it is what the designer meant by "the component where you
  * choose answers, palette, fonts".
  *
- * The COLOUR question has a second drawn shape (25732:139123): a 2×2 grid of swatch
- * plates instead of rows, and its "Write your own…" field runs full width with no radio.
+ * TWO of the four questions are GRIDS rather than rows, and both drop the radio beside
+ * their "Write your own…" field, which runs full width instead:
+ *  - COLOUR (25732:139123) — a 2×2 grid of four swatch plates.
+ *  - LETTERING — a 2×2 grid of cards that set each pair's name IN that pair, which is
+ *    Lovable's treatment and what the designer asked for by name (07.09.2026). A question
+ *    about type answered in words would ask someone to pick a face they cannot see.
+ * A grid holds four; only the radio list is capped at three.
  *
  * Where the board is still silent, this file says so at the point of the decision:
  *  - a selected plate has no drawn state, so it takes a 2px ring in `--action`
@@ -97,13 +102,8 @@ function Row({ q, o, on, last }: { q: BriefQuestion; o: BriefOption; on: boolean
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-[15px] font-medium leading-[1.4] text-white">{t(o.name)}</span>
-        {/* the consequence — what changes on the page if this is picked (29464:34362).
-            For the type rows it also names the pair, since the real faces are not
-            embedded and a specimen would be a fake one. */}
-        <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">
-          {o.detail ? t(o.detail) : null}
-          {o.heading ? <span className="text-[#ffffff7a]">{` ${o.heading} + ${o.body}.`}</span> : null}
-        </span>
+        {/* the consequence — what changes on the page if this is picked (29464:34362) */}
+        <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">{o.detail ? t(o.detail) : null}</span>
       </span>
     </button>
   )
@@ -133,13 +133,15 @@ function Body({ q }: { q: BriefQuestion }) {
    * selection lives on the plate, so a radio would be a second, contradictory control.
    * That is also why a text-only question renders its field alone.
    */
-  const grid = q.kind === 'palette' && options.length > 0
+  const swatchGrid = q.kind === 'palette' && options.length > 0
+  const typeGrid = q.kind === 'typography' && options.length > 0
+  const grid = swatchGrid || typeGrid
 
   return (
     /* The answers card — 29464:34354: Black/600 over the shell, an 8% white rim, radius 16.
        It is the only surface inside the shell; the question and the footer sit on the glass. */
     <div className="mt-[18px] overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
-      {grid ? (
+      {swatchGrid && (
         <div className="grid grid-cols-2 gap-2 px-4 pb-2 pt-4">
           {options.map((o) => (
             <button
@@ -161,11 +163,59 @@ function Body({ q }: { q: BriefQuestion }) {
             </button>
           ))}
         </div>
-      ) : (
+      )}
+
+      {/*
+        * The lettering question, as the designer asked for it (07.09.2026, "как это в
+        * ловбл сделано"): a 2×2 grid of cards, and each card SETS ITS PAIR'S NAME IN THAT
+        * PAIR. That is the whole point — a question about type answered in words would be
+        * asking someone to choose a typeface they cannot see. All six faces are bundled
+        * for it, subset to the one line each draws (index.css, src/fonts/OFL.txt).
+        *
+        * Two blocks with a hairline between them, exactly as Lovable's card: the specimen
+        * on top, the style's name and what it reads like underneath.
+        */}
+      {typeGrid && (
+        <div className="grid grid-cols-2 gap-3 px-4 pb-2 pt-4">
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => answerBrief(q.key, o.id)}
+              aria-pressed={picked === o.id}
+              aria-label={t(o.name)}
+              className="overflow-hidden rounded-[12px] border border-[#ffffff14] bg-[#ffffff05] text-left transition-shadow duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)]"
+              style={picked === o.id ? { boxShadow: '0 0 0 2px var(--action)' } : undefined}
+            >
+              <span className="block border-b border-[#ffffff0a] px-4 pb-3 pt-3">
+                <span
+                  className="block text-[17px] leading-[24px] text-white"
+                  style={{ fontFamily: `'${o.heading} Specimen', '${o.heading}', serif` }}
+                >
+                  Title - {o.heading}
+                </span>
+                <span
+                  className="block text-[13px] leading-[19px] text-[#ffffff7a]"
+                  style={{ fontFamily: `'${o.body} Specimen', '${o.body}', sans-serif` }}
+                >
+                  Body - {o.body}
+                </span>
+              </span>
+              <span className="block px-4 pb-3.5 pt-3">
+                <span className="block text-[13px] font-semibold leading-[18px] text-white">{t(o.name)}</span>
+                <span className="mt-0.5 block text-[13px] leading-[18px] text-[#ffffffa3]">
+                  {o.detail ? t(o.detail) : null}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!grid &&
         options.map((o, i) => (
           <Row key={o.id} q={q} o={o} on={picked === o.id} last={i === options.length - 1} />
-        ))
-      )}
+        ))}
 
       <div className={options.length && !grid ? 'flex items-start gap-3 px-4 pb-4 pt-2' : 'px-4 pb-4 pt-2'}>
         {options.length > 0 && !grid && (

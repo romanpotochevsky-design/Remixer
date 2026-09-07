@@ -168,6 +168,21 @@ await p.click('button[aria-label="Next question"]'); await p.waitForTimeout(300)
 await p.click('section button[aria-label="Warm Clay"]'); await p.waitForTimeout(250); await shot('06-palette-picked')
 check('a picked plate shows it', (await p.getAttribute('section button[aria-label="Warm Clay"]', 'aria-pressed')) === 'true')
 await p.click('text=Next'); await p.waitForTimeout(400); await shot('07-q4-lettering')
+{
+  /* The lettering cards set each pair's name IN that pair, which is only worth anything
+     if the faces are really there. `fonts.check` plus a width that differs from the
+     fallback — a bundled-but-broken woff2 would pass the first test and fail the second. */
+  const faces = await p.evaluate(() => {
+    const fams = ['Space Grotesk','DM Sans','Instrument Serif','Work Sans','DM Serif Display','Fira Sans']
+    const c = document.createElement('canvas').getContext('2d')
+    const w = (f) => { c.font = `17px '${f}', monospace`; return c.measureText('Title - ' + f).width }
+    return fams.map((f) => ({ f, ok: document.fonts.check(`17px '${f} Specimen'`), differs: Math.abs(w(`${f} Specimen`) - w('__nope__')) > 1 }))
+  })
+  const bad = faces.filter((x) => !x.ok || !x.differs).map((x) => x.f)
+  check('every typeface on the lettering cards is really loaded', bad.length === 0, bad.join(', ') || '6/6')
+  check('the lettering question is a grid of four cards',
+    (await p.$$eval('section button[aria-pressed]', els => els.length)) === 4)
+}
 await p.click('section button[aria-label="Friendly"]'); await p.waitForTimeout(250)
 await p.click('text=Submit'); await p.waitForTimeout(900); await shot('08-summary')
 {
@@ -188,6 +203,8 @@ check('the plan is docked where the questions were', await planUp())
     'title and structure should follow goal=sell, pages=few')
 }
 check('NOTHING is generated while the plan waits', (await previewState()) === 'closed')
+check('Publish is dead while there is nothing to publish',
+  await p.$eval('button:has-text("Publish")', (el) => el.disabled))
 check('the questions and the plan cost nothing', (await text()).includes('2 000'))
 
 /* Review: the chat narrows back to the split and the document takes the canvas. */
@@ -219,10 +236,17 @@ await p.waitForTimeout(6200); await shot('12-built')
     body.includes('a site built to sell, across a few pages, in Warm Clay with friendly lettering'))
   check('the brief is still readable after the build', body.includes('Warm Clay') && body.includes('Friendly'))
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
+  check('Publish comes alive once the site exists',
+    !(await p.$eval('button:has-text("Update"), button:has-text("Publish")', (el) => el.disabled)))
+  /* The toggle is in the chat header in BOTH states, so it never jumps the window. */
+  check('the chat header carries the preview toggle while the preview is open',
+    !!(await p.$('aside > header button[aria-label="Hide preview"]')))
 }
 
-await p.click('button[aria-label="Hide preview"]'); await p.waitForTimeout(600); await shot('13-hidden')
+await p.click('aside > header button[aria-label="Hide preview"]'); await p.waitForTimeout(600); await shot('13-hidden')
 check('Hide preview collapses the canvas', (await previewState()) === 'closed')
+check('…and the same button now offers to show it again',
+  !!(await p.$('aside > header button[aria-label="Show preview"]')))
 await p.click('.chat-reopen'); await p.waitForTimeout(600); await shot('14-reopened')
 check('the grip brings it back', (await previewState()) === 'open')
 

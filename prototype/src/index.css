@@ -64,6 +64,51 @@
   font-weight: 600; font-style: normal; font-display: swap;
 }
 
+/* ----------------------------------- Specimen faces for the brief's type cards.
+   The typography question draws each pair's own name IN that pair (Lovable's
+   card, and the designer asked for it by name on 07.09.2026) — so these six
+   families exist to render ONE LINE each and are subset to exactly that line's
+   glyphs: 1.5-2.4 KB apiece instead of 13-24 KB. All OFL 1.1, from the
+   @fontsource packages; licence and copyright notices in src/fonts/OFL.txt.
+
+   ⚠️ NOTHING ELSE MAY BE SET IN THESE FAMILIES — the other glyphs are not in the
+   file. Change a card's wording and the face has to be re-subset:
+     pyftsubset <full>.woff2 --output-file=<x>-specimen.woff2 --flavor=woff2 \
+       --text='Title - Space Grotesk' --layout-features='*' --no-hinting \
+       --desubroutinize --drop-tables+=DSIG
+   Outfit and Figtree are absent from this list on purpose: they are already
+   bundled below as the app's own stand-in faces, with their full Latin sets. */
+@font-face {
+  font-family: 'Space Grotesk Specimen';
+  src: url('./fonts/space-grotesk-specimen.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'DM Sans Specimen';
+  src: url('./fonts/dm-sans-specimen.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Instrument Serif Specimen';
+  src: url('./fonts/instrument-serif-specimen.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Work Sans Specimen';
+  src: url('./fonts/work-sans-specimen.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'DM Serif Display Specimen';
+  src: url('./fonts/dm-serif-display-specimen.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Fira Sans Specimen';
+  src: url('./fonts/fira-sans-specimen.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
 /* ------------------------------------------- OFL stand-ins, bundled here.
    Variable faces, one file per subset, 400–700 — so 400/500/600 all come out
    of the same download instead of three. */
