@@ -30,7 +30,7 @@ import { useT } from '@/i18n'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
   IconChevronDown, IconCoin, IconStyle, IconExtension, IconAnalytics, IconCloud,
-  IconChatBubble, IconExpand, IconCollapse,
+  IconChatBubble, IconExpand,
 } from '@/ui/icons'
 
 /** Glass pill: the shared chrome surface — tinted fill, backdrop blur, one hairline. */
@@ -280,15 +280,16 @@ export default function App() {
               >
                 {device === 'desktop' ? <IconMonitor size={17} /> : <IconPhone size={17} />}
               </button>
-              <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-              <button
-                onClick={() => setPreviewOpen(false)}
-                aria-label={t({ en: 'Hide preview', uk: 'Сховати прев’ю' })}
-                title={t({ en: 'Hide preview', uk: 'Сховати прев’ю' })}
-                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-              >
-                <IconCollapse size={17} />
-              </button>
+              {/*
+                * NO COLLAPSE ARROW HERE EITHER (designer, 07.09.2026, twice: "эта стрелка
+                * не нужна тут, она видна только когда скрыто превью", then "какова черта я
+                * вижу тут эту кнопку?"). The rule is exactly one arrow in the whole shell,
+                * in the chat header, and only while the preview is away — it expands.
+                *
+                * Collapsing is a DRAG: pulling the divider past the canvas minimum puts
+                * the preview away (ChatResizer, PREVIEW_MIN). Do not add a button back on
+                * either side.
+                */}
             </Glass>
           </div>
 

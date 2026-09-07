@@ -319,15 +319,19 @@ await p.waitForTimeout(45000); await shot('12-built')
    * hiding the canvas is a control ON the canvas, and the chat header only carries the
    * arrow that brings it back — and only once there is no canvas to look at.
    */
-  check('the chat header carries NO preview arrow while the canvas is open',
-    !(await p.$('aside > header button[aria-label="Hide preview"]'))
-      && !(await p.$('aside > header button[aria-label="Show preview"]')))
-  check('hiding the preview is offered on the canvas, next to what it hides',
-    !!(await p.$('main button[aria-label="Hide preview"], [data-preview] button[aria-label="Hide preview"]')))
+  check('NO preview arrow anywhere in the shell while the canvas is open',
+    (await p.$$('button[aria-label="Hide preview"], button[aria-label="Show preview"]')).length === 0)
 }
 
-await p.click('button[aria-label="Hide preview"]'); await p.waitForTimeout(600); await shot('13-hidden')
-check('Hide preview collapses the canvas', (await previewState()) === 'closed')
+/* Collapsing is a DRAG, not a button (designer, 07.09.2026, said twice): pulling the
+   divider past the canvas minimum puts the preview away. */
+{
+  const bb = await (await p.$('.chat-resizer')).boundingBox()
+  await p.mouse.move(bb.x, bb.y + 300); await p.mouse.down()
+  for (let x = bb.x; x < 1500; x += 60) { await p.mouse.move(x, bb.y + 300); await p.waitForTimeout(16) }
+  await p.mouse.up(); await p.waitForTimeout(500); await shot('13-hidden')
+}
+check('dragging the divider past the canvas minimum collapses it', (await previewState()) === 'closed')
 {
   /* The board's 416 is the width of the message column it was drawn in, not the card's
      own size: with the canvas away the column is 800 and every other turn spans it. */
@@ -353,7 +357,7 @@ check('the grip brings it back', (await previewState()) === 'open')
   await p.mouse.move(bb.x, bb.y + 300); await p.mouse.down()
   for (let x = bb.x; x < 1500; x += 60) { await p.mouse.move(x, bb.y + 300); await p.waitForTimeout(16) }
   await p.mouse.up(); await p.waitForTimeout(300); await shot('15-dragged-shut')
-  check('dragging past the canvas minimum collapses it', (await previewState()) === 'closed')
+  check('…and does so again from a reopened canvas', (await previewState()) === 'closed')
 }
 
 /* ========================================= B. the composer's own example builds */
@@ -370,12 +374,16 @@ await p.waitForTimeout(5200); await shot('17-strong-building')
     body.includes('Starting on your home page'))
   check('a prompt that skips the brief still gets the outline', await cardUp())
   const o = await outline()
-  /* No brief behind this path, so every question falls back to its first option —
-     goal=enquiries, pages=one. The same rule the plan uses for a skipped question. */
-  check('the fallback outline is the one-page landing site',
+  /*
+   * No brief behind this path, so every question falls back to its FIRST option —
+   * goal=enquiries, pages=few. That order is deliberate (brief.ts): with "one page"
+   * first this path drew a card with nothing under Home, which is the one thing the
+   * card exists to show.
+   */
+  check('the fallback outline still names the pages this pass does not build',
     o?.rows.map((r) => r.name).join(' · ') === 'Layout & navigation · Hero · What you offer · Enquiry form · Footer'
-      && o?.pages.length === 0,
-    `${o?.rows.map((r) => r.name).join(' · ')} | pages=${o?.pages.length}`)
+      && o?.pages.join(' · ') === 'About · Services · Contact',
+    `${o?.rows.map((r) => r.name).join(' · ')} | pages=${o?.pages.join(' · ')}`)
   check('the canvas waits for the page here too', !(await siteUp()))
 }
 

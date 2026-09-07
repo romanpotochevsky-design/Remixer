@@ -154,15 +154,15 @@ export const BRIEF_QUESTIONS: BriefQuestion[] = [
     },
     placeholder: { en: 'Describe it in your own words…', uk: 'Опишіть своїми словами…' },
     options: [
-      {
-        id: 'one',
-        name: { en: 'One page, top to bottom', uk: 'Одна сторінка, згори донизу' },
-        detail: {
-          en: 'A single scroll. The fastest to read, and the fastest to publish.',
-          uk: 'Один скрол. Найшвидше читати і найшвидше опублікувати.',
-        },
-        ack: { en: 'on a single page', uk: 'на одній сторінці' },
-      },
+      /*
+       * ⚠️ "A few pages" IS FIRST, and the order is load-bearing: the FIRST option is what
+       * every unanswered question falls back to, in the plan and in the generation outline
+       * alike. With "one page" first, the commonest demo path — a strong prompt straight
+       * from the Home page, no brief at all — produced a card with nothing under Home, and
+       * the designer asked where the other pages went (07.09.2026). A four-page site is
+       * both the more common expectation and what the board draws, so it is the better
+       * default; the plan still labels it "Remixer's pick" when nobody chose it.
+       */
       {
         id: 'few',
         name: { en: 'A few pages', uk: 'Кілька сторінок' },
@@ -171,6 +171,15 @@ export const BRIEF_QUESTIONS: BriefQuestion[] = [
           uk: 'Головна, Про нас, Послуги і Контакти, з меню згори.',
         },
         ack: { en: 'across a few pages', uk: 'на кількох сторінках' },
+      },
+      {
+        id: 'one',
+        name: { en: 'One page, top to bottom', uk: 'Одна сторінка, згори донизу' },
+        detail: {
+          en: 'A single scroll. The fastest to read, and the fastest to publish.',
+          uk: 'Один скрол. Найшвидше читати і найшвидше опублікувати.',
+        },
+        ack: { en: 'on a single page', uk: 'на одній сторінці' },
       },
       {
         id: 'catalogue',
