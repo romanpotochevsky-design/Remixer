@@ -416,3 +416,50 @@ export const IconSparkleAI = ({ size = 20, className }: IconProps) => (
     />
   </svg>
 )
+
+/* ---- added 06.09.2026 for the pre-build brief and the collapsible preview ---- */
+
+/*
+ * The brief footer's ‹ › pair (Lovable, 06.09.2026). Deliberately NOT the chip row's
+ * `IconChevronRight` above: that one is drawn to a Figma node at a heavier weight in a
+ * 20 box, and a mirror pair has to match its partner — a 55%-tall 1.8 stroke next to a
+ * 42%-tall 1.7 one reads as two different buttons. So the pair is its own glyph, cut
+ * from the shared `base`, and the chip cap keeps the weight the board gives it.
+ */
+export const IconCaretLeft = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m14 7-5 5 5 5" />
+  </svg>
+)
+
+export const IconCaretRight = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m10 7 5 5-5 5" />
+  </svg>
+)
+
+export const IconChevronUp = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m7 14 5-5 5 5" />
+  </svg>
+)
+
+/** Two arrows pointing outward — "open the preview" (Lovable parks it top-right). */
+export const IconExpand = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M14 4h6v6" />
+    <path d="m20 4-6 6" />
+    <path d="M10 20H4v-6" />
+    <path d="m4 20 6-6" />
+  </svg>
+)
+
+/** The same arrows pointing inward — "hide the preview". */
+export const IconCollapse = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20 10h-6V4" />
+    <path d="m14 10 6-6" />
+    <path d="M4 14h6v6" />
+    <path d="m10 14-6 6" />
+  </svg>
+)

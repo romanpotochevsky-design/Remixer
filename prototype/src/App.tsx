@@ -27,7 +27,7 @@ import { useT } from '@/i18n'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
   IconChevronDown, IconCoin, IconStyle, IconExtension, IconAnalytics, IconCloud,
-  IconChatBubble,
+  IconChatBubble, IconExpand, IconCollapse,
 } from '@/ui/icons'
 
 /** Glass pill: the shared chrome surface — tinted fill, backdrop blur, one hairline. */
@@ -49,7 +49,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen } = useUI()
 
   /*
    * The glow waits for the send choreography to finish.
@@ -93,6 +93,17 @@ export default function App() {
   useEffect(() => {
     document.documentElement.style.setProperty('--chat-w', `${chatWidth}px`)
   }, [chatWidth])
+
+  /*
+   * The collapsible preview (Lovable, recorded 06.09.2026). A brand-new project has
+   * nothing to show, so its canvas starts COLLAPSED and the chat takes the whole
+   * shell, centring itself; the moment a build starts the canvas opens by itself.
+   * Both are defaults, not locks — the arrows in the top bars and the divider let
+   * the user open or close it whenever they like.
+   */
+  const fresh = world.project === 'empty' && world.sent.length === 0 && world.chat === 'empty'
+  useEffect(() => { if (fresh) setPreviewOpen(false) }, [fresh, setPreviewOpen])
+  useEffect(() => { if (world.project === 'generating') setPreviewOpen(true) }, [world.project, setPreviewOpen])
   const { t } = useT()
 
   const address =
@@ -106,9 +117,16 @@ export default function App() {
       : { en: 'Publish', uk: 'Опублікувати' }
 
   return (
-    <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]">
-      {/* ================================================== chat column, 432px */}
-      <aside className="flex flex-none flex-col" style={{ width: 'calc(var(--chat-w) - 1px)' }}>
+    <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]" data-preview={previewOpen ? 'open' : 'closed'}>
+      {/* ================================================== chat column, 432px —
+          or the whole shell when the preview is collapsed. The width transition
+          IS the open/close animation: the canvas column just gets what is left,
+          so the chat content slides over while the preview grows out of the
+          right edge — Lovable's move, measured at ~0.42s ease-out. */}
+      <aside
+        className="shell-aside flex flex-none flex-col"
+        style={{ width: previewOpen ? 'calc(var(--chat-w) - 1px)' : 'calc(100% - var(--rail-w))' }}
+      >
         {/* chat top toolbar (Figma 25819:143769) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           {/* the mark is the way back to the Home page, as it is in every builder
@@ -137,6 +155,20 @@ export default function App() {
             >
               <IconSidebar size={18} />
             </button>
+            {!previewOpen && (
+              <>
+                <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+                {/* Lovable parks exactly this control top-right while the preview is away */}
+                <button
+                  onClick={() => setPreviewOpen(true)}
+                  aria-label={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                  title={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                >
+                  <IconExpand size={17} />
+                </button>
+              </>
+            )}
           </Glass>
         </header>
 
@@ -148,8 +180,10 @@ export default function App() {
           last pixel is the divider, so it lives here and the aside gives it back. */}
       <ChatResizer />
 
-      {/* ================================================== center column */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* ================================================== center column —
+          clipped, so that while the aside grows this column shrinks to nothing
+          instead of re-flowing its toolbar into a heap. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden" aria-hidden={!previewOpen}>
         {/* canvas top toolbar (Figma 25819:143717) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           {/* left: Visual Editor + device preview */}
@@ -184,6 +218,15 @@ export default function App() {
                 className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
               >
                 {device === 'desktop' ? <IconMonitor size={17} /> : <IconPhone size={17} />}
+              </button>
+              <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+              <button
+                onClick={() => setPreviewOpen(false)}
+                aria-label={t({ en: 'Hide preview', uk: 'Сховати прев’ю' })}
+                title={t({ en: 'Hide preview', uk: 'Сховати прев’ю' })}
+                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+              >
+                <IconCollapse size={17} />
               </button>
             </Glass>
           </div>

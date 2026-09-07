@@ -7,6 +7,7 @@
  */
 import { create } from 'zustand'
 import type { ThumbId } from '@/modules/home/thumbs'
+import type { BriefKey } from '@/modules/chat/brief'
 
 /* ------------------------------------------------------------------ axes */
 
@@ -62,6 +63,15 @@ export interface Message {
   id: number
   who: 'user' | 'ai'
   text: string | { en: string; uk: string }
+  /**
+   * What kind of turn this is. Plain text unless said otherwise:
+   *  - 'clarify' — the agent asking for direction instead of building (opens the brief)
+   *  - 'brief'   — the summary card of the answered questions (renders from `world.brief`)
+   *  - 'ack'     — "Got it — …", the line that hands over to the build
+   */
+  kind?: 'text' | 'clarify' | 'brief' | 'ack'
+  /** Seconds the agent "thought" before this turn — Lovable prints "Thought for 21s". */
+  thought?: number
 }
 
 /**
@@ -105,6 +115,20 @@ export const DEMO_PROJECTS: HomeProject[] = [
   },
 ]
 
+/**
+ * The pre-build brief: the questions Remixer asks when the first prompt is too thin
+ * to build from (see modules/chat/brief.ts). 'asking' docks the question panel above
+ * the composer; 'ready' means the answers were submitted and the build may start.
+ */
+export type BriefStatus = 'none' | 'asking' | 'ready'
+export interface Brief {
+  status: BriefStatus
+  /** Which question the panel shows, 0-based. */
+  step: number
+  answers: Partial<Record<BriefKey, string>>
+}
+export const EMPTY_BRIEF: Brief = { status: 'none', step: 0, answers: {} }
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -132,6 +156,8 @@ export interface World {
    * a shareable link carries the situation, not somebody's typing.
    */
   sent: Message[]
+  /** Where the pre-build brief stands. Lives with the transcript, dies with it. */
+  brief: Brief
 }
 
 export const DEFAULT_WORLD: World = {
@@ -148,6 +174,7 @@ export const DEFAULT_WORLD: World = {
   chat: 'long',
   projects: DEMO_PROJECTS,
   sent: [],
+  brief: EMPTY_BRIEF,
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -315,6 +342,12 @@ export const useWorld = create<Store>((set, get) => ({
     // transcript typed under the old one is stale — unless the caller is the
     // composer, which always hands over both at once.
     if (patch.chat !== undefined && patch.sent === undefined) patch = { ...patch, sent: [] }
+    // Staging a situation (chat axis moves, transcript cleared or absent) closes any
+    // open brief with it. A live send that APPENDS to the transcript keeps the brief:
+    // the summary card renders from it long after the questions are answered.
+    if (patch.chat !== undefined && patch.brief === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
+      patch = { ...patch, brief: EMPTY_BRIEF }
+    }
     const world = { ...get().world, ...patch }
     syncUrl(world)
     set({ world, preset })

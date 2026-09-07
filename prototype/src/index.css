@@ -215,6 +215,8 @@
     --topbar-h: 52px;
     --rail-w: 56px;
     --chat-w: 432px;
+    /* the thread's own measure — Lovable's ~600px column, centred in the chat */
+    --chat-content-w: 600px;
 
     /* motion — three durations, two curves. Never `transition: all`. */
     --dur-fast: 120ms;
@@ -2965,3 +2967,61 @@
     }
   }
 }
+
+
+/* ------------------------------------------------------------------------
+ * The collapsible preview (Lovable, recorded 06.09.2026).
+ *
+ * The aside animates its WIDTH between the chat column and the whole shell; the
+ * canvas column is flex-1 and simply receives what is left, clipped. Width is a
+ * layout property — the one deliberate exception to "transform/opacity only":
+ * it is a single 0.42s one-shot on an open/close, never per frame at idle, and
+ * the preview's container queries re-lay-out as it goes, which is the point
+ * (the site is meant to be seen reflowing into its new width).
+ * ---------------------------------------------------------------------- */
+.shell-aside { transition: width 0.42s cubic-bezier(0.22, 0.61, 0.36, 1); }
+/* while the divider is being dragged the width is written per frame — no smoothing */
+html[data-drag] .shell-aside { transition: none; }
+@media (prefers-reduced-motion: reduce) { .shell-aside { transition: none; } }
+
+/* The thread and the composer measure themselves and centre in the column. In the
+   432px column this is a no-op; with the preview collapsed it is the centred chat. */
+.chat-col {
+  width: 100%;
+  max-width: var(--chat-content-w);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* The reopen grip while the preview is collapsed: a hairline at the chat's right
+   edge with a small handle that reads only on hover — Lovable's, from the recording. */
+.chat-reopen {
+  position: relative;
+  z-index: 30;
+  flex: none;
+  width: 1px;
+  cursor: col-resize;
+  background: var(--white-100);
+  transition: background 0.18s var(--ease-std);
+}
+.chat-reopen::before { content: ''; position: absolute; inset: 0 -8px; }
+.chat-reopen:hover { background: var(--white-300); }
+html[data-drag] .chat-reopen { background: #1587ff3d; }
+.chat-reopen-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 36px;
+  border-radius: 8px;
+  transform: translate(-50%, -50%);
+  background: var(--gray-800);
+  color: var(--white-700);
+  opacity: 0;
+  transition: opacity 0.18s var(--ease-std);
+  pointer-events: none;
+}
+.chat-reopen:hover .chat-reopen-grip,
+html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }

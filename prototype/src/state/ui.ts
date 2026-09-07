@@ -71,7 +71,14 @@ export interface DomainModal {
  *  the live window check keep the canvas usable at any window size. */
 export const CHAT_DEFAULT = 432
 export const CHAT_MIN = 340
-export const CHAT_MAX = 760
+/** Wide is fine now: the thread and composer centre themselves at CHAT_CONTENT, so a
+ *  wide column is just more ground — exactly how Lovable's reads at any width. */
+export const CHAT_MAX = 1400
+/** The thread's own measure. Lovable: ~600px column centred in whatever the chat gets. */
+export const CHAT_CONTENT = 600
+/** Drag the divider until the canvas would be narrower than this and the preview
+ *  collapses altogether (measured off Lovable's recording, 06.09.2026). */
+export const PREVIEW_MIN = 480
 
 /**
  * A rect in viewport coordinates — the currency of the template's flights.
@@ -210,6 +217,13 @@ interface UIStore {
   chatWidth: number
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
+  /**
+   * Is the canvas on screen? A brand-new project opens with it COLLAPSED: nothing to
+   * preview yet, so the chat takes the whole shell and centres itself (Lovable, 2026).
+   * Opens by itself the moment a build starts; the user can open/close it any time
+   * (top-bar arrows, or drag the divider past the canvas minimum).
+   */
+  previewOpen: boolean
 
   goHome: () => void
   openBuilder: () => void
@@ -253,6 +267,8 @@ interface UIStore {
   endTemplateFlight: () => void
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
+  setPreviewOpen: (open: boolean) => void
+  togglePreview: () => void
   openSurface: (s: Surface) => void
   openDomains: (screen?: DomainScreen, domain?: string | null) => void
   goDomains: (screen: DomainScreen, domain?: string | null) => void
@@ -286,6 +302,7 @@ export const useUI = create<UIStore>((set, get) => ({
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
   reloading: false,
+  previewOpen: true,
 
   /* Leaving a page closes what was open inside it: coming back to a half-open
      publish popover — or to a stale attached-template chip over an empty field —
@@ -359,6 +376,8 @@ export const useUI = create<UIStore>((set, get) => ({
   endTemplateFlight: () => set({ tplFlight: null }),
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
+  setPreviewOpen: (previewOpen) => set({ previewOpen }),
+  togglePreview: () => set({ previewOpen: !get().previewOpen }),
   openSurface: (surface) => set({ surface, publishOpen: false }),
   openDomains: (screen = 'home', domain = null) =>
     set({ surface: 'domains', domainScreen: screen, activeDomain: domain, publishOpen: false }),

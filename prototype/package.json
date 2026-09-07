@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "artifact": "ARTIFACT=1 npm run build && node scripts/build-artifact.mjs"
+    "artifact": "ARTIFACT=1 npm run build && node scripts/build-artifact.mjs",
+    "check:brief": "node scripts/check-brief-flow.mjs"
   },
   "dependencies": {
     "motion": "^11.11.9",

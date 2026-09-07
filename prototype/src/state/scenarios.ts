@@ -22,6 +22,15 @@ export interface Preset {
 /** Ordered roughly along the customer's life with us. */
 export const PRESETS: Preset[] = [
   {
+    id: 'weak-prompt',
+    label: { en: 'New project — thin prompt', uk: 'Новий проєкт — слабкий промпт' },
+    note: {
+      en: 'Type "Build me a website." — Remixer asks four questions before it builds (Lovable, 06.09.2026)',
+      uk: 'Введіть «Build me a website.» — Remixer ставить чотири запитання, перш ніж будувати (Lovable, 06.09.2026)',
+    },
+    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], domain: 'staging', inventory: 'none', unpublished: 0 },
+  },
+  {
     id: 'first-run',
     label: { en: 'First run', uk: 'Перший запуск' },
     note: { en: 'Blank canvas, nothing generated yet', uk: 'Порожнє полотно, ще нічого не згенеровано' },
@@ -278,7 +287,8 @@ export function describe(w: World): Text {
   en.push(domain[w.domain].en); uk.push(domain[w.domain].uk)
 
   if (!w.projects.length) { en.push('no sites yet'); uk.push('сайтів ще немає') }
-  if (w.project === 'empty') { en.push('empty project'); uk.push('проєкт порожній') }
+  if (w.brief.status === 'asking') { en.push('asking for direction'); uk.push('уточнює напрямок') }
+  else if (w.project === 'empty') { en.push('empty project'); uk.push('проєкт порожній') }
   else if (w.project === 'generating') { en.push('generating'); uk.push('іде генерація') }
   else if (w.unpublished > 0) {
     en.push(`${w.unpublished} unpublished changes`)

@@ -21,7 +21,9 @@ import {
 import { ScrollArea } from '@/ui/ScrollArea'
 import { baselineThread } from './thread'
 import { sendMessage, resumeInterrupted } from './send'
-import { bubbleSend } from '@/ui/motion'
+import { bubbleSend, messageIn } from '@/ui/motion'
+import { BriefPanel } from './BriefPanel'
+import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
 
 /** Where a freshly sent message parks: just clear of the 48px top fade. */
 const TOP_INSET = 48
@@ -134,12 +136,19 @@ function StreamedText({ text }: { text: string }) {
 }
 
 /** Figma: message column, 9px between the text and its action row. */
-function AiMessage({ text, actions, animate }: { text: string; actions?: boolean; animate: boolean }) {
+function AiMessage({ text, actions, animate, thought }: { text: string; actions?: boolean; animate: boolean; thought?: number }) {
+  const { t } = useT()
   return (
     /* No container fade here: the words do the arriving. Nesting a motion
        opacity animation around per-word CSS animations left the whole block
        parked at opacity 0 with the word animations sitting at currentTime 0. */
     <div className="flex flex-col gap-[9px] pr-8">
+      {thought !== undefined && (
+        /* Lovable: a quiet "Thought for 21s" over the turn that asked instead of built. */
+        <p className="-mb-1 text-[13px] leading-[20px] text-[var(--white-400)]">
+          {t({ en: `Thought for ${thought}s`, uk: `Думав ${thought} с` })}
+        </p>
+      )}
       <p className="whitespace-pre-wrap text-[15px] leading-[25px] text-[var(--gray-350,#c7c7cd)]">
         {animate ? <StreamedText text={text} /> : text}
       </p>
@@ -152,6 +161,60 @@ function AiMessage({ text, actions, animate }: { text: string; actions?: boolean
           <AiActions text={text} />
         </span>
       )}
+    </div>
+  )
+}
+
+/**
+ * The brief, summarised — Lovable's card after "Submit": a tool-row title over a
+ * two-column table of the answers (frame 11 of the recording). Skipped questions
+ * read as Remixer's pick, so nobody wonders whether an answer got lost.
+ */
+function BriefSummary({ animate }: { animate: boolean }) {
+  const { world } = useWorld()
+  const { t, lang } = useT()
+  const settling = world.chat === 'working' && world.project !== 'built'
+  const title = world.project === 'built'
+    ? t({ en: 'Acknowledged brief and preferences', uk: 'Бриф і вподобання прийнято' })
+    : world.project === 'generating'
+      ? t({ en: 'Reviewing page layout and style choices', uk: 'Переглядаю лейаут і стилістичні рішення' })
+      : t(BRIEF_STATUS)
+  return (
+    <motion.div
+      variants={messageIn}
+      initial={animate ? 'initial' : false}
+      animate="animate"
+      className="w-fit max-w-full rounded-[12px] border border-[var(--white-100)] bg-[#ffffff08]"
+    >
+      <p className={`border-b border-[var(--white-100)] px-4 py-3 text-[13px] font-semibold leading-[18px] ${settling ? 'thinking' : 'text-white'}`}>
+        {title}
+      </p>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 px-4 py-3 text-[13px] leading-[18px]">
+        {BRIEF_QUESTIONS.map((q) => {
+          const a = answerText(q, world.brief.answers[q.key], lang)
+          return (
+            <div key={q.key} className="contents">
+              <dt className="text-[var(--white-400)]">{t(q.label)}</dt>
+              <dd className={a.muted ? 'italic text-[var(--white-400)]' : 'text-white'}>{a.text}</dd>
+            </div>
+          )
+        })}
+      </dl>
+    </motion.div>
+  )
+}
+
+/** While the questions are open, the thread shows what the agent is up to — a
+ *  collapsed tool row with the shimmer, and the "…" of a turn still in flight. */
+function BriefStatusRow() {
+  const { t } = useT()
+  return (
+    <div className="flex flex-col gap-2 pr-8">
+      <p className="text-[14px] leading-[20px]">
+        <span className="thinking">{t(BRIEF_STATUS)}</span>
+        <span className="ml-1.5 text-[var(--white-400)]">›</span>
+      </p>
+      <p className="text-[15px] leading-[16px] tracking-[0.1em] text-[var(--white-500)]">…</p>
     </div>
   )
 }
@@ -194,6 +257,9 @@ export function ChatPanel() {
   const live = world.sent.length > 0
   const thread = live ? world.sent : baselineThread(world.chat)
   const working = world.chat === 'working'
+  /* The questions are open: the composer becomes the escape hatch ("Tell Remixer
+     what to do instead…") and the thread shows the agent holding. */
+  const asking = world.brief.status === 'asking'
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
@@ -306,7 +372,11 @@ export function ChatPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
-      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2" viewportRef={viewport}>
+      {/* chat-col: the thread measures itself (max 600px) and centres in whatever
+          width the column has — in the 432px column that is the full width, in a
+          collapsed-preview shell it is a centred column, no special mode needed.
+          This is exactly how Lovable's chat reads at any width (recording, 06.09). */}
+      <ScrollArea className="min-h-0 flex-1" innerClassName="chat-col pl-4 pr-2" viewportRef={viewport}>
         {/*
          * The fade under the chat toolbar — Figma "BG Gradient" (28016:43309):
          * 48px, solid #09090b straight to transparent with NO flat head. The
@@ -342,13 +412,26 @@ export function ChatPanel() {
                 >
                   {body}
                 </UserBubble>
+              ) : m.kind === 'brief' ? (
+                <BriefSummary key={m.id} animate={isFresh(m.id)} />
               ) : (
-                <AiMessage key={m.id} text={body} actions animate={isFresh(m.id)} />
+                <AiMessage
+                  key={m.id}
+                  text={body}
+                  thought={m.thought}
+                  /* a clarifying turn and the hand-over line are not answers to rate */
+                  actions={m.kind !== 'clarify' && m.kind !== 'ack'}
+                  animate={isFresh(m.id)}
+                />
               )
             })
           )}
 
-          {working && (
+          {asking && <BriefStatusRow />}
+
+          {/* While the brief card is settling its own title carries the shimmer —
+              a second "Thinking" under it would be two spinners for one wait. */}
+          {working && thread[thread.length - 1]?.kind !== 'brief' && (
             <div className="pr-8">
               <p className="thinking text-[15px] leading-[25px]">
                 {t({ en: 'Thinking', uk: 'Думаю' })}
@@ -362,7 +445,7 @@ export function ChatPanel() {
               </p>
             </div>
           )}
-          {thread.length > 0 && !working && <Disclaimer />}
+          {thread.length > 0 && !working && !asking && <Disclaimer />}
           {/* grown on send so the newest message can reach the top of the view */}
           <div ref={spacer} aria-hidden />
         </div>
@@ -379,6 +462,8 @@ export function ChatPanel() {
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
+        <div className="chat-col">
+        <BriefPanel />
         <div ref={composerBox} className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}
           {flash > 0 && (
@@ -417,9 +502,11 @@ export function ChatPanel() {
               }}
               disabled={!canUseAI(world)}
               placeholder={
-                canUseAI(world)
-                  ? t({ en: 'Ask Remixer...', uk: 'Запитайте Remixer...' })
-                  : t({ en: 'AI is off — a plan is required', uk: 'AI вимкнено — потрібен план' })
+                !canUseAI(world)
+                  ? t({ en: 'AI is off — a plan is required', uk: 'AI вимкнено — потрібен план' })
+                  : asking
+                    ? t({ en: 'Tell Remixer what to do instead...', uk: 'Скажіть Remixer, що зробити замість цього...' })
+                    : t({ en: 'Ask Remixer...', uk: 'Запитайте Remixer...' })
               }
               aria-label={t({ en: 'Message Remixer', uk: 'Повідомлення для Remixer' })}
               className="block w-full resize-none bg-transparent text-[16px] leading-[26px] text-[var(--white-900)] outline-none placeholder:text-[var(--gray-400,#a1a1aa)] disabled:cursor-not-allowed"
@@ -454,6 +541,7 @@ export function ChatPanel() {
               </button>
             </div>
           </div>
+        </div>
         </div>
         </div>
       </div>
