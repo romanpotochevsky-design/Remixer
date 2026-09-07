@@ -90,6 +90,9 @@ const onHome = () => p.$('input[aria-label="Describe the site you want"]').then(
 const panelUp = () => p.$('section[aria-label="Questions before building"]').then(Boolean)
 const planUp = () => p.$('section[aria-label="Plan, waiting for your approval"]').then(Boolean)
 const cardUp = () => p.$('section[aria-label="What Remixer is building"]').then(Boolean)
+/** The composer field's box, rounded — the one thing the dock's bubble must never move. */
+const fieldBox = () =>
+  p.$eval('.composer-field', (el) => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 100) / 100) })
 /**
  * The generation outline, as the DOM has it: the page being built, every section with
  * the state it is in, the work line under the one in hand, and the pages queued below.
@@ -183,6 +186,8 @@ await shot('02a-corridor')
 await p.waitForTimeout(1200)
 check('the corridor lifts by itself', !(await p.$('.boot-cover')))
 await shot('02-builder-collapsed')
+/* The field as it stands alone — the reference the bubble must not move. */
+const fieldAlone = await fieldBox()
 check('a thin prompt from the hero opens the builder, not a generation', !(await onHome()))
 check('the canvas is collapsed on arrival', (await previewState()) === 'closed', `preview=${await previewState()}`)
 check('the chat takes the whole shell', (await asideWidth()) > 1200, `aside=${Math.round(await asideWidth())}px`)
@@ -200,6 +205,17 @@ const askedBody = await text()
 check('Remixer asks for direction instead of guessing', askedBody.includes('a guess costs you a build'))
 check('the reply carries its thinking time', askedBody.includes('Thought for 5s'))
 check('the question panel docks above the composer', await panelUp())
+/*
+ * THE FIELD DOES NOT MOVE (designer, 07.09.2026: "само поле не должно смещаться или менять
+ * размер"). The dock's bubble grows AROUND the composer — the shell is drawn outside the
+ * field's box — so the field's rectangle with the questions up must be the one it had
+ * standing alone, to the hundredth of a pixel.
+ */
+{
+  const withSheet = await fieldBox()
+  check('the composer field has not moved or resized under the questions',
+    JSON.stringify(withSheet) === JSON.stringify(fieldAlone), `${JSON.stringify(fieldAlone)} → ${JSON.stringify(withSheet)}`)
+}
 check('the composer relabels itself as the escape hatch',
   (await p.getAttribute('textarea', 'placeholder'))?.startsWith('Tell Remixer'))
 

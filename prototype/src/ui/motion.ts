@@ -227,9 +227,19 @@ export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
  * there (the shelf-of-the-dock lesson, 26.08.2026).
  */
 export const DOCK_FALL_MS = 300
+/*
+ * Bouncier than FIELD_GROW on purpose (designer: "не хватает отдачи, жидкости"): the
+ * content overshoots its place and jellies back while the shell's own edge pops and
+ * recoils (index.css `dock-rise` / `dock-pop`). Opacity rides a plain tween so nothing
+ * flashes brighter than 1.
+ */
+export const SHEET_SPRING = { type: 'spring', duration: 0.66, bounce: 0.34 } as const
 export const sheetRise = {
-  initial: { opacity: 0, y: 14, scale: 0.985 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: { ...FIELD_GROW, delay: 0.06 } },
+  initial: { opacity: 0, y: 16, scale: 0.98 },
+  animate: {
+    opacity: 1, y: 0, scale: 1,
+    transition: { ...SHEET_SPRING, delay: 0.06, opacity: { duration: 0.3, delay: 0.06 } },
+  },
   exit: { opacity: 0, y: 6, scale: 0.995, transition: { duration: DOCK_FALL_MS / 1000, ease: [0.4, 0, 0.6, 1] } },
 } as const
 export const sheetRiseFade = {
@@ -241,7 +251,7 @@ export const sheetRiseFade = {
    there before the question is. */
 export const sheetFooter = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.28, delay: 0.3 } },
+  animate: { opacity: 1, transition: { duration: 0.28, delay: 0.36 } },
   exit: { opacity: 0, transition: { duration: 0.12 } },
 } as const
 
