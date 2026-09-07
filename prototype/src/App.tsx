@@ -11,7 +11,7 @@
  * drive this shell exactly as they drove the old one.
  */
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
@@ -23,6 +23,7 @@ import { DomainModal } from '@/modules/domains/DomainModal'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
+import { SPRING } from '@/ui/motion'
 import { buildSections } from '@/modules/chat/build'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
@@ -205,27 +206,30 @@ export default function App() {
               <IconSidebar size={18} />
             </button>
             {/*
-              * The preview toggle lives here in BOTH states (designer, 07.09.2026: with the
-              * chat at the side "стрелки схлопнуть превью нет"). It used to appear only
-              * while the preview was away, so the control jumped the width of the window
-              * depending on state — expand on the left, collapse over in the canvas
-              * toolbar — and on the chat side, where he looked, there was nothing. One
-              * button, one place, both directions. The canvas keeps its own copy: that is
-              * where the eye is when the site is what you are looking at.
+              * ONE DIRECTION ONLY: this button exists while the preview is AWAY, and it
+              * brings it back. Collapsing is the canvas toolbar's job, next to the thing
+              * being collapsed.
+              *
+              * ⚠️ It was briefly in both states, and the designer's call on 07.09.2026 is
+              * that it should not be — "эта стрелка не нужна тут, она видна только когда
+              * скрыто превью точно так же как у лавбл". Lovable is the reference: the arrow
+              * appears in the chat header only once there is no canvas, because a control
+              * that hides the canvas belongs ON the canvas. Do not add the collapse
+              * direction back here.
               */}
-            <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-            <button
-              onClick={() => setPreviewOpen(!previewOpen)}
-              aria-label={previewOpen
-                ? t({ en: 'Hide preview', uk: 'Сховати прев’ю' })
-                : t({ en: 'Show preview', uk: 'Показати прев’ю' })}
-              title={previewOpen
-                ? t({ en: 'Hide preview', uk: 'Сховати прев’ю' })
-                : t({ en: 'Show preview', uk: 'Показати прев’ю' })}
-              className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
-            >
-              {previewOpen ? <IconCollapse size={17} /> : <IconExpand size={17} />}
-            </button>
+            {!previewOpen && (
+              <>
+                <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+                <button
+                  onClick={() => setPreviewOpen(true)}
+                  aria-label={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                  title={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                >
+                  <IconExpand size={17} />
+                </button>
+              </>
+            )}
           </Glass>
         </header>
 
@@ -435,18 +439,49 @@ export default function App() {
             R
           </button>
         </div>
-        <div className="mt-2.5 flex flex-col gap-2">
-          {RAIL.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              title={label}
-              aria-label={label}
-              className="grid h-12 w-12 place-items-center rounded-[16px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+        {/*
+          * THE TOOLS ARRIVE WITH THE SITE (designer, 07.09.2026: "когда идет генерация
+          * первая и сайта еще нет… этих кнобок нет, они потом красиво с анимацией
+          * появляются"). Style, Integrations, Analytics and Cloud all act on a site, and
+          * through the whole brief and the whole minute of the first build there is no
+          * site for them to act on — the same reasoning that greys out Publish, taken one
+          * step further: a control with nothing to do is better absent than dead.
+          *
+          * The avatar above and the support chat below stay: an account and a way to ask
+          * for help exist before any site does.
+          *
+          * ⚠️ `initial={false}` so opening a project that is ALREADY built does not
+          * replay the arrival. The animation belongs to the moment the site appears, not
+          * to every mount — the same rule the chat's own reveal follows (`settled`).
+          */}
+        <AnimatePresence initial={false}>
+          {world.project === 'built' && (
+            <motion.div
+              key="rail-tools"
+              className="mt-2.5 flex flex-col gap-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.14 } }}
             >
-              <Icon size={22} />
-            </button>
-          ))}
-        </div>
+              {RAIL.map(({ id, label, Icon }, i) => (
+                <motion.button
+                  key={id}
+                  title={label}
+                  aria-label={label}
+                  /* One after the other from the top, 70ms apart: the rail fills in the
+                     direction it is read. Only transform and opacity, so the stagger
+                     costs the compositor and nothing else. */
+                  initial={{ opacity: 0, scale: 0.82, y: -6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ ...SPRING, delay: 0.12 + i * 0.07 }}
+                  className="grid h-12 w-12 place-items-center rounded-[16px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                >
+                  <Icon size={22} />
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="flex-1" />
         <button
           aria-label={t({ en: 'Support chat', uk: 'Чат підтримки' })}

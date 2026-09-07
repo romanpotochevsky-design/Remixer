@@ -114,6 +114,9 @@ const outline = () =>
   })
 /** Is the demo site actually rendered in the canvas, or is the stage still empty? */
 const siteUp = () => p.$('.site-stage h1').then(Boolean)
+/** How many of the rail's site tools (Style / Integrations / Analytics / Cloud) are up. */
+const railTools = () => p.$$eval('nav button[aria-label]', (els) =>
+  els.filter((e) => ['Website Styles', 'Integrations', 'Analytics', 'Cloud'].includes(e.getAttribute('aria-label'))).length)
 /**
  * The measure of the chat's content and how it sits in the column that holds it.
  *
@@ -279,6 +282,9 @@ check('the outline card lands when the build starts', await cardUp())
  * second three would make the outline card a decoration over an already-finished job.
  */
 check('the canvas is open but the site is NOT there yet', (await previewState()) === 'open' && !(await siteUp()))
+/* The rail's tools all act on a site, and there is none for the whole minute. */
+check('the rail offers no site tools while there is no site', (await railTools()) === 0,
+  `${await railTools()} up`)
 
 await p.waitForTimeout(20000); await shot('12a-mid-build')
 {
@@ -299,6 +305,8 @@ await p.waitForTimeout(45000); await shot('12-built')
   check('every section of the page is done',
     (await outline())?.rows.every((r) => r.state === 'done'), JSON.stringify((await outline())?.rows.map((r) => r.state)))
   check('the outline stays in the transcript as the record of what was built', await cardUp())
+  check('the rail\u2019s site tools arrive with the site', (await railTools()) === 4,
+    `${await railTools()} of 4`)
   check('the first version lands and is announced', body.includes('Done —') && body.includes('built to sell'))
   check('the acknowledgement reads as one sentence',
     body.includes('a site built to sell, across a few pages, in Warm Clay with friendly lettering'))
@@ -306,14 +314,36 @@ await p.waitForTimeout(45000); await shot('12-built')
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
   check('Publish comes alive once the site exists',
     !(await p.$eval('button:has-text("Update"), button:has-text("Publish")', (el) => el.disabled)))
-  /* The toggle is in the chat header in BOTH states, so it never jumps the window. */
-  check('the chat header carries the preview toggle while the preview is open',
-    !!(await p.$('aside > header button[aria-label="Hide preview"]')))
+  /*
+   * ONE DIRECTION per place, Lovable's arrangement and the designer's call (07.09.2026):
+   * hiding the canvas is a control ON the canvas, and the chat header only carries the
+   * arrow that brings it back — and only once there is no canvas to look at.
+   */
+  check('the chat header carries NO preview arrow while the canvas is open',
+    !(await p.$('aside > header button[aria-label="Hide preview"]'))
+      && !(await p.$('aside > header button[aria-label="Show preview"]')))
+  check('hiding the preview is offered on the canvas, next to what it hides',
+    !!(await p.$('main button[aria-label="Hide preview"], [data-preview] button[aria-label="Hide preview"]')))
 }
 
-await p.click('aside > header button[aria-label="Hide preview"]'); await p.waitForTimeout(600); await shot('13-hidden')
+await p.click('button[aria-label="Hide preview"]'); await p.waitForTimeout(600); await shot('13-hidden')
 check('Hide preview collapses the canvas', (await previewState()) === 'closed')
-check('…and the same button now offers to show it again',
+{
+  /* The board's 416 is the width of the message column it was drawn in, not the card's
+     own size: with the canvas away the column is 800 and every other turn spans it. */
+  const fits = await p.evaluate(() => {
+    const card = document.querySelector('section[aria-label="What Remixer is building"]')
+    /* Against the TURN LIST, not `.chat-col`: the scroller's own 16/8 gutters sit between
+       them, so a card that correctly fills the content area is 24px inside the column. */
+    const list = card.parentElement
+    const cs = getComputedStyle(list)
+    const inner = list.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+    return { card: Math.round(card.getBoundingClientRect().width), inner: Math.round(inner) }
+  })
+  check('the outline card fills the chat column, whatever its width',
+    fits.card === fits.inner && fits.card > 700, JSON.stringify(fits))
+}
+check('…and only then does the chat header offer to bring it back',
   !!(await p.$('aside > header button[aria-label="Show preview"]')))
 await p.click('.chat-reopen'); await p.waitForTimeout(600); await shot('14-reopened')
 check('the grip brings it back', (await previewState()) === 'open')

@@ -10,8 +10,15 @@
  * bar would let the customer believe a four-page site had landed when one page did. The
  * closed rows under Home are load-bearing information, not decoration.
  *
+ * ⚠️ THE CARD FILLS ITS COLUMN — no max-width (designer, 07.09.2026: "когда меню
+ * схлопнуто, этот компонент на всю ширину чата"). The board's 416 is not the card's size,
+ * it is the width of the message column it was drawn in: at the split it is 416, and with
+ * the canvas collapsed the chat's column is 800 (`.chat-col`) and every other message
+ * spans it. A card pinned to 416 in that state read as a narrow object floating in a wide
+ * thread rather than as one more turn in it.
+ *
  * GEOMETRY, all measured off the board (29526:455 / 29526:449 / 29612:24918):
- *   card      416 wide (the chat column), radius 16, 1px Gray/800, blocks inset 1px
+ *   card      the message column's full width (416 at the split), radius 21, 1px Gray/800
  *   page rows border b/l/r + rounded-b-12 — that is what gives the stacked-card look;
  *             the first page's name is 16 semibold white, the waiting ones 13 medium 48%
  *   list box  Gray/950 fill, 1px Gray/800, radius 18, pb-16 pr-16
@@ -105,7 +112,7 @@ export function BuildProgress() {
        * Radius 21 is DERIVED, not read: the board does not expose this frame's corner,
        * and 21 is what nests concentrically over the page block's 20 across a 1px stroke.
        */
-      className="w-full max-w-[416px] overflow-hidden rounded-[21px] border border-[var(--gray-800)]"
+      className="w-full overflow-hidden rounded-[21px] border border-[var(--gray-800)]"
     >
       {/* ----------------------------------------- the page being built */}
       {/*
