@@ -125,15 +125,23 @@ const FILLER = new Set([
   'мне', 'моего', 'моей', 'бизнеса', 'пожалуйста', 'веб', 'страницу', 'сторінку',
 ])
 
+/**
+ * The designer's rule (07.09.2026): anything shorter than ten characters is thin, full stop.
+ * The word test below catches the longer-but-empty prompts ("Build me a website.").
+ * The composer's own example, "Bella's Bakery", carries two words of substance and builds.
+ */
+export const WEAK_PROMPT_MAX_CHARS = 10
+
 export function isWeakPrompt(raw: string): boolean {
-  const tokens = raw
+  const text = raw.trim()
+  if (text.length < WEAK_PROMPT_MAX_CHARS) return true
+  const tokens = text
     .toLowerCase()
     .replace(/[’']/g, '')
     .split(/[^\p{L}\p{N}-]+/u)
     .filter(Boolean)
-  if (tokens.length <= 2) return true
   const substance = tokens.filter((w) => w.length > 1 && !FILLER.has(w))
-  return substance.length < 3
+  return substance.length < 2
 }
 
 /* ------------------------------------------------------------------ copy */
