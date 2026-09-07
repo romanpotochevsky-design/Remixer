@@ -180,7 +180,14 @@ ${js}
 `
 
 writeFileSync(OUT, page)
-const CEILING = 690 * 1024
+/*
+ * The largest page this host has actually accepted, in bytes — a FLOOR on the limit, never
+ * the limit itself, which is why the line below reports headroom rather than a verdict.
+ * 707,289 went through on 07.09.2026, one publish after this same script had called
+ * 704,239 "2.3 KB under" and 754,259 doomed. Raise it whenever a bigger file publishes;
+ * do not lower it to be safe, because the number's only job is to be evidence.
+ */
+const CEILING = 707_289
 const bytes = Buffer.byteLength(page)
 console.log(`fonts embedded: ${embedded} — ${GLYPHS.length} glyphs kept`)
 console.log(`  ${subsetReport.join(' · ')}`)
@@ -194,7 +201,7 @@ console.log(
 console.log(`wrote ${OUT} — ${bytes.toLocaleString('en-US')} bytes (${(bytes / 1024).toFixed(1)} KB)`)
 const headroom = CEILING - bytes
 console.log(
-  headroom > 0
-    ? `publish headroom: ${(headroom / 1024).toFixed(1)} KB under the 690 KB the host last accepted`
-    : `OVER by ${(-headroom / 1024).toFixed(1)} KB — the publish will be refused, trim before publishing`,
+  headroom >= 0
+    ? `publish headroom: ${(headroom / 1024).toFixed(1)} KB under the ${(CEILING / 1024).toFixed(0)} KB the host has actually accepted`
+    : `${(-headroom / 1024).toFixed(1)} KB over the largest page the host has accepted (${(CEILING / 1024).toFixed(0)} KB) — try it, then raise CEILING here if it goes through`,
 )
