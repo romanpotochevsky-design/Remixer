@@ -211,48 +211,60 @@ export const FIELD_GROW = { type: 'spring', duration: 0.5, bounce: 0.12 } as con
 export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
 
 /*
- * A sheet rising in the composer's dock — the questions, the plan (modules/chat).
+ * The question dock's sheet (BriefPanel, PlanCard). The dock itself grows as a PISTON
+ * (index.css "THE BUBBLE", driven by modules/chat/dock.ts): the shell's edge, rim and
+ * corners travel up out of the collar around the field on one damped spring, and the
+ * sheet's content rides that same curve, fading in once the edge has cleared the field —
+ * all of it CSS, on the dock's classes, so that a piston and a passenger on different
+ * clocks cannot tear. The exit is CSS too (`dock-sink` / `dock-out`, 220ms): the content
+ * fades while the piston sinks. Leaving is quicker than arriving, and without a bounce —
+ * the house rule for overlays.
  *
- * The dock itself grows by a CLIP (index.css, `.dock-rise`): the layout snaps once and a
- * rounded edge travels up from the collar around the field to the top of the dock. What
- * the sheet's own content does under that edge is this: it condenses — arriving a beat
- * after the shell starts, from a little lower and a little smaller, on the same spring the
- * Home composer grows with. Content lags container by ~60ms, the house rule for overlays.
- *
- * The exit is the fall: flat, quicker, no bounce, timed to `.dock-fall` (300ms) so the
- * content is gone by the time the clip has folded the sheet back into the collar.
- *
- * ⚠️ `sheetRiseFade` is the reduced-motion variant and drops the OFFSETS, not just the
- * spring: MotionConfig would otherwise jump y and scale to their targets and fade from
- * there (the shelf-of-the-dock lesson, 26.08.2026).
+ * ⚠️ What motion does here is only HOLD the element in the tree for the fall: an "exit"
+ * that goes to an opacity indistinguishable from 1. It used to fade the content itself,
+ * and that fade — a compositor tween — hands the element back at its inline opacity of 1
+ * for the one frame between finishing and React removing the node: the questions flashed
+ * at full brightness over an already-gone shell (measured, one frame at t≈290ms). A CSS
+ * fill-forwards fade on the dock's own classes has no such frame, so the fade lives there.
  */
-export const DOCK_FALL_MS = 300
+export const DOCK_FALL_MS = 260
+export const sheetExit = {
+  exit: { opacity: 0.999, transition: { duration: DOCK_FALL_MS / 1000, ease: 'linear' } },
+} as const
+
 /*
- * Bouncier than FIELD_GROW on purpose (designer: "не хватает отдачи, жидкости"): the
- * content overshoots its place and jellies back while the shell's own edge pops and
- * recoils (index.css `dock-rise` / `dock-pop`). Opacity rides a plain tween so nothing
- * flashes brighter than 1.
+ * Changing question (Next, ‹ ›). The shell's edge morphs to the new height on the dock's
+ * spring; the question and its answers are swapped as ONE group, `popLayout`, so the
+ * layout snaps to the new height at once and the outgoing group rides the edge while it
+ * fades. Direction is carried in `custom`: forward, the new step comes in from the right
+ * and the old leaves to the left, the way a wizard pages — back, the reverse. The footer
+ * does not move: its buttons are anchored to the field, under the pointer that pressed
+ * them.
+ *
+ * ⚠️ `stepSwapFade` is the reduced-motion variant and drops the x OFFSETS, not just the
+ * spring: MotionConfig would otherwise jump x to its target and fade from there (the
+ * shelf-of-the-dock lesson, 26.08.2026).
  */
-export const SHEET_SPRING = { type: 'spring', duration: 0.66, bounce: 0.34 } as const
-export const sheetRise = {
-  initial: { opacity: 0, y: 16, scale: 0.98 },
+export const stepSwap = {
+  initial: (dir: number) => ({ opacity: 0, x: 36 * dir }),
   animate: {
-    opacity: 1, y: 0, scale: 1,
-    transition: { ...SHEET_SPRING, delay: 0.06, opacity: { duration: 0.3, delay: 0.06 } },
+    opacity: 1,
+    x: 0,
+    transition: {
+      x: { type: 'spring', duration: 0.56, bounce: 0.2 },
+      opacity: { duration: 0.24, delay: 0.08 },
+    },
   },
-  exit: { opacity: 0, y: 6, scale: 0.995, transition: { duration: DOCK_FALL_MS / 1000, ease: [0.4, 0, 0.6, 1] } },
+  exit: (dir: number) => ({
+    opacity: 0,
+    x: -28 * dir,
+    transition: { duration: 0.17, ease: [0.4, 0, 1, 1] },
+  }),
 } as const
-export const sheetRiseFade = {
+export const stepSwapFade = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.26 } },
-  exit: { opacity: 0, transition: { duration: 0.18 } },
-} as const
-/* The sheet's footer lands last — the buttons are the decision, and they should not be
-   there before the question is. */
-export const sheetFooter = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.28, delay: 0.36 } },
-  exit: { opacity: 0, transition: { duration: 0.12 } },
+  animate: { opacity: 1, transition: { duration: 0.24, delay: 0.08 } },
+  exit: { opacity: 0, transition: { duration: 0.14 } },
 } as const
 
 /*

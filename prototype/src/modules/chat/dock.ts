@@ -1,75 +1,173 @@
 /**
- * The dock's bubble — how a sheet (the questions, the plan) grows out of the composer.
+ * The dock's bubble — how a sheet (the questions, the plan) grows out of the composer,
+ * changes height between questions, and folds back into it.
  *
  * Designer, 07.09.2026: "пузырь, который обволакивает наше поле ввода… в стиле Apple
- * Liquid Glass". The gesture: the shell forms as a skin around the field, then rises to
- * its full height, and the content condenses inside it as it rises.
+ * Liquid Glass"; then "не хватает отдачи, жидкости… Bounce effect"; then, from a screen
+ * recording of the second cut, "анимации практически не видно, бордер глючит".
  *
- * HOW IT IS BUILT, and why not the obvious way. The obvious way animates the dock's
- * height — a relayout of the dock AND the thread's scroller on every frame, the exact
- * per-frame layout this project's contract forbids (ui/motion.ts, FIELD_GROW, made the
- * same call for the Home composer). Instead the layout SNAPS once: the sheet mounts at
- * full height, the thread above is clipped a little more at its bottom and does not move.
- * Everything the eye then sees is a `clip-path` on the dock (index.css `.dock-rise` /
- * `.dock-fall`) whose rounded top edge travels from the collar around the field up to the
- * top of the dock — and the sheet's own content condensing under that edge (motion.ts,
- * `sheetRise`). Clip is composited and, measured on this build, free.
+ * HOW IT IS BUILT (the paint is in index.css, "THE BUBBLE"). The layout SNAPS once: the
+ * sheet mounts at full height, the thread above is clipped a little more at its bottom and
+ * does not move, and the FIELD does not move either. Everything the eye then sees is a
+ * PISTON — the shell's own body, rim and rounded top — travelling up out of the collar
+ * around the field by `transform`, with the sheet's content riding the same curve and
+ * fading in behind the edge. Transform and opacity only, so it is composited and keeps
+ * its frames when the main thread is busy, which the recording showed it is.
  *
- * The clip needs one number: how far to rise. That is the sheet's own height, measured
- * here in a layout effect BEFORE the first paint and handed to CSS as `--rise`, so there
- * is no frame in which the full sheet shows unclipped.
+ * Why not animate the height: that is a relayout of the dock AND the thread's scroller on
+ * every frame, the exact per-frame layout this project's contract forbids (ui/motion.ts,
+ * FIELD_GROW, made the same call for the Home composer).
  *
- * ⚠️ The fall (exit) is deliberately SHORTER than the sheet's exit variant (260 against
- * 300ms). The dock snaps to collar height the instant the sheet unmounts; if the fall's
- * clip were still applied at that moment — `inset(var(--rise) …)` on a box now only as
- * tall as the collar — the composer itself would be clipped away for a frame or two.
- * Finishing early, and clearing the class on both `animationend` and the sheet's own
- * unmount, closes that window from both sides.
+ * Why not a clip (the previous cut): a clip reveals a pre-drawn plate through a moving
+ * window, so the visible edge is a raw cut — the rim is not on it — and the corners are the
+ * window's, not the shell's. Measured on the designer's recording the rim appeared only at
+ * the very end, which is the "бордер глючит". A piston carries its rim with it.
+ *
+ * THE NUMBERS the CSS needs, set here on the dock as custom properties:
+ *  · `--rise` — the sheet's height: where the collar (`.dock-base`) begins, how tall the
+ *    piston is, and where the fall ends. Kept fresh by a ResizeObserver, because the
+ *    column can change width under an open sheet and rewrap it.
+ *  · `--from` — where the motion starts, in px of translateY: the whole height for the
+ *    rise, the signed height DIFFERENCE for a morph between questions, and — when a new
+ *    motion interrupts one in flight — the piston's current offset added in, so it
+ *    continues from where it is rather than jumping to where it would have been.
+ *
+ * ⚠️ THE FIRST FRAME IS PAINTED BEFORE THE MOTION STARTS. On mount the dock is `armed`:
+ * piston and content parked at their start values, statically. Then two frames later the
+ * animation class goes on. The recording's first painted frame already had the previous
+ * cut's clip half open — the frame that creates the layers and rasters the tiles is slow,
+ * and a time-based animation started on it loses its first ~150ms. Painting the parked
+ * state first makes the motion's first frame cheap, so it is actually seen.
  */
 import { useLayoutEffect, useRef } from 'react'
+import { useIsPresent } from 'motion/react'
 
+const ARMED = 'dock-armed'
 const RISE = 'dock-rise'
+const MORPH = 'dock-morph'
 const FALL = 'dock-fall'
+const ALL = [ARMED, RISE, MORPH, FALL]
+
+/**
+ * Animation names whose end means the dock's motion is over (index.css). The FALL is not
+ * here on purpose: its classes hold the sheet's content at zero until the sheet is gone
+ * (the unmount cleanup clears them) — clearing them a frame earlier is exactly the frame
+ * in which the content, handed back by motion at inline opacity 1, would flash.
+ */
+const ENDS = new Set(['dock-ride'])
 
 /** The dock a sheet lives in — the composer's column, `.dock`. */
 const dockOf = (sheet: HTMLElement) => sheet.closest<HTMLElement>('.dock')
+const px = (n: number) => `${Math.round(n)}px`
 
-function play(dock: HTMLElement, cls: string, rise: number) {
-  dock.style.setProperty('--rise', `${Math.max(0, Math.round(rise))}px`)
-  dock.classList.remove(RISE, FALL)
-  /* Reading layout between remove and add is what restarts a CSS animation that is
-     already on the element; without it, a second sheet in a row would not rise. */
-  void dock.offsetWidth
-  dock.classList.add(cls)
-}
-
-/** Called by the dock on `animationend`: the clip has done its job, drop it. */
-export function clearDockMotion(dock: HTMLElement) {
-  dock.classList.remove(RISE, FALL)
+/** The piston's current translateY — 0 at rest, its live offset mid-flight. */
+function pistonY(dock: HTMLElement): number {
+  const piston = dock.querySelector<HTMLElement>('.dock-piston')
+  const t = piston && getComputedStyle(piston).transform
+  const m = t && t !== 'none' ? /matrix\(([^)]+)\)/.exec(t) : null
+  return m ? Number(m[1].split(',')[5]) || 0 : 0
 }
 
 /**
- * A sheet in the dock. Attach the ref to the sheet's root motion element and pass the
- * handler to its `onAnimationStart`: the sheet measures itself on mount and rises, and
- * starts the fall the moment its `exit` variant begins.
+ * Swap the motion class. Only when the same class is already on the dock (a morph
+ * interrupting a morph) is a reflow forced in between — that is what restarts a running
+ * animation of the same name. Otherwise the swap is one style change, so it lands in the
+ * same recalc as whatever the commit changed on the dock (`.brief-dock` coming or going).
  */
-export function useDockSheet<T extends HTMLElement>() {
-  const ref = useRef<T>(null)
+function restart(dock: HTMLElement, cls: string) {
+  if (dock.classList.contains(cls)) {
+    dock.classList.remove(cls)
+    void dock.offsetWidth
+  }
+  dock.classList.remove(...ALL)
+  dock.classList.add(cls)
+}
 
+/** Called by the dock on `animationend` once the piston has landed: drop the motion. */
+export function endDockMotion(e: { animationName: string; currentTarget: HTMLElement }) {
+  if (ENDS.has(e.animationName)) e.currentTarget.classList.remove(...ALL)
+}
+
+/**
+ * A sheet in the dock. Attach the ref to the sheet's root motion element. The sheet
+ * measures itself on mount and rises; when `step` changes and its height with it, the
+ * shell's edge morphs to the new height; and the fall starts in the very commit that
+ * removes the sheet from the tree (`useIsPresent`), which is also the commit that drops
+ * `.brief-dock` — so the shell's own fade and the piston's sink are on one clock.
+ * (Motion's `onAnimationStart` for the exit fires a frame later; a shell fade that had
+ * already begun could not be re-timed from there.)
+ */
+export function useDockSheet<T extends HTMLElement>(step?: unknown) {
+  const ref = useRef<T>(null)
+  const height = useRef<number | null>(null)
+  const frame = useRef(0)
+  const present = useIsPresent()
+
+  // Mount: arm, let the browser paint that frame, then rise.
   useLayoutEffect(() => {
     const sheet = ref.current
     const dock = sheet && dockOf(sheet)
     if (!sheet || !dock) return
-    play(dock, RISE, sheet.offsetHeight)
-    return () => clearDockMotion(dock)
+    const h = sheet.offsetHeight
+    height.current = h
+    dock.style.setProperty('--rise', px(h))
+    dock.style.setProperty('--from', px(h))
+    dock.classList.remove(...ALL)
+    dock.classList.add(ARMED)
+    frame.current = requestAnimationFrame(() => {
+      frame.current = requestAnimationFrame(() => restart(dock, RISE))
+    })
+
+    // The column can change width under an open sheet (the preview opening) and rewrap
+    // it; the collar has to follow the composer, so `--rise` follows the sheet. A step
+    // change lands here too, but the morph effect below has measured it first.
+    const ro = new ResizeObserver(() => {
+      const now = sheet.offsetHeight
+      if (now === height.current) return
+      height.current = now
+      dock.style.setProperty('--rise', px(now))
+    })
+    ro.observe(sheet)
+
+    return () => {
+      cancelAnimationFrame(frame.current)
+      ro.disconnect()
+      dock.classList.remove(...ALL)
+      dock.style.setProperty('--rise', '0px')
+      dock.style.setProperty('--from', '0px')
+    }
   }, [])
 
-  const onAnimationStart = (definition: unknown) => {
+  // A step change: the sheet is already laid out at its new height (the outgoing content
+  // has been popped out of the flow), so the edge visibly still stands at the OLD height
+  // and glides to the new one on the same spring as the rise.
+  useLayoutEffect(() => {
     const sheet = ref.current
     const dock = sheet && dockOf(sheet)
-    if (definition !== 'exit' || !sheet || !dock) return
-    play(dock, FALL, sheet.offsetHeight)
-  }
+    if (!sheet || !dock || height.current == null) return
+    const h = sheet.offsetHeight
+    const prev = height.current
+    if (h === prev) return
+    height.current = h
+    const inFlight = pistonY(dock)
+    dock.style.setProperty('--rise', px(h))
+    dock.style.setProperty('--from', px(h - prev + inFlight))
+    restart(dock, MORPH)
+  }, [step])
 
-  return { ref, onAnimationStart }
+  // The fall: the sheet is leaving (its exit is playing), so the piston sinks back into
+  // the collar from wherever it is, and the shell fades out behind it.
+  useLayoutEffect(() => {
+    if (present) return
+    const sheet = ref.current
+    const dock = sheet && dockOf(sheet)
+    if (!sheet || !dock) return
+    cancelAnimationFrame(frame.current)
+    const inFlight = pistonY(dock)
+    dock.style.setProperty('--rise', px(sheet.offsetHeight))
+    dock.style.setProperty('--from', px(inFlight))
+    restart(dock, FALL)
+  }, [present])
+
+  return { ref }
 }

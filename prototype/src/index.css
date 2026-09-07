@@ -3105,10 +3105,13 @@ html[data-drag] .shell-aside { transition: none; }
 /* The composer's column — the one `.chat-col` that can become the dock. Scoped to its own
    class because the thread's column is a `.chat-col` too, and it must not grow a shell. */
 .dock {
-  /* The shell's paint lives on ::before (see the dock block), so it can fade without
+  /* The shell's paint lives on `.dock-shell` (see the dock block), so it can fade without
      fading what it wraps; `isolation` keeps that layer above the parent's own ground. */
   position: relative;
   isolation: isolate;
+  /* set by modules/chat/dock.ts: the sheet's height, and where a motion starts from */
+  --rise: 0px;
+  --from: 0px;
 }
 
 /* ------------------------------------------------------------------------
@@ -3145,54 +3148,101 @@ html[data-drag] .shell-aside { transition: none; }
  * bottom — because the field's own 24 needs 4px of shell around it to read as inside.
  *
  * NO top padding: the question's own pt-20 is the shell's top inset, exactly as drawn.
- * ---------------------------------------------------------------------- */
-/*
+ *
  * ⚠️ THE FIELD DOES NOT MOVE. Not by a pixel, not in size (designer, 07.09.2026: "само
  * поле не должно смещаться или менять размер, при этом неподвижно"). So the shell is
  * drawn OUTSIDE the dock's box — 7px beyond it on the sides and the bottom — instead of
  * the dock padding the field inward by 7. The field keeps the exact box it had standing
- * alone; the collar appears AROUND it. The first cut transitioned that padding to make the
- * field look "wrapped", and that is precisely the movement he ruled out.
- */
-.dock::before {
-  content: '';
+ * alone; the collar appears AROUND it.
+ *
+ * ⚠️ THE BOARD'S 7% WHITE + blur(16) IS BAKED INTO A FLAT COLOUR ON PURPOSE (designer's
+ * "визуальный глюк", 07.09.2026). There is nothing behind this shell to blur: its parent
+ * is the composer dock at `--black-900` over `--gray-950`, a FLAT #09090b, and the thread
+ * is a flex sibling above the dock, never behind it. Measured Δ ≤ 2/255 against the real
+ * blur. What the blur DID buy was an artifact — a resizing backdrop-filtered box shows the
+ * previous box's blur, and this shell resizes with every question. If content is ever put
+ * BEHIND this shell, the blur has to come back and the resize needs solving another way.
+ * ---------------------------------------------------------------------- */
+/*
+ * THE BUBBLE — how the shell appears, moves between questions and leaves (designer,
+ * 07.09.2026: "пузырь, который обволакивает наше поле ввода… в стиле Apple Liquid Glass",
+ * then on the first two cuts: "не хватает отдачи, жидкости… Bounce effect", and on the
+ * third, from a recording: "анимации практически не видно, бордер глючит").
+ *
+ * WHAT THE RECORDING SHOWED, measured frame by frame (scratchpad/video1): the previous cut
+ * revealed a pre-drawn plate through a travelling `clip-path`. On the designer's machine
+ * the first painted frame already had the clip half open (214 of 432px), so half the
+ * motion was never seen; the visible edge was a RAW CUT through the plate, so the shell's
+ * 15% rim was absent the whole way up and popped in at the end ("бордер глючит"); and the
+ * overshoot was 9px on a 430px rise — invisible.
+ *
+ * SO THE EDGE IS NOW A REAL EDGE. The shell is a PISTON in a CYLINDER:
+ *  · `.dock-shell` — a static, rectangular, overflow-hidden box around the dock (7px past
+ *    it on the sides and bottom, 320px above it for the overshoot). Decorative, z below.
+ *  · `.dock-piston` — the shell's body: fill, side rims and the ROUNDED TOP with its rim,
+ *    taller than the dock. It moves by `transform: translateY` only. At rest its top is
+ *    the dock's top; it starts the rise with its top at the composer's top, i.e. hidden
+ *    behind the base, and emerges — rim, corners and all — as it travels up.
+ *  · `.dock-base` — the collar around the field: fill, side and bottom rims, the 28px
+ *    bottom corners. Static, opaque, painted ABOVE the piston, so whatever part of the
+ *    piston is below the composer's top is simply covered. Its 0-blur shadow, offset
+ *    down, paints the ground colour into its own corner triangles and below it, so the
+ *    piston never shows outside the collar's curve either.
+ * The content (`.dock-sheet`) rides the same curve as the piston, fading in once the
+ * edge has cleared the field, and the footer fades in place. Every moving thing is a
+ * transform or an opacity: composited, immune to a busy main thread, no per-frame paint.
+ *
+ * THE CURVE is one damped spring (ζ .66, ω 12.5, from rest), sampled into `linear()`:
+ * 88% of the way at 200ms, 6.3% PAST the edge at ~330ms, back through, settled at 660ms.
+ * Used by the piston and the content alike, so they cannot tear; and by the morph between
+ * questions, where `--from` is the height difference (signed) instead of the full rise.
+ * On the rise the piston waits 90ms so the collar (the shell's fade, 160ms) has formed
+ * around the field before anything grows out of it — the bubble condenses, then swells.
+ *
+ * ⚠️ `dock-armed` is the frame BEFORE the animation: piston and content parked at their
+ * start values, statically. dock.ts adds it on mount, lets the browser paint that frame
+ * (layers created, tiles rastered), and only then, two frames later, adds the animation.
+ * This is what makes the first frame of the motion actually the first frame — the
+ * recording's lost half was a first frame that arrived late.
+ *
+ * ⚠️ Fill order matters: `.dock-base` after `.dock-piston` in the DOM, both absolute.
+ * ---------------------------------------------------------------------- */
+.dock-shell {
   position: absolute;
-  inset: 0 -7px -7px;
+  left: -7px;
+  right: -7px;
+  bottom: -7px;
+  top: -320px;
   z-index: -1;
-  /* the bounce scales the shell from its bottom edge — the collar stays on the field */
-  transform-origin: 50% 100%;
-  border-radius: 24px 24px 28px 28px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  /*
-   * ⚠️ THE BOARD'S 7% WHITE + blur(16) IS BAKED INTO A FLAT COLOUR ON PURPOSE, and the
-   * designer's "визуальный глюк" is why (07.09.2026).
-   *
-   * There is nothing behind this shell to blur. Measured: its parent is the composer dock
-   * at `--black-900` (rgba(9,9,11,.8)) over the shell's own `--gray-950` (#09090b), which
-   * composites to a FLAT #09090b — and the thread is a flex sibling above the dock, never
-   * behind it. So `backdrop-filter` bought one composited layer and zero pixels. Diffed on
-   * identical content: bare glass 24,24,27 blurred against 26,26,28 flat, the answers card
-   * 15,15,17 against 16,16,18, the composer band identical — Δ ≤ 2/255 everywhere flat.
-   *
-   * What the layer DID buy was an artifact: a resizing backdrop-filtered box leaves
-   * Chromium showing the previous box's blur, and this shell resizes with every question
-   * (536 → 407 → 536). Now it also resizes on ENTRY, every time — so the blur stays out.
-   * If content is ever put BEHIND this shell, the blur has to come back and the resize
-   * needs solving another way (a fixed-height shell, or a promoted layer).
-   */
-  background: #1a1a1c;
+  overflow: hidden;
   opacity: 0;
-  transition: opacity 0.34s cubic-bezier(0.2, 0.9, 0.25, 1);
+  transition: opacity 0.16s ease-out;
   pointer-events: none;
 }
-/*
- * The dock: the question panel (or the plan) and the composer as ONE glass object —
- * Figma 29464:34334. Rim 15%, fill 7% white baked flat, radius 24 on top and 28 at the
- * bottom (the field's own 24 needs shell around it to read as inside). The rim is drawn
- * inside the 7px overhang, so the field sits 6px off it — the same 1+6 the board's
- * `border + padding` gives, with the field where it always was.
- */
-.brief-dock::before { opacity: 1; }
+.brief-dock .dock-shell { opacity: 1; }
+.dock-piston,
+.dock-base {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #1a1a1c;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.dock-piston {
+  top: 320px;
+  height: calc(var(--rise) + 48px);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+}
+.dock-base {
+  top: calc(320px + var(--rise));
+  bottom: 0;
+  border-top: 0;
+  border-radius: 0 0 28px 28px;
+  /* the ground colour, painted into this box's corner triangles and below it, covers
+     the piston wherever it passes outside the collar's curve */
+  box-shadow: 0 60px 0 var(--gray-950);
+}
 /* Inside the shell the field is 8% white ON the glass, not its own dark plate: the board
    draws the composer LIGHTER than the shell body (Neutral Alpha/100 over Neutral Alpha/70),
    and `.composer-field`'s 80%-black base would invert that and read as a hole. The colour
@@ -3205,88 +3255,81 @@ html[data-drag] .shell-aside { transition: none; }
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* ------------------------------------------------------------------------
- * THE BUBBLE — how the dock appears (designer, 07.09.2026: "пузырь, который обволакивает
- * наше поле ввода… в стиле Apple Liquid Glass").
- *
- * The layout SNAPS once — the sheet mounts at full height, the thread above is clipped a
- * little more at its bottom and does not move, and the FIELD does not move either — and
- * everything the eye sees is a clip and a few transforms. The clip's insets are -7px on
- * three sides so it covers the shell's overhang; only the top edge travels. `--rise` is the sheet's measured height (ChatPanel sets it in a layout
- * effect, before the first paint), so the clip's top edge starts exactly at the collar
- * around the field and travels up to the top of the dock. The rounded corners ride WITH
- * the edge, which is what makes it a bubble growing rather than a curtain lifting. The
- * field is inside the unclipped zone throughout.
- *
- * Why not animate the height: that is a relayout of the dock AND the thread's scroller on
- * every frame, the exact per-frame layout this project's contract forbids (see FIELD_GROW
- * in ui/motion.ts for the same call on the Home composer). Clip is composited and, measured
- * on this build, free.
- *
- * ⚠️ The fall is the same clip in reverse over the sheet's exit — the sheet folds back INTO
- * the collar. It runs SHORTER than the sheet's exit variant (260 against 300ms) on purpose:
- * the dock snaps to collar height the instant the sheet unmounts, and a clip still set to
- * `inset(var(--rise) …)` on that shorter box would cut the composer away for a frame. See
- * modules/chat/dock.ts.
- * ---------------------------------------------------------------------- */
-/*
- * THE BOUNCE (designer, 07.09.2026, on the first cut: "не хватает в ней отдачи, жидкости…
- * Bounce effect"). A plain ease-out stops dead at the top edge; liquid does not — it
- * overshoots, recoils and settles. So the rise is three legs, not one: the edge travels
- * fast to 9px PAST its resting place (58%), falls back 3px short of it (78%), and settles
- * (100%). The clip alone cannot show a pop above the dock — there is nothing there to
- * reveal — so the shell's own paint (::before, and the glint on ::after) is scaled from
- * its bottom edge by the same three legs, on the same clock: at the peak the shell really
- * is 9px taller, and the clip is open to let it show (a negative top inset). Transform +
- * clip only; the field underneath never moves.
- *
- * The percentages and per-leg easings are shared by all three keyframe sets on purpose:
- * a shell edge and a clip edge that arrive on different curves tear.
- */
-.dock-rise { animation: dock-rise 0.68s both; }
-.dock-fall { animation: dock-fall 0.26s cubic-bezier(0.4, 0, 0.6, 1) both; }
-.dock-rise::before { animation: dock-pop 0.68s both; }
-@keyframes dock-rise {
-  0%   { clip-path: inset(var(--rise, 0px) -7px -7px -7px round 24px 24px 28px 28px); animation-timing-function: cubic-bezier(0.2, 0.75, 0.3, 1); }
-  58%  { clip-path: inset(-9px -7px -7px -7px round 24px 24px 28px 28px); animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
-  78%  { clip-path: inset(3px -7px -7px -7px round 24px 24px 28px 28px); animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); }
-  100% { clip-path: inset(0 -7px -7px -7px round 24px 24px 28px 28px); }
+/* The spring, sampled at 40 steps over 660ms — see the block comment above. `linear()`
+   is Chrome 113+ / Safari 17.2+; anywhere older the same travel runs on a plain ease-out
+   (no overshoot) rather than not at all — an invalid var() would void the animation. */
+:root { --dock-spring: cubic-bezier(0.22, 1, 0.36, 1); }
+@supports (animation-timing-function: linear(0, 1)) {
+  :root { --dock-spring: linear(0.0000, 0.0194, 0.0706, 0.1440, 0.2317, 0.3270, 0.4246, 0.5203, 0.6110, 0.6945, 0.7694, 0.8350, 0.8911, 0.9379, 0.9758, 1.0056, 1.0281, 1.0442, 1.0548, 1.0608, 1.0632, 1.0626, 1.0599, 1.0556, 1.0502, 1.0443, 1.0381, 1.0320, 1.0262, 1.0207, 1.0158, 1.0115, 1.0078, 1.0047, 1.0021, 1.0001, 0.9986, 0.9974, 0.9967, 0.9962, 1.0000); }
 }
-/* The shell's own pop, from its bottom edge. 1.017 of a 535px shell is 9px — the same 9 the
-   clip opens to. On a shorter sheet the pop is proportionally smaller, which is right. */
-@keyframes dock-pop {
-  0%   { transform: scaleY(1); animation-timing-function: cubic-bezier(0.2, 0.75, 0.3, 1); }
-  58%  { transform: scaleY(1.017); animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
-  78%  { transform: scaleY(0.9945); animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); }
-  100% { transform: scaleY(1); }
+
+/* Parked: the start values, statically, for the one frame before the motion. */
+.dock-armed .dock-piston,
+.dock-armed .dock-sheet { transform: translateY(var(--from)); }
+.dock-armed .dock-sheet,
+.dock-armed .dock-foot { opacity: 0; }
+
+/* The rise. The piston and the content travel together on the spring; the content
+   fades in from 30% (the edge has passed the field by then — earlier, its bottom would
+   ghost over the composer) and the footer, which does not travel, fades in place. */
+.dock-rise .dock-piston { animation: dock-ride 0.66s var(--dock-spring) 0.09s both; }
+.dock-rise .dock-sheet  { animation: dock-ride 0.66s var(--dock-spring) 0.09s both, dock-in 0.66s ease-out 0.09s both; }
+.dock-rise .dock-foot   { animation: dock-in-late 0.66s ease-out 0.09s both; }
+
+/* Between questions: the same spring, from the signed height difference, no delay — the
+   collar is already there. The content swap itself is the sheet's own (BriefPanel,
+   popLayout) and rides along. */
+.dock-morph .dock-piston,
+.dock-morph .dock-sheet { animation: dock-ride 0.66s var(--dock-spring) both; }
+
+/* The fall: back into the collar, no bounce — leaving is quicker than arriving (motion.ts
+   rule). 220ms against the sheet's own 260ms exit ON PURPOSE: the sheet unmounts when its
+   exit ends, so the piston has to be home and the shell gone BEFORE that, or the last
+   frame cuts them off mid-way. The content's fade is HERE (`dock-out`), not in the
+   sheet's motion exit, and these classes stay on until the sheet is gone: motion's fade
+   runs on the compositor and, once finished, hands the element back at its inline
+   opacity of 1 for the one frame before React removes it — a full-brightness flash of
+   the questions with no shell behind them (measured, t=291ms). A CSS fill-forwards zero
+   on the same classes that hide the shell has no such frame. The shell fades LAST, and as
+   an animation rather than a transition: `.brief-dock` leaves the dock in the same commit,
+   and the first style read in that commit would already have started the shell's plain
+   transition with the wrong timing — an animation overrides it from the next frame. */
+.dock-fall .dock-piston { animation: dock-sink 0.22s cubic-bezier(0.4, 0, 0.6, 1) both; }
+.dock-fall .dock-sheet  { animation: dock-sink 0.22s cubic-bezier(0.4, 0, 0.6, 1) both, dock-out 0.22s ease-in both; }
+.dock-fall .dock-foot   { animation: dock-out 0.22s ease-in both; }
+.dock-fall .dock-shell  { animation: dock-shell-out 0.22s ease-in both; }
+
+@keyframes dock-ride {
+  from { transform: translateY(var(--from)); }
+  to   { transform: translateY(0); }
 }
-@keyframes dock-fall {
-  from { clip-path: inset(0 -7px -7px -7px round 24px 24px 28px 28px); }
-  to   { clip-path: inset(var(--rise, 0px) -7px -7px -7px round 24px 24px 28px 28px); }
+@keyframes dock-sink {
+  from { transform: translateY(var(--from)); }
+  to   { transform: translateY(var(--rise)); }
 }
-/* Light catches the glass as it forms: one soft highlight from the top-left, fading out
-   over the rise. Opacity only, and the layer leaves with the class. */
-.dock-rise::after {
-  content: '';
-  position: absolute;
-  inset: 0 -7px -7px;
-  z-index: -1;
-  transform-origin: 50% 100%;
-  border-radius: 24px 24px 28px 28px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.03) 42%, transparent 70%);
-  /* the glint rides the same pop as the shell, or a 9px band of it would go unlit at the peak */
-  animation: dock-glint 0.68s ease-out both, dock-pop 0.68s both;
-  pointer-events: none;
+@keyframes dock-in {
+  0%, 30% { opacity: 0; }
+  62%, 100% { opacity: 1; }
 }
-@keyframes dock-glint {
+@keyframes dock-in-late {
+  0%, 42% { opacity: 0; }
+  74%, 100% { opacity: 1; }
+}
+@keyframes dock-shell-out {
+  0%, 45% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes dock-out {
   from { opacity: 1; }
   to   { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* `transition: none`, not a .01ms stub — the stub leaves a live micro-transition that
-     hands stale values back to synchronous layout reads (the spacer lesson in CLAUDE.md). */
-  .dock::before, .composer-field { transition: none; }
-  .dock-rise, .dock-fall, .dock-rise::before, .dock-rise::after { animation: none; }
+  /* The global reduce rule (the chat block, `animation: none !important`) already stops
+     every animation and transition here. What is left to say is the PARKED frame: with
+     nothing to travel, it must already look like the destination — otherwise the two
+     frames before the (now absent) rise would show the sheet hidden and the piston down. */
+  .dock-armed .dock-piston, .dock-armed .dock-sheet { transform: none; }
+  .dock-armed .dock-sheet, .dock-armed .dock-foot { opacity: 1; }
 }
 
 /* The reopen grip while the preview is collapsed: a hairline at the chat's right

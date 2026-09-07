@@ -31,25 +31,23 @@
  *  - there is no collapse chevron: the board does not draw one (Lovable's had one)
  */
 import { useEffect, useRef } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
 import { IconCaretLeft, IconCaretRight } from '@/ui/icons'
-import { SPRING_SOFT, sheetRise, sheetRiseFade, sheetFooter } from '@/ui/motion'
+import { sheetExit, stepSwap, stepSwapFade } from '@/ui/motion'
 import { BRIEF_QUESTIONS, OTHER, type BriefQuestion, type BriefOption } from './brief'
 import { answerBrief, briefGoTo, briefNext, briefSkipAll, asOther } from './send'
 import { useDockSheet } from './dock'
 
-
-/** A step arriving: rises a touch, the way the domain lists hand over. */
-const stepIn = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
-}
-
-/** The "Write your own…" / "Your answer…" field — Text field I29464:34377;17122:41625. */
+/**
+ * The "Write your own…" / "Your answer…" field — Text field I29464:34377;17122:41625.
+ * 42 tall, not 40: the board's 40 is the state layer INSIDE a 1px rim. The placeholder is
+ * `text/default/secondary`, which in the dark theme is the same `gray-400` the composer's
+ * own placeholder uses two rows down — one grey for "type here" inside one shell.
+ */
 const FIELD =
-  'block h-10 w-full rounded-[8px] border border-[#ffffff1f] bg-[#09090b29] pl-4 pr-2 text-[14px] text-white outline-none transition-colors duration-[var(--dur-fast)] ease-std placeholder:text-[#ffffff7a] focus:border-[var(--action)]'
+  'block h-[42px] w-full rounded-[8px] border border-[#ffffff1f] bg-[#09090b29] pl-4 pr-2 text-[14px] text-white outline-none transition-colors duration-[var(--dur-fast)] ease-std placeholder:text-[var(--gray-400,#a1a1aa)] focus:border-[var(--action)]'
 
 /**
  * The radio (29464:34358 selected / 34366 idle).
@@ -87,10 +85,10 @@ function Row({ q, o, on, last }: { q: BriefQuestion; o: BriefOption; on: boolean
          all, so without this the row would announce itself by its title alone in some
          readings and by nothing in others. */
       aria-label={t(o.name)}
-      /* Row 1 is drawn pt-18/pb-19, row 2 py-18 — a one-pixel difference that reads as
-         the divider's own weight; both are taken as 18/19 with the hairline between. */
-      className={`flex w-full items-start gap-3 pb-[19px] pl-4 pr-6 pt-[18px] text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)] ${
-        last ? '' : 'border-b border-[#ffffff0a]'
+      /* Drawn pt-18/pb-19 with the hairline under it, and py-18 on the last row, which has
+         no hairline: the extra pixel above the divider keeps the rows' rhythm equal. */
+      className={`flex w-full items-start gap-3 pl-4 pr-6 pt-[18px] text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)] ${
+        last ? 'pb-[18px]' : 'border-b border-[#ffffff0a] pb-[19px]'
       }`}
     >
       <span className="flex items-center pt-1.5">
@@ -136,7 +134,7 @@ function Body({ q }: { q: BriefQuestion }) {
   return (
     /* The answers card — 29464:34354: Black/600 over the shell, an 8% white rim, radius 16.
        It is the only surface inside the shell; the question and the footer sit on the glass. */
-    <div className="mt-[18px] overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
+    <div className="overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
       {swatchGrid && (
         <div className="grid grid-cols-2 gap-2 px-4 pb-2 pt-4">
           {options.map((o) => (
@@ -215,7 +213,8 @@ function Body({ q }: { q: BriefQuestion }) {
 
       <div className={options.length && !grid ? 'flex items-start gap-3 px-4 pb-4 pt-2' : 'px-4 pb-4 pt-2'}>
         {options.length > 0 && !grid && (
-          <span className="flex h-10 items-center">
+          /* the radio centres on the field's full height (self-stretch on the board) */
+          <span className="flex h-[42px] items-center">
             <Radio on={!!own} />
           </span>
         )}
@@ -236,7 +235,13 @@ function Body({ q }: { q: BriefQuestion }) {
 /**
  * The sheet of questions. Mounted and unmounted by the dock's AnimatePresence in
  * ChatPanel (mode="wait", shared with the plan card), so the two sheets never overlap in
- * the dock and each one gets its own rise and fall.
+ * the dock and each one gets its own rise and fall (modules/chat/dock.ts).
+ *
+ * Inside it, the question and its answers are ONE group keyed by step, swapped under a
+ * `popLayout` presence: the layout snaps to the new question's height in one commit, the
+ * shell's edge glides there on the dock's spring, and the two groups cross — the old one
+ * leaving toward where it came from, the new one arriving from the side you are paging
+ * to. `dir` is the direction of that page, kept from the previous render.
  */
 export function BriefPanel() {
   const { t } = useT()
@@ -245,72 +250,91 @@ export function BriefPanel() {
   const step = brief.step
   const q = BRIEF_QUESTIONS[step] ?? BRIEF_QUESTIONS[0]
   const last = step === BRIEF_QUESTIONS.length - 1
-  const sheet = useDockSheet<HTMLElement>()
+  const sheet = useDockSheet<HTMLElement>(step)
+
+  // Forward (Next, ›) is +1, back (‹) is −1; the first render has no direction to speak of.
+  const prevStep = useRef(step)
+  const dir = step < prevStep.current ? -1 : 1
+  useEffect(() => { prevStep.current = step }, [step])
 
   return (
-        <motion.section
-          ref={sheet.ref}
-          onAnimationStart={sheet.onAnimationStart}
-          /* The sheet rises inside the dock's own clip (index.css `.dock-rise`, driven by
-             useDockSheet); this is only what the content does under that edge. */
-          variants={reduce ? sheetRiseFade : sheetRise}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          aria-label={t({ en: 'Questions before building', uk: 'Запитання перед збіркою' })}
-          className="relative z-20 origin-bottom px-1.5"
-        >
-          {/* the question, 29464:34352 — 16px semibold on the glass itself, pt 20 / pb 18 */}
-          <p className="px-4 pb-[18px] pt-5 text-[16px] font-semibold leading-[1.4] text-white">
-            {t(q.question)}
-          </p>
-
-          <motion.div key={q.key} variants={stepIn} initial="initial" animate="animate" className="-mt-[18px]">
+    <motion.section
+      ref={sheet.ref}
+      /* The rise is the dock's (index.css `.dock-rise`, driven by useDockSheet): the
+         piston carries the edge, `.dock-sheet` rides it and fades in behind it, and
+         `.dock-foot` fades in place. Motion only owns the exit's fade. */
+      initial={false}
+      animate={{ opacity: 1 }}
+      variants={sheetExit}
+      exit="exit"
+      aria-label={t({ en: 'Questions before building', uk: 'Запитання перед збіркою' })}
+      /* No horizontal padding of its own: on the board the panel and the composer are both
+         full-width children of the shell, so the answers card and the field share edges. */
+      className="relative z-20"
+    >
+      <div className="dock-sheet relative">
+        <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+          <motion.div
+            key={q.key}
+            custom={dir}
+            variants={reduce ? stepSwapFade : stepSwap}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {/* the question, 29464:34352 — 16px semibold on the glass itself, pt 20 / pb 18 */}
+            <p className="px-4 pb-[18px] pt-5 text-[16px] font-semibold leading-[1.4] text-white">
+              {t(q.question)}
+            </p>
             <Body q={q} />
           </motion.div>
+        </AnimatePresence>
+      </div>
 
-          {/* footer 29464:34378 — paging left, Skip all + Next right, both on the glass.
-              It lands LAST: the buttons are the decision, and they should not be there
-              before the question is. */}
-          <motion.footer variants={sheetFooter} className="flex items-end justify-between pb-4 pl-1.5 pr-2.5 pt-3">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => briefGoTo(step - 1)}
-                disabled={step === 0}
-                aria-label={t({ en: 'Previous question', uk: 'Попереднє запитання' })}
-                /* the board dims the unavailable arrow to 25% rather than recolouring it */
-                className="grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
-              >
-                <IconCaretLeft size={24} />
-              </button>
-              <button
-                type="button"
-                onClick={() => briefGoTo(step + 1)}
-                disabled={last}
-                aria-label={t({ en: 'Next question', uk: 'Наступне запитання' })}
-                className="grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
-              >
-                <IconCaretRight size={24} />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={briefSkipAll}
-                className="h-8 rounded-[8px] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-              >
-                {t({ en: 'Skip all', uk: 'Пропустити все' })}
-              </button>
-              <button
-                type="button"
-                onClick={briefNext}
-                className="h-8 rounded-[8px] bg-[var(--action)] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-              >
-                {last ? t({ en: 'Submit', uk: 'Готово' }) : t({ en: 'Next', uk: 'Далі' })}
-              </button>
-            </div>
-          </motion.footer>
-        </motion.section>
+      {/* footer 29464:34378 — paging left, Skip all + Next right, both on the glass. It
+          does not travel with the edge: its buttons are anchored to the field. On the rise
+          it lands last — the buttons are the decision, and they should not be there
+          before the question is. pb is the board's 16 plus the shell's 2px gap to the
+          composer, which here has no element of its own to carry it. */}
+      <footer className="dock-foot flex items-end justify-between pb-[18px] pl-1.5 pr-2.5 pt-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => briefGoTo(step - 1)}
+            disabled={step === 0}
+            aria-label={t({ en: 'Previous question', uk: 'Попереднє запитання' })}
+            /* the board dims the unavailable arrow to 25% rather than recolouring it */
+            className="grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
+          >
+            <IconCaretLeft size={24} />
+          </button>
+          <button
+            type="button"
+            onClick={() => briefGoTo(step + 1)}
+            disabled={last}
+            aria-label={t({ en: 'Next question', uk: 'Наступне запитання' })}
+            className="grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
+          >
+            <IconCaretRight size={24} />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={briefSkipAll}
+            className="h-8 rounded-[8px] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+          >
+            {t({ en: 'Skip all', uk: 'Пропустити все' })}
+          </button>
+          <button
+            type="button"
+            onClick={briefNext}
+            className="h-8 rounded-[8px] bg-[var(--action)] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+          >
+            {last ? t({ en: 'Submit', uk: 'Готово' }) : t({ en: 'Next', uk: 'Далі' })}
+          </button>
+        </div>
+      </footer>
+    </motion.section>
   )
 }

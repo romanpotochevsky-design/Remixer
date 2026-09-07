@@ -25,7 +25,7 @@ import { bubbleSend, messageIn } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
 import { PlanCard } from './PlanCard'
 import { BuildProgress } from './BuildProgress'
-import { clearDockMotion } from './dock'
+import { endDockMotion } from './dock'
 import { PLAN_WAITING } from './plan'
 import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
 
@@ -507,12 +507,20 @@ export function ChatPanel() {
           */}
         <div
           className={`chat-col dock${asking || planning ? ' brief-dock' : ''}`}
-          /* The dock's rise/fall is a CSS clip started by the sheet (dock.ts); once it has
-             played, the class goes so the composer's own effects are not clipped by it. */
-          onAnimationEnd={(e) => {
-            if (e.animationName === 'dock-rise' || e.animationName === 'dock-fall') clearDockMotion(e.currentTarget)
-          }}
+          /* The dock's rise, morph and fall are CSS on these classes, started by the sheet
+             (dock.ts); once the piston has landed the classes go. */
+          onAnimationEnd={endDockMotion}
         >
+        {/*
+          * The shell's paint — index.css "THE BUBBLE". A static cylinder (`.dock-shell`,
+          * overflow hidden), the piston that carries the shell's top edge and rim up out of
+          * the collar, and the collar itself around the field, painted over the piston.
+          * Decorative and below everything; the sheet and the composer are the content.
+          */}
+        <div className="dock-shell" aria-hidden>
+          <i className="dock-piston" />
+          <i className="dock-base" />
+        </div>
         {/*
           * ONE presence for both sheets, mode="wait": the questions fold fully into the
           * collar before the plan rises out of it. Overlapping them put both in the dock

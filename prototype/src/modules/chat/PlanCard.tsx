@@ -17,10 +17,10 @@
  * four questions' answer; a button that means "build without the thing I just asked you
  * for" would undo the flow. Flagged to the designer rather than shipped as a no-op.
  */
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
-import { sheetRise, sheetRiseFade, sheetFooter } from '@/ui/motion'
+import { sheetExit } from '@/ui/motion'
 import { buildPlan, PLAN_LABEL } from './plan'
 import { approvePlan, reviewPlan } from './send'
 import { useDockSheet } from './dock'
@@ -28,7 +28,6 @@ import { useDockSheet } from './dock'
 
 export function PlanCard() {
   const { t } = useT()
-  const reduce = useReducedMotion()
   const answers = useWorld((s) => s.world.brief.answers)
   const plan = buildPlan(answers)
   const first = plan.sections[0]
@@ -38,17 +37,17 @@ export function PlanCard() {
   return (
     <motion.section
       ref={sheet.ref}
-      onAnimationStart={sheet.onAnimationStart}
-      /* Same sheet as the questions: it rises inside the dock's clip (index.css
-         `.dock-rise`, driven by useDockSheet) and this is only what the content does
-         under that edge. */
-      variants={reduce ? sheetRiseFade : sheetRise}
-      initial="initial"
-      animate="animate"
+      /* Same sheet as the questions: the dock's piston carries the edge up (index.css
+         `.dock-rise`, driven by useDockSheet), `.dock-sheet` rides it and fades in behind
+         it, `.dock-foot` fades in place. Motion only owns the exit's fade. */
+      initial={false}
+      animate={{ opacity: 1 }}
+      variants={sheetExit}
       exit="exit"
       aria-label={t({ en: 'Plan, waiting for your approval', uk: 'План, очікує підтвердження' })}
-      className="relative z-20 origin-bottom px-1.5"
+      className="relative z-20"
     >
+      <div className="dock-sheet">
       <p className="px-4 pb-3 pt-5 text-[16px] font-semibold leading-[1.4] text-white">{t(PLAN_LABEL)}</p>
 
       <div className="overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
@@ -78,10 +77,12 @@ export function PlanCard() {
         </div>
       </div>
 
+      </div>
+
       {/* No price line here. It read as a warning attached to the button rather than as
           information, and the footer is a decision — Review or Approve — not a receipt.
           (Designer, 07.09.2026: "этот текст нужно убрать".) */}
-      <motion.footer variants={sheetFooter} className="flex items-center justify-between pb-4 pl-1.5 pr-2.5 pt-3">
+      <footer className="dock-foot flex items-center justify-between pb-[18px] pl-1.5 pr-2.5 pt-3">
         <button
           type="button"
           onClick={reviewPlan}
@@ -96,7 +97,7 @@ export function PlanCard() {
         >
           {t({ en: 'Approve', uk: 'Підтвердити' })}
         </button>
-      </motion.footer>
+      </footer>
     </motion.section>
   )
 }
