@@ -20,16 +20,24 @@ import {
   type BriefKey, type BriefAnswers,
 } from './brief'
 
-/** How long Remixer "works" before answering. Long enough to read the glow,
- *  short enough that a demo never stalls. The real thing takes far longer. */
-const THINKING_MS = 2600
-/** Thinking before the questions. Lovable took 15–21s on the recording; a demo
- *  cannot afford that, but it must still read as "it considered, then asked". */
-const CLARIFY_MS = 2600
+/*
+ * The demo's clock — slowed on 07.09.2026 at the designer's call ("медленнее, ближе к
+ * правде"), because the first cut read as a magic trick rather than as work. Lovable's
+ * real numbers off the recording: ~15s to the first sentence, ~21s and ~29s to the
+ * questions, and a build still running when the 90s recording ended. Those are
+ * unwatchable in a demo; these are the same SHAPE at about a third of the length —
+ * long enough that the agent is visibly considering, short enough to click through in
+ * front of a CEO. The whole thin-prompt path is now ~13s of waiting plus whatever
+ * answering the four questions takes.
+ */
+/** How long Remixer "works" before answering an ordinary edit. */
+const THINKING_MS = 3400
+/** Thinking before the questions — and the number printed as "Thought for Ns". */
+const CLARIFY_MS = 5200
 /** Summary card → "Got it — …". */
-const ACK_MS = 1400
+const ACK_MS = 2000
 /** "Got it" → the first version. The glow carries this stretch. */
-const BUILD_MS = 4200
+const BUILD_MS = 5600
 
 /** Credits per chat edit. Illustrative — no published per-message price exists;
  *  what matters is that the toolbar balance visibly moves when AI does work.

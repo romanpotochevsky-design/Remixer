@@ -17,8 +17,16 @@
 import { useUI } from '@/state/ui'
 import App from './App'
 import { HomePage } from '@/modules/home/HomePage'
+import { BootCover } from '@/ui/BootCover'
 
 export default function Root() {
   const page = useUI((s) => s.page)
-  return page === 'home' ? <HomePage /> : <App />
+  return (
+    <>
+      {page === 'home' ? <HomePage /> : <App />}
+      {/* the Home → builder corridor. Above the switch, because it has to cover the
+          page that is leaving and the one that is arriving — see BootCover. */}
+      <BootCover />
+    </>
+  )
 }

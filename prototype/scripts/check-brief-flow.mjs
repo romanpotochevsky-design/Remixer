@@ -19,7 +19,7 @@
  * The four cases, in the order they run:
  *
  *   A. thin prompt ("website", 7 chars) → no build. The builder opens with the canvas
- *      COLLAPSED and the chat centred, Remixer asks for direction, the four questions
+ *      COLLAPSED and the chat centred at 800, Remixer asks for direction, the four questions
  *      dock above the composer, the answers survive paging, Submit compiles the summary
  *      card, the canvas opens by itself for the build, the site lands. Then the three
  *      ways to work the divider: Hide preview, the grip, and a drag past the minimum.
@@ -102,7 +102,8 @@ async function buildFromHome(prompt) {
   await p.waitForTimeout(700)
   await p.fill('input[aria-label="Describe the site you want"]', prompt)
   await p.click('button:has-text("Build")')
-  await p.waitForTimeout(600)
+  /* BOOT_MS (850) of corridor, then a beat for the shell to settle. */
+  await p.waitForTimeout(1400)
 }
 
 /* =============================================== A. thin prompt from the hero */
@@ -114,22 +115,30 @@ check('the prototype opens on the Home page', await onHome())
 
 await p.fill('input[aria-label="Describe the site you want"]', 'website')
 await p.click('button:has-text("Build")')
-await p.waitForTimeout(600)
+/* The corridor: a full-screen plate with the mark, ~850ms (BOOT_MS). Sampled early
+   enough to still be up, then waited out before anything is clicked. */
+await p.waitForTimeout(250)
+check('the Home → builder step plays a covered corridor', !!(await p.$('.boot-cover')))
+await shot('02a-corridor')
+await p.waitForTimeout(1200)
+check('the corridor lifts by itself', !(await p.$('.boot-cover')))
 await shot('02-builder-collapsed')
 check('a thin prompt from the hero opens the builder, not a generation', !(await onHome()))
 check('the canvas is collapsed on arrival', (await previewState()) === 'closed', `preview=${await previewState()}`)
 check('the chat takes the whole shell', (await asideWidth()) > 1200, `aside=${Math.round(await asideWidth())}px`)
 {
+  /* 800 is Figma 29464:33917's own measure for the chat standing alone (CHAT_CONTENT),
+     not Lovable's 600 — the designer pointed at his board on 07.09.2026. */
   const cols = await chatCol()
-  const centred = cols.length > 0 && cols.every((c) => c.w <= 600 && Math.abs(c.left - c.right) <= 24)
-  check('the chat content is a 600px column, centred', centred, JSON.stringify(cols))
+  const centred = cols.length > 0 && cols.every((c) => c.w <= 800 && Math.abs(c.left - c.right) <= 24)
+  check('the chat content is an 800px column, centred', centred, JSON.stringify(cols))
 }
 
-await p.waitForTimeout(2600)
+await p.waitForTimeout(4600)
 await shot('03-question-1')
 const askedBody = await text()
 check('Remixer asks for direction instead of guessing', askedBody.includes('I’d love to build you a website'))
-check('the reply carries its thinking time', askedBody.includes('Thought for 3s'))
+check('the reply carries its thinking time', askedBody.includes('Thought for 5s'))
 check('the question panel docks above the composer', await panelUp())
 check('the composer relabels itself as the escape hatch',
   (await p.getAttribute('textarea', 'placeholder'))?.startsWith('Tell Remixer'))
@@ -151,12 +160,12 @@ await p.click('text=Submit'); await p.waitForTimeout(700); await shot('08-summar
   check('the panel is gone after Submit', !(await panelUp()))
 }
 
-await p.waitForTimeout(1600); await shot('09-ack-building')
+await p.waitForTimeout(2600); await shot('09-ack-building')
 check('the canvas opens by itself when the build starts', (await previewState()) === 'open')
 check('the questions cost nothing — only the build is metered',
   (await text()).includes('2 000'), 'the toolbar should still read 2 000 while building')
 
-await p.waitForTimeout(4600); await shot('10-built')
+await p.waitForTimeout(6200); await shot('10-built')
 {
   const body = await text()
   check('the first version lands and is announced', body.includes('Done —') && body.includes('design portfolio'))
@@ -183,7 +192,7 @@ await buildFromHome('Bella’s Bakery')
 await shot('14-strong-prompt')
 check('“Bella’s Bakery” goes straight to the build', (await previewState()) === 'open')
 check('no questions for a prompt with substance in it', !(await panelUp()))
-await p.waitForTimeout(3200); await shot('15-strong-built')
+await p.waitForTimeout(4200); await shot('15-strong-built')
 check('the strong prompt produces a site', (await text()).includes('Bella'))
 
 /* ================================================== C. a template from the dock */
@@ -198,7 +207,7 @@ await shot('16-template-preview')
 /* `Use Template` is the panel's CTA on every door; on the DOCK CARD's door it means
    build (TemplatePicker's `onRemix`), which is the path under test here. */
 await p.click('button:has-text("Use Template")')
-await p.waitForTimeout(1200)
+await p.waitForTimeout(1800)
 await shot('17-template-building')
 check('a template seeds a brief of its own, so it builds', (await previewState()) === 'open' && !(await panelUp()))
 check('the template names itself in the first message', (await text()).includes('template'))
@@ -206,7 +215,7 @@ check('the template names itself in the first message', (await text()).includes(
 /* ============================= D. the composer overrides the open question panel */
 
 await buildFromHome('website')
-await p.waitForTimeout(2800)
+await p.waitForTimeout(4600)
 check('the panel is up before the override', await panelUp())
 await p.fill('textarea', 'A one-page site for my ceramics studio in Odesa')
 await p.keyboard.press('Enter')

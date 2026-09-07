@@ -69,13 +69,30 @@ export interface DomainModal {
  */
 /** Chat column bounds. Below ~340 the bubbles stop reading; the upper stop and
  *  the live window check keep the canvas usable at any window size. */
+/**
+ * How long the Home → builder corridor lasts (ui/BootCover.tsx draws it).
+ *
+ * Lives here with the other layout and timing constants rather than in the component,
+ * because `openBuilder` below owns the timer — and importing it the other way round
+ * would make the store and the cover a cycle.
+ */
+export const BOOT_MS = 850
+
 export const CHAT_DEFAULT = 432
 export const CHAT_MIN = 340
 /** Wide is fine now: the thread and composer centre themselves at CHAT_CONTENT, so a
  *  wide column is just more ground — exactly how Lovable's reads at any width. */
 export const CHAT_MAX = 1400
-/** The thread's own measure. Lovable: ~600px column centred in whatever the chat gets. */
-export const CHAT_CONTENT = 600
+/**
+ * The thread's own measure, with the canvas away.
+ *
+ * 800 is OURS, off Figma 29464:33917 — the board where the chat stands alone: an `AI Chat`
+ * frame 800 wide with 880 of ground on either side of it, and the question dock inside it
+ * at 800 too. Lovable's is 600, which is what this was until the designer pointed at his
+ * own board (07.09.2026); 600 made the question rows wrap two lines earlier than drawn.
+ * The SPLIT width is a different board (25819:143144) and stays 432 — see CHAT_DEFAULT.
+ */
+export const CHAT_CONTENT = 800
 /** Drag the divider until the canvas would be narrower than this and the preview
  *  collapses altogether (measured off Lovable's recording, 06.09.2026). */
 export const PREVIEW_MIN = 480
@@ -218,6 +235,14 @@ interface UIStore {
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
   /**
+   * The Home → builder corridor is on screen (see ui/BootCover.tsx).
+   *
+   * Set by `openBuilder`, so every door into the builder gets the same beat — the hero's
+   * Build, a template's `Use Template`, a project card in the dock. Lovable covers the
+   * same navigation with a full-screen mark for ~1s (frame 02).
+   */
+  booting: boolean
+  /**
    * Is the canvas on screen? A brand-new project opens with it COLLAPSED: nothing to
    * preview yet, so the chat takes the whole shell and centres itself (Lovable, 2026).
    * Opens by itself the moment a build starts; the user can open/close it any time
@@ -281,6 +306,8 @@ interface UIStore {
 
 /** One timer at a time: mashing reload extends the pulse instead of stacking timers. */
 let reloadTimer: ReturnType<typeof setTimeout> | null = null
+/** Same for the Home → builder corridor — one plate, one timer. */
+let bootTimer: ReturnType<typeof setTimeout> | null = null
 
 export const useUI = create<UIStore>((set, get) => ({
   /* The prototype opens where the product does — on the Home page. */
@@ -302,14 +329,25 @@ export const useUI = create<UIStore>((set, get) => ({
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
   reloading: false,
+  booting: false,
   previewOpen: true,
 
   /* Leaving a page closes what was open inside it: coming back to a half-open
      publish popover — or to a stale attached-template chip over an empty field —
      from another page reads as a bug, not as continuity. Build consumes the
      attachment via `openBuilder`, which is exactly when it should die. */
-  goHome: () => set({ page: 'home', publishOpen: false, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null }),
-  openBuilder: () => set({ page: 'builder', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null }),
+  goHome: () => {
+    if (bootTimer) { clearTimeout(bootTimer); bootTimer = null }
+    set({ page: 'home', booting: false, publishOpen: false, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null })
+  },
+  /* The corridor is raised in the SAME write that changes the page, so the plate is
+     opaque before the builder's first commit — raising it after would let one frame of
+     un-settled shell through, which is the flash the plate exists to hide. */
+  openBuilder: () => {
+    if (bootTimer) clearTimeout(bootTimer)
+    set({ page: 'builder', booting: true, templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null })
+    bootTimer = setTimeout(() => { bootTimer = null; set({ booting: false }) }, BOOT_MS)
+  },
   setDockTab: (dockTab) => set({ dockTab }),
   setTemplateFilter: (templateFilter) => set({ templateFilter }),
   /* Every open starts on the grid, like the board draws it. The reset happens

@@ -216,7 +216,7 @@
     --rail-w: 56px;
     --chat-w: 432px;
     /* the thread's own measure — Lovable's ~600px column, centred in the chat */
-    --chat-content-w: 600px;
+    --chat-content-w: 800px;
 
     /* motion — three durations, two curves. Never `transition: all`. */
     --dur-fast: 120ms;
@@ -2991,6 +2991,60 @@ html[data-drag] .shell-aside { transition: none; }
   max-width: var(--chat-content-w);
   margin-left: auto;
   margin-right: auto;
+}
+
+/* ------------------------------------------------------------------------
+ * The Home → builder corridor (ui/BootCover.tsx).
+ *
+ * Opaque on the first frame — a fade-IN would show one frame of un-settled builder,
+ * which is the flash the plate exists to hide. The mark breathes once on the way in and
+ * the plate fades on the way out; both are opacity/transform only, and the layer
+ * unmounts when the timer ends.
+ * ---------------------------------------------------------------------- */
+.boot-cover { transition: opacity 0.3s var(--ease-out); }
+.boot-cover[data-leaving] { opacity: 0; }
+.boot-cover-mark {
+  display: block;
+  animation: boot-mark 0.55s var(--ease-out) both;
+}
+@keyframes boot-mark {
+  0% { opacity: 0; transform: scale(0.92); }
+  45% { opacity: 1; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* the plate still does its job — only the movement goes */
+  .boot-cover-mark { animation: none; }
+}
+
+/* ------------------------------------------------------------------------
+ * The question dock — Figma 29464:34334.
+ *
+ * While the brief is open the question panel and the composer are ONE glass object,
+ * which is the board's structural decision (Lovable stacks two separate cards with an
+ * 8px gap). The shell carries the material; the panel above and the field below sit
+ * inside it, 2px apart. Radius is deliberately asymmetric — 24 at the top, 28 at the
+ * bottom — because the field's own 24 needs 4px of shell around it to read as inside.
+ *
+ * NO top padding: the question's own pt-20 is the shell's top inset, exactly as drawn.
+ * ---------------------------------------------------------------------- */
+.brief-dock {
+  border-radius: 24px 24px 28px 28px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 0 6px 6px;
+}
+/* Inside the shell the field is 8% white ON the glass, not its own dark plate: the board
+   draws the composer LIGHTER than the shell body (Neutral Alpha/100 over Neutral Alpha/70),
+   and `.composer-field`'s 80%-black base would invert that and read as a hole. The rim and
+   the radius are the field's own either way. */
+.brief-dock .composer-field {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* The reopen grip while the preview is collapsed: a hairline at the chat's right

@@ -462,7 +462,15 @@ export function ChatPanel() {
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
-        <div className="chat-col">
+        {/*
+          * `brief-dock`: while the questions are up, the panel and the composer are ONE
+          * glass object — Figma 29464:34334, and the board's own structural call. Lovable
+          * floats its panel 8px above a separate composer; the drawn Remixer version puts
+          * a single 7%-white shell with a 15% rim around both, 2px between them, radius 24
+          * on top and 28 at the bottom. Without the questions the composer stands alone,
+          * the way its own board (28016:43526) draws it, so the shell is conditional.
+          */}
+        <div className={`chat-col${asking ? ' brief-dock' : ''}`}>
         <BriefPanel />
         <div ref={composerBox} className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}
