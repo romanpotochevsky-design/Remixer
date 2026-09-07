@@ -73,6 +73,9 @@ WordPress-когорта (главная слепая зона — база Drea
 - `docs/research/domain-search-research.md` — глубокий ресёрч умного поиска доменов
   (5 агентов, 433 запроса): факты DreamHost, UX поиска у 10 конкурентов, AI-подсказки,
   «свой домен», техническая детекция (RDAP, PSL, Domain Connect-проба).
+- `docs/handoff/lovable-brief-flow-handoff.md` — **хендофф текущей задачи** (06.09.2026): состояние
+  флоу «слабый промпт → вопросы → билд», схема состояний, план интеграции веток, что осталось (P0–P3),
+  уроки окружения, готовое стартовое сообщение для следующей сессии. **Начинать следующую сессию с него.**
 - `docs/handoff/domain-connection-design-handoff.md` — хендофф домен-флоу и publish-панели.
   Figma: https://www.figma.com/design/GP4jNXtc37VTFVZDc9JF0a/AI-Website-Builder,
   страница «Domain Connection Flow». Выбранное направление publish-панели — «Launchpad» (⑥-A).
