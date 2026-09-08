@@ -3552,8 +3552,8 @@ html[data-drag] .shell-aside { transition: none; }
  * keyframes fit a 400px row in the split and an 800px row in the collapsed chat.
  * A rect's path starts on the top edge just past the top-left corner and runs
  * clockwise; the body is dasharray `l 1`, drawing [0, l] as l runs 0 → 1. Ahead of it
- * rides a long FEATHERED head — `HEAD_N` (24) short segments of `HEAD_S` (0.012) of
- * the perimeter each, 0.29 of the way round in all, at opacities easing from the
+ * rides a long FEATHERED head — `HEAD_N` (24) short segments of `HEAD_S` (0.015) of
+ * the perimeter each, 0.36 of the way round in all, at opacities easing from the
  * body's light down to nothing (BriefPanel.tsx sets them per segment). Each segment
  * is dasharray `0 l s 1`, drawing [l, l + s]; segment k carries a static
  * `stroke-dashoffset` of −k·s, which shifts its dash forward to [l + k·s, l + k·s + s]
@@ -3564,6 +3564,19 @@ html[data-drag] .shell-aside { transition: none; }
  * (measured), so as the head reaches the end of the path it simply runs off it —
  * into the body's own start — and the ring closes; the head also fades over the
  * last stretch.
+ *
+ * Behind the start, the other way round the corner, sits THE BURST: `BURST_N` (12)
+ * static segments of `BURST_S` (0.018) each — the left side and the start of the
+ * bottom edge — with `stroke-opacity` falling away from the corner. The start of a
+ * one-way lap is otherwise a hard line at the corner (lit above it, dark below), and
+ * that line is what the designer saw as "жёстко и деревянно" on the third recording
+ * (08.09.2026: "внизу слева цвет бордера не резко появляется, а плавно из
+ * прозрачности… эффект рассеивания света по бордеру"). Light scatters both ways from
+ * where it ignites. The burst fades out between 45% and 85% of the lap, while the body
+ * is coming round to claim that stretch, so the two never stack brighter than the
+ * ring and nothing of it is left at rest. And the WHOLE drawing group fades in over the
+ * first third of the lap (`brief-draw-in`): the corner never pops to full, the light
+ * rises out of transparency as it spreads.
  *
  * The resting ring is the draw's LAST FRAME (a solid stroke, head gone) — the base
  * values below — so a picked row that mounts already picked, or has finished its
@@ -3578,8 +3591,8 @@ html[data-drag] .shell-aside { transition: none; }
  * second, on a user's own gesture. Only the ring's opacity is composited.
  * ---------------------------------------------------------------------- */
 .brief-opt {
-  --draw-hover: 640ms;
-  --draw-pick: 800ms;
+  --draw-hover: 700ms;
+  --draw-pick: 880ms;
   --draw-ease: cubic-bezier(0.45, 0.35, 0.55, 1);
 }
 .brief-draw {
@@ -3619,22 +3632,33 @@ html[data-drag] .shell-aside { transition: none; }
   stroke-width: 2px;
   stroke: url(#brief-pick-grad);
 }
-/* at rest: the last frame of the draw — a solid stroke, no head */
+/* at rest: the last frame of the draw — a solid stroke, no head, no burst */
 .brief-draw .body { stroke-dasharray: none; }
 .brief-draw .heads { opacity: 0; }
-.brief-draw .h { stroke-dasharray: 0 0 0.012 1; }
-/* drawing: one lap, the feathered head riding ahead and fading last */
+.brief-draw .h { stroke-dasharray: 0 0 0.015 1; }
+.brief-draw .b { stroke-dasharray: 0.018 1; opacity: 0; }
+/* drawing: the group rises out of transparency, one lap, the feathered head riding
+   ahead and fading last, the burst behind the start fading as the body comes round */
+.brief-draw .is-drawing,
 .brief-draw .is-drawing rect,
 .brief-draw .is-drawing .heads {
   animation-duration: var(--draw-hover);
   animation-timing-function: var(--draw-ease);
   animation-fill-mode: both;
 }
+.brief-draw--pick .is-drawing,
 .brief-draw--pick .is-drawing rect,
 .brief-draw--pick .is-drawing .heads { animation-duration: var(--draw-pick); }
+.brief-draw .is-drawing { animation-name: brief-draw-in; animation-timing-function: linear; }
 .brief-draw .is-drawing .body { animation-name: brief-draw-body; }
 .brief-draw .is-drawing .h { animation-name: brief-draw-head; }
+.brief-draw .is-drawing .b { animation-name: brief-draw-burst; animation-timing-function: linear; }
 .brief-draw .is-drawing .heads { animation-name: brief-draw-heads; }
+@keyframes brief-draw-in {
+  0%   { opacity: 0; }
+  32%  { opacity: 1; }
+  100% { opacity: 1; }
+}
 @keyframes brief-draw-body {
   from { stroke-dasharray: 0 1; }
   to   { stroke-dasharray: 1 1; }
@@ -3642,8 +3666,14 @@ html[data-drag] .shell-aside { transition: none; }
 /* one head segment: `0 l s 1`, s = HEAD_S; its place in the feather is its own
    static dashoffset (BriefPanel.tsx), so one rule serves all of them */
 @keyframes brief-draw-head {
-  from { stroke-dasharray: 0 0 0.012 1; }
-  to   { stroke-dasharray: 0 1 0.012 1; }
+  from { stroke-dasharray: 0 0 0.015 1; }
+  to   { stroke-dasharray: 0 1 0.015 1; }
+}
+/* the burst: on from the start, gone by the time the body has come round to it — the
+   head first touches its far end at ~42% of the lap, the body reaches it at ~63% */
+@keyframes brief-draw-burst {
+  0%, 45% { opacity: 1; }
+  85%, 100% { opacity: 0; }
 }
 @keyframes brief-draw-heads {
   0%, 84% { opacity: 1; }

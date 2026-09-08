@@ -150,39 +150,57 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
  * The ring that draws itself around a row — index.css "THE BORDER THAT DRAWS ITSELF".
  *
  * Strokes of the SAME rounded rectangle, each with `pathLength="1"` so the dash
- * arithmetic is in fractions of the perimeter whatever the row's size: one body that runs
- * CLOCKWISE from the path's start (the top edge, just past the top-left corner) — along the
- * top, down the right side, back along the bottom, up the left side — until it closes on
- * its own start; and ahead of it a long FEATHERED head: `HEAD_N` short segments, each
- * `HEAD_S` of the perimeter, at opacities falling from near the body's to nothing. Together
- * they are the gradient the board draws — light thinning out over a long stretch toward
- * where it has not yet reached, not a strip with an end (designer, 08.09.2026, from a
- * recording of the short-headed cut: "нет градиента, нет растушёванности… полоска без
- * градиента, не так как на скриншоте, где края градиентные, плавные"). One lap, 360°.
+ * arithmetic is in fractions of the perimeter whatever the row's size. Three kinds:
+ *
+ *  · THE BODY — one stroke that runs CLOCKWISE from the path's start (the top edge, just
+ *    past the top-left corner): along the top, down the right side, back along the
+ *    bottom, up the left side, until it closes on its own start. One lap, 360°.
+ *  · THE HEAD — ahead of the body, a long FEATHER: `HEAD_N` short segments of `HEAD_S`
+ *    each, at opacities easing from near the body's light down to nothing. This is the
+ *    gradient the board draws: light thinning out over a third of the perimeter toward
+ *    where it has not yet reached.
+ *  · THE BURST — behind the start, the OTHER way round the corner: `BURST_N` static
+ *    segments down the left side and along the bottom-left, fading with distance from
+ *    the corner. Light scattering does not stop at a line; at the corner where the lap
+ *    begins it spreads both ways (the board's frame, 29688:29507, is exactly this: bright
+ *    at the top-left, fading along the top AND down the left). The burst fades out as
+ *    the body comes round to claim that stretch, so nothing stacks and nothing is left.
+ *    Without it the start of the lap was a hard line at the corner — lit above, dark
+ *    below — which is what the designer saw as "жёстко и деревянно" (08.09.2026, third
+ *    recording: "внизу слева цвет бордера не резко появляется, а плавно из прозрачности").
+ *
+ * The whole drawing group also fades in from nothing over the first third of the lap, so
+ * the corner never pops to full — the light rises out of transparency as it spreads.
  *
  * Every head segment shares ONE keyframe rule (index.css `brief-draw-head`, the gap
  * before the segment running 0 → 1); what places segment k ahead of segment k−1 is a
- * static negative `stroke-dashoffset` of k·HEAD_S, which shifts its dash forward along the
- * path. A dash pattern never wraps a closed path's start, so as the head reaches the end
- * of the path it runs off it — into the body's own start — and the ring closes.
+ * static negative `stroke-dashoffset` of k·HEAD_S. The burst segments are static dashes
+ * placed by a positive offset, `stroke-opacity` carrying their falloff. A dash pattern
+ * never wraps a closed path's start, so as the head reaches the end of the path it runs
+ * off it — into the body's own start — and the ring closes.
  *
- * `drawKey` > 0 mounts the strokes DRAWING (from nothing to the whole perimeter); at 0
- * they stand at full with the head gone — the resting ring. Remounting on a new key is
- * what restarts the draw; `onDrawn` fires when the body has closed, and the row drops
- * the key back to 0 so the ring stands as a plain full stroke.
+ * `drawKey` > 0 mounts the strokes DRAWING; at 0 they stand at full with head and burst
+ * gone — the resting ring. Remounting on a new key is what restarts the draw; `onDrawn`
+ * fires when the body has closed, and the row drops the key back to 0.
  *
  * Geometry (inset, radius, width, colour) is CSS on the rects per `kind`, so the hover's
  * 1px and the pick's 2px are one component.
  */
-/** Segments in the feathered head, and each one's length as a fraction of the perimeter:
- *  24 × 0.012 = the head reaches 0.288 of the way round — on the wide row, most of the
- *  top edge is already glowing, faintly, when the light ignites in the corner. */
+/** The feather ahead of the body: 24 × 0.015 = 0.36 of the perimeter. */
 const HEAD_N = 24
-const HEAD_S = 0.012
-/** The feather: near the body almost the body's own light, thinning fast at first and
- *  then trailing out long and faint — an ease, not a straight ramp, so the tip has no edge. */
+const HEAD_S = 0.015
+/** The scatter behind the start: 12 × 0.018 = 0.22 of the perimeter the other way round
+ *  the corner — the left side and the start of the bottom edge on a wide row. */
+const BURST_N = 12
+const BURST_S = 0.018
+/** Both falloffs are eases, not straight ramps, so the far tips have no edge. */
 const headOpacity = (k: number) => +Math.pow(1 - (k + 0.5) / HEAD_N, 1.4).toFixed(3)
+const burstOpacity = (j: number) => +(0.85 * Math.pow(1 - (j + 0.5) / BURST_N, 1.3)).toFixed(3)
 const HEADS = Array.from({ length: HEAD_N }, (_, k) => ({ k, off: -(k * HEAD_S), op: headOpacity(k) }))
+/* segment j covers [1 − (j+1)·s, 1 − j·s]: the second copy of a dash `s 1`, pushed back
+   by (j + 2)·s (a pattern never wraps the start, so it is the copy after the gap that
+   lands at the end of the path) */
+const BURST = Array.from({ length: BURST_N }, (_, j) => ({ j, off: (j + 2) * BURST_S, op: burstOpacity(j) }))
 
 function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey: number; onDrawn?: () => void }) {
   return (
@@ -198,6 +216,9 @@ function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey:
             <rect key={k} className="h" pathLength="1" strokeDashoffset={off} opacity={op} />
           ))}
         </g>
+        {drawKey > 0 && BURST.map(({ j, off, op }) => (
+          <rect key={j} className="b" pathLength="1" strokeDashoffset={off} strokeOpacity={op} />
+        ))}
       </g>
     </svg>
   )
