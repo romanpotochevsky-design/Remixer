@@ -3208,10 +3208,11 @@ html[data-drag] .shell-aside { transition: none; }
  * ⚠️ Fill order matters: `.dock-base` after `.dock-piston` in the DOM, both absolute.
  * ---------------------------------------------------------------------- */
 .dock-shell {
+  /* 14, not the shell's 7: the extra 7 is room for the collar's swell (below) */
   position: absolute;
-  left: -7px;
-  right: -7px;
-  bottom: -7px;
+  left: -14px;
+  right: -14px;
+  bottom: -14px;
   top: -320px;
   z-index: -1;
   overflow: hidden;
@@ -3220,11 +3221,17 @@ html[data-drag] .shell-aside { transition: none; }
   pointer-events: none;
 }
 .brief-dock .dock-shell { opacity: 1; }
+.dock-swell {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-origin: 50% 50%;
+}
 .dock-piston,
 .dock-base {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 7px;
+  right: 7px;
   background: #1a1a1c;
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
@@ -3236,9 +3243,12 @@ html[data-drag] .shell-aside { transition: none; }
 }
 .dock-base {
   top: calc(320px + var(--rise));
-  bottom: 0;
+  bottom: 7px;
   border-top: 0;
   border-radius: 0 0 28px 28px;
+  /* the swell scales the collar from its top edge — the seam with the piston — so the
+     bottom and the sides move and the seam does not */
+  transform-origin: 50% 0;
   /* the ground colour, painted into this box's corner triangles and below it, covers
      the piston wherever it passes outside the collar's curve */
   box-shadow: 0 60px 0 var(--gray-950);
@@ -3275,6 +3285,25 @@ html[data-drag] .shell-aside { transition: none; }
 .dock-rise .dock-piston { animation: dock-ride 0.66s var(--dock-spring) 0.09s both; }
 .dock-rise .dock-sheet  { animation: dock-ride 0.66s var(--dock-spring) 0.09s both, dock-in 0.66s ease-out 0.09s both; }
 .dock-rise .dock-foot   { animation: dock-in-late 0.66s ease-out 0.09s both; }
+/* THE SWELL (designer, 08.09.2026: "bounce effect не виден справа/слева и снизу от поля
+   ввода"). The top edge overshoots, and the rest of the bubble answers: at the peak of the
+   spring (50% of the ride, ~420ms) the collar around the field swells ~6px down and ~4px out
+   to each side, the piston's sides with it, then settles with a small recoil. The FIELD
+   does not move — only the shell's paint around it breathes. Same clock as the ride. */
+.dock-rise .dock-swell  { animation: dock-swell-x 0.66s ease-in-out 0.09s both; }
+.dock-rise .dock-base   { animation: dock-swell 0.66s ease-in-out 0.09s both; }
+@keyframes dock-swell-x {
+  0%, 26% { transform: scaleX(1); }
+  50%  { transform: scaleX(1.011); }
+  76%  { transform: scaleX(0.998); }
+  100% { transform: scaleX(1); }
+}
+@keyframes dock-swell {
+  0%, 26% { transform: scale(1); }
+  50%  { transform: scale(1.011, 1.06); }
+  76%  { transform: scale(0.998, 0.99); }
+  100% { transform: scale(1); }
+}
 
 /* Between questions: the same spring, from the signed height difference, no delay — the
    collar is already there. The content swap itself is the sheet's own (BriefPanel,

@@ -518,7 +518,12 @@ export function ChatPanel() {
           * Decorative and below everything; the sheet and the composer are the content.
           */}
         <div className="dock-shell" aria-hidden>
-          <i className="dock-piston" />
+          {/* `.dock-swell` lets the piston's sides breathe with the collar at the peak of
+              the bounce; the piston's own transform is the ride, so the swell needs a
+              wrapper of its own (two transforms on one element would not compose). */}
+          <i className="dock-swell">
+            <i className="dock-piston" />
+          </i>
           <i className="dock-base" />
         </div>
         {/*
