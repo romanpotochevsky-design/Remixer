@@ -74,7 +74,8 @@ docs/
 │   └── factcheck_corrections.json  поправки фактчека
 └── handoff/                   ← пакеты передачи (дизайнеру в Figma / девелоперам)
     ├── domain-connection-design-handoff.md  домен-флоу + панель Publish
-    └── siri-glow-spec.md      инженерная спека Remixer glow
+    ├── siri-glow-spec.md      инженерная спека Remixer glow
+    └── drawn-ring-spec.md     компонент Drawn Ring — проявляющийся бордер ряда ответов
 ```
 
 **Не в `docs/`, но часть базы знаний:**

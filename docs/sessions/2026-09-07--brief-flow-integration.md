@@ -297,6 +297,13 @@ JS-бандл лежит внутри `<body>`, поэтому в тексте �
    вероятное состояние после успешного. Ось `chat: 'error'` в прототипе есть, карточка её не
    знает.
 4. **Шаг «три дизайн-направления»** — отложен им же.
+4а. **Окна-предложения Autopilot** — переключатель Autopilot / Build в композере стоит и ось
+   `world.mode` переключается, но сами предложения «что делать дальше» после задачи ещё не
+   нарисованы и не сделаны. Заказ дизайнера был «прямо сейчас кнопку и дропдаун»; поведение за
+   ним — следующая задача, вид не выдумывать без него.
+4б. **`.remixer.app` в поле адреса борда 29697:36970** против verified `*.remixer.site` — спросить.
+4в. **Autopilot: что происходит в самом чате после задачи** — карточка? кнопки под ответом?
+   Нужен борд.
 5. **Три невлитые ветки**: `connect-domain-flow-research-z2vuky` (48 коммитов),
    `remixer-connect-domain-awdg3f` (19), `remixer-shopping-cart-p788be` (4) растут из `ffba495`
    и не влиты — публикация из любой из них откатит и домашнюю страницу, и бриф. Их интеграция
@@ -347,6 +354,30 @@ JS-бандл лежит внутри `<body>`, поэтому в тексте �
 | `fb41cc5` | The drawn border grows out of its corner: nothing lit at frame zero, twice as fast |
 | `b164554` | Publish panel for an unpublished site, and the composer's Autopilot / Build switcher |
 | `67594a4` | The drawn border becomes a schedule of fades: no tip, no dip, no seams |
+| `78a3bf3` | Session record: the commits since the lettering specimens |
+| `1f76dd8` | The drawn border at its third speed: hover 220ms, pick 280ms |
+
+## Как продолжить — промпт для следующего окна
+
+Скопировать в новую сессию целиком (ветка та же):
+
+> Продолжаем проект Remixer (прототип AI-билдера DreamHost). Ветка
+> `claude/remixer-brief-flow-integration-na3puj` — сначала `git fetch origin --prune` и
+> `git checkout -B claude/remixer-brief-flow-integration-na3puj origin/claude/remixer-brief-flow-integration-na3puj`,
+> и только потом читать `CLAUDE.md` (карта знаний — `docs/README.md`). Затем прочитать журнал
+> прошлой сессии `docs/sessions/2026-09-07--brief-flow-integration.md` (разделы «Что решено» и
+> «Что осталось») и `docs/knowledge/decisions.md`. Прототип опубликован как артефакт
+> https://claude.ai/code/artifact/3a24a501-7176-4bf4-8e99-cbb56b7ba1a9 — после каждого принятого
+> куска пересобирать (`cd prototype && npm install && pip install fonttools brotli && npm run
+> artifact`) и переопубликовывать по этой же ссылке (передавать `url`), проверять
+> `npm run check:brief` (120 проверок) перед публикацией. Правила работы: со мной по-русски,
+> код и UI по-английски; я дизайнер, не программист — команды не просить; любые изменения
+> дизайна и решения уровня P3 — сначала спросить; работать соло, без многоагентных воркфлоу;
+> сеть сессии не пускает на сайты конкурентов — не пытаться; каждый законченный кусок —
+> коммит, пуш, запись в журнал сессии (`docs/sessions/`, новый файл на сессию + строка в
+> `index.md`) и обновление базы знаний. Новая анимация — новая строка в реестре моушен-компонентов
+> (`docs/knowledge/design-system.md` §7) и спека в `docs/handoff/`, как у `drawn-ring-spec.md`.
+> Начни с короткого отчёта: что в ветке, что открыто в «Что осталось», и жди мою задачу.
 
 ## Ссылки
 
