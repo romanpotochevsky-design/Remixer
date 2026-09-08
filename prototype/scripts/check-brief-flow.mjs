@@ -248,31 +248,75 @@ const dividers = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
 const ring = (sel, kind) => p.$eval(sel, (el, kind) => {
   const svg = el.querySelector(`.brief-draw--${kind}`)
   const cs = getComputedStyle(svg)
-  const fwd = getComputedStyle(svg.querySelector('.body'))
+  const ink = svg.querySelector('.ink')
+  const body = svg.querySelector('.body')
+  /* a stroke's lightness 0…1 — the fade is a COLOUR, from the ground under the ring
+     (`--ring-ground`, a registered property, so it reads back resolved) to white */
+  const lum = (st) => { const m = st.match(/[\d.]+/g); return !m ? 0 : st.startsWith('color(') ? +m[0] : +m[0] / 255 }
+  const g0 = lum(cs.getPropertyValue('--ring-ground'))
+  const lit = (r) => (lum(getComputedStyle(r).stroke) - g0) / (1 - g0)
+  const segs = [...svg.querySelectorAll('.is-drawing .seg')].map(lit)
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1)
+  const geo = getComputedStyle(body || svg.querySelector('rect'))
   return {
-    op: +cs.opacity, vis: cs.visibility, drawing: !!svg.querySelector('.is-drawing'),
-    /* the body's dash length, in fractions of the perimeter (pathLength="1"): how far
-       round the light has got; `none` once the lap is done and the stroke stands solid */
-    l: fwd.strokeDasharray === 'none' ? 1 : parseFloat(fwd.strokeDasharray),
-    solid: fwd.strokeDasharray === 'none', stroke: fwd.stroke, width: fwd.strokeWidth, rx: fwd.rx,
-    heads: +getComputedStyle(svg.querySelector('.heads')).opacity,
+    op: +cs.opacity, vis: cs.visibility, drawing: segs.length > 0,
+    /* how far the draw has got: the dashes' mean lightness, ground 0 → white 1; 1 once
+       the lap is done and the stroke stands solid */
+    l: body ? 1 : +mean(segs).toFixed(3),
+    /* the gradient of the moment: the corner's first dashes against the far side (p ≈ .5) */
+    corner: +mean(segs.slice(0, 4)).toFixed(3), far: +mean(segs.slice(30, 34)).toFixed(3),
+    solid: !!body && geo.strokeDasharray === 'none',
+    white: body ? +lit(body).toFixed(3) : null, width: geo.strokeWidth, rx: geo.rx,
+    /* the ring's translucency lives on `.ink`: the hover's 32%, the pick's gradient mask */
+    alpha: +getComputedStyle(ink).opacity,
+    masked: (getComputedStyle(ink).maskImage || getComputedStyle(ink).webkitMaskImage || '').includes('brief-pick-mask'),
+    ground: cs.getPropertyValue('--ring-ground'),
     radius: getComputedStyle(el).borderRadius, fill: getComputedStyle(el).backgroundColor,
     shadow: getComputedStyle(el).boxShadow, gap: getComputedStyle(el).marginBottom,
     press: el.hasAttribute('data-press'), on: el.getAttribute('aria-pressed') === 'true',
   }
 }, kind)
+/* one pixel of the page as the screen has it — a 1×1 PNG's only sample: whatever the
+   scanline filter, a pixel with no neighbours is stored raw */
+const pixelAt = async (x, y) => {
+  const png = await p.screenshot({ clip: { x, y, width: 1, height: 1 } })
+  let off = 8, idat = []
+  while (off < png.length) {
+    const len = png.readUInt32BE(off), type = png.toString('ascii', off + 4, off + 8)
+    if (type === 'IDAT') idat.push(png.subarray(off + 8, off + 8 + len))
+    off += 12 + len
+  }
+  const raw = (await import('node:zlib')).inflateSync(Buffer.concat(idat))
+  return [raw[1], raw[2], raw[3]]
+}
 {
   const before = await rowBoxes()
   await p.hover('.brief-opt:nth-of-type(2)')
   await p.waitForTimeout(150)
   const mid = await ring('.brief-opt:nth-of-type(2)', 'hover')
-  check('the hover ring DRAWS itself: part-way in, the light is part-way round the lap',
+  check('the hover ring DRAWS itself: part-way in, the ring is part-way lit',
     mid.drawing && mid.op === 1 && mid.vis === 'visible' && mid.l > 0.05 && mid.l < 0.9, `l=${mid.l} drawing=${mid.drawing} op=${mid.op}`)
+  check('…as a gradient that appears, brightest at the corner it grew from, thinning toward the far side',
+    mid.corner > 0.5 && mid.far < mid.corner * 0.85, `corner=${mid.corner} far=${mid.far}`)
   await p.waitForTimeout(800)
   const done = await ring('.brief-opt:nth-of-type(2)', 'hover')
-  check('…and closes into a full 1px ring at radius 16, 32% white, nothing left animating',
-    done.solid && !done.drawing && done.width === '1px' && done.stroke === 'rgba(255, 255, 255, 0.32)' && done.rx === '15.5px' && done.radius === '16px',
+  check('…and closes into a full 1px ring at radius 16, 32% white (white strokes, the alpha on the group), nothing left animating',
+    done.solid && !done.drawing && done.width === '1px' && done.white === 1 && done.alpha === 0.32 && done.rx === '15.5px' && done.radius === '16px',
     JSON.stringify(done))
+  /*
+   * The dashes fade from the colour of the GROUND under the ring to white (index.css "THE
+   * BORDER THAT DRAWS ITSELF"), so an unlit dash is invisible only while `--ring-ground` is
+   * that ground — the answers card over the dock — to the pixel. Read a pixel of the card
+   * beside the row and hold the constant to it.
+   */
+  {
+    const [rl, rt] = (await rowBoxes())[1]
+    const px = await pixelAt(Math.round(rl + 8), Math.round(rt - 12))
+    const m = done.ground.match(/[\d.]+/g).map(Number)
+    const want = done.ground.startsWith('color(') ? m.slice(0, 3).map((v) => v * 255) : m.slice(0, 3)
+    check('the unlit dash colour is the card\'s own ground, to the pixel',
+      px.every((v, i) => Math.abs(v - want[i]) <= 2), `pixel ${px.join(',')} vs --ring-ground ${done.ground}`)
+  }
   check('the ring is a stroke, not a fill and not a box-shadow', done.fill === 'rgba(0, 0, 0, 0)' && done.shadow === 'none', `${done.fill} / ${done.shadow}`)
   check('the hairlines on both sides of the ring go', (await dividers()).slice(0, 2).every((o) => o === 0), JSON.stringify(await dividers()))
   check('the rows sit apart, so two rings can never meet', done.gap === '6px', done.gap)
@@ -299,12 +343,12 @@ const ring = (sel, kind) => p.$eval(sel, (el, kind) => {
   const mid = await ring('.brief-opt:nth-of-type(2)', 'pick')
   check('a press starts the 2px ring drawing round the row',
     mid.drawing && mid.press && mid.op === 1 && mid.l > 0.05 && mid.l < 0.9 && mid.width === '2px', `l=${mid.l} drawing=${mid.drawing} press=${mid.press} w=${mid.width}`)
-  check('…in a gradient, not a flat token', mid.stroke.startsWith('url('), mid.stroke)
-  check('…with a soft head running ahead of the light', mid.heads === 1, String(mid.heads))
+  check('…in the house gradient, worn as a luminance mask over white strokes, not a flat token', mid.masked && mid.alpha === 1, `masked=${mid.masked} alpha=${mid.alpha}`)
+  check('…appearing as a gradient round the row, not arriving as a strip', mid.corner > 0.5 && mid.far < mid.corner * 0.85, `corner=${mid.corner} far=${mid.far}`)
   await p.waitForTimeout(900)
   const done = await ring('.brief-opt:nth-of-type(2)', 'pick')
   check('the lap closes into the resting ring, nothing left animating',
-    done.on && !done.drawing && !done.press && done.solid && done.heads === 0 && done.op === 1 && done.rx === '15px', JSON.stringify(done))
+    done.on && !done.drawing && !done.press && done.solid && done.white === 1 && done.masked && done.op === 1 && done.rx === '15px', JSON.stringify(done))
   check('drawn as strokes on an overlay, so the rows have not moved',
     JSON.stringify(await rowBoxes()) === JSON.stringify(before))
   check('the hairlines around the picked row go', (await dividers()).slice(0, 2).every((o) => o === 0), JSON.stringify(await dividers()))

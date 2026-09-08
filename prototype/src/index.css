@@ -3591,73 +3591,86 @@ html[data-drag] .shell-aside { transition: none; }
  * 2 пикселя так же плавно заполняет пункт по кругу, создавая этот бордер в 2px").
  *
  * The board's mid-state is the whole brief: the border is brightest where the light
- * has been and thins out toward where it has not arrived yet. So the ring is an SVG
- * STROKE that runs ONCE ROUND the row — clockwise from the top-left corner: along the
- * top, down the right side, back along the bottom, up the left side, closing on its
- * own start. One lap, 360° — the designer's correction (08.09.2026) to a first cut that
- * sent two beams from the corner to meet at the bottom-right, which on a row ten
- * times wider than tall read as "left to right", not as wrapping. Neither ring is a
- * `box-shadow` any more, and the one-shot sheen the picked ring used to play is gone
- * with it: the draw is the sheen.
+ * has been and thins out toward where it has not arrived yet. The ring is an SVG
+ * stroke round the row — clockwise from the top-left corner: along the top, down the
+ * right side, back along the bottom, up the left side, closing on its own start (one
+ * lap, 360°, the designer's correction to a first cut that sent two beams to meet at
+ * the bottom-right). Neither ring is a `box-shadow`, and the one-shot sheen the
+ * picked ring used to play is gone: the draw is the sheen.
  *
- * HOW THE STROKE IS BUILT (BriefPanel.tsx `DrawRing`). Every rect carries
- * `pathLength="1"`, so dash lengths are FRACTIONS OF THE PERIMETER and the same
- * keyframes fit a 400px row in the split and an 800px row in the collapsed chat.
- * A rect's path starts on the top edge just past the top-left corner and runs
- * clockwise; the body is dasharray `l 1`, drawing [0, l] as l runs 0 → 1. Ahead of it
- * rides a long FEATHERED head — `HEAD_N` (24) short segments of `HEAD_S` (0.015) of
- * the perimeter each, 0.36 of the way round in all, at opacities easing from the
- * body's light down to nothing (BriefPanel.tsx sets them per segment). Each segment
- * is dasharray `0 l s 1`, drawing [l, l + s]; segment k carries a static
- * `stroke-dashoffset` of −k·s, which shifts its dash forward to [l + k·s, l + k·s + s]
- * — so all of them share ONE keyframe rule. The board's edges are gradient, not
- * cut: light thinning out over a long stretch toward where it has not arrived yet
- * (designer, 08.09.2026, on a short stepped head: "нет градиента, нет растушёванности…
- * полоска без градиента"). A dash pattern never wraps a closed path's start
- * (measured), so as the head reaches the end of the path it simply runs off it —
- * into the body's own start — and the ring closes; the head also fades over the
- * last stretch.
+ * HOW IT IS BUILT (BriefPanel.tsx `DrawRing`) — A SCHEDULE OF FADES, NOT A MOVING
+ * LIGHT. The ring is 64 equal dashes of ONE rounded rectangle (every rect carries
+ * `pathLength="1"`, so a dash is a fraction of the perimeter and the same rules fit a
+ * 400px row in the split and an 800px row in the collapsed chat). Each dash fades in
+ * ON ITS OWN CLOCK — from nothing to the ring's ink, over the last 45% of the lap, on a
+ * soft ease — starting a little later than its clockwise neighbour (the delays are
+ * set inline from the schedule in BriefPanel.tsx; the last fifth before the corner
+ * starts as early as the first fifth after it, so the light scatters both ways from
+ * where it ignites). Nothing travels. The eye sees the contour materialise: bright
+ * where it began, thinning to nothing where it has not begun, that gradient sweeping
+ * round as the later dashes catch up. The group carries a no-op animation the length
+ * of the lap, whose end is the "drawn" signal.
  *
- * Behind the start, the other way round the corner, sits THE BURST: `BURST_N` (12)
- * segments of `BURST_S` (0.018) each — the left side and the start of the bottom
- * edge — with `stroke-opacity` falling away from the corner, lighting one after
- * another outward from it (an inline stagger). The start of a one-way lap is
- * otherwise a hard line at the corner (lit above it, dark below), which the designer
- * saw as "жёстко и деревянно" on the third recording (08.09.2026: "внизу слева цвет
- * бордера не резко появляется, а плавно из прозрачности… эффект рассеивания света по
- * бордеру"). Light scatters both ways from where it ignites. The burst fades out between
- * 45% and 85% of the lap, while the body is coming round to claim that stretch, so the
- * two never stack brighter than the ring and nothing of it is left at rest.
+ * ⚠️ WHY NOT A DASH THAT GROWS (the four versions before this one, 08.09.2026). Read
+ * frame by frame off the designer's own recording: a drawn dash has a TIP, and at the
+ * speed he asked for the tip crossed ~140 CSS px a frame — the whole bottom edge lit
+ * faintly between two frames ("дёргано"); and the feather ahead of it and the burst
+ * behind it were EXTRA LAYERS that had to fade out for the body to replace them — the
+ * left side measured 68 → 48 → 95, lit, dimmed, relit ("глючно"). A schedule of fades
+ * has neither: one value per position, rising once. Measured on this build: every
+ * dash monotonic, no dip anywhere, the faint front (>5%) advancing ≤ 6 dashes a frame
+ * with a ramp ~20 dashes long behind it — a gradient, not an edge.
  *
- * ⚠️ NOTHING IS LIT AT FRAME ZERO — THE LIGHT GROWS OUT OF THE CORNER. Body and head are
- * pulled BACK along the path by the head's length (`stroke-dashoffset` 0.36 on the body,
- * 0.36 − k·s on head k) and the body's dash runs 0 → 1.36: at the start the feather's
- * faint tip is at the corner and all the rest is off the path; the tip emerges, the body
- * follows a head's length behind, and the corner reaches full only once the run is a
- * head's length past it. The first cut had the feather sitting AHEAD of a body that
- * began at the corner, so 58% of the ring lit faintly in the first frame and the bright
- * body then ran over it — "ховер на ховере: мгновенно появляется светлый бордер и поверх
- * него идёт анимация ещё одного бордера" (designer, 08.09.2026, fourth recording). Every
- * dash pattern's gap is 2, longer than the path, so no second copy of a dash can land
- * on the path while the first is still off it.
+ * ⚠️ THE FADE IS A COLOUR AND THE DASHES OVERLAP — the seams. Sixty-four anti-aliased
+ * dashes butted end to end seam: where a boundary falls inside a device pixel the two
+ * partial coverages composite as alpha and the pixel comes out darker (measured −47/255
+ * on the 2px ring — a dark tick every 27px for the whole draw). Overlapping translucent
+ * dashes trades that for a BRIGHT tick wherever two stack. So the strokes are OPAQUE:
+ * each dash fades from `--ring-ground` — the colour of the ground under the ring, the
+ * answers card's fill (#09090b at 143/255) over the dock's flat #1a1a1c, mixed by the
+ * card's alpha — to white, overlapping the next by ~5px, and where two overlap the later
+ * simply covers the earlier (neighbours differ by ~3%). The ring's translucency is
+ * applied ONCE, to the flattened `.ink` group: the hover's 32% as `opacity`, the pick's
+ * gradient as a luminance MASK (the same `linearGradient` the stroke used to be painted
+ * with). An unlit dash therefore paints the ground at the ring's alpha — nothing, over
+ * the same ground — and a lit one paints white at it: exactly the alpha stroke the board
+ * specifies, whatever ancestors are isolated. Measured against the alpha strokes this
+ * replaces: ≤ 1/255 on every edge, and no seam at any dash boundary.
+ * ⚠️ A `mix-blend-mode: screen` version (opaque grey = white at alpha, black = nothing)
+ * was exact on a test page and 8/255 too dark in the app: blending is exact only when
+ * no ancestor isolates, and motion's wrappers around the sheet do. Not a blend.
+ * ⚠️ `--ring-ground` is a constant that MUST track the card's fill and the dock's ground;
+ * check:brief compares it with a real pixel of the card (one wrong token and the unlit
+ * dashes would draw a faint ring of the old colour for the first frames of every draw).
  *
- * The resting ring is the draw's LAST FRAME (a solid stroke, head gone) — the base
- * values below — so a picked row that mounts already picked, or has finished its
- * draw, shows the same pixels with no animation running and nothing to
- * cross-fade. The strokes are hidden with `visibility`, not left at opacity 0:
- * this project has paid for invisible layers that still cost paint (CLAUDE.md,
- * the `Preview` pill).
+ * The resting ring is the draw's LAST FRAME — one solid stroke in the ink — so a picked
+ * row that mounts already picked, or has finished its draw, shows the same pixels with
+ * nothing animating and nothing to cross-fade. The strokes are hidden with
+ * `visibility`, not left at opacity 0: this project has paid for invisible layers that
+ * still cost paint (CLAUDE.md, the `Preview` pill).
  *
- * COST. A dash animation re-rasters the stroke every frame — this is per-frame
- * paint, and it is allowed here on the same terms as `.thinking` and the build
- * card's working line: five hairline strokes on one row, alive for well under a
- * second, on a user's own gesture. Only the ring's opacity is composited.
+ * COST. Animating a stroke's colour re-rasters the ring every frame — per-frame paint,
+ * allowed here on the same terms as `.thinking` and the build card's working line:
+ * one hairline ring on one row, alive for well under half a second, on the user's own
+ * gesture.
  * ---------------------------------------------------------------------- */
+@property --ring-ground {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #09090b;
+}
 .brief-opt {
   /* the designer's "в 2 раза ускорить" (08.09.2026) on 700 / 880 */
   --draw-hover: 350ms;
   --draw-pick: 440ms;
-  --draw-ease: cubic-bezier(0.45, 0.35, 0.55, 1);
+  /* the ground under the ring: the answers card (#09090b at 143/255, BriefPanel.tsx) over
+     the dock's flat #1a1a1c (.dock-piston / .dock-base) = 9·.561 + 26·.439 — an unlit dash
+     is this colour. ⚠️ Written as a legacy rgb(), NOT as the color-mix() it is: the fade
+     interpolates `stroke` from this to #fff, and CSS interpolates two legacy sRGB colours
+     in sRGB — which is the straight line "white at alpha g" follows — but a color-mix()
+     result is not legacy and pulled the whole fade into Oklab (measured: `oklab(…)`
+     computed values, brighter mid-tones than the alpha stroke this stands in for). */
+  --ring-ground: rgb(16 16 18);
 }
 .brief-draw {
   position: absolute;
@@ -3675,9 +3688,13 @@ html[data-drag] .shell-aside { transition: none; }
 .brief-draw rect {
   fill: none;
   stroke-linecap: butt;
+  stroke: #fff; /* opaque; the ring's alpha is on `.ink` */
 }
 /* geometry per kind: Figma's stroke is inside the box, so the rect is inset by
-   half the stroke and the radius is the row's 16 less that half */
+   half the stroke and the radius is the row's 16 less that half. `--dur` is the
+   ring's clock; `.ink` its translucency, applied to the flattened strokes. */
+.brief-draw--hover { --dur: var(--draw-hover); }
+.brief-draw--hover .ink { opacity: 0.32; } /* Neutral Alpha 32% white */
 .brief-draw--hover rect {
   x: 0.5px;
   y: 0.5px;
@@ -3685,8 +3702,8 @@ html[data-drag] .shell-aside { transition: none; }
   height: calc(100% - 1px);
   rx: 15.5px;
   stroke-width: 1px;
-  stroke: rgba(255, 255, 255, 0.32);
 }
+.brief-draw--pick { --dur: var(--draw-pick); }
 .brief-draw--pick rect {
   x: 1px;
   y: 1px;
@@ -3694,51 +3711,29 @@ html[data-drag] .shell-aside { transition: none; }
   height: calc(100% - 2px);
   rx: 15px;
   stroke-width: 2px;
-  stroke: url(#brief-pick-grad);
 }
-/* at rest: the last frame of the draw — a solid stroke, no head, no burst */
+/* the pick's gradient — the house diagonal .98 → .55 → .82 — worn as a luminance mask */
+.brief-draw--pick .ink { mask: url(#brief-pick-mask); }
+/* at rest: one solid stroke — the last frame of the draw */
 .brief-draw .body { stroke-dasharray: none; }
-.brief-draw .heads { opacity: 0; }
-.brief-draw .h { stroke-dasharray: 0 0 0.015 2; }
-.brief-draw .b { stroke-dasharray: 0.018 1; opacity: 0; }
-/* drawing: one lap growing out of the corner, the feathered head ahead of the body and
-   fading last, the burst lighting outward behind the start and fading as the body comes
-   round. The body is pulled back by the head's length (HEAD_W, BriefPanel.tsx) so the
-   tip, not the body, is what starts at the corner. */
-.brief-draw .is-drawing rect,
-.brief-draw .is-drawing .heads {
-  animation-duration: var(--draw-hover);
-  animation-timing-function: var(--draw-ease);
+/* drawing: 64 overlapping opaque dashes (dasharray set inline, gap longer than the path so
+   no second copy lands), each fading ground → white on its own inline delay over the last
+   45% of the lap; the group's no-op lap animation ends when the ring is drawn */
+.brief-draw .seg { stroke: var(--ring-ground); }
+.brief-draw .is-drawing { animation: brief-draw-lap var(--dur) linear both; }
+.brief-draw .is-drawing .seg {
+  animation-name: brief-seg-in;
+  animation-duration: calc(var(--dur) * 0.45);
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   animation-fill-mode: both;
 }
-.brief-draw--pick .is-drawing rect,
-.brief-draw--pick .is-drawing .heads { animation-duration: var(--draw-pick); }
-.brief-draw .is-drawing .body { animation-name: brief-draw-body; stroke-dashoffset: 0.36; }
-.brief-draw .is-drawing .h { animation-name: brief-draw-head; }
-.brief-draw .is-drawing .b { animation-name: brief-draw-burst; animation-timing-function: linear; }
-.brief-draw .is-drawing .heads { animation-name: brief-draw-heads; }
-/* the body: `L 2`, pulled back 0.36 — draws [0, L − 0.36]; L runs to 1.36 so it closes */
-@keyframes brief-draw-body {
-  from { stroke-dasharray: 0 2; }
-  to   { stroke-dasharray: 1.36 2; }
+@keyframes brief-seg-in {
+  from { stroke: var(--ring-ground); }
+  to   { stroke: #fff; }
 }
-/* one head segment: `0 L s 2`, s = HEAD_S; its place in the feather is its own static
-   dashoffset (BriefPanel.tsx), so one rule serves all of them */
-@keyframes brief-draw-head {
-  from { stroke-dasharray: 0 0 0.015 2; }
-  to   { stroke-dasharray: 0 1.36 0.015 2; }
-}
-/* the burst: lights (staggered outward from the corner by an inline delay), holds, and
-   is gone by the time the body has come round to it */
-@keyframes brief-draw-burst {
-  0%      { opacity: 0; }
-  16%     { opacity: 1; }
-  45%     { opacity: 1; }
-  85%, 100% { opacity: 0; }
-}
-@keyframes brief-draw-heads {
-  0%, 84% { opacity: 1; }
-  100%    { opacity: 0; }
+@keyframes brief-draw-lap {
+  from { opacity: 1; }
+  to   { opacity: 1; }
 }
 /* WHEN each ring shows. The hover: while the pointer is on the row (`data-hov`,
    set by the row itself — see BriefPanel.tsx for why not `:hover`), and never on

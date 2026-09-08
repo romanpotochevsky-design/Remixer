@@ -149,87 +149,100 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
 /**
  * The ring that draws itself around a row — index.css "THE BORDER THAT DRAWS ITSELF".
  *
- * Strokes of the SAME rounded rectangle, each with `pathLength="1"` so the dash
- * arithmetic is in fractions of the perimeter whatever the row's size. Three kinds:
+ * NOT A TRAVELLING LIGHT. The ring is `SEG_N` equal dashes of ONE rounded rectangle (each
+ * rect carries `pathLength="1"`, so a dash is a fraction of the perimeter whatever the row's
+ * size), and every dash FADES IN ON ITS OWN CLOCK: from nothing to the ring's colour, on a
+ * long, soft ease, starting a little later than the dash before it. Nothing moves. What the
+ * eye sees is the contour materialising out of nothing — brightest where it started,
+ * thinning to nothing where it has not yet begun — and that gradient sweeping round the
+ * row as the later dashes catch up. Read against the fifth recording (08.09.2026, "не вижу
+ * никакой плавности… появление из полной прозрачности… градиентно, плавно, растушёвано и
+ * не дёргано"), this is the picture the board draws: a gradient that APPEARS, not a strip
+ * that ARRIVES.
  *
- *  · THE BODY — one stroke that runs CLOCKWISE from the path's start (the top edge, just
- *    past the top-left corner): along the top, down the right side, back along the
- *    bottom, up the left side, until it closes on its own start. One lap, 360°.
- *  · THE HEAD — ahead of the body, a long FEATHER: `HEAD_N` short segments of `HEAD_S`
- *    each, at opacities easing from near the body's light down to nothing. This is the
- *    gradient the board draws: light thinning out over a third of the perimeter toward
- *    where it has not yet reached.
- *  · THE BURST — behind the start, the OTHER way round the corner: `BURST_N` segments
- *    down the left side and along the bottom-left, fading with distance from the corner,
- *    and lighting one after another outward from it. Light scattering does not stop at a
- *    line; at the corner where the lap begins it spreads both ways (the board's frame,
- *    29688:29507). The burst fades out as the body comes round to claim that stretch, so
- *    nothing stacks and nothing is left.
+ * WHY THE DASH-LENGTH VERSIONS WERE WRONG, frame by frame off the designer's machine. A
+ * drawn dash has a TIP, and at the speed he asked for the tip advanced ~140px a frame: the
+ * whole bottom edge lit faintly between two frames ("дёргано"). And the scatter behind the
+ * start was a second layer that had to fade OUT for the body to replace it — the left side
+ * measured 68 → 48 → 95: lit, dimmed, relit. One value per position can neither jump nor
+ * dip: each dash rises once, monotonically, and there is no tip because there is nothing
+ * moving, only a schedule.
  *
- * ⚠️ THE LIGHT GROWS OUT OF THE CORNER; NOTHING IS LIT AT FRAME ZERO. The whole run —
- * body and head together — is shifted BACK along the path by the head's length (a
- * static `stroke-dashoffset` of HEAD_W on the body, HEAD_W − k·HEAD_S on head segment k)
- * and the body's dash runs 0 → 1 + HEAD_W. So at the start the tip of the feather is AT
- * the corner and everything else is off the path; the soft tip emerges and the body
- * follows a head's length behind it, and only when the run has gone HEAD_W past the
- * corner is the corner itself at full. The first cut of the feather sat AHEAD of a body
- * that started at the corner, which lit 58% of the ring faintly in the first frame and
- * then ran the bright body over it — what the designer saw as "ховер на ховере: мгновенно
- * появляется светлый бордер и поверх него идёт анимация ещё одного" (08.09.2026, fourth
- * recording). Gaps in every dash pattern are 2 — longer than the path — so no second
- * copy of a dash can land on the path while the first is still off it.
+ * THE SCHEDULE (`startOf`). Position p runs clockwise from the top-left corner. The first
+ * fifth of the perimeter COUNTER-clockwise from the corner (the left side and the start of
+ * the bottom edge) starts as early as the first fifth clockwise, mirrored — so the light
+ * scatters both ways from where it ignites, as the board's corner shows and the third
+ * recording asked for. The two schedules meet at p = 0.8 with the same start time, so the
+ * clockwise sweep, coming round along the bottom, arrives where the corner's scatter left
+ * off with no seam and no second layer. Starts are spread over `SPREAD` of the lap; each
+ * dash fades over the rest.
  *
- * Every head segment shares ONE keyframe rule (index.css `brief-draw-head`); the burst
- * segments share one too, staggered by an inline delay so they light outward from the
- * corner. A dash pattern never wraps a closed path's start, so as the head reaches the
- * end of the path it runs off it — into the body's own start — and the ring closes.
+ * ⚠️ THE FADE IS A COLOUR, NOT AN OPACITY, AND THE DASHES OVERLAP. Sixty-four anti-aliased
+ * dashes butted end to end seam: where a boundary falls inside a device pixel the two
+ * partial coverages composite as alpha and the pixel comes out darker — measured −47/255
+ * on the 2px ring, a dark tick every 27px, for the whole draw. Overlapping the dashes
+ * instead trades the dark tick for a bright one wherever two translucent strokes stack.
+ * So the strokes are OPAQUE: each dash fades from the colour of the GROUND under the ring
+ * (`--ring-ground`: the answers card's fill over the dock's flat ground, mixed by the
+ * card's alpha) to white, and where one overlaps the next the later simply covers it
+ * (neighbours differ by ~3%). The ring's translucency is applied once to the flattened
+ * group (`.ink`: the hover's 32% as opacity, the pick's gradient as a luminance mask), so
+ * an unlit dash paints the ground at that alpha — invisible over the same ground — and a
+ * lit one paints white at it, which is exactly the alpha stroke the board specifies.
+ * Measured against the alpha strokes this replaces: ≤ 1/255 everywhere, and no seam at
+ * any dash boundary. (A `screen` blend was tried first — exact only when no ancestor is
+ * isolated, and motion's wrappers are: it left the 32% ring 8/255 too dark.)
  *
- * `drawKey` > 0 mounts the strokes DRAWING; at 0 they stand at full with head and burst
- * gone — the resting ring. Remounting on a new key is what restarts the draw; `onDrawn`
- * fires when the body has closed, and the row drops the key back to 0.
+ * `drawKey` > 0 mounts the dashes drawing; at 0 the ring is one solid stroke — the last
+ * frame, same pixels. Remounting on a new key restarts the draw; `onDrawn` fires when the
+ * lap's own clock (a no-op animation on the group) has run out.
  *
- * Geometry (inset, radius, width, colour) is CSS on the rects per `kind`, so the hover's
- * 1px and the pick's 2px are one component.
+ * Geometry (inset, radius, width) and translucency are CSS per `kind`, so the hover's 1px
+ * and the pick's 2px are one component.
  */
-/** The feather ahead of the body: 24 × 0.015 = 0.36 of the perimeter (HEAD_W — the CSS
- *  keyframes carry the same 0.36 and 0.015; keep them in step). */
-const HEAD_N = 24
-const HEAD_S = 0.015
-const HEAD_W = HEAD_N * HEAD_S
-/** The scatter behind the start: 12 × 0.018 = 0.22 of the perimeter the other way round
- *  the corner — the left side and the start of the bottom edge on a wide row. Each
- *  segment lights BURST_STAGGER_MS after the one before it, outward from the corner. */
-const BURST_N = 12
-const BURST_S = 0.018
-const BURST_STAGGER_MS = 9
-/** Both falloffs are eases, not straight ramps, so the far tips have no edge. */
-const headOpacity = (k: number) => +Math.pow(1 - (k + 0.5) / HEAD_N, 1.4).toFixed(3)
-const burstOpacity = (j: number) => +(0.7 * Math.pow(1 - (j + 0.5) / BURST_N, 1.3)).toFixed(3)
-/* head k draws [L + k·s − HEAD_W, … + s] for the body's running L: its dash sits k·s
-   further along the pattern, and the whole run is pulled back by HEAD_W */
-const HEADS = Array.from({ length: HEAD_N }, (_, k) => ({ k, off: +(HEAD_W - k * HEAD_S).toFixed(4), op: headOpacity(k) }))
-/* burst j covers [1 − (j+1)·s, 1 − j·s]: the second copy of a dash `s 1`, pushed back
-   by (j + 2)·s (a pattern never wraps the start, so it is the copy after the gap that
-   lands at the end of the path) */
-const BURST = Array.from({ length: BURST_N }, (_, j) => ({ j, off: +((j + 2) * BURST_S).toFixed(4), op: burstOpacity(j), delay: `${j * BURST_STAGGER_MS}ms` }))
+/** Dashes round the ring: 64 is ~27px each on the wide row, ~15px in the split — the
+ *  steps between neighbours' clocks are far below what the eye can pick out. */
+const SEG_N = 64
+const SEG_S = 1 / SEG_N
+/** Each dash runs this much of the perimeter past its slot into the next dash's: ~5px on
+ *  the wide row, ~3px in the split, always more than the anti-aliased edge it has to bury. */
+const SEG_LAP = 0.003
+/** How much of the lap the start times are spread over; the rest is each dash's own fade.
+ *  (The CSS fade duration is `1 − SPREAD` of `--dur` — keep the two in step.) */
+const SPREAD = 0.55
+/** When a dash at clockwise position p (0…1 from the top-left corner) starts, as a share
+ *  of SPREAD: clockwise the share is p itself; the last fifth before the corner mirrors the
+ *  first fifth after it (4 × the distance back to the corner), so both schedules read 0.8
+ *  at p = 0.8 and hand over without a seam. */
+const startOf = (p: number) => Math.min(p, 4 * (1 - p)) / 0.8
+const SEGS = Array.from({ length: SEG_N }, (_, k) => ({
+  k,
+  /* dash k covers [k·s, (k+1)·s + lap]: a single dash `s+lap 2` pushed forward by k·s */
+  off: +(-(k * SEG_S)).toFixed(6),
+  delay: `calc(var(--dur) * ${(startOf((k + 0.5) / SEG_N) * SPREAD).toFixed(4)})`,
+}))
+const SEG_DASH = `${(SEG_S + SEG_LAP).toFixed(6)} 2`
 
 function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey: number; onDrawn?: () => void }) {
   return (
     <svg className={`brief-draw brief-draw--${kind}`} aria-hidden>
-      <g
-        key={drawKey}
-        className={drawKey > 0 ? 'is-drawing' : undefined}
-        onAnimationEnd={(e) => { if (e.animationName === 'brief-draw-body') onDrawn?.() }}
-      >
-        <rect className="body" pathLength="1" />
-        <g className="heads">
-          {HEADS.map(({ k, off, op }) => (
-            <rect key={k} className="h" pathLength="1" strokeDashoffset={off} opacity={op} />
-          ))}
-        </g>
-        {drawKey > 0 && BURST.map(({ j, off, op, delay }) => (
-          <rect key={j} className="b" pathLength="1" strokeDashoffset={off} strokeOpacity={op} style={{ animationDelay: delay }} />
-        ))}
+      {/* `.ink` carries the ring's translucency (index.css): its children are opaque */}
+      <g className="ink">
+        {drawKey > 0 ? (
+          <g
+            key={drawKey}
+            className="is-drawing"
+            onAnimationEnd={(e) => { if (e.animationName === 'brief-draw-lap') onDrawn?.() }}
+          >
+            {SEGS.map(({ k, off, delay }) => (
+              <rect key={k} className="seg" pathLength="1" strokeDasharray={SEG_DASH} strokeDashoffset={off} style={{ animationDelay: delay }} />
+            ))}
+          </g>
+        ) : (
+          <g key={0}>
+            <rect className="body" pathLength="1" />
+          </g>
+        )}
       </g>
     </svg>
   )
@@ -404,15 +417,26 @@ export function BriefPanel() {
          full-width children of the shell, so the answers card and the field share edges. */
       className="relative z-20"
     >
-      {/* the pick stroke's gradient, defined once for every row's ring (`url(#brief-pick-grad)`,
-          index.css "THE BORDER THAT DRAWS ITSELF") — the house diagonal, .98 → .55 → .82 */}
+      {/* The pick ring's gradient, defined once for every row (index.css "THE BORDER THAT
+          DRAWS ITSELF") — the house diagonal, .98 → .55 → .82. It is worn as a MASK
+          (`url(#brief-pick-mask)`, luminance = white × the stop alphas) on the ring's `.ink`
+          group, not as the stroke's paint: the strokes are opaque so that overlapping dashes
+          cannot seam, and the alpha the board gives the ring is applied to the flattened result.
+          ⚠️ The mask's rect reaches 5% PAST the group's box: the box is the stroke's centre
+          line, and a rect sized exactly to it clipped the stroke's outer pixel (the 2px ring
+          rendered 1px). The gradient is `userSpaceOnUse` so that, drawn inside a mask whose
+          content units are the box, it still runs −.069 → 1.069 of the BOX, not of the wider
+          rect — the same pixels the stroke used to be painted with. */}
       <svg className="absolute h-0 w-0" aria-hidden>
         <defs>
-          <linearGradient id="brief-pick-grad" x1="-0.069" y1="0.401" x2="1.069" y2="0.599">
+          <linearGradient id="brief-pick-grad" gradientUnits="userSpaceOnUse" x1="-0.069" y1="0.401" x2="1.069" y2="0.599">
             <stop offset="0" stopColor="#fff" stopOpacity="0.98" />
             <stop offset="0.48" stopColor="#fff" stopOpacity="0.55" />
             <stop offset="1" stopColor="#fff" stopOpacity="0.82" />
           </linearGradient>
+          <mask id="brief-pick-mask" maskContentUnits="objectBoundingBox" x="-0.1" y="-0.1" width="1.2" height="1.2">
+            <rect x="-0.05" y="-0.05" width="1.1" height="1.1" fill="url(#brief-pick-grad)" />
+          </mask>
         </defs>
       </svg>
       <div className="dock-sheet relative">
