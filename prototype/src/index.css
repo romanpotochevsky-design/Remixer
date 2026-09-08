@@ -3315,6 +3315,68 @@ html[data-drag] .shell-aside { transition: none; }
   0%, 42% { opacity: 0; }
   74%, 100% { opacity: 1; }
 }
+/* ------------------------------------------------------------------------
+ * THE CHARGE (designer, 08.09.2026: "от центра произошёл красивый светлый всплеск, который
+ * рассеивается на всё поле… как заряд энергии, который плавно рассеивается… но эффект
+ * лёгкий, не сильно бросающийся в глаза"). As the bubble forms, a soft light spreads from
+ * the centre of the FIELD and thins out as it reaches the edges — one bloom, no ring, no
+ * flash: a breath of light, not a splash — and the field's rim lifts faintly as the light
+ * reaches it. It plays on the dock's rise, ahead of the piston: the field charges, then the
+ * bubble grows out of it. Transform and opacity only; no blur (the gradient is soft on its
+ * own, and a blurred 800px surface is the per-frame cost this project forbids). The overlay
+ * clips to the field's radius and paints BELOW the field's text and buttons (`z-index: -1`
+ * inside the field's own stacking context) and ABOVE its fill.
+ * ---------------------------------------------------------------------- */
+.composer-field { isolation: isolate; }
+.dock-splash {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: 24px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dock-splash > i {
+  position: absolute;
+  display: block;
+  opacity: 0;
+}
+/* a SQUARE disc on the field's width, so the front is a circle spreading along a bar; its
+   scale runs from a point at the centre to past the far corners */
+.dock-splash-bloom {
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.08);
+  background: radial-gradient(circle closest-side, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0.03) 68%, rgba(255, 255, 255, 0) 100%);
+}
+/* the rim: a 1px ring exactly over the field's border, masked like the glass rims */
+.dock-splash-rim {
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.dock-rise .dock-splash-bloom { animation: dock-charge 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.dock-rise .dock-splash-rim   { animation: dock-charge-rim 0.8s ease-in-out 0.15s both; }
+@keyframes dock-charge {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.08); }
+  16%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.12); }
+}
+@keyframes dock-charge-rim {
+  0%   { opacity: 0; }
+  45%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 @keyframes dock-shell-out {
   0%, 45% { opacity: 1; }
   100% { opacity: 0; }

@@ -555,6 +555,14 @@ export function ChatPanel() {
             </span>
           )}
         <div className="composer-field relative rounded-[24px] pb-2 pr-2">
+          {/* The charge — a soft light that spreads from the centre of the field and thins
+              out across it as the bubble forms (designer, 08.09.2026: "как заряд энергии,
+              который плавно рассеивается… эффект лёгкий"). Driven by the dock's `.dock-rise`
+              (index.css "THE CHARGE"); at rest invisible and inert. */}
+          <span className="dock-splash" aria-hidden>
+            <i className="dock-splash-bloom" />
+            <i className="dock-splash-rim" />
+          </span>
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
             <textarea
               ref={field}
