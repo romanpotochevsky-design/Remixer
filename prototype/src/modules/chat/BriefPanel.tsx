@@ -26,11 +26,15 @@
  *    about type answered in words would ask someone to pick a face they cannot see.
  * A grid holds four; only the radio list is capped at three.
  *
+ * Both grids wear the rows' rings: 25732:138657 draws the hovered plate, 29745:57892 the
+ * picked one, and both are the pair the rows already have — 1px 32% white, then the 2px
+ * house gradient. Our blue `--action` ring, put there while the boards were silent, is
+ * gone with them.
+ *
  * Where the board is still silent, this file says so at the point of the decision:
- *  - a selected plate has no drawn state, so it takes a 2px ring in `--action`
  *  - there is no collapse chevron: the board does not draw one (Lovable's had one)
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
@@ -73,8 +77,12 @@ function Radio({ on }: { on: boolean }) {
 }
 
 /**
- * One answer row: radio · title · consequence. The row is the click target, so picking
- * an option is a press anywhere on the line rather than on a 16px dot.
+ * A PICKABLE — the button behind every answer the panel offers, and the pair of rings it
+ * wears. The rows had them first; the boards the designer sent on 08.09.2026 give the
+ * colour plates the same pair (25732:138657 hover, 29745:57892 picked) and he asked for
+ * the lettering cards to follow ("анимации ховера и клика возьми из компонента с обычным
+ * выбором"). So the behaviour lives once, here, and each shape brings only its geometry
+ * (index.css: `.brief-opt` for the row, `.brief-tile--swatch` / `--card` for the grids).
  *
  * THE BORDER DRAWS ITSELF (designer, 08.09.2026, Figma 29688:29507: "цвет бордера не
  * равномерно одновременно по всему бордеру появляется, а градиентно по бордеру наполняет
@@ -95,13 +103,19 @@ function Radio({ on }: { on: boolean }) {
  *  · `press` bumps on every click, remounting the pick stroke as a draw; when the draw
  *    has closed the key drops to 0 and the same stroke stands still at full — the
  *    picked ring IS the last frame of its own draw, so nothing has to cross-fade. A press
- *    on the row that is already picked draws it again: that is its acknowledgement.
+ *    on the option that is already picked draws it again: that is its acknowledgement.
  *    (The hover key drops to 0 the same way once its lap is done.)
  *
  * Under reduced motion neither key moves: the rings appear and go as state.
  */
-function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
-  const { t } = useT()
+function Pick({ className, on, label, title, onPick, children }: {
+  className: string
+  on: boolean
+  label: string
+  title?: string
+  onPick: () => void
+  children: ReactNode
+}) {
   const reduce = useReducedMotion()
   const [hovering, setHovering] = useState(false)
   const [hovKey, setHovKey] = useState(0)
@@ -109,31 +123,48 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
   return (
     <button
       type="button"
-      onClick={() => { if (!reduce) setPress((n) => n + 1); answerBrief(q.key, o.id) }}
+      onClick={() => { if (!reduce) setPress((n) => n + 1); onPick() }}
       onPointerEnter={() => { setHovering(true); if (!reduce) setHovKey((n) => n + 1) }}
       onPointerLeave={() => setHovering(false)}
       aria-pressed={on}
       data-on={on ? '' : undefined}
       data-hov={hovering ? '' : undefined}
       data-press={press > 0 ? '' : undefined}
-      /* Named explicitly: a palette row's body is four colours and carries no text at
-         all, so without this the row would announce itself by its title alone in some
-         readings and by nothing in others. */
-      aria-label={t(o.name)}
-      /*
-       * `brief-opt` carries the row's states and its spacing — index.css, "THE ANSWER
-       * ROW'S HOVER" (Figma 29688:26919), "THE SELECTED ROW" (29688:27643) and "THE
-       * BORDER THAT DRAWS ITSELF" (29688:29507): a 1px ring drawn on hover, a 2px
-       * gradient ring drawn when picked, 6px between rows so the two can never meet, and
-       * the hairline centred in that gap.
-       *
-       * py-18 both sides: the board's 19th pixel on row 1 was the divider's own weight,
-       * and the divider has moved out of the row's box into the gap.
-       */
-      className="brief-opt relative flex w-full items-start gap-3 py-[18px] pl-4 pr-6 text-left"
+      /* Named explicitly: a plate's body is four colours and carries no text at all, so
+         without this it would announce itself by its title alone in some readings and by
+         nothing in others. */
+      aria-label={label}
+      title={title}
+      /* `brief-pick` carries the ring clocks, the ground the strokes fade from and the
+         ring's radius; the shape's own class carries its geometry and spacing. */
+      className={`brief-pick relative ${className}`}
     >
       <DrawRing kind="hover" drawKey={hovKey} onDrawn={() => setHovKey(0)} />
       <DrawRing kind="pick" drawKey={press} onDrawn={() => setPress(0)} />
+      {children}
+    </button>
+  )
+}
+
+/**
+ * One answer row: radio · title · consequence. The row is the click target, so picking
+ * an option is a press anywhere on the line rather than on a 16px dot.
+ *
+ * `brief-opt` carries the row's spacing — index.css, "THE ANSWER ROW'S HOVER" (Figma
+ * 29688:26919), "THE SELECTED ROW" (29688:27643): 6px between rows so the two rings can
+ * never meet, and the hairline centred in that gap. py-18 both sides: the board's 19th
+ * pixel on row 1 was the divider's own weight, and the divider has moved out of the row's
+ * box into the gap.
+ */
+function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
+  const { t } = useT()
+  return (
+    <Pick
+      className="brief-opt flex w-full items-start gap-3 py-[18px] pl-4 pr-6 text-left"
+      on={on}
+      label={t(o.name)}
+      onPick={() => answerBrief(q.key, o.id)}
+    >
       <span className="flex items-center pt-1.5">
         <Radio on={on} />
       </span>
@@ -142,7 +173,7 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
         {/* the consequence — what changes on the page if this is picked (29464:34362) */}
         <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">{o.detail ? t(o.detail) : null}</span>
       </span>
-    </button>
+    </Pick>
   )
 }
 
@@ -266,11 +297,18 @@ function Body({ q }: { q: BriefQuestion }) {
 
   /*
    * The colour question is the one with nothing to read, so the board gives it a shape of
-   * its own (25732:139123): a 2×2 grid of 40px plates, four cells each, 8px between them,
-   * and — this is the tell — the "Write your own…" field full width with NO radio beside
-   * it. On the radio list the field is one option among several and needs its dot; here
-   * selection lives on the plate, so a radio would be a second, contradictory control.
-   * That is also why a text-only question renders its field alone.
+   * its own (25732:139123): a 2×2 grid of 40px plates, four cells each, and — this is the
+   * tell — the "Write your own…" field full width with NO radio beside it. On the radio
+   * list the field is one option among several and needs its dot; here selection lives on
+   * the plate, so a radio would be a second, contradictory control. That is also why a
+   * text-only question renders its field alone.
+   *
+   * ⚠️ EACH PLATE SITS IN A 4px BOX OF ITS OWN (the designer redrew the grid on
+   * 08.09.2026: "я добавил в палитре дополнительные 4px отступы вокруг кнопки с палитрой,
+   * чтобы ховер и селект выглядели хорошо и имели отступ от палитры"). The grid's own
+   * numbers are unchanged — 16 round the block, 8 between the boxes, 8 under it — so the
+   * boxes land where the plates used to and the plates move 4 inward: 20 from the card's
+   * edge, 16 between them. The ring is drawn on the box, never on the plate.
    */
   const swatchGrid = q.kind === 'palette' && options.length > 0
   const typeGrid = q.kind === 'typography' && options.length > 0
@@ -283,23 +321,22 @@ function Body({ q }: { q: BriefQuestion }) {
       {swatchGrid && (
         <div className="grid grid-cols-2 gap-2 px-4 pb-2 pt-4">
           {options.map((o) => (
-            <button
+            <Pick
               key={o.id}
-              type="button"
-              onClick={() => answerBrief(q.key, o.id)}
-              aria-pressed={picked === o.id}
-              aria-label={t(o.name)}
+              className="brief-tile brief-tile--swatch flex p-1"
+              on={picked === o.id}
+              label={t(o.name)}
               title={t(o.name)}
-              /* Selection cue is OURS — the board draws no selected plate. A 2px ring in
-                 `--action` outside the plate: the same blue the radio uses, and a
-                 box-shadow rather than a border so nothing in the grid moves. */
-              className="flex h-10 overflow-hidden rounded-[8px] border border-[#ffffff0a] transition-shadow duration-[var(--dur-fast)] ease-std"
-              style={picked === o.id ? { boxShadow: '0 0 0 2px var(--action)' } : undefined}
+              onPick={() => answerBrief(q.key, o.id)}
             >
-              {o.swatches!.map((c) => (
-                <span key={c} className="h-full flex-1" style={{ background: c }} />
-              ))}
-            </button>
+              {/* the plate — 40 tall, radius 8, a 4% white rim (25732:139125). It never
+                  moves: hover and pick are strokes drawn OUTSIDE the box round it. */}
+              <span className="flex h-10 flex-1 overflow-hidden rounded-[8px] border border-[#ffffff0a]">
+                {o.swatches!.map((c) => (
+                  <span key={c} className="h-full flex-1" style={{ background: c }} />
+                ))}
+              </span>
+            </Pick>
           ))}
         </div>
       )}
@@ -313,40 +350,47 @@ function Body({ q }: { q: BriefQuestion }) {
         *
         * Two blocks with a hairline between them, exactly as Lovable's card: the specimen
         * on top, the style's name and what it reads like underneath.
+        *
+        * The cards take the plates' treatment — the designer asked for it in the same
+        * message as the colour boards ("тоже самое и для выбора шрифта можно сделать"):
+        * each card sits in a 4px box, the box wears the drawn rings, and the card itself
+        * keeps its own rim and never moves. The board draws no lettering grid, so the
+        * numbers are read off the colour one: boxes 8 apart inside the block's 16, which
+        * puts the cards 20 from the edge and 16 apart.
         */}
       {typeGrid && (
-        <div className="grid grid-cols-2 gap-3 px-4 pb-2 pt-4">
+        <div className="grid grid-cols-2 gap-2 px-4 pb-2 pt-4">
           {options.map((o) => (
-            <button
+            <Pick
               key={o.id}
-              type="button"
-              onClick={() => answerBrief(q.key, o.id)}
-              aria-pressed={picked === o.id}
-              aria-label={t(o.name)}
-              className="overflow-hidden rounded-[12px] border border-[#ffffff14] bg-[#ffffff05] text-left transition-shadow duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)]"
-              style={picked === o.id ? { boxShadow: '0 0 0 2px var(--action)' } : undefined}
+              className="brief-tile brief-tile--card flex p-1 text-left"
+              on={picked === o.id}
+              label={t(o.name)}
+              onPick={() => answerBrief(q.key, o.id)}
             >
-              <span className="block border-b border-[#ffffff0a] px-4 pb-3 pt-3">
-                <span
-                  className="block text-[17px] leading-[24px] text-white"
-                  style={{ fontFamily: `'${o.heading} Specimen', '${o.heading}', serif` }}
-                >
-                  Title - {o.heading}
+              <span className="flex flex-1 flex-col overflow-hidden rounded-[12px] border border-[#ffffff14] bg-[#ffffff05]">
+                <span className="block border-b border-[#ffffff0a] px-4 pb-3 pt-3">
+                  <span
+                    className="block text-[17px] leading-[24px] text-white"
+                    style={{ fontFamily: `'${o.heading} Specimen', '${o.heading}', serif` }}
+                  >
+                    Title - {o.heading}
+                  </span>
+                  <span
+                    className="block text-[13px] leading-[19px] text-[#ffffff7a]"
+                    style={{ fontFamily: `'${o.body} Specimen', '${o.body}', sans-serif` }}
+                  >
+                    Body - {o.body}
+                  </span>
                 </span>
-                <span
-                  className="block text-[13px] leading-[19px] text-[#ffffff7a]"
-                  style={{ fontFamily: `'${o.body} Specimen', '${o.body}', sans-serif` }}
-                >
-                  Body - {o.body}
+                <span className="block px-4 pb-3.5 pt-3">
+                  <span className="block text-[13px] font-semibold leading-[18px] text-white">{t(o.name)}</span>
+                  <span className="mt-0.5 block text-[13px] leading-[18px] text-[#ffffffa3]">
+                    {o.detail ? t(o.detail) : null}
+                  </span>
                 </span>
               </span>
-              <span className="block px-4 pb-3.5 pt-3">
-                <span className="block text-[13px] font-semibold leading-[18px] text-white">{t(o.name)}</span>
-                <span className="mt-0.5 block text-[13px] leading-[18px] text-[#ffffffa3]">
-                  {o.detail ? t(o.detail) : null}
-                </span>
-              </span>
-            </button>
+            </Pick>
           ))}
         </div>
       )}

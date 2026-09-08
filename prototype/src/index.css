@@ -3562,7 +3562,7 @@ html[data-drag] .shell-aside { transition: none; }
    * it: every row is 18/18 now.
    */
   --opt-gap: 6px;
-  border-radius: 16px;
+  --ring-r: 16px;
 }
 .brief-opt:not(:last-of-type) { margin-bottom: var(--opt-gap); }
 .brief-opt:not(:last-of-type)::after {
@@ -3582,6 +3582,43 @@ html[data-drag] .shell-aside { transition: none; }
 .brief-opt:has(+ .brief-opt[data-on])::after { opacity: 0; }
 .brief-radio-off { transition: border-color var(--dur-fast) var(--ease-std); }
 .brief-opt:hover .brief-radio-off { border-color: rgba(255, 255, 255, 0.8); }
+
+/* ------------------------------------------------------------------------
+ * THE PLATE AND THE CARD TAKE THE ROWS' RINGS — Figma 25732:138657 (hovered
+ * plate) and 29745:57892 (picked plate), both sent by the designer on
+ * 08.09.2026 with "изучи детально макет и сделай перфект пиксель… анимации
+ * ховера и клика возьми из компонента с обычным выбором", and "тоже самое и
+ * для выбора шрифта можно сделать".
+ *
+ * So the colour grid and the lettering grid stop wearing our blue 2px
+ * `--action` ring — ours only because the boards were silent when they were
+ * built — and wear the pair the rows wear: 1px `Neutral Alpha/400` on hover,
+ * 2px `Neutral Alpha/800` when picked. Read in the dark theme those are the
+ * 32% white and the 72% whose mean is the house diagonal .98 → .55 → .82, i.e.
+ * the same two strokes, drawn by the same schedule of fades. That also closes
+ * the question the grids were left open with (CLAUDE.md, "что осталось" 0а):
+ * the whole panel now has ONE language of choice.
+ *
+ * ⚠️ THE 4px IS A GAP, NOT ROOM FOR THE RING TO SIT IN. The designer added it
+ * himself ("я добавил в палитре дополнительные 4px отступы вокруг кнопки с
+ * палитрой, чтобы ховер и селект выглядели хорошо и имели отступ от палитры"),
+ * and both boards keep the plate 4px clear of the stroke in BOTH states: the
+ * frame is `p-[4px]` with the border over it, so Figma's own export shrinks the
+ * plate 213.5 → 211.5 → 209.5 as the ring thickens. Ours may not — nothing in
+ * the card is allowed to move. So the button's box is the plate plus its 4px
+ * and the ring is drawn OUTSIDE that box (`--ring-side: -1`): its inner edge
+ * lands on the box, the 4px of ground stays whatever the stroke weighs, and
+ * only the outer edge grows, 1px on hover and 2px on the pick. The rows keep
+ * their stroke inside the box, where their own board puts it (`--ring-side` is
+ * +1 by default), and both readings are the same one rule — the stroke never
+ * takes a pixel from anything that has to stay still.
+ *
+ * The radius follows the same arithmetic: the box is concentric with what it
+ * holds, so it is the plate's 8 (or the card's 12) plus the 4px gap.
+ * ---------------------------------------------------------------------- */
+.brief-tile { --ring-side: -1; }
+.brief-tile--swatch { --ring-r: 12px; }
+.brief-tile--card { --ring-r: 16px; }
 
 /* ------------------------------------------------------------------------
  * THE BORDER THAT DRAWS ITSELF — Figma 29688:29507 (designer, 08.09.2026: "ты
@@ -3659,19 +3696,27 @@ html[data-drag] .shell-aside { transition: none; }
   inherits: true;
   initial-value: #09090b;
 }
-.brief-opt {
+.brief-pick {
   /* the third speed (designer, 08.09.2026): 700 / 880 → "в 2 раза ускорить" → 350 / 440 →
      "ускорим ещё, чтобы быстрее было и не так надоедало" → 220 / 280. A hover fires on every
      row the pointer crosses, so its draw has to be over before the eye tires of it. */
   --draw-hover: 220ms;
   --draw-pick: 280ms;
+  /* The ring's box. Its radius and which side of the box the stroke sits on come from
+     the SHAPE's own class, and their defaults live in the `var()` fallbacks below —
+     never as declarations here: `.brief-pick` and `.brief-tile` land on the same element
+     with the same specificity, so a default written here would beat the shape's value or
+     lose to it purely by source order. */
+  border-radius: var(--ring-r, 16px);
   /* the ground under the ring: the answers card (#09090b at 143/255, BriefPanel.tsx) over
      the dock's flat #1a1a1c (.dock-piston / .dock-base) = 9·.561 + 26·.439 — an unlit dash
      is this colour. ⚠️ Written as a legacy rgb(), NOT as the color-mix() it is: the fade
      interpolates `stroke` from this to #fff, and CSS interpolates two legacy sRGB colours
      in sRGB — which is the straight line "white at alpha g" follows — but a color-mix()
      result is not legacy and pulled the whole fade into Oklab (measured: `oklab(…)`
-     computed values, brighter mid-tones than the alpha stroke this stands in for). */
+     computed values, brighter mid-tones than the alpha stroke this stands in for). ⚠️ It is
+     the same colour under the grids' rings: they are drawn in the 4px round a plate or a
+     card, which is the answers card's own fill, not the plate's. */
   --ring-ground: rgb(16 16 18);
 }
 .brief-draw {
@@ -3692,26 +3737,28 @@ html[data-drag] .shell-aside { transition: none; }
   stroke-linecap: butt;
   stroke: #fff; /* opaque; the ring's alpha is on `.ink` */
 }
-/* geometry per kind: Figma's stroke is inside the box, so the rect is inset by
-   half the stroke and the radius is the row's 16 less that half. `--dur` is the
-   ring's clock; `.ink` its translucency, applied to the flattened strokes. */
+/* Geometry per kind, in the pickable's own terms: the rect is the stroke's CENTRE line,
+   so it sits half a stroke inside the box (`--ring-side: 1`, the row, where the board puts
+   the stroke inside the geometry) or half a stroke outside it (`-1`, the grids, where the
+   4px round the plate has to survive the stroke), and the radius follows it in or out.
+   `--dur` is the ring's clock; `.ink` its translucency, applied to the flattened strokes. */
 .brief-draw--hover { --dur: var(--draw-hover); }
 .brief-draw--hover .ink { opacity: 0.32; } /* Neutral Alpha 32% white */
 .brief-draw--hover rect {
-  x: 0.5px;
-  y: 0.5px;
-  width: calc(100% - 1px);
-  height: calc(100% - 1px);
-  rx: 15.5px;
+  x: calc(var(--ring-side, 1) * 0.5px);
+  y: calc(var(--ring-side, 1) * 0.5px);
+  width: calc(100% - var(--ring-side, 1) * 1px);
+  height: calc(100% - var(--ring-side, 1) * 1px);
+  rx: calc(var(--ring-r, 16px) - var(--ring-side, 1) * 0.5px);
   stroke-width: 1px;
 }
 .brief-draw--pick { --dur: var(--draw-pick); }
 .brief-draw--pick rect {
-  x: 1px;
-  y: 1px;
-  width: calc(100% - 2px);
-  height: calc(100% - 2px);
-  rx: 15px;
+  x: calc(var(--ring-side, 1) * 1px);
+  y: calc(var(--ring-side, 1) * 1px);
+  width: calc(100% - var(--ring-side, 1) * 2px);
+  height: calc(100% - var(--ring-side, 1) * 2px);
+  rx: calc(var(--ring-r, 16px) - var(--ring-side, 1) * 1px);
   stroke-width: 2px;
 }
 /* the pick's gradient — the house diagonal .98 → .55 → .82 — worn as a luminance mask */
@@ -3742,14 +3789,14 @@ html[data-drag] .shell-aside { transition: none; }
    a picked row, where the 2px ring is the stronger statement. The pick: while the
    row is picked. Showing is instant; hiding is the 160ms fade above, under which
    a draw still in flight goes on drawing — the light dims, it does not snap. */
-.brief-opt[data-hov]:not([data-on]) .brief-draw--hover,
-.brief-opt[data-on] .brief-draw--pick {
+.brief-pick[data-hov]:not([data-on]) .brief-draw--hover,
+.brief-pick[data-on] .brief-draw--pick {
   opacity: 1;
   visibility: visible;
   transition: none;
 }
 /* a row being picked while hovered: its hover ring fades as the pick's draws */
-.brief-opt[data-on] .brief-draw--hover {
+.brief-pick[data-on] .brief-draw--hover {
   transition: opacity 0.16s var(--ease-std), visibility 0s linear 0.16s;
 }
 @media (prefers-reduced-motion: reduce) {

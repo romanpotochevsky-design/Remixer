@@ -394,11 +394,49 @@ await p.click('button[aria-label="Next question"]'); await p.waitForTimeout(300)
 {
   /* The colour question is the drawn GRID (25732:139123), not rows: four plates of four
      cells, and its own field with no radio beside it. */
-  const plates = await p.$$eval('section [aria-label="Warm Clay"] span', (els) => els.length)
+  const plates = await p.$$eval('section [aria-label="Warm Clay"] > span > span', (els) => els.length)
   check('the colour question is a grid of four-cell plates', plates === 4, `${plates} cells`)
 }
-await p.click('section button[aria-label="Warm Clay"]'); await p.waitForTimeout(250); await shot('06-palette-picked')
+/*
+ * THE PLATES WEAR THE ROWS' RINGS — Figma 25732:138657 (hovered) and 29745:57892 (picked),
+ * both sent by the designer on 08.09.2026 with "сделай перфект пиксель… анимации ховера и
+ * клика возьми из компонента с обычным выбором". Three things have to hold at once: the
+ * 4px he put round each plate is a GAP that survives the ring thickening (so the stroke is
+ * drawn outside the box, `x` negative, and the radius grows with it); nothing moves, ever,
+ * as the rows already promise; and the blue `--action` ring we had while the boards were
+ * silent is gone.
+ */
+const tiles = (sel) => p.$$eval(sel, (els) => els.map((el) => {
+  const b = el.getBoundingClientRect(), i = el.querySelector('span').getBoundingClientRect()
+  return [b, i].map((r) => [r.left, r.top, r.width, r.height].map((v) => +v.toFixed(1)))
+}))
+{
+  const rest = await tiles('.brief-tile--swatch')
+  check('every plate sits in a 4px box of its own, and the boxes stand 8 apart',
+    rest.length === 4 && rest.every(([b, i]) => i[0] - b[0] === 4 && i[1] - b[1] === 4 && b[2] - i[2] === 8 && b[3] - i[3] === 8) &&
+      +(rest[1][0][0] - rest[0][0][0] - rest[0][0][2]).toFixed(1) === 8,
+    JSON.stringify(rest[0]))
+  await p.hover('.brief-tile--swatch[aria-label="Warm Clay"]'); await p.waitForTimeout(320)
+  const hov = await ring('.brief-tile--swatch[aria-label="Warm Clay"]', 'hover')
+  check('a hovered plate takes the row\'s own 1px ring at 32% white, drawn and closed',
+    hov.op === 1 && hov.alpha === 0.32 && hov.width === '1px' && hov.solid && hov.white === 1,
+    JSON.stringify(hov))
+  check('…drawn OUTSIDE the box, so the designer\'s 4px stays clear of the stroke',
+    hov.rx === '12.5px' && hov.radius === '12px', `rx=${hov.rx} box=${hov.radius}`)
+}
+await p.click('section button[aria-label="Warm Clay"]'); await p.waitForTimeout(400); await shot('06-palette-picked')
 check('a picked plate shows it', (await p.getAttribute('section button[aria-label="Warm Clay"]', 'aria-pressed')) === 'true')
+{
+  const pick = await ring('.brief-tile--swatch[aria-label="Warm Clay"]', 'pick')
+  check('a picked plate takes the 2px gradient ring, not our old blue one',
+    pick.op === 1 && pick.width === '2px' && pick.masked && pick.shadow === 'none' && pick.rx === '13px',
+    JSON.stringify(pick))
+  await p.mouse.move(20, 20); await p.waitForTimeout(300)
+  const after = await tiles('.brief-tile--swatch')
+  check('and nothing in the grid moved: same boxes, same plates, hovered, picked and at rest',
+    JSON.stringify(after) === JSON.stringify(await tiles('.brief-tile--swatch')) &&
+      after.every(([b, i]) => b[2] - i[2] === 8 && b[3] - i[3] === 8), JSON.stringify(after[1]))
+}
 await p.click('text=Next'); await p.waitForTimeout(400); await shot('07-q4-lettering')
 {
   /* The lettering cards set each pair's name IN that pair, which is only worth anything
@@ -415,7 +453,18 @@ await p.click('text=Next'); await p.waitForTimeout(400); await shot('07-q4-lette
   check('the lettering question is a grid of four cards',
     (await p.$$eval('section button[aria-pressed]', els => els.length)) === 4)
 }
-await p.click('section button[aria-label="Friendly"]'); await p.waitForTimeout(250)
+await p.click('section button[aria-label="Friendly"]'); await p.waitForTimeout(400)
+{
+  /* The lettering cards follow the plates ("тоже самое и для выбора шрифта можно
+     сделать"): the same 4px box, the same drawn pair, and the box's radius the card's 12
+     plus that 4. */
+  const cards = await tiles('.brief-tile--card')
+  const pick = await ring('.brief-tile--card[aria-label="Friendly"]', 'pick')
+  check('a picked lettering card takes the same ring, on a box 4px round the card',
+    cards.every(([b, i]) => i[0] - b[0] === 4 && b[2] - i[2] === 8) &&
+      pick.width === '2px' && pick.masked && pick.shadow === 'none' && pick.rx === '17px' && pick.radius === '16px',
+    JSON.stringify(pick))
+}
 await p.click('text=Submit'); await p.waitForTimeout(900); await shot('08-summary')
 {
   const body = await text()
