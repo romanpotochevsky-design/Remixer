@@ -435,6 +435,21 @@ check('paging back keeps the answer',
   check('the sheet is clipped at the footer’s line for every frame of the morph',
     f.length > 20 && f.every((x) => Math.abs(x.drift) < 1),
     `${f.length} frames, worst ${Math.max(...f.map((x) => Math.abs(x.drift)))}px`)
+  /* ⚠️ THE PANEL IS EXACTLY AS TALL AS WHAT IT HOLDS. The clip's first cut opened the box
+     upward with a negative margin, which collapsed through the panel's own edge: the panel
+     grew 640px, `--rise` with it, and a black slab stood above every question — on the
+     designer's screen, while every motion check here was green. Whatever the clip does,
+     the panel's box is its sheet plus its footer, and the piston's edge sits on it. */
+  const tall = await p.evaluate(() => {
+    const sec = document.querySelector('section[aria-label="Questions before building"]')
+    const r = (e) => e.getBoundingClientRect()
+    const piston = document.querySelector('.dock-piston')
+    return { section: r(sec).height, inner: r(sec.querySelector('.dock-sheet')).height + r(sec.querySelector('.dock-foot')).height,
+             edge: +(r(piston).top - r(sec).top).toFixed(1), rise: getComputedStyle(document.querySelector('.dock')).getPropertyValue('--rise') }
+  })
+  check('the panel is exactly as tall as its sheet plus its footer, and the edge sits on it',
+    Math.abs(tall.section - tall.inner) < 1 && Math.abs(tall.edge) < 1 && Math.abs(parseFloat(tall.rise) - tall.section) < 1,
+    JSON.stringify(tall))
   const both = f.filter((x) => x.lit.length > 1 && Math.min(...x.lit) > 0.06)
   check('…and one question is lit at a time: the old is gone before the new appears',
     both.length === 0, `${both.length} of ${f.length} frames with two lit`)

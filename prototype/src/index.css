@@ -3400,16 +3400,20 @@ html[data-drag] .shell-aside { transition: none; }
  * footer's line and the panel's sides never move, so those three are the ones to
  * hold — and the sides matter too: the swap slides the answers card ±36px, and
  * the card is the panel's full width, so without them it slid out over the chat
- * past the panel's rounded edge. `margin-top`/`padding-top` open the box upward
- * without taking a pixel of layout, and the opened band is deaf to the pointer.
+ * past the panel's rounded edge.
+ *
+ * ⚠️ The opening is a `clip-path` with a NEGATIVE top inset, and nothing else.
+ * The first cut opened the box with `margin-top: -640px` + `padding-top: 640px`
+ * and clipped with `overflow: hidden` — and the negative margin COLLAPSED
+ * through the panel's own top edge (the panel has no padding or border of its
+ * own), so the panel's box grew 640px taller, and `--rise`, which is measured
+ * off that box, made the piston 640px taller with it: a black slab above every
+ * question, on the designer's screen within the hour. `clip-path` is applied to
+ * the element's own border box, takes no part in layout, cannot collapse with
+ * anything, and hit-testing can only ever be narrowed by it — so no
+ * pointer-events games either.
  * ---------------------------------------------------------------------- */
-.dock-clip {
-  margin-top: -640px;
-  padding-top: 640px;
-  overflow: hidden;
-  pointer-events: none;
-}
-.dock-clip > .dock-sheet { pointer-events: auto; }
+.dock-clip { clip-path: inset(-640px 0 0 0); }
 
 /* Parked: the start values, statically, for the one frame before the motion. */
 .dock-armed .dock-piston,
