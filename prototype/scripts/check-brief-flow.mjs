@@ -165,8 +165,10 @@ async function buildFromHome(prompt) {
   await p.waitForTimeout(700)
   await p.fill('input[aria-label="Describe the site you want"]', prompt)
   await p.click('button:has-text("Build")')
-  /* BOOT_MS (850) of corridor, then a beat for the shell to settle. */
-  await p.waitForTimeout(1400)
+  /* The transition (darken → logo → arrive, ~3.1s): wait for its layer to leave, then a
+     beat for the shell to settle. */
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 10000 })
+  await p.waitForTimeout(400)
 }
 
 /* =============================================== A. thin prompt from the hero */
@@ -178,13 +180,18 @@ check('the prototype opens on the Home page', await onHome())
 
 await p.fill('input[aria-label="Describe the site you want"]', 'website')
 await p.click('button:has-text("Build")')
-/* The corridor: a full-screen plate with the mark, ~850ms (BOOT_MS). Sampled early
-   enough to still be up, then waited out before anything is clicked. */
-await p.waitForTimeout(250)
-check('the Home → builder step plays a covered corridor', !!(await p.$('.boot-cover')))
-await shot('02a-corridor')
-await p.waitForTimeout(1200)
-check('the corridor lifts by itself', !(await p.$('.boot-cover')))
+/* The transition: the Home page darkens, the animated mark plays once on the black, then
+   the shell arrives around it (~3.1s, BOOT_MS). Sampled during the darkening and during
+   the logo beat, then waited out before anything is clicked. */
+await p.waitForTimeout(200)
+check('the Home → builder step plays under a cover', !!(await p.$('.boot-cover')))
+await shot('02a-corridor-darken')
+await p.waitForTimeout(1000)
+check('the animated mark plays on the black stage', !!(await p.$('.boot-cover[data-phase="logo"] .boot-logo-anim svg')))
+await shot('02b-corridor-logo')
+await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 10000 })
+check('the transition ends by itself', !(await p.$('.boot-cover')))
+await p.waitForTimeout(300)
 await shot('02-builder-collapsed')
 /* The field as it stands alone — the reference the bubble must not move. */
 const fieldAlone = await fieldBox()

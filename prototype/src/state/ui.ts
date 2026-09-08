@@ -76,13 +76,26 @@ export interface DomainModal {
 /** Chat column bounds. Below ~340 the bubbles stop reading; the upper stop and
  *  the live window check keep the canvas usable at any window size. */
 /**
- * How long the Home → builder corridor lasts (ui/BootCover.tsx draws it).
+ * The Home → builder transition (ui/BootCover.tsx draws it), in three phases:
  *
- * Lives here with the other layout and timing constants rather than in the component,
- * because `openBuilder` below owns the timer — and importing it the other way round
- * would make the store and the cover a cycle.
+ *   darken  — the Home page fades to black under a curtain; the page has not switched.
+ *   logo    — the page switches under the opaque curtain, and the animated Remixer mark
+ *             assembles once at the centre (the designer's own SVGator asset, the same one
+ *             the Home entrance plays — "дать ему один раз проанимироваться").
+ *   arrive  — the mark flies to its post in the builder's header and the shell assembles
+ *             around it: the chat rises from below, its messages cascade top-down, the
+ *             right rail slides in, the wordmark unfolds beside the mark.
+ *
+ * The phase lengths live here with the other timing constants because `openBuilder`
+ * below owns the timers — importing them the other way round would make the store and
+ * the cover a cycle. BOOT_MS is the whole.
  */
-export const BOOT_MS = 850
+export type BootPhase = 'darken' | 'logo' | 'arrive'
+export const BOOT_DARKEN_MS = 380
+/** The assembly is 1550ms (LOGO_ASSEMBLY_MS); the flight leaves during its last 50ms. */
+export const BOOT_LOGO_MS = 1500
+export const BOOT_ARRIVE_MS = 1200
+export const BOOT_MS = BOOT_DARKEN_MS + BOOT_LOGO_MS + BOOT_ARRIVE_MS
 
 export const CHAT_DEFAULT = 432
 export const CHAT_MIN = 340
@@ -241,13 +254,13 @@ interface UIStore {
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
   /**
-   * The Home → builder corridor is on screen (see ui/BootCover.tsx).
+   * Which phase of the Home → builder transition is on screen, or null (see
+   * ui/BootCover.tsx and BootPhase above).
    *
-   * Set by `openBuilder`, so every door into the builder gets the same beat — the hero's
-   * Build, a template's `Use Template`, a project card in the dock. Lovable covers the
-   * same navigation with a full-screen mark for ~1s (frame 02).
+   * Set by `openBuilder`, so every door into the builder gets the same entrance — the
+   * hero's Build, a template's `Use Template`, a project card in the dock.
    */
-  booting: boolean
+  boot: BootPhase | null
   /**
    * Is the canvas on screen? A brand-new project opens with it COLLAPSED: nothing to
    * preview yet, so the chat takes the whole shell and centres itself (Lovable, 2026).
@@ -313,7 +326,9 @@ interface UIStore {
 /** One timer at a time: mashing reload extends the pulse instead of stacking timers. */
 let reloadTimer: ReturnType<typeof setTimeout> | null = null
 /** Same for the Home → builder corridor — one plate, one timer. */
-let bootTimer: ReturnType<typeof setTimeout> | null = null
+let bootTimers: ReturnType<typeof setTimeout>[] = []
+const clearBootTimers = () => { for (const t of bootTimers) clearTimeout(t); bootTimers = [] }
+const bootAfter = (ms: number, fn: () => void) => { bootTimers.push(setTimeout(fn, ms)) }
 
 export const useUI = create<UIStore>((set, get) => ({
   /* The prototype opens where the product does — on the Home page. */
@@ -335,7 +350,7 @@ export const useUI = create<UIStore>((set, get) => ({
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
   reloading: false,
-  booting: false,
+  boot: null,
   previewOpen: true,
 
   /* Leaving a page closes what was open inside it: coming back to a half-open
@@ -343,16 +358,28 @@ export const useUI = create<UIStore>((set, get) => ({
      from another page reads as a bug, not as continuity. Build consumes the
      attachment via `openBuilder`, which is exactly when it should die. */
   goHome: () => {
-    if (bootTimer) { clearTimeout(bootTimer); bootTimer = null }
-    set({ page: 'home', booting: false, publishOpen: false, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null })
+    clearBootTimers()
+    set({ page: 'home', boot: null, publishOpen: false, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null })
   },
-  /* The corridor is raised in the SAME write that changes the page, so the plate is
-     opaque before the builder's first commit — raising it after would let one frame of
-     un-settled shell through, which is the flash the plate exists to hide. */
+  /*
+   * The transition, phase by phase. The curtain is raised FIRST and the page switches
+   * only once it is opaque (BOOT_DARKEN_MS later): the Home page fades to black as
+   * itself, and the builder's first commit happens under the curtain, so no frame of
+   * un-settled shell can show. Under reduced motion the phases collapse to a short covered
+   * swap: the curtain is instant (the global reduce rule stops its fade), there is no logo
+   * beat, and the shell simply appears.
+   */
   openBuilder: () => {
-    if (bootTimer) clearTimeout(bootTimer)
-    set({ page: 'builder', booting: true, templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null })
-    bootTimer = setTimeout(() => { bootTimer = null; set({ booting: false }) }, BOOT_MS)
+    clearBootTimers()
+    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    const darken = reduce ? 80 : BOOT_DARKEN_MS
+    const logo = reduce ? 0 : BOOT_LOGO_MS
+    const arrive = reduce ? 240 : BOOT_ARRIVE_MS
+    set({ boot: 'darken' })
+    bootAfter(darken, () =>
+      set({ page: 'builder', boot: logo ? 'logo' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null }))
+    if (logo) bootAfter(darken + logo, () => set({ boot: 'arrive' }))
+    bootAfter(darken + logo + arrive, () => set({ boot: null }))
   },
   setDockTab: (dockTab) => set({ dockTab }),
   setTemplateFilter: (templateFilter) => set({ templateFilter }),

@@ -29,6 +29,12 @@ import { endDockMotion } from './dock'
 import { PLAN_WAITING } from './plan'
 import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
 
+/**
+ * The stagger step of a turn on the Home → builder arrival (index.css "THE ARRIVAL"):
+ * capped so a long thread does not push the last turns past the arrival phase's end.
+ */
+const arriveStep = (i: number) => ({ '--i': Math.min(i, 6) } as React.CSSProperties)
+
 /** Where a freshly sent message parks: just clear of the 48px top fade. */
 const TOP_INSET = 48
 
@@ -398,7 +404,7 @@ export function ChatPanel() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="arrive-chat flex min-h-0 flex-1 flex-col">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
       {/* chat-col: the thread measures itself (max 600px) and centres in whatever
           width the column has — in the 432px column that is the full width, in a
@@ -432,32 +438,37 @@ export function ChatPanel() {
           ) : (
             thread.map((m, i) => {
               const body = typeof m.text === 'string' ? m.text : t(m.text)
-              return m.who === 'user' ? (
-                <UserBubble
-                  key={m.id}
-                  animate={isFresh(m.id)}
-                  anchorRef={i === lastUserIndex ? anchor : undefined}
-                >
-                  {body}
-                </UserBubble>
-              ) : m.kind === 'brief' ? (
-                <BriefSummary key={m.id} animate={isFresh(m.id)} />
-              ) : m.kind === 'build' ? (
-                <BuildProgress key={m.id} />
-              ) : (
-                <AiMessage
-                  key={m.id}
-                  text={body}
-                  thought={m.thought}
-                  /* a clarifying turn and the hand-over line are not answers to rate */
-                  actions={m.kind !== 'clarify' && m.kind !== 'ack'}
-                  animate={isFresh(m.id)}
-                />
+              return (
+                /* `arrive-msg`: on the Home → builder arrival the turns cascade in from the
+                   top, one after another (`--i` is the stagger step; index.css "THE
+                   ARRIVAL"). At any other time the wrapper is inert. */
+                <div key={m.id} className="arrive-msg" style={arriveStep(i)}>
+                  {m.who === 'user' ? (
+                    <UserBubble
+                      animate={isFresh(m.id)}
+                      anchorRef={i === lastUserIndex ? anchor : undefined}
+                    >
+                      {body}
+                    </UserBubble>
+                  ) : m.kind === 'brief' ? (
+                    <BriefSummary animate={isFresh(m.id)} />
+                  ) : m.kind === 'build' ? (
+                    <BuildProgress />
+                  ) : (
+                    <AiMessage
+                      text={body}
+                      thought={m.thought}
+                      /* a clarifying turn and the hand-over line are not answers to rate */
+                      actions={m.kind !== 'clarify' && m.kind !== 'ack'}
+                      animate={isFresh(m.id)}
+                    />
+                  )}
+                </div>
               )
             })
           )}
 
-          {asking && <BriefStatusRow />}
+          {asking && <div className="arrive-msg" style={arriveStep(thread.length)}><BriefStatusRow /></div>}
 
           {/* While the brief card is settling its own title carries the shimmer —
               a second "Thinking" under it would be two spinners for one wait. The
@@ -467,7 +478,7 @@ export function ChatPanel() {
           {working
             && thread[thread.length - 1]?.kind !== 'brief'
             && thread[thread.length - 1]?.kind !== 'build' && (
-            <div className="pr-8">
+            <div className="arrive-msg pr-8" style={arriveStep(thread.length)}>
               <p className="thinking text-[15px] leading-[25px]">
                 {t({ en: 'Thinking', uk: 'Думаю' })}
               </p>

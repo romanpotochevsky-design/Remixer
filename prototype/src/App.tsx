@@ -51,7 +51,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
 
   /*
    * The glow waits for the send choreography to finish.
@@ -178,7 +178,13 @@ export default function App() {
       : { en: 'Publish', uk: 'Опублікувати' }
 
   return (
-    <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]" data-preview={previewOpen ? 'open' : 'closed'}>
+    <div
+      className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]"
+      data-preview={previewOpen ? 'open' : 'closed'}
+      /* the Home → builder arrival: while set, the `arrive-*` parts below play their
+         entrance (index.css "THE ARRIVAL"; the phases are ui/BootCover.tsx's) */
+      data-boot={boot ?? undefined}
+    >
       {/* ================================================== chat column, 432px —
           or the whole shell when the preview is collapsed. The width transition
           IS the open/close animation: the canvas column just gets what is left,
@@ -198,9 +204,13 @@ export default function App() {
             className="flex items-center"
           >
             <div className="grid w-14 place-items-center">
-              <LogoRemixer size={32} />
+              {/* `data-boot-mark`: where the flying mark of the Home → builder transition
+                  lands (BootCover measures this box) — and the mark that takes over. */}
+              <span data-boot-mark className="arrive-mark grid h-8 w-8 place-items-center">
+                <LogoRemixer size={32} />
+              </span>
             </div>
-            <span className="font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
+            <span className="arrive-word font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
           </button>
           {/*
             * THE PILL HOLDS ONE THING OR THE OTHER, never both (designer, 07.09.2026:
@@ -215,7 +225,7 @@ export default function App() {
             *    shell (there is none on the canvas side either — collapsing is a drag of
             *    the divider). Do not put a second one anywhere.
             */}
-          <Glass className="gap-0.5 p-0.5">
+          <Glass className="arrive-pill gap-0.5 p-0.5">
             {previewOpen ? (
               <>
                 <button
@@ -256,7 +266,7 @@ export default function App() {
       {/* ================================================== center column —
           clipped, so that while the aside grows this column shrinks to nothing
           instead of re-flowing its toolbar into a heap. */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden" aria-hidden={!previewOpen}>
+      <div className="arrive-canvas flex min-w-0 flex-1 flex-col overflow-hidden" aria-hidden={!previewOpen}>
         {/* canvas top toolbar (Figma 25819:143717) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           {/* left: Visual Editor + device preview */}
@@ -443,11 +453,11 @@ export default function App() {
       </div>
 
       {/* ================================================== right rail, 56px */}
-      <nav className="flex flex-none flex-col items-center pb-6" style={{ width: 'var(--rail-w)' }}>
+      <nav className="arrive-rail flex flex-none flex-col items-center pb-6" style={{ width: 'var(--rail-w)' }}>
         <div className="grid place-items-center" style={{ height: 'var(--topbar-h)' }}>
           <button
             aria-label={t({ en: 'Account', uk: 'Акаунт' })}
-            className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white"
+            className="arrive-rail-item h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white"
           >
             R
           </button>
@@ -498,7 +508,7 @@ export default function App() {
         <div className="flex-1" />
         <button
           aria-label={t({ en: 'Support chat', uk: 'Чат підтримки' })}
-          className="grid h-9 w-9 place-items-center rounded-full bg-[#48ba79] text-white transition-transform duration-[var(--dur-fast)] ease-std hover:scale-105"
+          className="arrive-rail-item grid h-9 w-9 place-items-center rounded-full bg-[#48ba79] text-white transition-transform duration-[var(--dur-fast)] ease-std hover:scale-105"
         >
           <IconChatBubble size={20} />
         </button>

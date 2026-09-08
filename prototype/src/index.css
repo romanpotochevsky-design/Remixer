@@ -3115,28 +3115,86 @@ html[data-drag] .shell-aside { transition: none; }
 }
 
 /* ------------------------------------------------------------------------
- * The Home → builder corridor (ui/BootCover.tsx).
+ * The Home → builder transition (ui/BootCover.tsx; phases timed in state/ui.ts).
  *
- * Opaque on the first frame — a fade-IN would show one frame of un-settled builder,
- * which is the flash the plate exists to hide. The mark breathes once on the way in and
- * the plate fades on the way out; both are opacity/transform only, and the layer
- * unmounts when the timer ends.
+ * Designer, 08.09.2026: the Home page darkens to black, then the chat rises from below,
+ * its messages come in top-down, the right rail and its buttons slide in, and the logo
+ * appears in the top-left — with the animated logo file playing once in between.
+ *
+ * DARKEN: the curtain (the builder's ground colour) fades in over the Home page, which
+ * stays mounted underneath. LOGO: the page has switched under the opaque curtain; the
+ * assembly plays at the centre, and the board mark cross-fades over its last frame (the
+ * Home entrance's own settle, 1.35–1.55s). ARRIVE: the curtain lifts, the stage mark
+ * flies onto the header's slot (`--fx/--fy/--fs` are measured by BootCover), the header's
+ * own mark takes over as it lands, and the shell assembles — see THE ARRIVAL below.
+ *
+ * Opacity and transform only. Under reduced motion the global rule (the chat block) stops
+ * every animation here: the curtain is opaque at once (its base opacity is 1), and the
+ * phases collapse to a short covered swap (openBuilder).
  * ---------------------------------------------------------------------- */
-.boot-cover { transition: opacity 0.3s var(--ease-out); }
-.boot-cover[data-leaving] { opacity: 0; }
-.boot-cover-mark {
-  display: block;
-  animation: boot-mark 0.55s var(--ease-out) both;
+.boot-cover { pointer-events: auto; }
+.boot-cover[data-phase='arrive'] { pointer-events: none; }
+.boot-curtain { opacity: 1; }
+.boot-cover[data-phase='darken'] .boot-curtain { animation: boot-darken 0.38s cubic-bezier(0.4, 0, 0.2, 1) both; }
+.boot-cover[data-phase='arrive'] .boot-curtain { animation: boot-lift 0.26s ease-out both; }
+@keyframes boot-darken { from { opacity: 0; } to { opacity: 1; } }
+@keyframes boot-lift   { from { opacity: 1; } to { opacity: 0; } }
+/* The SVGator host: the inner svg fills the stage; overflow stays visible because the
+   assembly overshoots its box for a few frames (as on the Home page). */
+.boot-logo-anim svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* the board mark settles over the assembly's final frame, then is what flies */
+.boot-logo-static { opacity: 0; }
+.boot-cover[data-phase='logo'] .boot-logo-static { animation: boot-static-in 0.2s cubic-bezier(0.33, 0, 0.2, 1) 1.35s both; }
+.boot-cover[data-phase='arrive'] .boot-logo-static { opacity: 1; }
+@keyframes boot-static-in { from { opacity: 0; } to { opacity: 1; } }
+/* the flight: centre → the header's slot, 96 → 32, then it hands over to the header's
+   own mark (`.arrive-mark` below lights at .5s; this fades .5–.66s — a short cross-fade
+   on the same pixels, so nothing pops) */
+.boot-cover[data-phase='arrive'] .boot-stage {
+  animation: boot-fly 0.56s cubic-bezier(0.22, 0.9, 0.24, 1) both, boot-stage-out 0.16s linear 0.5s both;
 }
-@keyframes boot-mark {
-  0% { opacity: 0; transform: scale(0.92); }
-  45% { opacity: 1; transform: scale(1); }
-  100% { opacity: 1; transform: scale(1); }
+@keyframes boot-fly {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(var(--fs, 1)); }
 }
-@media (prefers-reduced-motion: reduce) {
-  /* the plate still does its job — only the movement goes */
-  .boot-cover-mark { animation: none; }
+@keyframes boot-stage-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* ------------------------------------------------------------------------
+ * THE ARRIVAL — the shell assembling behind the flying mark (`[data-boot='arrive']` on
+ * the App root; the parts carry `arrive-*` classes). Every part starts hidden (the
+ * keyframes fill both ways) and comes in on its own beat:
+ *
+ *   .06s  the chat (thread + composer) rises 56px from below            620ms
+ *   .18s  the right rail slides in from the right, its buttons pop      500ms
+ *   .24s  the canvas column fades in (when a preview is open)           500ms
+ *   .30s+ the turns cascade top-down, 70ms apart (`--i`)                420ms each
+ *   .40s  the header pill fades in                                      360ms
+ *   .50s  the header's mark lights as the flying mark lands              120ms
+ *   .48s  the wordmark unfolds from the mark                            300ms
+ *
+ * The header itself does not move — it is the flight's target. Transform and opacity
+ * only. When the phase ends the attribute goes and every part is at rest already.
+ * ---------------------------------------------------------------------- */
+.arrive-mark { opacity: 1; }
+[data-boot='darken'] .arrive-mark, [data-boot='logo'] .arrive-mark { opacity: 0; }
+[data-boot='arrive'] .arrive-mark { animation: boot-fade 0.12s linear 0.5s both; }
+[data-boot='arrive'] .arrive-word { animation: boot-word 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) 0.48s both; }
+[data-boot='arrive'] .arrive-pill { animation: boot-fade 0.36s ease-out 0.4s both; }
+[data-boot='arrive'] .arrive-chat { animation: boot-rise 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) 0.06s both; }
+[data-boot='arrive'] .arrive-canvas { animation: boot-fade 0.5s ease-out 0.24s both; }
+[data-boot='arrive'] .arrive-rail { animation: boot-slide 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.18s both; }
+[data-boot='arrive'] .arrive-rail-item { animation: boot-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.34s both; }
+[data-boot='arrive'] .arrive-rail-item:last-child { animation-delay: 0.42s; }
+[data-boot='arrive'] .arrive-msg {
+  animation: boot-msg 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(0.3s + var(--i, 0) * 70ms);
 }
+@keyframes boot-fade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes boot-word  { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes boot-rise  { from { opacity: 0; transform: translateY(56px); } to { opacity: 1; transform: none; } }
+@keyframes boot-slide { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes boot-pop   { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: none; } }
+@keyframes boot-msg   { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
 
 /* ------------------------------------------------------------------------
  * The question dock — Figma 29464:34334.
