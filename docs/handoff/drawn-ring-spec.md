@@ -1,7 +1,7 @@
-# Drawn Ring — the answer row's hover and selection border. Component spec
+# Drawn Ring — the hover and selection border of every answer the brief panel offers. Component spec
 
-The 1px hover ring and the 2px selection ring around an answer row in the brief
-panel (the four questions Remixer asks before the first build) do not switch on:
+The 1px hover ring and the 2px selection ring around anything pickable in the
+brief panel (the four questions Remixer asks before the first build) do not switch on:
 they APPEAR AS A GRADIENT THAT SWEEPS ROUND THE ROW — brightest where it began,
 thinning to nothing where it has not begun yet — and settle into a plain ring.
 Designed against Figma 29688:26919 (hover), 29688:27643 (selected) and
@@ -15,16 +15,20 @@ it or re-implement it, and what a designer needs to reuse it on another control.
 
 ## Where it is used
 
-| control | ring | trigger |
-|---|---|---|
-| answer row of a radio-list question (goal, pages) | hover 1px · selected 2px | pointer enters the row · the row is picked |
-| palette tile, lettering card (2×2 grids) | **not yet** — they keep the blue 2px `--action` ring | open question to the designer: a white gradient ring vanishes on a light swatch |
+| control | box the ring is drawn on | radius | stroke sits |
+|---|---|---|---|
+| answer row of a radio-list question (goal, pages) — Figma 29688:26919 / 27643 | the row itself | 16 | INSIDE the box (`--ring-side: 1`) |
+| palette tile (2×2 grid) — Figma 25732:138657 hover / 29745:57892 picked | the plate plus the designer's 4px | 12 (8 + 4) | OUTSIDE the box (`--ring-side: -1`) |
+| lettering card (2×2 grid) — no board; follows the palette on the designer's word | the card plus the same 4px | 16 (12 + 4) | OUTSIDE the box |
 
-The row itself never changes size, fill or position in any state: both rings
-are strokes on an overlay INSIDE the row's box (Figma's stroke sits inside the
-geometry, so the inset is also the right pixels). Rows sit 6px apart with the
-hairline divider centred in the gap, so a picked row's 2px ring and its
-neighbour's hover ring can never touch.
+Nothing ever changes size, fill or position in any state: both rings are
+strokes on an overlay, never a border. Where the board puts the stroke inside
+the geometry (the row) the rect is inset by half the stroke; where a gap has to
+survive the stroke thickening (the grids, whose 4px is the designer's breathing
+room and not room for the ring to sit in) the rect is offset outward by half
+the stroke instead, so only the ring's outer edge grows. Rows sit 6px apart with
+the hairline divider centred in the gap, and the grids' boxes 8px apart, so a
+picked ring and its neighbour's hover ring can never touch.
 
 ## States
 
@@ -99,7 +103,8 @@ light.
 ## Anatomy (DOM)
 
 ```
-<button class="brief-opt" data-hov? data-on? data-press? aria-pressed>
+<button class="brief-pick brief-opt|brief-tile--swatch|brief-tile--card"
+        data-hov? data-on? data-press? aria-pressed>
   <svg class="brief-draw brief-draw--hover">          ← overlay, inset 0, pointer-events none
     <g class="ink">                                   ← carries the ring's translucency
       <g class="is-drawing">  (while drawing)         ← no-op lap animation → animationend
@@ -204,13 +209,29 @@ for an `animationend` that will not come.
 - `kind` selects the geometry, clock and translucency (`--dur`, `.ink` opacity
   or mask) in CSS; the component itself knows nothing about widths or colours.
 - `onDrawn` fires once per draw, from the lap animation's `animationend`.
-- The host row supplies `data-hov` / `data-on` / `data-press` for the show/hide
-  rules and sets `--ring-ground` for its surface.
+- The host supplies `data-hov` / `data-on` / `data-press` for the show/hide
+  rules; in the prototype that host is `Pick`, one button behind the row, the
+  plate and the card, which owns the hover and press keys and mounts both rings.
+- `.brief-pick` carries the clocks (`--draw-hover` 220ms, `--draw-pick` 280ms)
+  and `--ring-ground`; the SHAPE's own class carries the geometry:
 
-To reuse on another rounded control: give it a `position: relative` box, a
-permanent `border-radius`, the two overlays, the three data attributes and a
-`--ring-ground` equal to what is painted under its edge. The only part that
-knows the shape is the rect's `rx` (row radius − ½ stroke).
+```css
+.brief-opt          { --ring-r: 16px; }                     /* stroke inside  */
+.brief-tile         { --ring-side: -1; }                    /* stroke outside */
+.brief-tile--swatch { --ring-r: 12px; }
+.brief-tile--card   { --ring-r: 16px; }
+```
+
+⚠️ The DEFAULTS (`16px`, `1`) live in the `var()` fallbacks where the rect is
+written, never as declarations on `.brief-pick`: both classes land on the same
+element with the same specificity, so a declaration there would win or lose by
+source order alone. Measured on the first build — the plate drew the row's ring
+(`rx` 15.5 instead of 12.5) because `.brief-pick` sits lower in the file.
+
+To reuse on another rounded control: give it a `position: relative` box, the two
+overlays, the three data attributes, a `--ring-ground` equal to what is painted
+under its edge, and the two geometry variables. The only part that knows the
+shape is the rect: `rx = --ring-r − --ring-side × ½ stroke`.
 
 ## Performance
 
@@ -234,6 +255,12 @@ small mask raster per frame while drawing; at rest nothing animates.
   `aria-pressed`; the hover ring is given up; a picked row and a hovered
   neighbour keep ≥ 6px; picking another row fades the old ring while the new
   one is still drawing.
+- On the grids: every plate sits 4px inside its own box and the boxes stand 8
+  apart; a hovered plate takes the 1px ring at `.ink` .32 with `rx` 12.5 on a
+  12px box (which is what proves the stroke is drawn outside it); a picked plate
+  takes the 2px masked ring at `rx` 13 with no box-shadow — the blue `--action`
+  ring is gone; a picked lettering card the same at `rx` 17 on a 16px box; and
+  no box or plate moves by a pixel, hovered, picked or at rest.
 
 ## History (all 08.09.2026, all on the designer's recordings) — not to revisit
 
