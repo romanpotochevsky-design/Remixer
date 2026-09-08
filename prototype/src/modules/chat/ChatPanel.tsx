@@ -15,13 +15,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, canUseAI } from '@/state/world'
 import { useT } from '@/i18n'
 import {
-  IconPlus, IconMic, IconArrowUp,
+  IconPlus, IconMic, IconArrowUp, IconChevronDown, IconCheck,
   IconReplyArrow, IconThumbUp, IconThumbDown, IconCopy, IconMore,
 } from '@/ui/icons'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { baselineThread } from './thread'
 import { sendMessage, resumeInterrupted } from './send'
-import { bubbleSend, messageIn } from '@/ui/motion'
+import { bubbleSend, messageIn, popover } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
 import { PlanCard } from './PlanCard'
 import { BuildProgress } from './BuildProgress'
@@ -260,6 +260,126 @@ function Disclaimer() {
     <p className="text-[12px] leading-[26px] text-[var(--gray-500)]">
       {t({ en: 'Recorded AI chats may contain errors.', uk: 'Записані чати з AI можуть містити помилки.' })}
     </p>
+  )
+}
+
+/**
+ * THE COMPOSER'S MODE SWITCHER — Figma 29697:54553 (the pill 29697:55394, the open menu
+ * 29697:55602; designer 08.09.2026: "нужно в чат добавить кнопку с переключателем режимов
+ * Autopilot или Build… точно такой же переключатель есть у lovable.dev").
+ *
+ * `Autopilot` is Remixer leading: after almost every task it comes back proposing the
+ * next one. `Build` is the standard mode for somebody who knows what they want. What the
+ * two modes MEAN lives on the axis itself (`World.mode`); Autopilot's proposal cards are
+ * the next piece of work and are deliberately not faked here.
+ *
+ * ⚠️ IT ONLY EXISTS ONCE THERE IS A SITE. Through the brief and the whole first build
+ * there is nothing for Autopilot to lead and nothing for Build to change, and this
+ * project's rule for a control with nothing to do is that it is better absent than dead
+ * (the right rail's buttons, the greyed Publish — CLAUDE.md). Autopilot is the default
+ * from the first generation onward, which is exactly when the pill turns up.
+ *
+ * The menu opens UPWARD out of the pill's right edge — 8px above it, right edges flush,
+ * 200 wide, and it overlaps the field's own box as the board draws it. Motion comes from
+ * the house popover (ui/motion.ts): it grows from the trigger's corner, so the origin is
+ * bottom-right.
+ */
+const MODES = [
+  {
+    id: 'autopilot' as const,
+    name: { en: 'Autopilot', uk: 'Автопілот' },
+    detail: { en: 'Get smart suggestions', uk: 'Отримувати підказки' },
+  },
+  {
+    id: 'build' as const,
+    name: { en: 'Build', uk: 'Збирати' },
+    detail: { en: 'Make changes directly', uk: 'Змінювати напряму' },
+  },
+]
+
+function ModeSwitch() {
+  const { world, set } = useWorld()
+  const { t } = useT()
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  const current = MODES.find((m) => m.id === world.mode) ?? MODES[0]
+
+  /* Same dismissal as the Publish panel: a press anywhere else, or Escape. */
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (root.current && !root.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={root} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t({ en: 'Chat mode', uk: 'Режим чату' })}
+        /* 29697:55394: Black/700 under blur 16 with the row's own glass rim (the "+" and
+           the mic beside it are the same material), pill radius, pl 12 / pr 6, label 13
+           medium, the 20px chevron nudged 2px down as drawn. */
+        className="liquid-glass flex h-8 items-center gap-0.5 rounded-full bg-[#09090ba3] pl-3 pr-1.5 text-[13px] font-medium leading-[1.2] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+      >
+        {t(current.name)}
+        <span className="pt-0.5 text-[var(--white-500)]" aria-hidden>
+          <IconChevronDown size={20} />
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            aria-label={t({ en: 'Chat mode', uk: 'Режим чату' })}
+            variants={popover}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            /* 29697:55602: Gray/750, radius 10, px 2 / py 4, its 1px rim an inset shadow
+               so it cannot widen the 200 the board draws. */
+            className="absolute bottom-[calc(100%+8px)] right-0 z-30 w-[200px] origin-bottom-right rounded-[10px] bg-[var(--gray-750)] px-0.5 py-1"
+            style={{ boxShadow: 'inset 0 0 0 1px #ffffff0a, 0 8px 16px rgba(0,0,0,0.33)' }}
+          >
+            <div className="flex flex-col gap-px">
+              {MODES.map((m) => (
+                <button
+                  key={m.id}
+                  role="menuitemradio"
+                  aria-checked={m.id === world.mode}
+                  onClick={() => { set({ mode: m.id }); setOpen(false) }}
+                  /* 52px row carrying a 40px plate — the board's own "-4 density" item,
+                     where the hover plate is shorter than the row it sits in. */
+                  className="group flex h-[52px] w-full items-center text-left"
+                >
+                  <span className="flex h-10 w-full items-center gap-3 rounded-[8px] px-3 transition-colors duration-[var(--dur-fast)] ease-std group-hover:bg-[var(--white-100)]">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] font-medium leading-[22px] text-white">{t(m.name)}</span>
+                      <span className="mt-0.5 block text-[12px] leading-[1.4] text-[#ffffff8f]">{t(m.detail)}</span>
+                    </span>
+                    {m.id === world.mode && (
+                      <span className="grid h-6 w-6 flex-none place-items-center text-[var(--action)]" aria-hidden>
+                        <IconCheck size={16} />
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -611,6 +731,8 @@ export function ChatPanel() {
               <IconPlus size={13} />
             </button>
             <div className="flex items-center gap-2">
+              {/* the mode switcher, once there is a site to lead — see ModeSwitch above */}
+              {world.project === 'built' && <ModeSwitch />}
               <button
                 aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
                 className="liquid-glass grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"

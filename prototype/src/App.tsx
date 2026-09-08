@@ -172,8 +172,12 @@ export default function App() {
       ? 'fit-ration.com'
       : 'fit-ration.remixer.site'
 
+  /* "Update" only means something once the site is live: it is the word for pushing
+     edits out to visitors who already have the old version. A site that has never been
+     published just says Publish, and carries no pending-change count either — the count
+     answers "how far behind is what people see", which has no answer yet. */
   const publishLabel =
-    world.unpublished > 0
+    world.published && world.unpublished > 0
       ? { en: 'Update', uk: 'Оновити' }
       : { en: 'Publish', uk: 'Опублікувати' }
 
@@ -378,7 +382,9 @@ export default function App() {
               }`}
             >
               {t(publishLabel)}
-              {world.unpublished > 0 && <span className="ml-1.5 tabular-nums opacity-70">{world.unpublished}</span>}
+              {world.published && world.unpublished > 0 && (
+                <span className="ml-1.5 tabular-nums opacity-70">{world.unpublished}</span>
+              )}
             </button>
           </div>
         </header>

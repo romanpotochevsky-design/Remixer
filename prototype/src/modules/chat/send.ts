@@ -414,7 +414,7 @@ export function startBuild(prompt: string) {
   /* A generation still ticking from the previous site would keep writing beats into
      this one; the staged `chat` axis clears `world.build`, but not the timer behind it. */
   stopBuildClock()
-  set({ project: 'empty', chat: 'empty', sent: [], unpublished: 0 }, preset)
+  set({ project: 'empty', chat: 'empty', sent: [], unpublished: 0, published: false }, preset)
   sendMessage(text)
 }
 

@@ -176,6 +176,30 @@ export interface World {
   project: Project
   /** Edits made since the last publish. Drives the stale-publish signal. */
   unpublished: number
+  /**
+   * How the chat behaves once there is a site — Figma 29697:54553, designer 08.09.2026.
+   *
+   *  · `autopilot` — Remixer leads. After almost every task it comes back with a card
+   *    proposing the next one, so somebody who does not know what a website needs is
+   *    walked through it. This is the default from the first generation onward.
+   *  · `build` — the standard mode for people who know what they want: the chat does
+   *    what it is asked and nothing else.
+   *
+   * Lovable has the same control with Build ↔ Plan; our Plan mode comes later (the plan
+   * document already exists, but as a step in the first build, not as a composer mode).
+   */
+  mode: ChatMode
+  /**
+   * Whether this site has ever gone live.
+   *
+   * The Publish panel's title and its "Ready to put your site live?" banner hang off
+   * THIS and not off `unpublished` (Figma 29697:36970): a live site with three pending
+   * edits IS published — its panel says Publish and shows no banner — while a site
+   * generated a minute ago and never published is not, whatever its edit count. Deriving
+   * it from `unpublished > 0` would have flipped the title back to "Not published" the
+   * moment somebody edited a live site.
+   */
+  published: boolean
   chat: Chat
   /** Every site this customer has generated. Empty = the first-run Home page. */
   projects: HomeProject[]
@@ -194,6 +218,9 @@ export interface World {
   build: Build
 }
 
+/** The composer's mode switcher (Figma 29697:54553). See `World.mode`. */
+export type ChatMode = 'autopilot' | 'build'
+
 export const DEFAULT_WORLD: World = {
   lang: 'en',
   account: 'trial',
@@ -205,6 +232,15 @@ export const DEFAULT_WORLD: World = {
   domain: 'staging',
   project: 'built',
   unpublished: 0,
+  mode: 'autopilot',
+  /*
+   * The demo customer's site — synco.com, the first card in the Home dock — has NOT been
+   * published yet (designer, 08.09.2026: "у кастомера этот сайт первый в списке… пусть он
+   * будет по умолчанию неопубликованным"). So the default demo opens the Publish panel on
+   * the state the board draws: titled "Not published", carrying the nudge. `published: true`
+   * now belongs to the presets that actually put a domain in front of the site.
+   */
+  published: false,
   chat: 'long',
   projects: DEMO_PROJECTS,
   sent: [],
@@ -271,6 +307,23 @@ export function violations(w: World): Violation[] {
       reason: { en: 'Nothing to publish in an empty project.', uk: 'У порожньому проєкті нічого публікувати.' },
     })
   }
+  if (w.project === 'empty' && w.published) {
+    out.push({
+      field: 'published',
+      value: 'true',
+      reason: { en: 'There is no site yet, so nothing can be live.', uk: 'Сайту ще немає — публікувати нічого.' },
+    })
+  }
+  if (w.published === false && (w.domain === 'live' || w.domain === 'multiple')) {
+    out.push({
+      field: 'published',
+      value: 'false',
+      reason: {
+        en: 'A domain cannot be live in front of a site that was never published.',
+        uk: 'Домен не може бути живим перед сайтом, який ніколи не публікували.',
+      },
+    })
+  }
   return out
 }
 
@@ -279,7 +332,8 @@ export function violations(w: World): Violation[] {
 /** Short keys keep the shareable link readable. */
 const KEYS: Record<string, keyof World> = {
   l: 'lang', a: 'account', t: 'trialDay', b: 'billing', c: 'credits', z: 'bonus',
-  i: 'inventory', d: 'domain', p: 'project', u: 'unpublished', h: 'chat',
+  i: 'inventory', d: 'domain', p: 'project', u: 'unpublished', v: 'published', h: 'chat',
+  m: 'mode',
 }
 
 /**
@@ -329,7 +383,19 @@ interface Store {
   reset: () => void
 }
 
-const STORAGE_KEY = 'remixer-prototype/world'
+/*
+ * ⚠️ THE KEY CARRIES A VERSION, AND CHANGING A DEFAULT MEANS BUMPING IT.
+ *
+ * The whole world is written here on every change and read back over `DEFAULT_WORLD` on
+ * load, so a browser that has already run an older build keeps ITS value for every axis —
+ * including one whose default has since changed. That is exactly how 08.09.2026 went: the
+ * demo site's `published` flag was flipped to false, the designer reloaded the artifact and
+ * still saw the published panel, because his snapshot said `published: true` from an hour
+ * earlier. Bumping the version retires those snapshots (the old entry is simply left
+ * behind), which is the only way a changed default reaches somebody who has already opened
+ * the prototype.
+ */
+const STORAGE_KEY = 'remixer-prototype/world/v2'
 
 function initialWorld(): World {
   const fromUrl = paramsToWorld(window.location.search)

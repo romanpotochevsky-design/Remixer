@@ -3115,6 +3115,59 @@ html[data-drag] .shell-aside { transition: none; }
 }
 
 /* ------------------------------------------------------------------------
+ * THE PUBLISH NUDGE'S DOT FIELD — Figma 29697:37264 (the banner inside the
+ * Publish panel, 29697:36970).
+ *
+ * The board decorates the banner's right side with the brand's sparkle grid: tiny
+ * four-pointed stars over a colour field, brightest at the right edge and dying out
+ * to the left, so the copy on the left sits on plain `gray-900`.
+ *
+ * Built the way the Home hero's grid is built (design-system.md §5, "Решётка героя"):
+ * ONE colour field seen through a tiled diamond/sparkle mask, so the dots glow where
+ * the colour is and go out where it is not — no second mask, no per-dot opacity.
+ * Painted once; nothing here animates.
+ *
+ * ⚠️ The board's own pattern is a single 799×770 vector, and its SVG cannot be
+ * fetched: figma.com is refused by this environment's proxy for every asset URL
+ * (CLAUDE.md — the same reason `ui/icons.tsx` is drawn by hand). This is the
+ * project's own dot-grid idiom aimed at the banner, matched to the board's render by
+ * eye: pitch, the magenta-over-blue split and the leftward fade. If the asset ever
+ * becomes reachable, swap it in — the geometry around it does not change.
+ * ---------------------------------------------------------------------- */
+.pub-hint-dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    /* magenta, hugging the top-right corner */
+    radial-gradient(42% 185% at 101% -6%,
+      rgba(255, 78, 215, 0.36) 0%,
+      rgba(255, 78, 215, 0.265) 12.5%,
+      rgba(255, 78, 215, 0.185) 25%,
+      rgba(255, 78, 215, 0.122) 37.5%,
+      rgba(255, 78, 215, 0.073) 50%,
+      rgba(255, 78, 215, 0.037) 62.5%,
+      rgba(255, 78, 215, 0.015) 75%,
+      rgba(255, 78, 215, 0.003) 87.5%,
+      rgba(255, 78, 215, 0) 100%),
+    /* blue, under it at the bottom-right */
+    radial-gradient(38% 170% at 100% 106%,
+      rgba(72, 118, 255, 0.34) 0%,
+      rgba(72, 118, 255, 0.26) 12.5%,
+      rgba(72, 118, 255, 0.192) 25%,
+      rgba(72, 118, 255, 0.134) 37.5%,
+      rgba(72, 118, 255, 0.086) 50%,
+      rgba(72, 118, 255, 0.049) 62.5%,
+      rgba(72, 118, 255, 0.022) 75%,
+      rgba(72, 118, 255, 0.005) 87.5%,
+      rgba(72, 118, 255, 0) 100%);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11'%3E%3Cpath d='M5.5 2.4Q5.75 5.25 8.6 5.5 5.75 5.75 5.5 8.6 5.25 5.75 2.4 5.5 5.25 5.25 5.5 2.4Z' fill='%23fff'/%3E%3C/svg%3E");
+  -webkit-mask-size: 11px 11px;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11'%3E%3Cpath d='M5.5 2.4Q5.75 5.25 8.6 5.5 5.75 5.75 5.5 8.6 5.25 5.75 2.4 5.5 5.25 5.25 5.5 2.4Z' fill='%23fff'/%3E%3C/svg%3E");
+  mask-size: 11px 11px;
+}
+
+/* ------------------------------------------------------------------------
  * The Home → builder transition (ui/BootCover.tsx; phases timed in state/ui.ts).
  *
  * Designer, 08.09.2026: the Home page darkens to black, then the chat rises from below,

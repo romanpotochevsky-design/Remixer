@@ -597,6 +597,159 @@ check('typing into the composer dismisses the questions', !(await panelUp()))
 await p.waitForTimeout(4200)
 check('…and the typed prompt is built as given', await cardUp())
 
+/* ========================== E. the Publish panel for a site that is not live yet
+ *
+ * Figma 29697:36970 (designer, 08.09.2026): an unpublished site's panel is titled by
+ * its STATUS, and carries a 120px nudge banner that can be waved off with its own ✕.
+ * Both hang off `world.published`, never off the pending-edit count — the negative
+ * checks here are the ones that matter: a published site gets neither.
+ */
+{
+  /* A dock project opens the builder with the world as it is, so the panel's state can
+     be staged from the URL instead of waiting out a real build. `v=false` is `published`. */
+  const openPublish = async (q) => {
+    await p.goto(at(q), { waitUntil: 'networkidle' })
+    await p.waitForTimeout(800)
+    await p.click('.home-card-face')
+    await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 15000 })
+    await p.waitForTimeout(400)
+    await p.click('header button:has-text("Publish"), header button:has-text("Update")')
+    await p.waitForTimeout(600)
+  }
+  const panel = () => p.$('[role="dialog"][aria-label="Publish"]')
+  const title = () => p.$eval('[role="dialog"][aria-label="Publish"] h3', (el) => el.textContent.trim())
+  const hint = () => p.$('[role="dialog"] .pub-hint-dots')
+
+  await openPublish('p=built&u=1&v=false&a=trial&t=22&c=640')
+  await shot('21-publish-not-published')
+  check('an unpublished site’s panel is titled by its status', (await title()) === 'Not published', await title())
+  check('…and carries the nudge banner', !!(await hint()))
+  /* the board's box: 480 panel, 468 card, 452 banner at 120 tall, ✕ inset 8 from the
+     banner's top-right corner, copy held to a 324px column that breaks in two lines.
+     Rims are inset shadows, not borders — a border would eat these very pixels. */
+  const box = await p.evaluate(() => {
+    const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+    const banner = d.querySelector('.pub-hint-dots').parentElement
+    const card = banner.parentElement.parentElement
+    const close = banner.querySelector('button')
+    const para = banner.querySelectorAll('p')[1]
+    const bb = banner.getBoundingClientRect(), cb = close.getBoundingClientRect()
+    const w = (el) => +el.getBoundingClientRect().width.toFixed(1)
+    return {
+      panel: w(d), card: w(card), banner: w(banner), bannerH: +bb.height.toFixed(1),
+      close: +cb.width.toFixed(1), insetRight: +(bb.right - cb.right).toFixed(1),
+      insetTop: +(cb.top - bb.top).toFixed(1), gap: getComputedStyle(card).gap,
+      para: w(para), lines: Math.round(para.getBoundingClientRect().height / parseFloat(getComputedStyle(para).lineHeight)),
+      fill: getComputedStyle(banner).backgroundColor, radius: getComputedStyle(banner).borderRadius,
+    }
+  })
+  check('the panel is the board’s 480 with a 468 card and a 452 × 120 banner',
+    box.panel === 480 && box.card === 468 && box.banner === 452 && box.bannerH === 120, JSON.stringify(box))
+  check('the ✕ is 32 at radius 10, inset 8 from the banner’s corner',
+    box.close === 32 && box.insetRight === 8 && box.insetTop === 8, `${box.close} / ${box.insetRight} / ${box.insetTop}`)
+  check('the copy keeps the board’s 324px column and its two lines',
+    box.para === 324 && box.lines === 2, `${box.para}px / ${box.lines} lines`)
+  check('the banner is gray-900 at radius 12, 8px under the card’s other child',
+    box.fill === 'rgb(24, 24, 27)' && box.radius === '12px' && box.gap === '8px', JSON.stringify([box.fill, box.radius, box.gap]))
+  /* the ✕ takes it down — and nothing else moves */
+  const wide = box.panel
+  await p.click('[role="dialog"] [aria-label="Dismiss"]')
+  await p.waitForTimeout(400)
+  await shot('22-publish-hint-dismissed')
+  check('the ✕ takes the banner down', !(await hint()))
+  check('…and the panel keeps its width doing it',
+    (await p.$eval('[role="dialog"][aria-label="Publish"]', (el) => el.getBoundingClientRect().width)) === wide)
+  check('the title stays the status until the site is actually live', (await title()) === 'Not published')
+  /* pressing Publish is what changes the answer */
+  await p.click('[role="dialog"] button:has-text("Publish")')
+  await p.waitForTimeout(500)
+  await shot('23-publish-done')
+  check('publishing retitles the panel and leaves no nudge',
+    (await title()) === 'Publish' && !(await hint()), await title())
+
+  /* the negative: a site that has been published gets neither, banner state or not */
+  await openPublish('p=built&u=3&v=true&a=trial&t=22&c=640')
+  check('a published site’s panel is titled by the action', (await title()) === 'Publish', await title())
+  check('…and never shows the nudge', !(await hint()))
+  check('…and its topbar button says Update with the pending count',
+    !!(await p.$('header button:has-text("Update")')))
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(400)   // it leaves on the popover's own exit, not instantly
+  check('the panel closes on Escape', !(await panel()))
+}
+
+/* ============================== F. the composer's Autopilot / Build switcher
+ *
+ * Figma 29697:54553 (the pill 55394, the menu 55602; designer 08.09.2026). The pill is
+ * 95×32, the menu 200×113 opening UPWARD with its right edge flush to the pill's and 8px
+ * of air between them, rows 52 tall carrying a 40px plate. Autopilot is the default from
+ * the first generation on — and the pill is not there at all before there is a site.
+ */
+{
+  const enter = async (q) => {
+    await p.goto(at(q), { waitUntil: 'networkidle' })
+    await p.waitForTimeout(800)
+    await p.click('.home-card-face')
+    await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 15000 })
+    await p.waitForTimeout(400)
+  }
+  const pill = () => p.$('button[aria-label="Chat mode"]')
+  const label = () => p.$eval('button[aria-label="Chat mode"]', (el) => el.textContent.trim())
+
+  await enter('p=built&u=1&a=trial&t=22&c=640')
+  check('the composer carries the mode switcher once there is a site', !!(await pill()))
+  check('…and it starts on Autopilot', (await label()) === 'Autopilot', await label())
+  const pb = await (await pill()).boundingBox()
+  check('the pill is the board’s 95 × 32',
+    Math.round(pb.width) === 95 && Math.round(pb.height) === 32, `${pb.width} × ${pb.height}`)
+  await (await pill()).click()
+  await p.waitForTimeout(400)
+  await shot('24-mode-menu')
+  const menu = await p.evaluate(() => {
+    const trigger = document.querySelector('button[aria-label="Chat mode"]')
+    const m = document.querySelector('[role="menu"]')
+    if (!m) return null
+    const items = [...m.querySelectorAll('[role="menuitemradio"]')]
+    const mb = m.getBoundingClientRect(), tb = trigger.getBoundingClientRect()
+    const cs = getComputedStyle(m)
+    return {
+      w: +mb.width.toFixed(1), h: +mb.height.toFixed(1),
+      flush: +(mb.right - tb.right).toFixed(1), above: +(tb.top - mb.bottom).toFixed(1),
+      rows: items.map((i) => +i.getBoundingClientRect().height.toFixed(1)),
+      plate: +items[0].firstElementChild.getBoundingClientRect().height.toFixed(1),
+      bg: cs.backgroundColor, radius: cs.borderRadius,
+      checked: items.map((i) => i.getAttribute('aria-checked')),
+      copy: items.map((i) => i.textContent.trim()),
+    }
+  })
+  check('the menu is 200 × 113 in Gray/750 at radius 10',
+    !!menu && menu.w === 200 && menu.h === 113 && menu.bg === 'rgb(51, 51, 58)' && menu.radius === '10px',
+    JSON.stringify(menu && [menu.w, menu.h, menu.bg, menu.radius]))
+  check('…opening UPWARD, right edges flush, 8px of air',
+    !!menu && menu.flush === 0 && menu.above === 8, menu && `${menu.flush} / ${menu.above}`)
+  check('…two rows of 52 carrying a 40px plate',
+    !!menu && menu.rows.join() === '52,52' && menu.plate === 40, menu && `${menu.rows.join()} / ${menu.plate}`)
+  check('…Autopilot ticked, and both rows say what the mode does',
+    !!menu && menu.checked.join() === 'true,false' &&
+      menu.copy[0].includes('Get smart suggestions') && menu.copy[1].includes('Make changes directly'),
+    menu && JSON.stringify(menu.checked))
+  await p.click('[role="menuitemradio"]:has-text("Build")')
+  await p.waitForTimeout(400)
+  check('picking a mode renames the pill and closes the menu',
+    (await label()) === 'Build' && !(await p.$('[role="menu"]')), await label())
+  await (await pill()).click()
+  await p.waitForTimeout(300)
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(400)
+  check('the menu closes on Escape', !(await p.$('[role="menu"]')))
+  /* The negative that keeps the rule: nothing to lead, no control. It has to be the HERO
+     path — opening a dock card sets `project: 'built'` on purpose (Dock.tsx: standing in a
+     card means standing in that site), so it can never show the pre-generation shell. */
+  await buildFromHome('website')
+  await p.waitForTimeout(1200)
+  check('there is no switcher before the first site exists', !(await pill()))
+}
+
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
 await b.close()
 

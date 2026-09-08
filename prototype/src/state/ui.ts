@@ -251,6 +251,16 @@ interface UIStore {
   /** The checkout sheet over the whole app, or null when nothing is being confirmed. */
   domainModal: DomainModal | null
   publishOpen: boolean
+  /**
+   * Whether the Publish panel's "Ready to put your site live?" nudge is still up
+   * (Figma 29697:36970). It only ever shows for a site that has never gone live
+   * (`world.published`), and its ✕ takes it down — this is that ✕.
+   *
+   * It lives HERE and not in the world because waving a hint away is not a
+   * situation, it is this session's UI: the scenario console must not resurrect it,
+   * and a reload — which is how the designer restages the demo — should.
+   */
+  publishHintOpen: boolean
   /** Which device the canvas is emulating. Navigation, not product truth. */
   device: Device
   /** Chat column width in px — the user can drag the divider. */
@@ -324,6 +334,7 @@ interface UIStore {
   closeDomainModal: () => void
   closeSurface: () => void
   togglePublish: (open?: boolean) => void
+  dismissPublishHint: () => void
   triggerReload: (ms?: number) => void
 }
 
@@ -351,6 +362,7 @@ export const useUI = create<UIStore>((set, get) => ({
   activeDomain: null,
   domainModal: null,
   publishOpen: false,
+  publishHintOpen: true,
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
   reloading: false,
@@ -363,7 +375,7 @@ export const useUI = create<UIStore>((set, get) => ({
      attachment via `openBuilder`, which is exactly when it should die. */
   goHome: () => {
     clearBootTimers()
-    set({ page: 'home', boot: null, publishOpen: false, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null })
+    set({ page: 'home', boot: null, publishOpen: false, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null })
   },
   /*
    * The transition, phase by phase. The curtain is raised FIRST and the page switches
@@ -462,6 +474,7 @@ export const useUI = create<UIStore>((set, get) => ({
   closeDomainModal: () => set({ domainModal: null }),
   closeSurface: () => set({ surface: 'preview' }),
   togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
+  dismissPublishHint: () => set({ publishHintOpen: false }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)
     set({ reloading: true })

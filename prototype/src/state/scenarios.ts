@@ -28,13 +28,13 @@ export const PRESETS: Preset[] = [
       en: 'Type "Build me a website." — Remixer asks four questions before it builds (Lovable, 06.09.2026)',
       uk: 'Введіть «Build me a website.» — Remixer ставить чотири запитання, перш ніж будувати (Lovable, 06.09.2026)',
     },
-    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], domain: 'staging', inventory: 'none', unpublished: 0 },
+    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], domain: 'staging', inventory: 'none', unpublished: 0, published: false },
   },
   {
     id: 'first-run',
     label: { en: 'First run', uk: 'Перший запуск' },
     note: { en: 'Blank canvas, nothing generated yet', uk: 'Порожнє полотно, ще нічого не згенеровано' },
-    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', domain: 'staging', inventory: 'none', unpublished: 0, projects: [] },
+    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', domain: 'staging', inventory: 'none', unpublished: 0, published: false, projects: [] },
   },
   {
     id: 'generating',
@@ -56,7 +56,7 @@ export const PRESETS: Preset[] = [
      */
     patch: {
       account: 'trial', trialDay: 1, credits: 1880, project: 'generating', chat: 'working',
-      domain: 'staging', unpublished: 0, projects: [],
+      domain: 'staging', unpublished: 0, published: false, projects: [],
       brief: { status: 'ready', step: 0, answers: { goal: 'sell', pages: 'few', palette: 'warm-clay', type: 'friendly' } },
       build: { at: 1, line: 1 },
       sent: [
@@ -76,13 +76,13 @@ export const PRESETS: Preset[] = [
     id: 'trial-mid',
     label: { en: 'Trial, day 22', uk: 'Тріал, день 22' },
     note: { en: 'Building, credits going down, no domain yet', uk: 'Будує, кредити витрачаються, домену немає' },
-    patch: { account: 'trial', trialDay: 22, credits: 640, bonus: true, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 3, projects: DEMO_PROJECTS },
+    patch: { account: 'trial', trialDay: 22, credits: 640, bonus: true, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 3, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'trial-low',
     label: { en: 'Credits running out', uk: 'Кредити закінчуються' },
     note: { en: 'The upsell moment', uk: 'Момент апселу' },
-    patch: { account: 'trial', trialDay: 27, credits: 40, project: 'built', chat: 'long', domain: 'staging', unpublished: 1, projects: DEMO_PROJECTS },
+    patch: { account: 'trial', trialDay: 27, credits: 40, project: 'built', chat: 'long', domain: 'staging', unpublished: 1, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'trial-expired',
@@ -91,49 +91,49 @@ export const PRESETS: Preset[] = [
       en: 'AI off, manual editing alive. Frame as an UPGRADE, never as "start a trial"',
       uk: 'AI вимкнено, ручне редагування живе. Це АПГРЕЙД, а не «почни тріал»',
     },
-    patch: { account: 'trial-expired', trialDay: 30, credits: 0, bonus: false, project: 'built', chat: 'long', domain: 'staging', unpublished: 2, projects: DEMO_PROJECTS },
+    patch: { account: 'trial-expired', trialDay: 30, credits: 0, bonus: false, project: 'built', chat: 'long', domain: 'staging', unpublished: 2, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'paid-no-domain',
     label: { en: 'Paid, no domain', uk: 'Оплачено, домену немає' },
     note: { en: 'Plan active, site still on staging', uk: 'План активний, сайт на стейджингу' },
-    patch: { account: 'paid', billing: 'yearly', credits: 1000, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 0, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', billing: 'yearly', credits: 1000, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 0, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'dh-zero-record',
     label: { en: 'Own domain on DreamHost', uk: 'Власний домен на DreamHost' },
     note: { en: 'Our edge: connect with zero DNS records', uk: 'Наша перевага: підключення без жодного DNS-запису' },
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'searching', unpublished: 0, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'searching', unpublished: 0, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'connecting',
     label: { en: 'Domain connecting', uk: 'Домен підключається' },
     note: { en: 'Waiting on DNS — nothing for the user to do', uk: 'Чекаємо на DNS — користувачу нічого робити' },
-    patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'live',
     label: { en: 'Live site', uk: 'Живий сайт' },
     note: { en: 'Everything published, domain working', uk: 'Все опубліковано, домен працює' },
-    patch: { account: 'paid', credits: 940, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 0, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 940, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'live-stale',
     label: { en: 'Live, with edits', uk: 'Живий, є правки' },
     note: { en: 'The build is newer than what is published', uk: 'Зібране новіше за опубліковане' },
-    patch: { account: 'paid', credits: 900, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 900, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'domain-broken',
     label: { en: 'Domain not responding', uk: 'Домен не відповідає' },
     note: { en: 'Failure state — needs a recovery verb', uk: 'Стан помилки — потрібне дієслово відновлення' },
-    patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', unpublished: 0, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'external-manual',
     label: { en: 'Domain at another registrar', uk: 'Домен в іншого реєстратора' },
     note: { en: 'Namecheap / Cloudflare — manual records only', uk: 'Namecheap / Cloudflare — лише ручні записи' },
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', unpublished: 0, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
 ]
 
@@ -249,6 +249,22 @@ export const AXES: Axis[] = [
   {
     key: 'unpublished', group: G.project, label: { en: 'Unpublished changes', uk: 'Неопублікованих правок' }, kind: 'number',
     min: 0, max: 12, step: 1,
+  },
+  {
+    /* What the Publish panel's title and its nudge banner hang off (Figma 29697:36970):
+       "has this site ever gone live", which is not the same question as "are there
+       edits pending". Only meaningful once there is a site at all. */
+    key: 'published', group: G.project, label: { en: 'Ever published', uk: 'Публікувався' }, kind: 'toggle',
+    appliesWhen: (w) => w.project !== 'empty',
+  },
+  {
+    /* The composer's mode switcher (Figma 29697:54553). Autopilot is the default from
+       the first generation on; it only has anything to lead once a site exists. */
+    key: 'mode', group: G.chat, label: { en: 'Chat mode', uk: 'Режим чату' }, kind: 'options',
+    options: [
+      { value: 'autopilot', label: { en: 'Autopilot', uk: 'Автопілот' }, hint: { en: 'Remixer proposes the next task', uk: 'Remixer пропонує наступний крок' } },
+      { value: 'build', label: { en: 'Build', uk: 'Збирати' }, hint: { en: 'Does what it is asked', uk: 'Робить те, що просять' } },
+    ],
   },
   {
     key: 'chat', group: G.chat, label: { en: 'History', uk: 'Історія' }, kind: 'options',
