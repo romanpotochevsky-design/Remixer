@@ -30,7 +30,7 @@
  *  - a selected plate has no drawn state, so it takes a 2px ring in `--action`
  *  - there is no collapse chevron: the board does not draw one (Lovable's had one)
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
@@ -61,8 +61,10 @@ function Radio({ on }: { on: boolean }) {
   return (
     <span
       aria-hidden
+      /* `brief-radio-off` is what the row's hover brightens to 80% white (index.css);
+         a selected radio is a filled disc and has nothing to brighten. */
       className={`grid h-4 w-4 flex-none place-items-center rounded-full border ${
-        on ? 'border-[var(--action)] bg-[var(--action)]' : 'border-[#ffffff7a]'
+        on ? 'border-[var(--action)] bg-[var(--action)]' : 'brief-radio-off border-[#ffffff7a]'
       }`}
     >
       {on && <span className="h-2 w-2 rounded-full bg-white" />}
@@ -76,21 +78,42 @@ function Radio({ on }: { on: boolean }) {
  */
 function Row({ q, o, on, last }: { q: BriefQuestion; o: BriefOption; on: boolean; last: boolean }) {
   const { t } = useT()
+  /*
+   * The click's own light: bumping this remounts the sheen, so the band crosses the
+   * ring once per press — including a press on the row that is already picked, where
+   * it is the only acknowledgement there is (designer, 08.09.2026).
+   */
+  const [sheen, setSheen] = useState(0)
   return (
     <button
       type="button"
-      onClick={() => answerBrief(q.key, o.id)}
+      onClick={() => { setSheen((n) => n + 1); answerBrief(q.key, o.id) }}
       aria-pressed={on}
+      data-on={on ? '' : undefined}
       /* Named explicitly: a palette row's body is four colours and carries no text at
          all, so without this the row would announce itself by its title alone in some
          readings and by nothing in others. */
       aria-label={t(o.name)}
       /* Drawn pt-18/pb-19 with the hairline under it, and py-18 on the last row, which has
          no hairline: the extra pixel above the divider keeps the rows' rhythm equal. */
-      className={`flex w-full items-start gap-3 pl-4 pr-6 pt-[18px] text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)] ${
+      /* `brief-opt`: the hover is a 1px ring at radius 16 and nothing else — index.css
+         "THE ANSWER ROW'S HOVER", off Figma 29688:26919. No fill, no movement. */
+      className={`brief-opt relative flex w-full items-start gap-3 pl-4 pr-6 pt-[18px] text-left ${
         last ? 'pb-[18px]' : 'border-b border-[#ffffff0a] pb-[19px]'
       }`}
     >
+      {/* the 2px gradient ring of the picked row, and the light that crosses it on a
+          press — index.css "THE SELECTED ROW", off Figma 29688:27643 */}
+      {on && <span className="brief-rim" aria-hidden />}
+      {sheen > 0 && (
+        /* unmounted the moment it has crossed: a finished sheen is a masked
+           798×80 layer with nothing left to say, and this project has been bitten
+           before by an invisible layer that still cost paint (CLAUDE.md, the
+           `Preview` pill at opacity 0). */
+        <span key={sheen} className="brief-sheen" aria-hidden onAnimationEnd={() => setSheen(0)}>
+          <i />
+        </span>
+      )}
       <span className="flex items-center pt-1.5">
         <Radio on={on} />
       </span>

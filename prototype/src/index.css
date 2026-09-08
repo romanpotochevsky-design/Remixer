@@ -3464,6 +3464,113 @@ html[data-drag] .shell-aside { transition: none; }
   100% { opacity: 0; }
 }
 
+/* ------------------------------------------------------------------------
+ * THE ANSWER ROW'S HOVER — Figma 29688:26919 (the designer pointed at it on
+ * 08.09.2026: "ховер это скруглёный полупрозрачный бордер как в макете").
+ *
+ * The hovered list item takes a 1px ring at the card's own radius 16, in
+ * `Neutral Alpha/500` — read in the DARK theme, so 48% WHITE (the MCP export
+ * prints the light-mode fallback `rgba(9,9,11,.48)`, which would draw a hole;
+ * the same trap CLAUDE.md records for the composer's tokens). There is NO fill:
+ * the ring IS the hover, and the fill it replaces (5% white) is gone.
+ *
+ * Three details the board settles:
+ *  · the ring is a `box-shadow`, not a `border` — a border would add a pixel and
+ *    push every row on the way in and out (the palette tile's ring made the same
+ *    call). Nothing in the card moves on hover.
+ *  · the radius is PERMANENT: with no ring and no fill a rounded row draws
+ *    nothing, so there is no radius to animate — only the ring fades in.
+ *  · the hairline between rows is hidden while a row is ringed, on BOTH sides of
+ *    the ring: the row's own divider below it, and the previous row's divider
+ *    above it (`:has(+ …:hover)`). A hairline running into a rounded ring reads
+ *    as a seam in it. The divider keeps its 1px of box either way (only its
+ *    colour goes), so the rows' heights are untouched.
+ *
+ * The radio brightens with the row: `Neutral Alpha/900`, 80% white against its
+ * resting 48% (the board draws exactly this on the hovered item).
+ * ---------------------------------------------------------------------- */
+.brief-opt {
+  border-radius: 16px;
+  transition: box-shadow var(--dur-fast) var(--ease-std), border-color var(--dur-fast) var(--ease-std);
+}
+.brief-opt:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48); }
+.brief-opt:hover,
+.brief-opt:has(+ .brief-opt:hover) { border-bottom-color: transparent; }
+.brief-radio-off { transition: border-color var(--dur-fast) var(--ease-std); }
+.brief-opt:hover .brief-radio-off { border-color: rgba(255, 255, 255, 0.8); }
+
+/* ------------------------------------------------------------------------
+ * THE SELECTED ROW — Figma 29688:27643 (designer, 08.09.2026: "обрати внимание
+ * что бордер 2px и градиентный, можно даже при клике проиграть один раз
+ * анимацию бордера, как переливание света по бордеру").
+ *
+ * A 2px ring at radius 16. The export flattens it to one token,
+ * `Neutral Alpha/800` = 72% white in the dark theme — but the designer says it is
+ * a GRADIENT stroke, and a flattened gradient is exactly what the export does to
+ * the Home controls too (design-system.md §5). So the ring is the house's
+ * diagonal: light from the top-left, dipping mid-diagonal, recovering at the far
+ * corner — .98 → .55 (48%) → .82, whose mean across the run is 0.72, the token
+ * the export printed. Read the render, not the fallback.
+ *
+ * Drawn as a MASKED ring on a child, never as a `border`: a border would add two
+ * pixels and shove every row (the same call the hover ring and the palette tile
+ * made). Figma's stroke sits inside the geometry, so an inset ring is also the
+ * right pixels.
+ *
+ * THE SHEEN is the one-shot the designer asked for: a soft band of light crossing
+ * the ring once, 720ms, when the row is clicked. It is a TRANSFORM of a child
+ * inside the ring's mask, not a moving `background-position` — the same reason the
+ * composer's send flash rotates arcs instead of animating a conic angle. The band
+ * spans the row and its highlight sits mid-way, so travelling ±100% carries the
+ * light from one end of the border to the other.
+ *
+ * ⚠️ The mask and the `overflow` are on the SAME element. Chromium loses a mask
+ * declared on an ancestor of the clip (CLAUDE.md, the composer-flash lesson), and
+ * the band has to be clipped to the row's box before the ring mask takes it.
+ * ---------------------------------------------------------------------- */
+.brief-rim,
+.brief-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.brief-rim {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.82));
+}
+.brief-sheen { overflow: hidden; }
+.brief-sheen > i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: block;
+  background: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.92) 50%, transparent 82%);
+  animation: brief-sheen 0.72s cubic-bezier(0.32, 0, 0.36, 1) both;
+}
+@keyframes brief-sheen {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  14%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+/* the 2px ring is the stronger statement: a selected row does not also take the
+   hover ring, and its hairlines go the same way a hovered row's do */
+.brief-opt[data-on]:hover { box-shadow: none; }
+.brief-opt[data-on],
+.brief-opt:has(+ .brief-opt[data-on]) { border-bottom-color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  /* the ring stays — it is state, not motion; only the sheen goes (the global
+     reduce rule already stops it, this documents the intent) */
+  .brief-sheen { display: none; }
+}
+
 @keyframes dock-shell-out {
   0%, 45% { opacity: 1; }
   100% { opacity: 0; }

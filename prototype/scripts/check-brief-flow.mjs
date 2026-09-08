@@ -227,6 +227,78 @@ check('the composer relabels itself as the escape hatch',
   (await p.getAttribute('textarea', 'placeholder'))?.startsWith('Tell Remixer'))
 
 /*
+ * THE ANSWER ROW'S HOVER — Figma 29688:26919 (designer, 08.09.2026: "ховер это скруглёный
+ * полупрозрачный бордер как в макете"). A 1px ring at radius 16 in 48% white, no fill, and
+ * the hairlines on both sides of the ring go. The negative half is the one that matters: a
+ * ring drawn as a BORDER would add a pixel and push every row, so the boxes must be
+ * identical hovered and not.
+ */
+{
+  const rowBoxes = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
+    const b = el.getBoundingClientRect()
+    return [+b.left.toFixed(2), +b.top.toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2)]
+  }))
+  const rowStyle = () => p.$$eval('.brief-opt', (els) => els.map((el) => ({
+    ring: getComputedStyle(el).boxShadow, radius: getComputedStyle(el).borderRadius,
+    divider: getComputedStyle(el).borderBottomColor, fill: getComputedStyle(el).backgroundColor,
+  })))
+  const before = await rowBoxes()
+  await p.hover('.brief-opt:nth-of-type(2)')
+  await p.waitForTimeout(260)
+  const after = await rowBoxes()
+  const st = await rowStyle()
+  check('the hovered answer row takes a 1px ring at radius 16, 48% white',
+    st[1].ring.includes('0.48') && st[1].ring.includes('inset') && st[1].radius === '16px', st[1].ring)
+  check('the ring replaces the fill, it does not add one', st[1].fill === 'rgba(0, 0, 0, 0)', st[1].fill)
+  check('the hairlines on both sides of the ring go',
+    st[0].divider === 'rgba(0, 0, 0, 0)' && st[1].divider === 'rgba(0, 0, 0, 0)',
+    `${st[0].divider} / ${st[1].divider}`)
+  check('nothing in the card moves under the hover',
+    JSON.stringify(before) === JSON.stringify(after), `${JSON.stringify(before[1])} → ${JSON.stringify(after[1])}`)
+  await p.mouse.move(4, 4)
+  await p.waitForTimeout(200)
+  check('the ring leaves with the pointer', (await rowStyle())[1].ring === 'none')
+}
+
+/*
+ * THE PICKED ROW — Figma 29688:27643 (designer, 08.09.2026: "бордер 2px и градиентный…
+ * можно при клике проиграть один раз анимацию бордера, как переливание света").
+ */
+{
+  const rowBoxes = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
+    const b = el.getBoundingClientRect()
+    return [+b.left.toFixed(2), +b.top.toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2)]
+  }))
+  const before = await rowBoxes()
+  await p.click('.brief-opt:nth-of-type(2)')
+  const rim = await p.$eval('.brief-opt:nth-of-type(2) .brief-rim', (el) => ({
+    pad: getComputedStyle(el).padding, bg: getComputedStyle(el).backgroundImage,
+    mask: getComputedStyle(el).maskImage || getComputedStyle(el).webkitMaskImage,
+  })).catch(() => null)
+  check('the picked row takes a 2px ring', !!rim && rim.pad === '2px', rim ? rim.pad : 'no rim')
+  check('…and the ring is a gradient, not a flat token',
+    !!rim && rim.bg.startsWith('linear-gradient(150deg') && (rim.bg.match(/rgba/g) || []).length >= 3,
+    rim ? rim.bg.slice(0, 70) : '')
+  check('…drawn as a masked ring, so it cannot move the rows',
+    !!rim && rim.mask.includes('linear-gradient') && JSON.stringify(await rowBoxes()) === JSON.stringify(before))
+  /* the hairlines fade rather than snap (--dur-fast), so read them once they have */
+  await p.waitForTimeout(260)
+  check('the hairlines around the picked row go',
+    await p.$$eval('.brief-opt', (els) => getComputedStyle(els[0]).borderBottomColor === 'rgba(0, 0, 0, 0)'
+      && getComputedStyle(els[1]).borderBottomColor === 'rgba(0, 0, 0, 0)'),
+    await p.$$eval('.brief-opt', (els) => `${getComputedStyle(els[0]).borderBottomColor} / ${getComputedStyle(els[1]).borderBottomColor}`))
+  /* the sheen: one band crossing the ring, then gone — not a layer left behind */
+  check('a press sends light across the ring', !!(await p.$('.brief-opt:nth-of-type(2) .brief-sheen > i')))
+  await p.waitForTimeout(1100)
+  check('…once, and the layer leaves with it', !(await p.$('.brief-sheen')))
+  check('the picked row keeps its ring after the light has passed',
+    !!(await p.$('.brief-opt:nth-of-type(2) .brief-rim')))
+  /* put the question back the way the rest of the run expects it */
+  await p.click('.brief-opt:nth-of-type(1)')
+  await p.waitForTimeout(900)
+}
+
+/*
  * The four questions are ours (brief.ts): a goal, how many pages, the colour grid, the
  * lettering. Answered here the way the demo answers them — every one a PICKED option, so
  * the summary prints real names and both drawn shapes of the panel get exercised.
