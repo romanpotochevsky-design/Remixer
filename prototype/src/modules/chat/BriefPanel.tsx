@@ -80,9 +80,9 @@ function Radio({ on }: { on: boolean }) {
  * равномерно одновременно по всему бордеру появляется, а градиентно по бордеру наполняет
  * объект… плавно и красиво обволакивая бордером пункт. То же самое и на клик, более светлый
  * белый цвет в 2 пикселя так же плавно заполняет пункт по кругу"). So neither ring is a
- * `box-shadow` that fades in: each is an SVG stroke that RUNS around the row from the
- * top-left corner in both directions and meets itself at the bottom-right — the hover's
- * 1px at 32%, the pick's 2px gradient. The paint and the keyframes are in index.css, "THE
+ * `box-shadow` that fades in: each is an SVG stroke that RUNS once round the row from the
+ * top-left corner, clockwise, until it closes on itself — the hover's 1px at 32%, the
+ * pick's 2px gradient. The paint and the keyframes are in index.css, "THE
  * BORDER THAT DRAWS ITSELF"; this component only decides WHEN a draw starts:
  *
  *  · `hovKey` bumps on every pointer-enter, remounting the hover stroke so it starts from
@@ -93,9 +93,10 @@ function Radio({ on }: { on: boolean }) {
  *    base, flash whole.) `:hover` alone is also wrong for a row that MOUNTS under a
  *    still pointer: it would light at once, without the draw.
  *  · `press` bumps on every click, remounting the pick stroke as a draw; when the draw
- *    has landed the key drops to 0 and the same stroke stands still at full — the
+ *    has closed the key drops to 0 and the same stroke stands still at full — the
  *    picked ring IS the last frame of its own draw, so nothing has to cross-fade. A press
  *    on the row that is already picked draws it again: that is its acknowledgement.
+ *    (The hover key drops to 0 the same way once its lap is done.)
  *
  * Under reduced motion neither key moves: the rings appear and go as state.
  */
@@ -131,7 +132,7 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
        */
       className="brief-opt relative flex w-full items-start gap-3 py-[18px] pl-4 pr-6 text-left"
     >
-      <DrawRing kind="hover" drawKey={hovKey} />
+      <DrawRing kind="hover" drawKey={hovKey} onDrawn={() => setHovKey(0)} />
       <DrawRing kind="pick" drawKey={press} onDrawn={() => setPress(0)} />
       <span className="flex items-center pt-1.5">
         <Radio on={on} />
@@ -148,18 +149,19 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
 /**
  * The ring that draws itself around a row — index.css "THE BORDER THAT DRAWS ITSELF".
  *
- * Ten strokes of the SAME rounded rectangle, each with `pathLength="1"` so the dash
- * arithmetic is in fractions of the perimeter whatever the row's size: a body running
- * forward from the path's start (the top edge, just past the top-left corner) and a body
- * running backward from it (into the corner, down the left side); ahead of each body four
- * short segments at falling opacity — the soft head the board draws, light thinning out
- * toward where it has not yet reached. Both bodies stop at half the perimeter, which for
- * a wide row is the bottom-right corner: the light ignites top-left and closes
- * bottom-right, as on 29688:29507.
+ * Five strokes of the SAME rounded rectangle, each with `pathLength="1"` so the dash
+ * arithmetic is in fractions of the perimeter whatever the row's size: one body that runs
+ * CLOCKWISE from the path's start (the top edge, just past the top-left corner) — along the
+ * top, down the right side, back along the bottom, up the left side — until it closes on
+ * its own start, and ahead of it four short segments at falling opacity: the soft head the
+ * board draws, light thinning out toward where it has not yet reached. One lap, 360°
+ * (designer, 08.09.2026, after seeing two beams meet at the bottom-right: "не слева
+ * направо, а по кругу вокруг объекта обтекла на 360").
  *
- * `drawKey` > 0 mounts the strokes DRAWING (from nothing, 0 → ½ each); at 0 they stand
- * at full with the heads gone — the resting ring. Remounting on a new key is what
- * restarts the draw. `onDrawn` fires when the forward body has landed.
+ * `drawKey` > 0 mounts the strokes DRAWING (from nothing to the whole perimeter); at 0
+ * they stand at full with the head gone — the resting ring. Remounting on a new key is
+ * what restarts the draw; `onDrawn` fires when the body has closed, and the row drops
+ * the key back to 0 so the ring stands as a plain full stroke.
  *
  * Geometry (inset, radius, width, colour) is CSS on the rects per `kind`, so the hover's
  * 1px and the pick's 2px are one component.
@@ -170,19 +172,14 @@ function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey:
       <g
         key={drawKey}
         className={drawKey > 0 ? 'is-drawing' : undefined}
-        onAnimationEnd={(e) => { if (e.animationName === 'brief-draw-fwd') onDrawn?.() }}
+        onAnimationEnd={(e) => { if (e.animationName === 'brief-draw-body') onDrawn?.() }}
       >
-        <rect className="fwd" pathLength="1" />
-        <rect className="bwd" pathLength="1" />
+        <rect className="body" pathLength="1" />
         <g className="heads">
-          <rect className="fh1" pathLength="1" />
-          <rect className="fh2" pathLength="1" />
-          <rect className="fh3" pathLength="1" />
-          <rect className="fh4" pathLength="1" />
-          <rect className="bh1" pathLength="1" />
-          <rect className="bh2" pathLength="1" />
-          <rect className="bh3" pathLength="1" />
-          <rect className="bh4" pathLength="1" />
+          <rect className="h1" pathLength="1" />
+          <rect className="h2" pathLength="1" />
+          <rect className="h3" pathLength="1" />
+          <rect className="h4" pathLength="1" />
         </g>
       </g>
     </svg>

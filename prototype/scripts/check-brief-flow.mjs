@@ -230,8 +230,8 @@ check('the composer relabels itself as the escape hatch',
  * THE ANSWER ROW'S HOVER — Figma 29688:26919 (designer, 08.09.2026: "ховер это скруглёный
  * полупрозрачный бордер как в макете"), DRAWN — 29688:29507 ("цвет бордера не равномерно
  * одновременно по всему бордеру появляется, а градиентно по бордеру наполняет объект").
- * A 1px ring at radius 16 in 32% white that RUNS round the row from the top-left corner,
- * no fill, and the hairlines on both sides of the ring go. The negative half is the one
+ * A 1px ring at radius 16 in 32% white that RUNS once round the row from the top-left
+ * corner, clockwise, no fill, and the hairlines on both sides of the ring go. The negative half is the one
  * that matters: the ring is a stroke on an overlay, never a border — so the boxes must be
  * identical hovered and not, drawing and drawn.
  */
@@ -247,11 +247,13 @@ const dividers = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
 const ring = (sel, kind) => p.$eval(sel, (el, kind) => {
   const svg = el.querySelector(`.brief-draw--${kind}`)
   const cs = getComputedStyle(svg)
-  const fwd = getComputedStyle(svg.querySelector('.fwd'))
+  const fwd = getComputedStyle(svg.querySelector('.body'))
   return {
     op: +cs.opacity, vis: cs.visibility, drawing: !!svg.querySelector('.is-drawing'),
-    /* the forward body's dash length, in fractions of the perimeter (pathLength="1") */
-    l: parseFloat(fwd.strokeDasharray), stroke: fwd.stroke, width: fwd.strokeWidth, rx: fwd.rx,
+    /* the body's dash length, in fractions of the perimeter (pathLength="1"): how far
+       round the light has got; `none` once the lap is done and the stroke stands solid */
+    l: fwd.strokeDasharray === 'none' ? 1 : parseFloat(fwd.strokeDasharray),
+    solid: fwd.strokeDasharray === 'none', stroke: fwd.stroke, width: fwd.strokeWidth, rx: fwd.rx,
     heads: +getComputedStyle(svg.querySelector('.heads')).opacity,
     radius: getComputedStyle(el).borderRadius, fill: getComputedStyle(el).backgroundColor,
     shadow: getComputedStyle(el).boxShadow, gap: getComputedStyle(el).marginBottom,
@@ -261,14 +263,14 @@ const ring = (sel, kind) => p.$eval(sel, (el, kind) => {
 {
   const before = await rowBoxes()
   await p.hover('.brief-opt:nth-of-type(2)')
-  await p.waitForTimeout(120)
+  await p.waitForTimeout(150)
   const mid = await ring('.brief-opt:nth-of-type(2)', 'hover')
-  check('the hover ring DRAWS itself: part-way in, the stroke is part-way round',
-    mid.drawing && mid.op === 1 && mid.vis === 'visible' && mid.l > 0.02 && mid.l < 0.48, `l=${mid.l} drawing=${mid.drawing} op=${mid.op}`)
-  await p.waitForTimeout(700)
+  check('the hover ring DRAWS itself: part-way in, the light is part-way round the lap',
+    mid.drawing && mid.op === 1 && mid.vis === 'visible' && mid.l > 0.05 && mid.l < 0.9, `l=${mid.l} drawing=${mid.drawing} op=${mid.op}`)
+  await p.waitForTimeout(800)
   const done = await ring('.brief-opt:nth-of-type(2)', 'hover')
-  check('…and lands as a full 1px ring at radius 16, 32% white',
-    done.l === 0.5 && done.width === '1px' && done.stroke === 'rgba(255, 255, 255, 0.32)' && done.rx === '15.5px' && done.radius === '16px',
+  check('…and closes into a full 1px ring at radius 16, 32% white, nothing left animating',
+    done.solid && !done.drawing && done.width === '1px' && done.stroke === 'rgba(255, 255, 255, 0.32)' && done.rx === '15.5px' && done.radius === '16px',
     JSON.stringify(done))
   check('the ring is a stroke, not a fill and not a box-shadow', done.fill === 'rgba(0, 0, 0, 0)' && done.shadow === 'none', `${done.fill} / ${done.shadow}`)
   check('the hairlines on both sides of the ring go', (await dividers()).slice(0, 2).every((o) => o === 0), JSON.stringify(await dividers()))
@@ -292,16 +294,16 @@ const ring = (sel, kind) => p.$eval(sel, (el, kind) => {
 {
   const before = await rowBoxes()
   await p.click('.brief-opt:nth-of-type(2)')
-  await p.waitForTimeout(150)
+  await p.waitForTimeout(180)
   const mid = await ring('.brief-opt:nth-of-type(2)', 'pick')
   check('a press starts the 2px ring drawing round the row',
-    mid.drawing && mid.press && mid.op === 1 && mid.l > 0.02 && mid.l < 0.48 && mid.width === '2px', `l=${mid.l} drawing=${mid.drawing} press=${mid.press} w=${mid.width}`)
+    mid.drawing && mid.press && mid.op === 1 && mid.l > 0.05 && mid.l < 0.9 && mid.width === '2px', `l=${mid.l} drawing=${mid.drawing} press=${mid.press} w=${mid.width}`)
   check('…in a gradient, not a flat token', mid.stroke.startsWith('url('), mid.stroke)
   check('…with a soft head running ahead of the light', mid.heads === 1, String(mid.heads))
-  await p.waitForTimeout(800)
+  await p.waitForTimeout(900)
   const done = await ring('.brief-opt:nth-of-type(2)', 'pick')
-  check('the draw lands as the resting ring, nothing left animating',
-    done.on && !done.drawing && !done.press && done.l === 0.5 && done.heads === 0 && done.op === 1 && done.rx === '15px', JSON.stringify(done))
+  check('the lap closes into the resting ring, nothing left animating',
+    done.on && !done.drawing && !done.press && done.solid && done.heads === 0 && done.op === 1 && done.rx === '15px', JSON.stringify(done))
   check('drawn as strokes on an overlay, so the rows have not moved',
     JSON.stringify(await rowBoxes()) === JSON.stringify(before))
   check('the hairlines around the picked row go', (await dividers()).slice(0, 2).every((o) => o === 0), JSON.stringify(await dividers()))

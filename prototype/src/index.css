@@ -3540,33 +3540,29 @@ html[data-drag] .shell-aside { transition: none; }
  * обволакивая бордером пункт. То же самое и на клик, более светлый белый цвет в
  * 2 пикселя так же плавно заполняет пункт по кругу, создавая этот бордер в 2px").
  *
- * The board's mid-state is the whole brief: the border is brightest at the
- * top-left and thins out toward the bottom-right, where it has not arrived yet.
- * So the ring is an SVG STROKE that runs around the row from the top-left corner
- * in BOTH directions and closes at the bottom-right — the light ignites in one
- * corner and wraps the row. Neither ring is a `box-shadow` any more, and the
- * one-shot sheen the picked ring used to play is gone with it: the draw is the
- * sheen.
+ * The board's mid-state is the whole brief: the border is brightest where the light
+ * has been and thins out toward where it has not arrived yet. So the ring is an SVG
+ * STROKE that runs ONCE ROUND the row — clockwise from the top-left corner: along the
+ * top, down the right side, back along the bottom, up the left side, closing on its
+ * own start. One lap, 360° — the designer's correction (08.09.2026) to a first cut that
+ * sent two beams from the corner to meet at the bottom-right, which on a row ten
+ * times wider than tall read as "left to right", not as wrapping. Neither ring is a
+ * `box-shadow` any more, and the one-shot sheen the picked ring used to play is gone
+ * with it: the draw is the sheen.
  *
  * HOW THE STROKE IS BUILT (BriefPanel.tsx `DrawRing`). Every rect carries
  * `pathLength="1"`, so dash lengths are FRACTIONS OF THE PERIMETER and the same
  * keyframes fit a 400px row in the split and an 800px row in the collapsed chat.
  * A rect's path starts on the top edge just past the top-left corner and runs
- * clockwise; two bodies grow from that point:
- *   · forward:  dasharray `l 1` — draws [0, l];
- *   · backward: dasharray `l 1`, dashoffset `2l` — draws [1 − l, 1] (a dash
- *     pattern never wraps a closed path's start, measured; the second copy of the
- *     dash, pushed back by 2l, is what reaches the end of the path).
- * Both run l from 0 to ½ and meet at the half-perimeter point — on a row wider
- * than tall, the end of the bottom-right arc. Ahead of each body ride four short
- * segments (s = 0.015 of the perimeter each) at .72, .5, .3 and .12 of the stroke — a
- * stepped ramp that the motion blends into one soft tail:
- *   · forward heads:  `0 (l + a) s 1` draws [l + a, l + a + s];
- *   · backward heads: `s 1` with offset `l + a + 2s` draws [1 − l − a − s, 1 − l − a].
- * They fade out over the last quarter, so the meeting is two bodies at the full
- * colour and nothing brighter where they overlap.
+ * clockwise; the body is dasharray `l 1`, drawing [0, l] as l runs 0 → 1. Ahead of it
+ * ride four short segments (s = 0.015 of the perimeter each) at .72, .5, .3 and .12 of
+ * the stroke — a stepped ramp that the motion blends into one soft tail: dasharray
+ * `0 (l + k·s) s 1` draws [l + k·s, l + k·s + s]. A dash pattern never wraps a closed
+ * path's start (measured), so as the head reaches the end of the path it simply runs
+ * off it — into the body's own start — and the ring closes without anything brighter
+ * where the light catches its tail; the head also fades over the last stretch.
  *
- * The resting ring is the draw's LAST FRAME (bodies at ½, heads gone) — the base
+ * The resting ring is the draw's LAST FRAME (a solid stroke, head gone) — the base
  * values below — so a picked row that mounts already picked, or has finished its
  * draw, shows the same pixels with no animation running and nothing to
  * cross-fade. The strokes are hidden with `visibility`, not left at opacity 0:
@@ -3575,13 +3571,13 @@ html[data-drag] .shell-aside { transition: none; }
  *
  * COST. A dash animation re-rasters the stroke every frame — this is per-frame
  * paint, and it is allowed here on the same terms as `.thinking` and the build
- * card's working line: six hairline strokes on one row, alive for half a second,
- * on a user's own gesture. Only the ring's opacity is composited.
+ * card's working line: five hairline strokes on one row, alive for well under a
+ * second, on a user's own gesture. Only the ring's opacity is composited.
  * ---------------------------------------------------------------------- */
 .brief-opt {
-  --draw-hover: 520ms;
-  --draw-pick: 680ms;
-  --draw-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --draw-hover: 640ms;
+  --draw-pick: 800ms;
+  --draw-ease: cubic-bezier(0.45, 0.35, 0.55, 1);
 }
 .brief-draw {
   position: absolute;
@@ -3620,16 +3616,14 @@ html[data-drag] .shell-aside { transition: none; }
   stroke-width: 2px;
   stroke: url(#brief-pick-grad);
 }
-/* at rest: the last frame of the draw */
-.brief-draw .fwd { stroke-dasharray: 0.5 1; }
-.brief-draw .bwd { stroke-dasharray: 0.5 1; stroke-dashoffset: 1; }
+/* at rest: the last frame of the draw — a solid stroke, no head */
+.brief-draw .body { stroke-dasharray: none; }
 .brief-draw .heads { opacity: 0; }
-.brief-draw .fh1, .brief-draw .bh1 { opacity: 0.72; }
-.brief-draw .fh2, .brief-draw .bh2 { opacity: 0.5; }
-.brief-draw .fh3, .brief-draw .bh3 { opacity: 0.3; }
-.brief-draw .fh4, .brief-draw .bh4 { opacity: 0.12; }
-.brief-draw .bh1, .brief-draw .bh2, .brief-draw .bh3, .brief-draw .bh4 { stroke-dasharray: 0.015 1; }
-/* drawing: 0 → ½ each way on one clock, heads riding ahead and fading last */
+.brief-draw .h1 { opacity: 0.72; }
+.brief-draw .h2 { opacity: 0.5; }
+.brief-draw .h3 { opacity: 0.3; }
+.brief-draw .h4 { opacity: 0.12; }
+/* drawing: one lap, head riding ahead and fading last */
 .brief-draw .is-drawing rect,
 .brief-draw .is-drawing .heads {
   animation-duration: var(--draw-hover);
@@ -3638,37 +3632,23 @@ html[data-drag] .shell-aside { transition: none; }
 }
 .brief-draw--pick .is-drawing rect,
 .brief-draw--pick .is-drawing .heads { animation-duration: var(--draw-pick); }
-.brief-draw .is-drawing .fwd { animation-name: brief-draw-fwd; }
-.brief-draw .is-drawing .bwd { animation-name: brief-draw-bwd; }
-.brief-draw .is-drawing .fh1 { animation-name: brief-draw-fh1; }
-.brief-draw .is-drawing .fh2 { animation-name: brief-draw-fh2; }
-.brief-draw .is-drawing .fh3 { animation-name: brief-draw-fh3; }
-.brief-draw .is-drawing .fh4 { animation-name: brief-draw-fh4; }
-.brief-draw .is-drawing .bh1 { animation-name: brief-draw-bh1; }
-.brief-draw .is-drawing .bh2 { animation-name: brief-draw-bh2; }
-.brief-draw .is-drawing .bh3 { animation-name: brief-draw-bh3; }
-.brief-draw .is-drawing .bh4 { animation-name: brief-draw-bh4; }
+.brief-draw .is-drawing .body { animation-name: brief-draw-body; }
+.brief-draw .is-drawing .h1 { animation-name: brief-draw-h1; }
+.brief-draw .is-drawing .h2 { animation-name: brief-draw-h2; }
+.brief-draw .is-drawing .h3 { animation-name: brief-draw-h3; }
+.brief-draw .is-drawing .h4 { animation-name: brief-draw-h4; }
 .brief-draw .is-drawing .heads { animation-name: brief-draw-heads; }
-@keyframes brief-draw-fwd {
+@keyframes brief-draw-body {
   from { stroke-dasharray: 0 1; }
-  to   { stroke-dasharray: 0.5 1; }
+  to   { stroke-dasharray: 1 1; }
 }
-@keyframes brief-draw-bwd {
-  from { stroke-dasharray: 0 1; stroke-dashoffset: 0; }
-  to   { stroke-dasharray: 0.5 1; stroke-dashoffset: 1; }
-}
-/* forward heads: `0 (l + k·s) s 1`, s = .015, k = 0…3 */
-@keyframes brief-draw-fh1 { from { stroke-dasharray: 0 0 0.015 1; }     to { stroke-dasharray: 0 0.5 0.015 1; } }
-@keyframes brief-draw-fh2 { from { stroke-dasharray: 0 0.015 0.015 1; } to { stroke-dasharray: 0 0.515 0.015 1; } }
-@keyframes brief-draw-fh3 { from { stroke-dasharray: 0 0.03 0.015 1; }  to { stroke-dasharray: 0 0.53 0.015 1; } }
-@keyframes brief-draw-fh4 { from { stroke-dasharray: 0 0.045 0.015 1; } to { stroke-dasharray: 0 0.545 0.015 1; } }
-/* backward heads: `s 1` pushed back by `l + k·s + 2s` */
-@keyframes brief-draw-bh1 { from { stroke-dashoffset: 0.03; }  to { stroke-dashoffset: 0.53; } }
-@keyframes brief-draw-bh2 { from { stroke-dashoffset: 0.045; } to { stroke-dashoffset: 0.545; } }
-@keyframes brief-draw-bh3 { from { stroke-dashoffset: 0.06; }  to { stroke-dashoffset: 0.56; } }
-@keyframes brief-draw-bh4 { from { stroke-dashoffset: 0.075; } to { stroke-dashoffset: 0.575; } }
+/* heads: `0 (l + k·s) s 1`, s = .015, k = 0…3 */
+@keyframes brief-draw-h1 { from { stroke-dasharray: 0 0 0.015 1; }     to { stroke-dasharray: 0 1 0.015 1; } }
+@keyframes brief-draw-h2 { from { stroke-dasharray: 0 0.015 0.015 1; } to { stroke-dasharray: 0 1.015 0.015 1; } }
+@keyframes brief-draw-h3 { from { stroke-dasharray: 0 0.03 0.015 1; }  to { stroke-dasharray: 0 1.03 0.015 1; } }
+@keyframes brief-draw-h4 { from { stroke-dasharray: 0 0.045 0.015 1; } to { stroke-dasharray: 0 1.045 0.015 1; } }
 @keyframes brief-draw-heads {
-  0%, 72% { opacity: 1; }
+  0%, 84% { opacity: 1; }
   100%    { opacity: 0; }
 }
 /* WHEN each ring shows. The hover: while the pointer is on the row (`data-hov`,
