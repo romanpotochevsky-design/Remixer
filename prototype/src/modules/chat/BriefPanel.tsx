@@ -149,14 +149,22 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
 /**
  * The ring that draws itself around a row — index.css "THE BORDER THAT DRAWS ITSELF".
  *
- * Five strokes of the SAME rounded rectangle, each with `pathLength="1"` so the dash
+ * Strokes of the SAME rounded rectangle, each with `pathLength="1"` so the dash
  * arithmetic is in fractions of the perimeter whatever the row's size: one body that runs
  * CLOCKWISE from the path's start (the top edge, just past the top-left corner) — along the
  * top, down the right side, back along the bottom, up the left side — until it closes on
- * its own start, and ahead of it four short segments at falling opacity: the soft head the
- * board draws, light thinning out toward where it has not yet reached. One lap, 360°
- * (designer, 08.09.2026, after seeing two beams meet at the bottom-right: "не слева
- * направо, а по кругу вокруг объекта обтекла на 360").
+ * its own start; and ahead of it a long FEATHERED head: `HEAD_N` short segments, each
+ * `HEAD_S` of the perimeter, at opacities falling from near the body's to nothing. Together
+ * they are the gradient the board draws — light thinning out over a long stretch toward
+ * where it has not yet reached, not a strip with an end (designer, 08.09.2026, from a
+ * recording of the short-headed cut: "нет градиента, нет растушёванности… полоска без
+ * градиента, не так как на скриншоте, где края градиентные, плавные"). One lap, 360°.
+ *
+ * Every head segment shares ONE keyframe rule (index.css `brief-draw-head`, the gap
+ * before the segment running 0 → 1); what places segment k ahead of segment k−1 is a
+ * static negative `stroke-dashoffset` of k·HEAD_S, which shifts its dash forward along the
+ * path. A dash pattern never wraps a closed path's start, so as the head reaches the end
+ * of the path it runs off it — into the body's own start — and the ring closes.
  *
  * `drawKey` > 0 mounts the strokes DRAWING (from nothing to the whole perimeter); at 0
  * they stand at full with the head gone — the resting ring. Remounting on a new key is
@@ -166,6 +174,16 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
  * Geometry (inset, radius, width, colour) is CSS on the rects per `kind`, so the hover's
  * 1px and the pick's 2px are one component.
  */
+/** Segments in the feathered head, and each one's length as a fraction of the perimeter:
+ *  24 × 0.012 = the head reaches 0.288 of the way round — on the wide row, most of the
+ *  top edge is already glowing, faintly, when the light ignites in the corner. */
+const HEAD_N = 24
+const HEAD_S = 0.012
+/** The feather: near the body almost the body's own light, thinning fast at first and
+ *  then trailing out long and faint — an ease, not a straight ramp, so the tip has no edge. */
+const headOpacity = (k: number) => +Math.pow(1 - (k + 0.5) / HEAD_N, 1.4).toFixed(3)
+const HEADS = Array.from({ length: HEAD_N }, (_, k) => ({ k, off: -(k * HEAD_S), op: headOpacity(k) }))
+
 function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey: number; onDrawn?: () => void }) {
   return (
     <svg className={`brief-draw brief-draw--${kind}`} aria-hidden>
@@ -176,10 +194,9 @@ function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey:
       >
         <rect className="body" pathLength="1" />
         <g className="heads">
-          <rect className="h1" pathLength="1" />
-          <rect className="h2" pathLength="1" />
-          <rect className="h3" pathLength="1" />
-          <rect className="h4" pathLength="1" />
+          {HEADS.map(({ k, off, op }) => (
+            <rect key={k} className="h" pathLength="1" strokeDashoffset={off} opacity={op} />
+          ))}
         </g>
       </g>
     </svg>
