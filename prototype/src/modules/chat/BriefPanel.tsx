@@ -159,25 +159,30 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
  *    each, at opacities easing from near the body's light down to nothing. This is the
  *    gradient the board draws: light thinning out over a third of the perimeter toward
  *    where it has not yet reached.
- *  · THE BURST — behind the start, the OTHER way round the corner: `BURST_N` static
- *    segments down the left side and along the bottom-left, fading with distance from
- *    the corner. Light scattering does not stop at a line; at the corner where the lap
- *    begins it spreads both ways (the board's frame, 29688:29507, is exactly this: bright
- *    at the top-left, fading along the top AND down the left). The burst fades out as
- *    the body comes round to claim that stretch, so nothing stacks and nothing is left.
- *    Without it the start of the lap was a hard line at the corner — lit above, dark
- *    below — which is what the designer saw as "жёстко и деревянно" (08.09.2026, third
- *    recording: "внизу слева цвет бордера не резко появляется, а плавно из прозрачности").
+ *  · THE BURST — behind the start, the OTHER way round the corner: `BURST_N` segments
+ *    down the left side and along the bottom-left, fading with distance from the corner,
+ *    and lighting one after another outward from it. Light scattering does not stop at a
+ *    line; at the corner where the lap begins it spreads both ways (the board's frame,
+ *    29688:29507). The burst fades out as the body comes round to claim that stretch, so
+ *    nothing stacks and nothing is left.
  *
- * The whole drawing group also fades in from nothing over the first third of the lap, so
- * the corner never pops to full — the light rises out of transparency as it spreads.
+ * ⚠️ THE LIGHT GROWS OUT OF THE CORNER; NOTHING IS LIT AT FRAME ZERO. The whole run —
+ * body and head together — is shifted BACK along the path by the head's length (a
+ * static `stroke-dashoffset` of HEAD_W on the body, HEAD_W − k·HEAD_S on head segment k)
+ * and the body's dash runs 0 → 1 + HEAD_W. So at the start the tip of the feather is AT
+ * the corner and everything else is off the path; the soft tip emerges and the body
+ * follows a head's length behind it, and only when the run has gone HEAD_W past the
+ * corner is the corner itself at full. The first cut of the feather sat AHEAD of a body
+ * that started at the corner, which lit 58% of the ring faintly in the first frame and
+ * then ran the bright body over it — what the designer saw as "ховер на ховере: мгновенно
+ * появляется светлый бордер и поверх него идёт анимация ещё одного" (08.09.2026, fourth
+ * recording). Gaps in every dash pattern are 2 — longer than the path — so no second
+ * copy of a dash can land on the path while the first is still off it.
  *
- * Every head segment shares ONE keyframe rule (index.css `brief-draw-head`, the gap
- * before the segment running 0 → 1); what places segment k ahead of segment k−1 is a
- * static negative `stroke-dashoffset` of k·HEAD_S. The burst segments are static dashes
- * placed by a positive offset, `stroke-opacity` carrying their falloff. A dash pattern
- * never wraps a closed path's start, so as the head reaches the end of the path it runs
- * off it — into the body's own start — and the ring closes.
+ * Every head segment shares ONE keyframe rule (index.css `brief-draw-head`); the burst
+ * segments share one too, staggered by an inline delay so they light outward from the
+ * corner. A dash pattern never wraps a closed path's start, so as the head reaches the
+ * end of the path it runs off it — into the body's own start — and the ring closes.
  *
  * `drawKey` > 0 mounts the strokes DRAWING; at 0 they stand at full with head and burst
  * gone — the resting ring. Remounting on a new key is what restarts the draw; `onDrawn`
@@ -186,21 +191,27 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
  * Geometry (inset, radius, width, colour) is CSS on the rects per `kind`, so the hover's
  * 1px and the pick's 2px are one component.
  */
-/** The feather ahead of the body: 24 × 0.015 = 0.36 of the perimeter. */
+/** The feather ahead of the body: 24 × 0.015 = 0.36 of the perimeter (HEAD_W — the CSS
+ *  keyframes carry the same 0.36 and 0.015; keep them in step). */
 const HEAD_N = 24
 const HEAD_S = 0.015
+const HEAD_W = HEAD_N * HEAD_S
 /** The scatter behind the start: 12 × 0.018 = 0.22 of the perimeter the other way round
- *  the corner — the left side and the start of the bottom edge on a wide row. */
+ *  the corner — the left side and the start of the bottom edge on a wide row. Each
+ *  segment lights BURST_STAGGER_MS after the one before it, outward from the corner. */
 const BURST_N = 12
 const BURST_S = 0.018
+const BURST_STAGGER_MS = 9
 /** Both falloffs are eases, not straight ramps, so the far tips have no edge. */
 const headOpacity = (k: number) => +Math.pow(1 - (k + 0.5) / HEAD_N, 1.4).toFixed(3)
-const burstOpacity = (j: number) => +(0.85 * Math.pow(1 - (j + 0.5) / BURST_N, 1.3)).toFixed(3)
-const HEADS = Array.from({ length: HEAD_N }, (_, k) => ({ k, off: -(k * HEAD_S), op: headOpacity(k) }))
-/* segment j covers [1 − (j+1)·s, 1 − j·s]: the second copy of a dash `s 1`, pushed back
+const burstOpacity = (j: number) => +(0.7 * Math.pow(1 - (j + 0.5) / BURST_N, 1.3)).toFixed(3)
+/* head k draws [L + k·s − HEAD_W, … + s] for the body's running L: its dash sits k·s
+   further along the pattern, and the whole run is pulled back by HEAD_W */
+const HEADS = Array.from({ length: HEAD_N }, (_, k) => ({ k, off: +(HEAD_W - k * HEAD_S).toFixed(4), op: headOpacity(k) }))
+/* burst j covers [1 − (j+1)·s, 1 − j·s]: the second copy of a dash `s 1`, pushed back
    by (j + 2)·s (a pattern never wraps the start, so it is the copy after the gap that
    lands at the end of the path) */
-const BURST = Array.from({ length: BURST_N }, (_, j) => ({ j, off: (j + 2) * BURST_S, op: burstOpacity(j) }))
+const BURST = Array.from({ length: BURST_N }, (_, j) => ({ j, off: +((j + 2) * BURST_S).toFixed(4), op: burstOpacity(j), delay: `${j * BURST_STAGGER_MS}ms` }))
 
 function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey: number; onDrawn?: () => void }) {
   return (
@@ -216,8 +227,8 @@ function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey:
             <rect key={k} className="h" pathLength="1" strokeDashoffset={off} opacity={op} />
           ))}
         </g>
-        {drawKey > 0 && BURST.map(({ j, off, op }) => (
-          <rect key={j} className="b" pathLength="1" strokeDashoffset={off} strokeOpacity={op} />
+        {drawKey > 0 && BURST.map(({ j, off, op, delay }) => (
+          <rect key={j} className="b" pathLength="1" strokeDashoffset={off} strokeOpacity={op} style={{ animationDelay: delay }} />
         ))}
       </g>
     </svg>

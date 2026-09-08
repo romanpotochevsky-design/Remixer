@@ -3566,17 +3566,27 @@ html[data-drag] .shell-aside { transition: none; }
  * last stretch.
  *
  * Behind the start, the other way round the corner, sits THE BURST: `BURST_N` (12)
- * static segments of `BURST_S` (0.018) each — the left side and the start of the
- * bottom edge — with `stroke-opacity` falling away from the corner. The start of a
- * one-way lap is otherwise a hard line at the corner (lit above it, dark below), and
- * that line is what the designer saw as "жёстко и деревянно" on the third recording
- * (08.09.2026: "внизу слева цвет бордера не резко появляется, а плавно из
- * прозрачности… эффект рассеивания света по бордеру"). Light scatters both ways from
- * where it ignites. The burst fades out between 45% and 85% of the lap, while the body
- * is coming round to claim that stretch, so the two never stack brighter than the
- * ring and nothing of it is left at rest. And the WHOLE drawing group fades in over the
- * first third of the lap (`brief-draw-in`): the corner never pops to full, the light
- * rises out of transparency as it spreads.
+ * segments of `BURST_S` (0.018) each — the left side and the start of the bottom
+ * edge — with `stroke-opacity` falling away from the corner, lighting one after
+ * another outward from it (an inline stagger). The start of a one-way lap is
+ * otherwise a hard line at the corner (lit above it, dark below), which the designer
+ * saw as "жёстко и деревянно" on the third recording (08.09.2026: "внизу слева цвет
+ * бордера не резко появляется, а плавно из прозрачности… эффект рассеивания света по
+ * бордеру"). Light scatters both ways from where it ignites. The burst fades out between
+ * 45% and 85% of the lap, while the body is coming round to claim that stretch, so the
+ * two never stack brighter than the ring and nothing of it is left at rest.
+ *
+ * ⚠️ NOTHING IS LIT AT FRAME ZERO — THE LIGHT GROWS OUT OF THE CORNER. Body and head are
+ * pulled BACK along the path by the head's length (`stroke-dashoffset` 0.36 on the body,
+ * 0.36 − k·s on head k) and the body's dash runs 0 → 1.36: at the start the feather's
+ * faint tip is at the corner and all the rest is off the path; the tip emerges, the body
+ * follows a head's length behind, and the corner reaches full only once the run is a
+ * head's length past it. The first cut had the feather sitting AHEAD of a body that
+ * began at the corner, so 58% of the ring lit faintly in the first frame and the bright
+ * body then ran over it — "ховер на ховере: мгновенно появляется светлый бордер и поверх
+ * него идёт анимация ещё одного бордера" (designer, 08.09.2026, fourth recording). Every
+ * dash pattern's gap is 2, longer than the path, so no second copy of a dash can land
+ * on the path while the first is still off it.
  *
  * The resting ring is the draw's LAST FRAME (a solid stroke, head gone) — the base
  * values below — so a picked row that mounts already picked, or has finished its
@@ -3591,8 +3601,9 @@ html[data-drag] .shell-aside { transition: none; }
  * second, on a user's own gesture. Only the ring's opacity is composited.
  * ---------------------------------------------------------------------- */
 .brief-opt {
-  --draw-hover: 700ms;
-  --draw-pick: 880ms;
+  /* the designer's "в 2 раза ускорить" (08.09.2026) on 700 / 880 */
+  --draw-hover: 350ms;
+  --draw-pick: 440ms;
   --draw-ease: cubic-bezier(0.45, 0.35, 0.55, 1);
 }
 .brief-draw {
@@ -3635,44 +3646,41 @@ html[data-drag] .shell-aside { transition: none; }
 /* at rest: the last frame of the draw — a solid stroke, no head, no burst */
 .brief-draw .body { stroke-dasharray: none; }
 .brief-draw .heads { opacity: 0; }
-.brief-draw .h { stroke-dasharray: 0 0 0.015 1; }
+.brief-draw .h { stroke-dasharray: 0 0 0.015 2; }
 .brief-draw .b { stroke-dasharray: 0.018 1; opacity: 0; }
-/* drawing: the group rises out of transparency, one lap, the feathered head riding
-   ahead and fading last, the burst behind the start fading as the body comes round */
-.brief-draw .is-drawing,
+/* drawing: one lap growing out of the corner, the feathered head ahead of the body and
+   fading last, the burst lighting outward behind the start and fading as the body comes
+   round. The body is pulled back by the head's length (HEAD_W, BriefPanel.tsx) so the
+   tip, not the body, is what starts at the corner. */
 .brief-draw .is-drawing rect,
 .brief-draw .is-drawing .heads {
   animation-duration: var(--draw-hover);
   animation-timing-function: var(--draw-ease);
   animation-fill-mode: both;
 }
-.brief-draw--pick .is-drawing,
 .brief-draw--pick .is-drawing rect,
 .brief-draw--pick .is-drawing .heads { animation-duration: var(--draw-pick); }
-.brief-draw .is-drawing { animation-name: brief-draw-in; animation-timing-function: linear; }
-.brief-draw .is-drawing .body { animation-name: brief-draw-body; }
+.brief-draw .is-drawing .body { animation-name: brief-draw-body; stroke-dashoffset: 0.36; }
 .brief-draw .is-drawing .h { animation-name: brief-draw-head; }
 .brief-draw .is-drawing .b { animation-name: brief-draw-burst; animation-timing-function: linear; }
 .brief-draw .is-drawing .heads { animation-name: brief-draw-heads; }
-@keyframes brief-draw-in {
-  0%   { opacity: 0; }
-  32%  { opacity: 1; }
-  100% { opacity: 1; }
-}
+/* the body: `L 2`, pulled back 0.36 — draws [0, L − 0.36]; L runs to 1.36 so it closes */
 @keyframes brief-draw-body {
-  from { stroke-dasharray: 0 1; }
-  to   { stroke-dasharray: 1 1; }
+  from { stroke-dasharray: 0 2; }
+  to   { stroke-dasharray: 1.36 2; }
 }
-/* one head segment: `0 l s 1`, s = HEAD_S; its place in the feather is its own
-   static dashoffset (BriefPanel.tsx), so one rule serves all of them */
+/* one head segment: `0 L s 2`, s = HEAD_S; its place in the feather is its own static
+   dashoffset (BriefPanel.tsx), so one rule serves all of them */
 @keyframes brief-draw-head {
-  from { stroke-dasharray: 0 0 0.015 1; }
-  to   { stroke-dasharray: 0 1 0.015 1; }
+  from { stroke-dasharray: 0 0 0.015 2; }
+  to   { stroke-dasharray: 0 1.36 0.015 2; }
 }
-/* the burst: on from the start, gone by the time the body has come round to it — the
-   head first touches its far end at ~42% of the lap, the body reaches it at ~63% */
+/* the burst: lights (staggered outward from the corner by an inline delay), holds, and
+   is gone by the time the body has come round to it */
 @keyframes brief-draw-burst {
-  0%, 45% { opacity: 1; }
+  0%      { opacity: 0; }
+  16%     { opacity: 1; }
+  45%     { opacity: 1; }
   85%, 100% { opacity: 0; }
 }
 @keyframes brief-draw-heads {
