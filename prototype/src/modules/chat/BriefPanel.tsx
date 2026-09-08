@@ -108,6 +108,13 @@ function Radio({ on }: { on: boolean }) {
  *
  * Under reduced motion neither key moves: the rings appear and go as state.
  */
+/** Is the dock this pickable lives in mid-motion (dock.ts puts these classes on `.dock`)? */
+const DOCK_MOTION = ['dock-armed', 'dock-rise', 'dock-morph']
+const dockInMotion = (el: Element) => {
+  const dock = el.closest('.dock')
+  return !!dock && DOCK_MOTION.some((c) => dock.classList.contains(c))
+}
+
 function Pick({ className, on, label, title, onPick, children }: {
   className: string
   on: boolean
@@ -124,7 +131,16 @@ function Pick({ className, on, label, title, onPick, children }: {
     <button
       type="button"
       onClick={() => { if (!reduce) setPress((n) => n + 1); onPick() }}
-      onPointerEnter={() => { setHovering(true); if (!reduce) setHovKey((n) => n + 1) }}
+      /* A hover is the POINTER's gesture, not the content's. While the dock is riding —
+         the rise, or a morph between questions — the rows slide under a parked pointer and
+         would light one after another as they pass: the designer's recording (08.09.2026,
+         frame 118) shows a ring on a row nobody pointed at, with the cursor resting on ‹.
+         Measured: two rows lit in turn on one morph. So an enter that arrives while the
+         dock moves is ignored; the pointer's own next move lights what is really under it. */
+      onPointerEnter={(e) => {
+        if (dockInMotion(e.currentTarget)) return
+        setHovering(true); if (!reduce) setHovKey((n) => n + 1)
+      }}
       onPointerLeave={() => setHovering(false)}
       aria-pressed={on}
       data-on={on ? '' : undefined}

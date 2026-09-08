@@ -3345,7 +3345,17 @@ html[data-drag] .shell-aside { transition: none; }
 }
 .dock-piston {
   top: 320px;
-  height: calc(var(--rise) + 48px);
+  /* ⚠️ 320 BELOW THE SEAM, NOT 48 (designer's recording, 09.09.2026 00:32: "при переходе на
+     шаг с палитрой, внизу какая-то чёрная щель мелькает"). On a morph to a SHORTER question
+     the piston starts the height difference HIGHER than its rest, so its bottom edge starts
+     that much above the collar's seam — and the collar, whose top is the composer's top,
+     never moves. Whatever the piston's overhang below the seam does not cover is the GROUND
+     showing through: 48px of overhang against a 224px drop (lettering → colours) left a
+     176px black band under the answers, the footer sitting on it, for the first frames of
+     every shrink. The overhang has to be at least the largest drop the panel can make; 320
+     is the room the shell already keeps above for the overshoot, and anything past the seam
+     is under the opaque collar and its ground-coloured shadow, so it costs nothing. */
+  height: calc(var(--rise) + 320px);
   border-bottom: 0;
   border-radius: 24px 24px 0 0;
 }

@@ -421,9 +421,12 @@ check('paging back keeps the answer',
     const tick = () => {
       const clip = document.querySelector('.dock-clip')
       const foot = document.querySelector('.dock-foot')
+      const piston = document.querySelector('.dock-piston'), base = document.querySelector('.dock-base')
       if (clip && foot) out.push({
         drift: +(clip.getBoundingClientRect().bottom - foot.getBoundingClientRect().top).toFixed(1),
         lit: [...document.querySelectorAll('.dock-sheet > div')].map((g) => +getComputedStyle(g).opacity),
+        /* how far the piston's bottom edge is ABOVE the collar's seam: > 0 is ground showing */
+        gap: +(base.getBoundingClientRect().top - piston.getBoundingClientRect().bottom).toFixed(1),
       })
       if (performance.now() - t0 < 700) requestAnimationFrame(tick)
     }
@@ -453,6 +456,42 @@ check('paging back keeps the answer',
   const both = f.filter((x) => x.lit.length > 1 && Math.min(...x.lit) > 0.06)
   check('…and one question is lit at a time: the old is gone before the new appears',
     both.length === 0, `${both.length} of ${f.length} frames with two lit`)
+  /* THE BLACK GAP (designer's recording, 09.09.2026 00:32: "внизу какая-то чёрная щель
+     мелькает"): on a morph to a SHORTER question the piston starts higher, and its overhang
+     below the seam — 48px then — did not reach the collar for a 120–224px drop, so the ground
+     showed under the answers with the footer sitting on it. This step IS a shrink (pages →
+     colours); the piston's bottom must never rise above the collar's seam. */
+  const worst = Math.max(...f.map((x) => x.gap))
+  check('the piston always reaches the collar: no ground shows under the panel while it shrinks',
+    worst <= 0, `worst gap ${worst}px over ${f.length} frames`)
+}
+{
+  /* THE THIRD DEFECT IN THE FIRST RECORDING (frame 118): a hover ring on a row nobody pointed
+     at. The rows ride the piston, so with the pointer parked they slide UNDER it and light one
+     after another as they pass — measured two rows in turn on one morph. A hover is the
+     pointer's gesture, not the content's: an enter that arrives while the dock moves is
+     ignored (`dockInMotion`, BriefPanel.tsx). Park the pointer in the card, step by keyboard,
+     and nothing may light; then step back the same way. */
+  const sheet = await (await p.$('section[aria-label="Questions before building"] .dock-sheet')).boundingBox()
+  await p.mouse.move(sheet.x + sheet.width / 2, sheet.y + sheet.height * 0.55); await p.waitForTimeout(250)
+  const parked = async (btn) => {
+    await p.evaluate(() => {
+      const out = (window.__hov = []); const t0 = performance.now()
+      const tick = () => {
+        out.push([...document.querySelectorAll('.brief-pick[data-hov]')].map((e) => e.getAttribute('aria-label')))
+        if (performance.now() - t0 < 900) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    })
+    await p.focus(btn); await p.keyboard.press('Enter'); await p.waitForTimeout(1000)
+    const h = await p.evaluate(() => window.__hov)
+    return { frames: h.length, lit: [...new Set(h.flat())] }
+  }
+  const grow = await parked('footer button:has-text("Next")')
+  check('rows sliding under a parked pointer do not light: nothing hovers during the morph',
+    grow.frames > 20 && grow.lit.length === 0, JSON.stringify(grow))
+  const back = await parked('footer button[aria-label="Previous question"]')
+  check('…and not on the way back either', back.frames > 20 && back.lit.length === 0, JSON.stringify(back))
 }
 {
   /* The house press bloom on the footer's buttons (designer, 08.09.2026: "на эти все кнопки
