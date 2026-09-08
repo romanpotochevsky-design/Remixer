@@ -228,72 +228,86 @@ check('the composer relabels itself as the escape hatch',
 
 /*
  * THE ANSWER ROW'S HOVER — Figma 29688:26919 (designer, 08.09.2026: "ховер это скруглёный
- * полупрозрачный бордер как в макете"). A 1px ring at radius 16 in 48% white, no fill, and
- * the hairlines on both sides of the ring go. The negative half is the one that matters: a
- * ring drawn as a BORDER would add a pixel and push every row, so the boxes must be
- * identical hovered and not.
+ * полупрозрачный бордер как в макете"), DRAWN — 29688:29507 ("цвет бордера не равномерно
+ * одновременно по всему бордеру появляется, а градиентно по бордеру наполняет объект").
+ * A 1px ring at radius 16 in 32% white that RUNS round the row from the top-left corner,
+ * no fill, and the hairlines on both sides of the ring go. The negative half is the one
+ * that matters: the ring is a stroke on an overlay, never a border — so the boxes must be
+ * identical hovered and not, drawing and drawn.
  */
+const rowBoxes = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
+  const b = el.getBoundingClientRect()
+  return [+b.left.toFixed(2), +b.top.toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2)]
+}))
+const dividers = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
+  const cs = getComputedStyle(el, '::after')
+  return cs.content === 'none' ? null : +(+cs.opacity).toFixed(2)
+}))
+/* one ring of a row — its SVG overlay, `hover` or `pick` — as the eye has it now */
+const ring = (sel, kind) => p.$eval(sel, (el, kind) => {
+  const svg = el.querySelector(`.brief-draw--${kind}`)
+  const cs = getComputedStyle(svg)
+  const fwd = getComputedStyle(svg.querySelector('.fwd'))
+  return {
+    op: +cs.opacity, vis: cs.visibility, drawing: !!svg.querySelector('.is-drawing'),
+    /* the forward body's dash length, in fractions of the perimeter (pathLength="1") */
+    l: parseFloat(fwd.strokeDasharray), stroke: fwd.stroke, width: fwd.strokeWidth, rx: fwd.rx,
+    heads: +getComputedStyle(svg.querySelector('.heads')).opacity,
+    radius: getComputedStyle(el).borderRadius, fill: getComputedStyle(el).backgroundColor,
+    shadow: getComputedStyle(el).boxShadow, gap: getComputedStyle(el).marginBottom,
+    press: el.hasAttribute('data-press'), on: el.getAttribute('aria-pressed') === 'true',
+  }
+}, kind)
 {
-  const rowBoxes = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
-    const b = el.getBoundingClientRect()
-    return [+b.left.toFixed(2), +b.top.toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2)]
-  }))
-  const rowStyle = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
-    const div = getComputedStyle(el, '::after')
-    return {
-      ring: getComputedStyle(el).boxShadow, radius: getComputedStyle(el).borderRadius,
-      fill: getComputedStyle(el).backgroundColor, gap: getComputedStyle(el).marginBottom,
-      /* the hairline lives in the gap now, as an ::after — not as the row's border */
-      divider: div.content === 'none' ? null : +(+div.opacity).toFixed(2),
-    }
-  }))
   const before = await rowBoxes()
   await p.hover('.brief-opt:nth-of-type(2)')
-  await p.waitForTimeout(260)
+  await p.waitForTimeout(120)
+  const mid = await ring('.brief-opt:nth-of-type(2)', 'hover')
+  check('the hover ring DRAWS itself: part-way in, the stroke is part-way round',
+    mid.drawing && mid.op === 1 && mid.vis === 'visible' && mid.l > 0.02 && mid.l < 0.48, `l=${mid.l} drawing=${mid.drawing} op=${mid.op}`)
+  await p.waitForTimeout(700)
+  const done = await ring('.brief-opt:nth-of-type(2)', 'hover')
+  check('…and lands as a full 1px ring at radius 16, 32% white',
+    done.l === 0.5 && done.width === '1px' && done.stroke === 'rgba(255, 255, 255, 0.32)' && done.rx === '15.5px' && done.radius === '16px',
+    JSON.stringify(done))
+  check('the ring is a stroke, not a fill and not a box-shadow', done.fill === 'rgba(0, 0, 0, 0)' && done.shadow === 'none', `${done.fill} / ${done.shadow}`)
+  check('the hairlines on both sides of the ring go', (await dividers()).slice(0, 2).every((o) => o === 0), JSON.stringify(await dividers()))
+  check('the rows sit apart, so two rings can never meet', done.gap === '6px', done.gap)
   const after = await rowBoxes()
-  const st = await rowStyle()
-  check('the hovered answer row takes a 1px ring at radius 16, 32% white',
-    st[1].ring.includes('0.32') && st[1].ring.includes('inset') && st[1].radius === '16px', st[1].ring)
-  check('the ring replaces the fill, it does not add one', st[1].fill === 'rgba(0, 0, 0, 0)', st[1].fill)
-  check('the hairlines on both sides of the ring go',
-    st[0].divider === 0 && st[1].divider === 0, `${st[0].divider} / ${st[1].divider}`)
-  check('the rows sit apart, so two rings can never meet', st[0].gap === '6px', st[0].gap)
-  check('nothing in the card moves under the hover',
+  check('nothing in the card moves under the hover, drawing or drawn',
     JSON.stringify(before) === JSON.stringify(after), `${JSON.stringify(before[1])} → ${JSON.stringify(after[1])}`)
   await p.mouse.move(4, 4)
-  await p.waitForTimeout(200)
-  check('the ring leaves with the pointer', (await rowStyle())[1].ring === 'none')
+  await p.waitForTimeout(260)
+  const gone = await ring('.brief-opt:nth-of-type(2)', 'hover')
+  check('the ring leaves with the pointer', gone.op === 0 && gone.vis === 'hidden', `op=${gone.op} ${gone.vis}`)
 }
 
 /*
- * THE PICKED ROW — Figma 29688:27643 (designer, 08.09.2026: "бордер 2px и градиентный…
- * можно при клике проиграть один раз анимацию бордера, как переливание света").
+ * THE PICKED ROW — Figma 29688:27643 (designer, 08.09.2026: "бордер 2px и градиентный"),
+ * DRAWN — 29688:29507 ("то же самое и на клик, более светлый белый цвет в 2 пикселя так же
+ * плавно заполняет пункт по кругу, создавая этот бордер в 2px"). The 2px gradient ring runs
+ * round the row on the press and then STANDS as the resting ring — the last frame of its
+ * own draw, nothing left animating.
  */
 {
-  const rowBoxes = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
-    const b = el.getBoundingClientRect()
-    return [+b.left.toFixed(2), +b.top.toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2)]
-  }))
   const before = await rowBoxes()
   await p.click('.brief-opt:nth-of-type(2)')
-  const rim = await p.$eval('.brief-opt:nth-of-type(2) .brief-rim', (el) => ({
-    pad: getComputedStyle(el).padding, bg: getComputedStyle(el).backgroundImage,
-    mask: getComputedStyle(el).maskImage || getComputedStyle(el).webkitMaskImage,
-  })).catch(() => null)
-  check('the picked row takes a 2px ring', !!rim && rim.pad === '2px', rim ? rim.pad : 'no rim')
-  check('…and the ring is a gradient, not a flat token',
-    !!rim && rim.bg.startsWith('linear-gradient(150deg') && (rim.bg.match(/rgba/g) || []).length >= 3,
-    rim ? rim.bg.slice(0, 70) : '')
-  check('…drawn as a masked ring, so it cannot move the rows',
-    !!rim && rim.mask.includes('linear-gradient') && JSON.stringify(await rowBoxes()) === JSON.stringify(before))
-  /* the hairlines fade rather than snap (--dur-fast), so read them once they have */
-  await p.waitForTimeout(260)
-  const div = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
-    const cs = getComputedStyle(el, '::after')
-    return cs.content === 'none' ? null : +(+cs.opacity).toFixed(2)
-  }))
-  check('the hairlines around the picked row go', (await div()).slice(0, 2).every((o) => o === 0),
-    JSON.stringify(await div()))
+  await p.waitForTimeout(150)
+  const mid = await ring('.brief-opt:nth-of-type(2)', 'pick')
+  check('a press starts the 2px ring drawing round the row',
+    mid.drawing && mid.press && mid.op === 1 && mid.l > 0.02 && mid.l < 0.48 && mid.width === '2px', `l=${mid.l} drawing=${mid.drawing} press=${mid.press} w=${mid.width}`)
+  check('…in a gradient, not a flat token', mid.stroke.startsWith('url('), mid.stroke)
+  check('…with a soft head running ahead of the light', mid.heads === 1, String(mid.heads))
+  await p.waitForTimeout(800)
+  const done = await ring('.brief-opt:nth-of-type(2)', 'pick')
+  check('the draw lands as the resting ring, nothing left animating',
+    done.on && !done.drawing && !done.press && done.l === 0.5 && done.heads === 0 && done.op === 1 && done.rx === '15px', JSON.stringify(done))
+  check('drawn as strokes on an overlay, so the rows have not moved',
+    JSON.stringify(await rowBoxes()) === JSON.stringify(before))
+  check('the hairlines around the picked row go', (await dividers()).slice(0, 2).every((o) => o === 0), JSON.stringify(await dividers()))
+  /* the 2px ring is the stronger statement: a picked row does not also take the hover ring */
+  const hov = await ring('.brief-opt:nth-of-type(2)', 'hover')
+  check('a picked row gives up its hover ring', hov.op === 0 && hov.vis === 'hidden', `op=${hov.op} ${hov.vis}`)
   /*
    * THE ONE THE DESIGNER REPORTED (08.09.2026): a picked row's 2px ring and the hover
    * ring of the row above it used to land a pixel apart and smear together. They must
@@ -304,16 +318,16 @@ check('the composer relabels itself as the escape hatch',
   const clearance = await p.$$eval('.brief-opt', (els) =>
     +(els[1].getBoundingClientRect().top - els[0].getBoundingClientRect().bottom).toFixed(1))
   check('a picked row and a hovered neighbour keep their distance', clearance >= 6, `${clearance}px`)
-  await p.mouse.move(4, 4)
-  /* the sheen: one band crossing the ring, then gone — not a layer left behind */
-  check('a press sends light across the ring', !!(await p.$('.brief-opt:nth-of-type(2) .brief-sheen > i')))
-  await p.waitForTimeout(1100)
-  check('…once, and the layer leaves with it', !(await p.$('.brief-sheen')))
-  check('the picked row keeps its ring after the light has passed',
-    !!(await p.$('.brief-opt:nth-of-type(2) .brief-rim')))
-  /* put the question back the way the rest of the run expects it */
+  /* picking another row: the old ring fades, the new one draws — and the run goes on
+     with row 1 picked, as the rest of it expects */
   await p.click('.brief-opt:nth-of-type(1)')
-  await p.waitForTimeout(900)
+  await p.waitForTimeout(300)
+  const old = await ring('.brief-opt:nth-of-type(2)', 'pick')
+  const next = await ring('.brief-opt:nth-of-type(1)', 'pick')
+  check('the ring of the row given up fades out while the new one draws',
+    !old.on && old.op === 0 && next.on && next.drawing, `old op=${old.op} on=${old.on}; new drawing=${next.drawing}`)
+  await p.mouse.move(4, 4)
+  await p.waitForTimeout(800)
 }
 
 /*

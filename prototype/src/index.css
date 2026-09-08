@@ -3466,28 +3466,29 @@ html[data-drag] .shell-aside { transition: none; }
 
 /* ------------------------------------------------------------------------
  * THE ANSWER ROW'S HOVER — Figma 29688:26919 (the designer pointed at it on
- * 08.09.2026: "ховер это скруглёный полупрозрачный бордер как в макете").
+ * 08.09.2026: "ховер это скруглёный полупрозрачный бордер как в макете"), and
+ * THE SELECTED ROW — 29688:27643 ("бордер 2px и градиентный").
  *
- * The hovered list item takes a 1px ring at the card's own radius 16, in
- * `Neutral Alpha/500` — read in the DARK theme, so 48% WHITE (the MCP export
- * prints the light-mode fallback `rgba(9,9,11,.48)`, which would draw a hole;
- * the same trap CLAUDE.md records for the composer's tokens). There is NO fill:
- * the ring IS the hover, and the fill it replaces (5% white) is gone.
+ * The hovered list item takes a 1px ring at the card's own radius 16 in 32%
+ * white (the designer's own value, 08.09.2026: "подправь цвет ховера, это белый
+ * с непрозрачностью 32%"; the board's flattened NA/500 read 48% and was too
+ * loud). There is NO fill: the ring IS the hover. The picked item takes a 2px
+ * ring in the house diagonal — light from the top-left, dipping mid-diagonal,
+ * recovering at the far corner, .98 → .55 (48%) → .82, whose mean is the 72%
+ * (`Neutral Alpha/800`) the export flattens the gradient stroke to.
  *
- * Three details the board settles:
- *  · the ring is a `box-shadow`, not a `border` — a border would add a pixel and
- *    push every row on the way in and out (the palette tile's ring made the same
- *    call). Nothing in the card moves on hover.
+ * Both rings are DRAWN, not faded in — see "THE BORDER THAT DRAWS ITSELF" below
+ * for the strokes. What this block settles is everything around them:
+ *  · nothing in the card moves: the rings are strokes on an overlay inside the
+ *    row's box (Figma's stroke sits inside the geometry, so inset is also the
+ *    right pixels); a `border` would add a pixel and push every row.
  *  · the radius is PERMANENT: with no ring and no fill a rounded row draws
- *    nothing, so there is no radius to animate — only the ring fades in.
- *  · the hairline between rows is hidden while a row is ringed, on BOTH sides of
- *    the ring: the row's own divider below it, and the previous row's divider
- *    above it (`:has(+ …:hover)`). A hairline running into a rounded ring reads
- *    as a seam in it. The divider keeps its 1px of box either way (only its
- *    colour goes), so the rows' heights are untouched.
- *
- * The radio brightens with the row: `Neutral Alpha/900`, 80% white against its
- * resting 48% (the board draws exactly this on the hovered item).
+ *    nothing, so there is no radius to animate.
+ *  · the hairline between rows is hidden while a row is ringed, on BOTH sides
+ *    of the ring (`:has(+ …)` for the one above). A hairline running into a
+ *    rounded ring reads as a seam in it.
+ *  · the radio brightens with the row: `Neutral Alpha/900`, 80% white against
+ *    its resting 48% (the board draws exactly this on the hovered item).
  * ---------------------------------------------------------------------- */
 .brief-opt {
   /*
@@ -3512,7 +3513,6 @@ html[data-drag] .shell-aside { transition: none; }
    */
   --opt-gap: 6px;
   border-radius: 16px;
-  transition: box-shadow var(--dur-fast) var(--ease-std);
 }
 .brief-opt:not(:last-of-type) { margin-bottom: var(--opt-gap); }
 .brief-opt:not(:last-of-type)::after {
@@ -3526,84 +3526,170 @@ html[data-drag] .shell-aside { transition: none; }
   transition: opacity var(--dur-fast) var(--ease-std);
   pointer-events: none;
 }
-/* 32% white — the designer's own value, 08.09.2026 ("подправь цвет ховера, это белый
-   с непрозрачностью 32%"); the board's flattened NA/500 read 48% and was too loud. */
-.brief-opt:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32); }
-.brief-opt:hover::after,
-.brief-opt:has(+ .brief-opt:hover)::after { opacity: 0; }
+.brief-opt[data-hov]::after,
+.brief-opt:has(+ .brief-opt[data-hov])::after,
+.brief-opt[data-on]::after,
+.brief-opt:has(+ .brief-opt[data-on])::after { opacity: 0; }
 .brief-radio-off { transition: border-color var(--dur-fast) var(--ease-std); }
 .brief-opt:hover .brief-radio-off { border-color: rgba(255, 255, 255, 0.8); }
 
 /* ------------------------------------------------------------------------
- * THE SELECTED ROW — Figma 29688:27643 (designer, 08.09.2026: "обрати внимание
- * что бордер 2px и градиентный, можно даже при клике проиграть один раз
- * анимацию бордера, как переливание света по бордеру").
+ * THE BORDER THAT DRAWS ITSELF — Figma 29688:29507 (designer, 08.09.2026: "ты
+ * наводишь на пункт, и цвет бордера не равномерно одновременно по всему бордеру
+ * появляется, а градиентно по бордеру наполняет объект… плавно и красиво
+ * обволакивая бордером пункт. То же самое и на клик, более светлый белый цвет в
+ * 2 пикселя так же плавно заполняет пункт по кругу, создавая этот бордер в 2px").
  *
- * A 2px ring at radius 16. The export flattens it to one token,
- * `Neutral Alpha/800` = 72% white in the dark theme — but the designer says it is
- * a GRADIENT stroke, and a flattened gradient is exactly what the export does to
- * the Home controls too (design-system.md §5). So the ring is the house's
- * diagonal: light from the top-left, dipping mid-diagonal, recovering at the far
- * corner — .98 → .55 (48%) → .82, whose mean across the run is 0.72, the token
- * the export printed. Read the render, not the fallback.
+ * The board's mid-state is the whole brief: the border is brightest at the
+ * top-left and thins out toward the bottom-right, where it has not arrived yet.
+ * So the ring is an SVG STROKE that runs around the row from the top-left corner
+ * in BOTH directions and closes at the bottom-right — the light ignites in one
+ * corner and wraps the row. Neither ring is a `box-shadow` any more, and the
+ * one-shot sheen the picked ring used to play is gone with it: the draw is the
+ * sheen.
  *
- * Drawn as a MASKED ring on a child, never as a `border`: a border would add two
- * pixels and shove every row (the same call the hover ring and the palette tile
- * made). Figma's stroke sits inside the geometry, so an inset ring is also the
- * right pixels.
+ * HOW THE STROKE IS BUILT (BriefPanel.tsx `DrawRing`). Every rect carries
+ * `pathLength="1"`, so dash lengths are FRACTIONS OF THE PERIMETER and the same
+ * keyframes fit a 400px row in the split and an 800px row in the collapsed chat.
+ * A rect's path starts on the top edge just past the top-left corner and runs
+ * clockwise; two bodies grow from that point:
+ *   · forward:  dasharray `l 1` — draws [0, l];
+ *   · backward: dasharray `l 1`, dashoffset `2l` — draws [1 − l, 1] (a dash
+ *     pattern never wraps a closed path's start, measured; the second copy of the
+ *     dash, pushed back by 2l, is what reaches the end of the path).
+ * Both run l from 0 to ½ and meet at the half-perimeter point — on a row wider
+ * than tall, the end of the bottom-right arc. Ahead of each body ride four short
+ * segments (s = 0.015 of the perimeter each) at .72, .5, .3 and .12 of the stroke — a
+ * stepped ramp that the motion blends into one soft tail:
+ *   · forward heads:  `0 (l + a) s 1` draws [l + a, l + a + s];
+ *   · backward heads: `s 1` with offset `l + a + 2s` draws [1 − l − a − s, 1 − l − a].
+ * They fade out over the last quarter, so the meeting is two bodies at the full
+ * colour and nothing brighter where they overlap.
  *
- * THE SHEEN is the one-shot the designer asked for: a soft band of light crossing
- * the ring once, 720ms, when the row is clicked. It is a TRANSFORM of a child
- * inside the ring's mask, not a moving `background-position` — the same reason the
- * composer's send flash rotates arcs instead of animating a conic angle. The band
- * spans the row and its highlight sits mid-way, so travelling ±100% carries the
- * light from one end of the border to the other.
+ * The resting ring is the draw's LAST FRAME (bodies at ½, heads gone) — the base
+ * values below — so a picked row that mounts already picked, or has finished its
+ * draw, shows the same pixels with no animation running and nothing to
+ * cross-fade. The strokes are hidden with `visibility`, not left at opacity 0:
+ * this project has paid for invisible layers that still cost paint (CLAUDE.md,
+ * the `Preview` pill).
  *
- * ⚠️ The mask and the `overflow` are on the SAME element. Chromium loses a mask
- * declared on an ancestor of the clip (CLAUDE.md, the composer-flash lesson), and
- * the band has to be clipped to the row's box before the ring mask takes it.
+ * COST. A dash animation re-rasters the stroke every frame — this is per-frame
+ * paint, and it is allowed here on the same terms as `.thinking` and the build
+ * card's working line: six hairline strokes on one row, alive for half a second,
+ * on a user's own gesture. Only the ring's opacity is composited.
  * ---------------------------------------------------------------------- */
-.brief-rim,
-.brief-sheen {
+.brief-opt {
+  --draw-hover: 520ms;
+  --draw-pick: 680ms;
+  --draw-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.brief-draw {
   position: absolute;
   inset: 0;
-  border-radius: inherit;
-  padding: 2px;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-.brief-rim {
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.82));
-}
-.brief-sheen { overflow: hidden; }
-.brief-sheen > i {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
   width: 100%;
-  display: block;
-  background: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.92) 50%, transparent 82%);
-  animation: brief-sheen 0.72s cubic-bezier(0.32, 0, 0.36, 1) both;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  border-radius: inherit;
+  /* hidden unless shown below; the hide waits for the fade */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.16s var(--ease-std), visibility 0s linear 0.16s;
 }
-@keyframes brief-sheen {
-  0%   { transform: translateX(-100%); opacity: 0; }
-  14%  { opacity: 1; }
-  82%  { opacity: 1; }
-  100% { transform: translateX(100%); opacity: 0; }
+.brief-draw rect {
+  fill: none;
+  stroke-linecap: butt;
 }
-/* the 2px ring is the stronger statement: a selected row does not also take the
-   hover ring, and its hairlines go the same way a hovered row's do */
-.brief-opt[data-on]:hover { box-shadow: none; }
-.brief-opt[data-on]::after,
-.brief-opt:has(+ .brief-opt[data-on])::after { opacity: 0; }
+/* geometry per kind: Figma's stroke is inside the box, so the rect is inset by
+   half the stroke and the radius is the row's 16 less that half */
+.brief-draw--hover rect {
+  x: 0.5px;
+  y: 0.5px;
+  width: calc(100% - 1px);
+  height: calc(100% - 1px);
+  rx: 15.5px;
+  stroke-width: 1px;
+  stroke: rgba(255, 255, 255, 0.32);
+}
+.brief-draw--pick rect {
+  x: 1px;
+  y: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  rx: 15px;
+  stroke-width: 2px;
+  stroke: url(#brief-pick-grad);
+}
+/* at rest: the last frame of the draw */
+.brief-draw .fwd { stroke-dasharray: 0.5 1; }
+.brief-draw .bwd { stroke-dasharray: 0.5 1; stroke-dashoffset: 1; }
+.brief-draw .heads { opacity: 0; }
+.brief-draw .fh1, .brief-draw .bh1 { opacity: 0.72; }
+.brief-draw .fh2, .brief-draw .bh2 { opacity: 0.5; }
+.brief-draw .fh3, .brief-draw .bh3 { opacity: 0.3; }
+.brief-draw .fh4, .brief-draw .bh4 { opacity: 0.12; }
+.brief-draw .bh1, .brief-draw .bh2, .brief-draw .bh3, .brief-draw .bh4 { stroke-dasharray: 0.015 1; }
+/* drawing: 0 → ½ each way on one clock, heads riding ahead and fading last */
+.brief-draw .is-drawing rect,
+.brief-draw .is-drawing .heads {
+  animation-duration: var(--draw-hover);
+  animation-timing-function: var(--draw-ease);
+  animation-fill-mode: both;
+}
+.brief-draw--pick .is-drawing rect,
+.brief-draw--pick .is-drawing .heads { animation-duration: var(--draw-pick); }
+.brief-draw .is-drawing .fwd { animation-name: brief-draw-fwd; }
+.brief-draw .is-drawing .bwd { animation-name: brief-draw-bwd; }
+.brief-draw .is-drawing .fh1 { animation-name: brief-draw-fh1; }
+.brief-draw .is-drawing .fh2 { animation-name: brief-draw-fh2; }
+.brief-draw .is-drawing .fh3 { animation-name: brief-draw-fh3; }
+.brief-draw .is-drawing .fh4 { animation-name: brief-draw-fh4; }
+.brief-draw .is-drawing .bh1 { animation-name: brief-draw-bh1; }
+.brief-draw .is-drawing .bh2 { animation-name: brief-draw-bh2; }
+.brief-draw .is-drawing .bh3 { animation-name: brief-draw-bh3; }
+.brief-draw .is-drawing .bh4 { animation-name: brief-draw-bh4; }
+.brief-draw .is-drawing .heads { animation-name: brief-draw-heads; }
+@keyframes brief-draw-fwd {
+  from { stroke-dasharray: 0 1; }
+  to   { stroke-dasharray: 0.5 1; }
+}
+@keyframes brief-draw-bwd {
+  from { stroke-dasharray: 0 1; stroke-dashoffset: 0; }
+  to   { stroke-dasharray: 0.5 1; stroke-dashoffset: 1; }
+}
+/* forward heads: `0 (l + k·s) s 1`, s = .015, k = 0…3 */
+@keyframes brief-draw-fh1 { from { stroke-dasharray: 0 0 0.015 1; }     to { stroke-dasharray: 0 0.5 0.015 1; } }
+@keyframes brief-draw-fh2 { from { stroke-dasharray: 0 0.015 0.015 1; } to { stroke-dasharray: 0 0.515 0.015 1; } }
+@keyframes brief-draw-fh3 { from { stroke-dasharray: 0 0.03 0.015 1; }  to { stroke-dasharray: 0 0.53 0.015 1; } }
+@keyframes brief-draw-fh4 { from { stroke-dasharray: 0 0.045 0.015 1; } to { stroke-dasharray: 0 0.545 0.015 1; } }
+/* backward heads: `s 1` pushed back by `l + k·s + 2s` */
+@keyframes brief-draw-bh1 { from { stroke-dashoffset: 0.03; }  to { stroke-dashoffset: 0.53; } }
+@keyframes brief-draw-bh2 { from { stroke-dashoffset: 0.045; } to { stroke-dashoffset: 0.545; } }
+@keyframes brief-draw-bh3 { from { stroke-dashoffset: 0.06; }  to { stroke-dashoffset: 0.56; } }
+@keyframes brief-draw-bh4 { from { stroke-dashoffset: 0.075; } to { stroke-dashoffset: 0.575; } }
+@keyframes brief-draw-heads {
+  0%, 72% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+/* WHEN each ring shows. The hover: while the pointer is on the row (`data-hov`,
+   set by the row itself — see BriefPanel.tsx for why not `:hover`), and never on
+   a picked row, where the 2px ring is the stronger statement. The pick: while the
+   row is picked. Showing is instant; hiding is the 160ms fade above, under which
+   a draw still in flight goes on drawing — the light dims, it does not snap. */
+.brief-opt[data-hov]:not([data-on]) .brief-draw--hover,
+.brief-opt[data-on] .brief-draw--pick {
+  opacity: 1;
+  visibility: visible;
+  transition: none;
+}
+/* a row being picked while hovered: its hover ring fades as the pick's draws */
+.brief-opt[data-on] .brief-draw--hover {
+  transition: opacity 0.16s var(--ease-std), visibility 0s linear 0.16s;
+}
 @media (prefers-reduced-motion: reduce) {
-  /* the ring stays — it is state, not motion; only the sheen goes (the global
-     reduce rule already stops it, this documents the intent) */
-  .brief-sheen { display: none; }
+  /* the global rule stops the draw; the base values above ARE the ring, so it
+     simply appears — state, not motion */
+  .brief-draw { transition: none; }
 }
 
 @keyframes dock-shell-out {

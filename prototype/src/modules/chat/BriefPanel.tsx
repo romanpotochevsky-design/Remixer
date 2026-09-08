@@ -75,48 +75,64 @@ function Radio({ on }: { on: boolean }) {
 /**
  * One answer row: radio · title · consequence. The row is the click target, so picking
  * an option is a press anywhere on the line rather than on a 16px dot.
+ *
+ * THE BORDER DRAWS ITSELF (designer, 08.09.2026, Figma 29688:29507: "цвет бордера не
+ * равномерно одновременно по всему бордеру появляется, а градиентно по бордеру наполняет
+ * объект… плавно и красиво обволакивая бордером пункт. То же самое и на клик, более светлый
+ * белый цвет в 2 пикселя так же плавно заполняет пункт по кругу"). So neither ring is a
+ * `box-shadow` that fades in: each is an SVG stroke that RUNS around the row from the
+ * top-left corner in both directions and meets itself at the bottom-right — the hover's
+ * 1px at 32%, the pick's 2px gradient. The paint and the keyframes are in index.css, "THE
+ * BORDER THAT DRAWS ITSELF"; this component only decides WHEN a draw starts:
+ *
+ *  · `hovKey` bumps on every pointer-enter, remounting the hover stroke so it starts from
+ *    the corner again; `hovering` is what shows it. Pointer-leave hides it on a short
+ *    fade WHILE it goes on drawing underneath — the light does not snap, it dims. (A CSS
+ *    `:hover` could not do this: Chromium drops a removed animation straight to its base
+ *    value, measured — a ring half drawn would vanish in one frame, or, with a "full"
+ *    base, flash whole.) `:hover` alone is also wrong for a row that MOUNTS under a
+ *    still pointer: it would light at once, without the draw.
+ *  · `press` bumps on every click, remounting the pick stroke as a draw; when the draw
+ *    has landed the key drops to 0 and the same stroke stands still at full — the
+ *    picked ring IS the last frame of its own draw, so nothing has to cross-fade. A press
+ *    on the row that is already picked draws it again: that is its acknowledgement.
+ *
+ * Under reduced motion neither key moves: the rings appear and go as state.
  */
 function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
   const { t } = useT()
-  /*
-   * The click's own light: bumping this remounts the sheen, so the band crosses the
-   * ring once per press — including a press on the row that is already picked, where
-   * it is the only acknowledgement there is (designer, 08.09.2026).
-   */
-  const [sheen, setSheen] = useState(0)
+  const reduce = useReducedMotion()
+  const [hovering, setHovering] = useState(false)
+  const [hovKey, setHovKey] = useState(0)
+  const [press, setPress] = useState(0)
   return (
     <button
       type="button"
-      onClick={() => { setSheen((n) => n + 1); answerBrief(q.key, o.id) }}
+      onClick={() => { if (!reduce) setPress((n) => n + 1); answerBrief(q.key, o.id) }}
+      onPointerEnter={() => { setHovering(true); if (!reduce) setHovKey((n) => n + 1) }}
+      onPointerLeave={() => setHovering(false)}
       aria-pressed={on}
       data-on={on ? '' : undefined}
+      data-hov={hovering ? '' : undefined}
+      data-press={press > 0 ? '' : undefined}
       /* Named explicitly: a palette row's body is four colours and carries no text at
          all, so without this the row would announce itself by its title alone in some
          readings and by nothing in others. */
       aria-label={t(o.name)}
       /*
-       * `brief-opt` carries the row's three states and its spacing — index.css, "THE
-       * ANSWER ROW'S HOVER" (Figma 29688:26919) and "THE SELECTED ROW" (29688:27643):
-       * a 1px ring on hover, a 2px gradient ring when picked, 6px between rows so the
-       * two can never meet, and the hairline centred in that gap.
+       * `brief-opt` carries the row's states and its spacing — index.css, "THE ANSWER
+       * ROW'S HOVER" (Figma 29688:26919), "THE SELECTED ROW" (29688:27643) and "THE
+       * BORDER THAT DRAWS ITSELF" (29688:29507): a 1px ring drawn on hover, a 2px
+       * gradient ring drawn when picked, 6px between rows so the two can never meet, and
+       * the hairline centred in that gap.
        *
        * py-18 both sides: the board's 19th pixel on row 1 was the divider's own weight,
        * and the divider has moved out of the row's box into the gap.
        */
       className="brief-opt relative flex w-full items-start gap-3 py-[18px] pl-4 pr-6 text-left"
     >
-      {/* the 2px gradient ring of the picked row, and the light that crosses it on a
-          press — index.css "THE SELECTED ROW", off Figma 29688:27643 */}
-      {on && <span className="brief-rim" aria-hidden />}
-      {sheen > 0 && (
-        /* unmounted the moment it has crossed: a finished sheen is a masked
-           798×80 layer with nothing left to say, and this project has been bitten
-           before by an invisible layer that still cost paint (CLAUDE.md, the
-           `Preview` pill at opacity 0). */
-        <span key={sheen} className="brief-sheen" aria-hidden onAnimationEnd={() => setSheen(0)}>
-          <i />
-        </span>
-      )}
+      <DrawRing kind="hover" drawKey={hovKey} />
+      <DrawRing kind="pick" drawKey={press} onDrawn={() => setPress(0)} />
       <span className="flex items-center pt-1.5">
         <Radio on={on} />
       </span>
@@ -126,6 +142,50 @@ function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
         <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">{o.detail ? t(o.detail) : null}</span>
       </span>
     </button>
+  )
+}
+
+/**
+ * The ring that draws itself around a row — index.css "THE BORDER THAT DRAWS ITSELF".
+ *
+ * Ten strokes of the SAME rounded rectangle, each with `pathLength="1"` so the dash
+ * arithmetic is in fractions of the perimeter whatever the row's size: a body running
+ * forward from the path's start (the top edge, just past the top-left corner) and a body
+ * running backward from it (into the corner, down the left side); ahead of each body four
+ * short segments at falling opacity — the soft head the board draws, light thinning out
+ * toward where it has not yet reached. Both bodies stop at half the perimeter, which for
+ * a wide row is the bottom-right corner: the light ignites top-left and closes
+ * bottom-right, as on 29688:29507.
+ *
+ * `drawKey` > 0 mounts the strokes DRAWING (from nothing, 0 → ½ each); at 0 they stand
+ * at full with the heads gone — the resting ring. Remounting on a new key is what
+ * restarts the draw. `onDrawn` fires when the forward body has landed.
+ *
+ * Geometry (inset, radius, width, colour) is CSS on the rects per `kind`, so the hover's
+ * 1px and the pick's 2px are one component.
+ */
+function DrawRing({ kind, drawKey, onDrawn }: { kind: 'hover' | 'pick'; drawKey: number; onDrawn?: () => void }) {
+  return (
+    <svg className={`brief-draw brief-draw--${kind}`} aria-hidden>
+      <g
+        key={drawKey}
+        className={drawKey > 0 ? 'is-drawing' : undefined}
+        onAnimationEnd={(e) => { if (e.animationName === 'brief-draw-fwd') onDrawn?.() }}
+      >
+        <rect className="fwd" pathLength="1" />
+        <rect className="bwd" pathLength="1" />
+        <g className="heads">
+          <rect className="fh1" pathLength="1" />
+          <rect className="fh2" pathLength="1" />
+          <rect className="fh3" pathLength="1" />
+          <rect className="fh4" pathLength="1" />
+          <rect className="bh1" pathLength="1" />
+          <rect className="bh2" pathLength="1" />
+          <rect className="bh3" pathLength="1" />
+          <rect className="bh4" pathLength="1" />
+        </g>
+      </g>
+    </svg>
   )
 }
 
@@ -298,6 +358,17 @@ export function BriefPanel() {
          full-width children of the shell, so the answers card and the field share edges. */
       className="relative z-20"
     >
+      {/* the pick stroke's gradient, defined once for every row's ring (`url(#brief-pick-grad)`,
+          index.css "THE BORDER THAT DRAWS ITSELF") — the house diagonal, .98 → .55 → .82 */}
+      <svg className="absolute h-0 w-0" aria-hidden>
+        <defs>
+          <linearGradient id="brief-pick-grad" x1="-0.069" y1="0.401" x2="1.069" y2="0.599">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.98" />
+            <stop offset="0.48" stopColor="#fff" stopOpacity="0.55" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0.82" />
+          </linearGradient>
+        </defs>
+      </svg>
       <div className="dock-sheet relative">
         <AnimatePresence mode="popLayout" initial={false} custom={dir}>
           <motion.div
