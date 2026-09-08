@@ -204,9 +204,9 @@ export default function App() {
             className="flex items-center"
           >
             <div className="grid w-14 place-items-center">
-              {/* `data-boot-mark`: where the flying mark of the Home → builder transition
-                  lands (BootCover measures this box) — and the mark that takes over. */}
-              <span data-boot-mark className="arrive-mark grid h-8 w-8 place-items-center">
+              {/* `arrive-mark`: on the Home → builder arrival the mark lights up here, just
+                  before the wordmark unfolds from it (index.css "THE ARRIVAL") */}
+              <span className="arrive-mark grid h-8 w-8 place-items-center">
                 <LogoRemixer size={32} />
               </span>
             </div>

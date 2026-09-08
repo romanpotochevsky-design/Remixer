@@ -79,23 +79,27 @@ export interface DomainModal {
  * The Home → builder transition (ui/BootCover.tsx draws it), in three phases:
  *
  *   darken  — the Home page fades to black under a curtain; the page has not switched.
- *   logo    — the page switches under the opaque curtain, and the animated Remixer mark
- *             assembles once at the centre (the designer's own SVGator asset, the same one
- *             the Home entrance plays — "дать ему один раз проанимироваться").
- *   arrive  — the mark flies to its post in the builder's header and the shell assembles
- *             around it: the chat rises from below, its messages cascade top-down, the
- *             right rail slides in, the wordmark unfolds beside the mark.
+ *   glow    — the page switches under the opaque curtain, and the Remixer glow — the same
+ *             edge light the preview carries while a build runs — breathes in along the
+ *             edge of the whole screen, runs for a couple of seconds and breathes out
+ *             (designer, 08.09.2026: "вместо него вставить плавно и красиво при переходе
+ *             эффект свечения на пару секунд по краю экрана"). This beat used to be the
+ *             animated mark assembling at the centre; the designer cut it — "он лишний".
+ *   arrive  — the curtain lifts and the shell assembles: the chat rises from below, its
+ *             messages cascade top-down, the right rail slides in, the mark and the
+ *             wordmark light up in the header.
  *
  * The phase lengths live here with the other timing constants because `openBuilder`
  * below owns the timers — importing them the other way round would make the store and
  * the cover a cycle. BOOT_MS is the whole.
  */
-export type BootPhase = 'darken' | 'logo' | 'arrive'
+export type BootPhase = 'darken' | 'glow' | 'arrive'
 export const BOOT_DARKEN_MS = 380
-/** The assembly is 1550ms (LOGO_ASSEMBLY_MS); the flight leaves during its last 50ms. */
-export const BOOT_LOGO_MS = 1500
+/** "На пару секунд": the glow's own entrance (600ms) and its breath out (the last 500ms,
+ *  `boot-glow-life` in index.css — keep the two in step) are inside this. */
+export const BOOT_GLOW_MS = 2000
 export const BOOT_ARRIVE_MS = 1200
-export const BOOT_MS = BOOT_DARKEN_MS + BOOT_LOGO_MS + BOOT_ARRIVE_MS
+export const BOOT_MS = BOOT_DARKEN_MS + BOOT_GLOW_MS + BOOT_ARRIVE_MS
 
 export const CHAT_DEFAULT = 432
 export const CHAT_MIN = 340
@@ -366,20 +370,20 @@ export const useUI = create<UIStore>((set, get) => ({
    * only once it is opaque (BOOT_DARKEN_MS later): the Home page fades to black as
    * itself, and the builder's first commit happens under the curtain, so no frame of
    * un-settled shell can show. Under reduced motion the phases collapse to a short covered
-   * swap: the curtain is instant (the global reduce rule stops its fade), there is no logo
+   * swap: the curtain is instant (the global reduce rule stops its fade), there is no glow
    * beat, and the shell simply appears.
    */
   openBuilder: () => {
     clearBootTimers()
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
     const darken = reduce ? 80 : BOOT_DARKEN_MS
-    const logo = reduce ? 0 : BOOT_LOGO_MS
+    const glow = reduce ? 0 : BOOT_GLOW_MS
     const arrive = reduce ? 240 : BOOT_ARRIVE_MS
     set({ boot: 'darken' })
     bootAfter(darken, () =>
-      set({ page: 'builder', boot: logo ? 'logo' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null }))
-    if (logo) bootAfter(darken + logo, () => set({ boot: 'arrive' }))
-    bootAfter(darken + logo + arrive, () => set({ boot: null }))
+      set({ page: 'builder', boot: glow ? 'glow' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null }))
+    if (glow) bootAfter(darken + glow, () => set({ boot: 'arrive' }))
+    bootAfter(darken + glow + arrive, () => set({ boot: null }))
   },
   setDockTab: (dockTab) => set({ dockTab }),
   setTemplateFilter: (templateFilter) => set({ templateFilter }),

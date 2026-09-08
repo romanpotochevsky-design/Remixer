@@ -165,7 +165,7 @@ async function buildFromHome(prompt) {
   await p.waitForTimeout(700)
   await p.fill('input[aria-label="Describe the site you want"]', prompt)
   await p.click('button:has-text("Build")')
-  /* The transition (darken → logo → arrive, ~3.1s): wait for its layer to leave, then a
+  /* The transition (darken → glow → arrive, ~3.6s): wait for its layer to leave, then a
      beat for the shell to settle. */
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 10000 })
   await p.waitForTimeout(400)
@@ -180,15 +180,16 @@ check('the prototype opens on the Home page', await onHome())
 
 await p.fill('input[aria-label="Describe the site you want"]', 'website')
 await p.click('button:has-text("Build")')
-/* The transition: the Home page darkens, the animated mark plays once on the black, then
-   the shell arrives around it (~3.1s, BOOT_MS). Sampled during the darkening and during
-   the logo beat, then waited out before anything is clicked. */
+/* The transition: the Home page darkens, the Remixer glow runs along the edge of the
+   screen for a couple of seconds, then the shell arrives (~3.6s, BOOT_MS). Sampled during
+   the darkening and during the glow beat, then waited out before anything is clicked. */
 await p.waitForTimeout(200)
 check('the Home → builder step plays under a cover', !!(await p.$('.boot-cover')))
 await shot('02a-corridor-darken')
 await p.waitForTimeout(1000)
-check('the animated mark plays on the black stage', !!(await p.$('.boot-cover[data-phase="logo"] .boot-logo-anim svg')))
-await shot('02b-corridor-logo')
+check('the edge glow runs on the black, and no mark does',
+  !!(await p.$('.boot-cover[data-phase="glow"] .boot-glow .siri-glow')) && !(await p.$('.boot-cover svg')))
+await shot('02b-corridor-glow')
 await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 10000 })
 check('the transition ends by itself', !(await p.$('.boot-cover')))
 await p.waitForTimeout(300)
