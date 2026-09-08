@@ -47,6 +47,8 @@ export function PlanCard() {
       aria-label={t({ en: 'Plan, waiting for your approval', uk: 'План, очікує підтвердження' })}
       className="relative z-20"
     >
+      {/* the same clip the questions travel in — index.css ".dock-clip" */}
+      <div className="dock-clip">
       <div className="dock-sheet">
       <p className="px-4 pb-3 pt-5 text-[16px] font-semibold leading-[1.4] text-white">{t(PLAN_LABEL)}</p>
 
@@ -77,6 +79,7 @@ export function PlanCard() {
         </div>
       </div>
 
+      </div>
       </div>
 
       {/* No price line here. It read as a warning attached to the button rather than as

@@ -292,7 +292,21 @@ const pixelAt = async (x, y) => {
 {
   const before = await rowBoxes()
   await p.hover('.brief-opt:nth-of-type(2)')
-  await p.waitForTimeout(90) /* ~40% into the 220ms draw */
+  /* ⚠️ WAIT FOR THE DRAW TO HAVE STARTED, not for a fixed 90ms. A flat pause makes this
+     check depend on how loaded the machine is: on a busy run the animation's first frame
+     lands late and the ring measures 0.039 lit against a 0.05 floor — a red on correct
+     code, which is worse than no check (the same lesson `dragShut` carries). This polls
+     the ring's own mean lightness and reads the first frame that is measurably lit, which
+     is early in the 220ms lap by construction. */
+  await p.waitForFunction(() => {
+    const svg = document.querySelector('.brief-opt:nth-of-type(2) .brief-draw--hover')
+    const segs = svg ? [...svg.querySelectorAll('.is-drawing .seg')] : []
+    if (!segs.length) return false
+    const lum = (st) => { const m = st.match(/[\d.]+/g); return m ? +m[0] / 255 : 0 }
+    const g0 = lum(getComputedStyle(svg).getPropertyValue('--ring-ground'))
+    const mean = segs.reduce((a, r) => a + (lum(getComputedStyle(r).stroke) - g0) / (1 - g0), 0) / segs.length
+    return mean > 0.06
+  }, null, { timeout: 2000 }).catch(() => {})
   const mid = await ring('.brief-opt:nth-of-type(2)', 'hover')
   check('the hover ring DRAWS itself: part-way in, the ring is part-way lit',
     mid.drawing && mid.op === 1 && mid.vis === 'visible' && mid.l > 0.05 && mid.l < 0.9, `l=${mid.l} drawing=${mid.drawing} op=${mid.op}`)
@@ -390,7 +404,67 @@ await p.click('text=Next'); await p.waitForTimeout(400); await shot('05-q3-palet
 await p.click('button[aria-label="Previous question"]'); await p.waitForTimeout(300)
 check('paging back keeps the answer',
   (await p.getAttribute('section button[aria-label="A few pages"]', 'aria-pressed')) === 'true')
-await p.click('button[aria-label="Next question"]'); await p.waitForTimeout(300)
+/*
+ * THE STEP MORPH, FILMED — the designer's screen recording, 08.09.2026 ("при переходах
+ * есть дефекты и глюки визуальные"). Two defects it showed, both caught here by sampling
+ * every frame of the morph rather than by looking at the end of it:
+ *  · the sheet rides the piston, so on a morph to a TALLER question it starts the height
+ *    difference LOWER — and hung over the footer and down across the composer. It is now
+ *    clipped at the footer's line (`.dock-clip`), which never moves.
+ *  · the two questions were painted over each other at about half alpha for 90ms, which on
+ *    a whole panel of content reads as a double exposure, not as a cross-fade.
+ */
+{
+  await p.evaluate(() => {
+    const out = (window.__morph = [])
+    const t0 = performance.now()
+    const tick = () => {
+      const clip = document.querySelector('.dock-clip')
+      const foot = document.querySelector('.dock-foot')
+      if (clip && foot) out.push({
+        drift: +(clip.getBoundingClientRect().bottom - foot.getBoundingClientRect().top).toFixed(1),
+        lit: [...document.querySelectorAll('.dock-sheet > div')].map((g) => +getComputedStyle(g).opacity),
+      })
+      if (performance.now() - t0 < 700) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+  await p.click('button[aria-label="Next question"]')
+  await p.waitForTimeout(900)
+  const f = await p.evaluate(() => window.__morph)
+  check('the sheet is clipped at the footer’s line for every frame of the morph',
+    f.length > 20 && f.every((x) => Math.abs(x.drift) < 1),
+    `${f.length} frames, worst ${Math.max(...f.map((x) => Math.abs(x.drift)))}px`)
+  const both = f.filter((x) => x.lit.length > 1 && Math.min(...x.lit) > 0.06)
+  check('…and one question is lit at a time: the old is gone before the new appears',
+    both.length === 0, `${both.length} of ${f.length} frames with two lit`)
+}
+{
+  /* The house press bloom on the footer's buttons (designer, 08.09.2026: "на эти все кнопки
+     нужно добавить наш эффект клика, который мы делали в стиле гугл") — the same delegation
+     the Home controls use: positional, and clipped to the button's own rounded box. The
+     press is released OFF the button, so measuring it does not also page the brief. */
+  const sel = 'footer button:has-text("Skip all")'
+  const bb = await (await p.$(sel)).boundingBox()
+  await p.mouse.move(bb.x + bb.width * 0.25, bb.y + bb.height * 0.5)
+  await p.mouse.down()
+  await p.waitForTimeout(120)
+  const bloom = await p.$eval(sel, (el) => {
+    const layer = el.querySelector(':scope > .glass-ripples')
+    const rip = layer?.querySelector('.glass-ripple')
+    const b = el.getBoundingClientRect(), l = layer?.getBoundingClientRect(), r = rip?.getBoundingClientRect()
+    return {
+      fits: l ? [+(l.width - b.width).toFixed(1), +(l.height - b.height).toFixed(1)] : null,
+      clipped: layer ? getComputedStyle(layer).overflow : null,
+      from: r ? +((r.left + r.width / 2 - b.left) / b.width).toFixed(2) : null,
+      op: rip ? +getComputedStyle(rip).opacity : 0,
+    }
+  })
+  await p.mouse.move(10, 10); await p.mouse.up(); await p.waitForTimeout(260)
+  check('the footer’s buttons bloom from the point of the press, clipped to their own box',
+    bloom.op > 0 && bloom.clipped === 'hidden' && bloom.fits.every((d) => Math.abs(d) < 0.5) &&
+      Math.abs(bloom.from - 0.25) < 0.08, JSON.stringify(bloom))
+}
 {
   /* The colour question is the drawn GRID (25732:139123), not rows: four plates of four
      cells, and its own field with no radio beside it. */

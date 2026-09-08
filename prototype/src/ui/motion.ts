@@ -245,6 +245,21 @@ export const sheetExit = {
  * spring: MotionConfig would otherwise jump x to its target and fade from there (the
  * shelf-of-the-dock lesson, 26.08.2026).
  */
+/*
+ * ⚠️ THE HAND-OFF IS SEQUENTIAL, NOT A CROSS-FADE (designer's screen recording,
+ * 08.09.2026: "при переходах есть дефекты и глюки визуальные"). The first cut
+ * had the old question fading out over 170ms while the new one's opacity was
+ * already climbing from 80ms: a 90ms window in which two whole questions —
+ * title, rows, card, field — were painted over each other at about half alpha
+ * each. On this much content that does not read as a cross-fade, it reads as a
+ * double exposure ("Which lettering suits the tone?" printed through "Which
+ * colours feel right?", measured off the recording's frames 51-53).
+ *
+ * So the old one leaves FAST and is gone before the new one starts to appear:
+ * out by 120ms, in from 140ms. One frame of the bare panel between them is the
+ * price, and it is invisible — the panel's own edge is morphing through it.
+ * The x spring is untouched: what was wrong was the overlap, not the travel.
+ */
 export const stepSwap = {
   initial: (dir: number) => ({ opacity: 0, x: 36 * dir }),
   animate: {
@@ -252,19 +267,19 @@ export const stepSwap = {
     x: 0,
     transition: {
       x: { type: 'spring', duration: 0.56, bounce: 0.2 },
-      opacity: { duration: 0.24, delay: 0.08 },
+      opacity: { duration: 0.2, delay: 0.14 },
     },
   },
   exit: (dir: number) => ({
     opacity: 0,
-    x: -28 * dir,
-    transition: { duration: 0.17, ease: [0.4, 0, 1, 1] },
+    x: -24 * dir,
+    transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
   }),
 } as const
 export const stepSwapFade = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.24, delay: 0.08 } },
-  exit: { opacity: 0, transition: { duration: 0.14 } },
+  animate: { opacity: 1, transition: { duration: 0.18, delay: 0.12 } },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
 } as const
 
 /*

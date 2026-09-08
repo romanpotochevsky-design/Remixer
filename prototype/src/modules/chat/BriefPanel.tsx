@@ -483,6 +483,14 @@ export function BriefPanel() {
           </mask>
         </defs>
       </svg>
+      {/* THE SHEET TRAVELS INSIDE A CLIP — index.css ".dock-clip" (designer's screen
+          recording, 08.09.2026: "при переходах есть дефекты и глюки визуальные"). The
+          sheet rides the piston, so on a morph to a TALLER question it starts the height
+          difference LOWER — and, unclipped, that bottom hung over the footer and over the
+          composer for the first third of the spring. The clip is open at the top (where
+          the panel's own edge is the boundary and it moves with the content) and closed
+          at the sides and along the footer's line, which never moves. */}
+      <div className="dock-clip">
       <div className="dock-sheet relative">
         <AnimatePresence mode="popLayout" initial={false} custom={dir}>
           <motion.div
@@ -501,12 +509,21 @@ export function BriefPanel() {
           </motion.div>
         </AnimatePresence>
       </div>
+      </div>
 
       {/* footer 29464:34378 — paging left, Skip all + Next right, both on the glass. It
           does not travel with the edge: its buttons are anchored to the field. On the rise
           it lands last — the buttons are the decision, and they should not be there
           before the question is. pb is the board's 16 plus the shell's 2px gap to the
-          composer, which here has no element of its own to carry it. */}
+          composer, which here has no element of its own to carry it.
+
+          Every button here takes the house PRESS BLOOM — the Material gesture restyled as
+          light blooming from the click point (`press-bloom`, one document-level delegation
+          in `ui/ripple.ts`; designer, 08.09.2026: "на эти все кнопки нужно добавить наш
+          эффект клика, который мы делали в стиле гугл"). Bloom only, no 8% wash on top:
+          each of these already owns its hover — the utilitarian ones the shell's
+          `--white-100`, the blue one `--action-hover`. A disabled arrow blooms nothing;
+          the delegation checks `disabled` before it spawns. */}
       <footer className="dock-foot flex items-end justify-between pb-[18px] pl-1.5 pr-2.5 pt-3">
         <div className="flex items-center gap-2">
           <button
@@ -515,7 +532,7 @@ export function BriefPanel() {
             disabled={step === 0}
             aria-label={t({ en: 'Previous question', uk: 'Попереднє запитання' })}
             /* the board dims the unavailable arrow to 25% rather than recolouring it */
-            className="grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
+            className="press-bloom grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
           >
             <IconCaretLeft size={24} />
           </button>
@@ -524,7 +541,7 @@ export function BriefPanel() {
             onClick={() => briefGoTo(step + 1)}
             disabled={last}
             aria-label={t({ en: 'Next question', uk: 'Наступне запитання' })}
-            className="grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
+            className="press-bloom grid h-8 w-8 place-items-center rounded-[8px] text-white transition-[background-color,opacity] duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent"
           >
             <IconCaretRight size={24} />
           </button>
@@ -533,14 +550,14 @@ export function BriefPanel() {
           <button
             type="button"
             onClick={briefSkipAll}
-            className="h-8 rounded-[8px] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+            className="press-bloom h-8 rounded-[8px] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
           >
             {t({ en: 'Skip all', uk: 'Пропустити все' })}
           </button>
           <button
             type="button"
             onClick={briefNext}
-            className="h-8 rounded-[8px] bg-[var(--action)] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+            className="press-bloom h-8 rounded-[8px] bg-[var(--action)] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
           >
             {last ? t({ en: 'Submit', uk: 'Готово' }) : t({ en: 'Next', uk: 'Далі' })}
           </button>

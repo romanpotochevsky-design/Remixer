@@ -3381,6 +3381,36 @@ html[data-drag] .shell-aside { transition: none; }
   :root { --dock-spring: linear(0.0000, 0.0194, 0.0706, 0.1440, 0.2317, 0.3270, 0.4246, 0.5203, 0.6110, 0.6945, 0.7694, 0.8350, 0.8911, 0.9379, 0.9758, 1.0056, 1.0281, 1.0442, 1.0548, 1.0608, 1.0632, 1.0626, 1.0599, 1.0556, 1.0502, 1.0443, 1.0381, 1.0320, 1.0262, 1.0207, 1.0158, 1.0115, 1.0078, 1.0047, 1.0021, 1.0001, 0.9986, 0.9974, 0.9967, 0.9962, 1.0000); }
 }
 
+/* ------------------------------------------------------------------------
+ * THE CLIP THE SHEET TRAVELS IN — from the designer's screen recording,
+ * 08.09.2026 ("при переходах есть дефекты и глюки визуальные").
+ *
+ * What the recording showed, frame by frame: on a morph to a TALLER question
+ * the sheet starts the height difference LOWER — it rides the piston, which is
+ * the point — and its bottom, the last rows and the "Write your own…" field,
+ * hung OVER the footer and down across the composer for the first third of the
+ * spring. The rise never showed it because its content fades in from 30% of the
+ * curve; the morph has no such cover, and it should not need one — the sheet
+ * simply must not paint outside the panel.
+ *
+ * THE CLIP IS OPEN AT THE TOP and closed on the other three sides. The top
+ * boundary is the panel's own edge, and that edge MOVES with the content (both
+ * ride the same spring), so a fixed line up there would cut the sheet on a morph
+ * to a SHORTER question, where the content starts HIGHER than it ends. The
+ * footer's line and the panel's sides never move, so those three are the ones to
+ * hold — and the sides matter too: the swap slides the answers card ±36px, and
+ * the card is the panel's full width, so without them it slid out over the chat
+ * past the panel's rounded edge. `margin-top`/`padding-top` open the box upward
+ * without taking a pixel of layout, and the opened band is deaf to the pointer.
+ * ---------------------------------------------------------------------- */
+.dock-clip {
+  margin-top: -640px;
+  padding-top: 640px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dock-clip > .dock-sheet { pointer-events: auto; }
+
 /* Parked: the start values, statically, for the one frame before the motion. */
 .dock-armed .dock-piston,
 .dock-armed .dock-sheet { transform: translateY(var(--from)); }
