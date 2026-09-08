@@ -3660,9 +3660,11 @@ html[data-drag] .shell-aside { transition: none; }
   initial-value: #09090b;
 }
 .brief-opt {
-  /* the designer's "в 2 раза ускорить" (08.09.2026) on 700 / 880 */
-  --draw-hover: 350ms;
-  --draw-pick: 440ms;
+  /* the third speed (designer, 08.09.2026): 700 / 880 → "в 2 раза ускорить" → 350 / 440 →
+     "ускорим ещё, чтобы быстрее было и не так надоедало" → 220 / 280. A hover fires on every
+     row the pointer crosses, so its draw has to be over before the eye tires of it. */
+  --draw-hover: 220ms;
+  --draw-pick: 280ms;
   /* the ground under the ring: the answers card (#09090b at 143/255, BriefPanel.tsx) over
      the dock's flat #1a1a1c (.dock-piston / .dock-base) = 9·.561 + 26·.439 — an unlit dash
      is this colour. ⚠️ Written as a legacy rgb(), NOT as the color-mix() it is: the fade

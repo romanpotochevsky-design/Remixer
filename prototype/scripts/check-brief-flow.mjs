@@ -292,7 +292,7 @@ const pixelAt = async (x, y) => {
 {
   const before = await rowBoxes()
   await p.hover('.brief-opt:nth-of-type(2)')
-  await p.waitForTimeout(150)
+  await p.waitForTimeout(90) /* ~40% into the 220ms draw */
   const mid = await ring('.brief-opt:nth-of-type(2)', 'hover')
   check('the hover ring DRAWS itself: part-way in, the ring is part-way lit',
     mid.drawing && mid.op === 1 && mid.vis === 'visible' && mid.l > 0.05 && mid.l < 0.9, `l=${mid.l} drawing=${mid.drawing} op=${mid.op}`)
@@ -339,7 +339,7 @@ const pixelAt = async (x, y) => {
 {
   const before = await rowBoxes()
   await p.click('.brief-opt:nth-of-type(2)')
-  await p.waitForTimeout(180)
+  await p.waitForTimeout(110) /* ~40% into the 280ms draw */
   const mid = await ring('.brief-opt:nth-of-type(2)', 'pick')
   check('a press starts the 2px ring drawing round the row',
     mid.drawing && mid.press && mid.op === 1 && mid.l > 0.05 && mid.l < 0.9 && mid.width === '2px', `l=${mid.l} drawing=${mid.drawing} press=${mid.press} w=${mid.width}`)
@@ -368,7 +368,7 @@ const pixelAt = async (x, y) => {
   /* picking another row: the old ring fades, the new one draws — and the run goes on
      with row 1 picked, as the rest of it expects */
   await p.click('.brief-opt:nth-of-type(1)')
-  await p.waitForTimeout(300)
+  await p.waitForTimeout(200) /* past the old ring's 160ms fade, inside the new ring's 280ms draw */
   const old = await ring('.brief-opt:nth-of-type(2)', 'pick')
   const next = await ring('.brief-opt:nth-of-type(1)', 'pick')
   check('the ring of the row given up fades out while the new one draws',
