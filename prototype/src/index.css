@@ -3490,12 +3490,47 @@ html[data-drag] .shell-aside { transition: none; }
  * resting 48% (the board draws exactly this on the hovered item).
  * ---------------------------------------------------------------------- */
 .brief-opt {
+  /*
+   * ⚠️ THE ROWS SIT APART, and the hairline lives in the gap (designer, 08.09.2026:
+   * "когда пункт выбранный и ты делаешь ховер на соседний пункт… выглядит стрёмно,
+   * нужно добавить дополнительный спейсинг в несколько пикселей").
+   *
+   * Flush rows put a picked row's 2px ring and its neighbour's 1px hover ring hard
+   * against each other: two rounded lines a pixel apart, which reads as a smear
+   * rather than as two rows. Nothing about either ring is wrong — they simply have
+   * nowhere to be. So the rows keep 6px between them and the rings can never meet.
+   *
+   * The board's hairline is not lost, it MOVES: it was the row's own bottom border,
+   * and it is now an `::after` centred in the gap. To the eye at rest that is the
+   * same picture the board draws — a hairline between rows — with air around it. It
+   * fades on both sides of a ring, exactly as the border did: a hairline running at
+   * a rounded ring is the seam the rings were separated to avoid.
+   *
+   * Because the divider no longer sits INSIDE the row's box, the 19th pixel the
+   * board gives row 1 (18 top / 19 bottom, the divider's own weight) is gone with
+   * it: every row is 18/18 now.
+   */
+  --opt-gap: 6px;
   border-radius: 16px;
-  transition: box-shadow var(--dur-fast) var(--ease-std), border-color var(--dur-fast) var(--ease-std);
+  transition: box-shadow var(--dur-fast) var(--ease-std);
 }
-.brief-opt:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48); }
-.brief-opt:hover,
-.brief-opt:has(+ .brief-opt:hover) { border-bottom-color: transparent; }
+.brief-opt:not(:last-of-type) { margin-bottom: var(--opt-gap); }
+.brief-opt:not(:last-of-type)::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--opt-gap) / -2 - 0.5px);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: opacity var(--dur-fast) var(--ease-std);
+  pointer-events: none;
+}
+/* 32% white — the designer's own value, 08.09.2026 ("подправь цвет ховера, это белый
+   с непрозрачностью 32%"); the board's flattened NA/500 read 48% and was too loud. */
+.brief-opt:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32); }
+.brief-opt:hover::after,
+.brief-opt:has(+ .brief-opt:hover)::after { opacity: 0; }
 .brief-radio-off { transition: border-color var(--dur-fast) var(--ease-std); }
 .brief-opt:hover .brief-radio-off { border-color: rgba(255, 255, 255, 0.8); }
 
@@ -3563,8 +3598,8 @@ html[data-drag] .shell-aside { transition: none; }
 /* the 2px ring is the stronger statement: a selected row does not also take the
    hover ring, and its hairlines go the same way a hovered row's do */
 .brief-opt[data-on]:hover { box-shadow: none; }
-.brief-opt[data-on],
-.brief-opt:has(+ .brief-opt[data-on]) { border-bottom-color: transparent; }
+.brief-opt[data-on]::after,
+.brief-opt:has(+ .brief-opt[data-on])::after { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   /* the ring stays — it is state, not motion; only the sheen goes (the global
      reduce rule already stops it, this documents the intent) */

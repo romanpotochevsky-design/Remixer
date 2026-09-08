@@ -76,7 +76,7 @@ function Radio({ on }: { on: boolean }) {
  * One answer row: radio · title · consequence. The row is the click target, so picking
  * an option is a press anywhere on the line rather than on a 16px dot.
  */
-function Row({ q, o, on, last }: { q: BriefQuestion; o: BriefOption; on: boolean; last: boolean }) {
+function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
   const { t } = useT()
   /*
    * The click's own light: bumping this remounts the sheen, so the band crosses the
@@ -94,13 +94,16 @@ function Row({ q, o, on, last }: { q: BriefQuestion; o: BriefOption; on: boolean
          all, so without this the row would announce itself by its title alone in some
          readings and by nothing in others. */
       aria-label={t(o.name)}
-      /* Drawn pt-18/pb-19 with the hairline under it, and py-18 on the last row, which has
-         no hairline: the extra pixel above the divider keeps the rows' rhythm equal. */
-      /* `brief-opt`: the hover is a 1px ring at radius 16 and nothing else — index.css
-         "THE ANSWER ROW'S HOVER", off Figma 29688:26919. No fill, no movement. */
-      className={`brief-opt relative flex w-full items-start gap-3 pl-4 pr-6 pt-[18px] text-left ${
-        last ? 'pb-[18px]' : 'border-b border-[#ffffff0a] pb-[19px]'
-      }`}
+      /*
+       * `brief-opt` carries the row's three states and its spacing — index.css, "THE
+       * ANSWER ROW'S HOVER" (Figma 29688:26919) and "THE SELECTED ROW" (29688:27643):
+       * a 1px ring on hover, a 2px gradient ring when picked, 6px between rows so the
+       * two can never meet, and the hairline centred in that gap.
+       *
+       * py-18 both sides: the board's 19th pixel on row 1 was the divider's own weight,
+       * and the divider has moved out of the row's box into the gap.
+       */
+      className="brief-opt relative flex w-full items-start gap-3 py-[18px] pl-4 pr-6 text-left"
     >
       {/* the 2px gradient ring of the picked row, and the light that crosses it on a
           press — index.css "THE SELECTED ROW", off Figma 29688:27643 */}
@@ -231,7 +234,7 @@ function Body({ q }: { q: BriefQuestion }) {
 
       {!grid &&
         options.map((o, i) => (
-          <Row key={o.id} q={q} o={o} on={picked === o.id} last={i === options.length - 1} />
+          <Row key={o.id} q={q} o={o} on={picked === o.id} />
         ))}
 
       <div className={options.length && !grid ? 'flex items-start gap-3 px-4 pb-4 pt-2' : 'px-4 pb-4 pt-2'}>

@@ -238,21 +238,26 @@ check('the composer relabels itself as the escape hatch',
     const b = el.getBoundingClientRect()
     return [+b.left.toFixed(2), +b.top.toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2)]
   }))
-  const rowStyle = () => p.$$eval('.brief-opt', (els) => els.map((el) => ({
-    ring: getComputedStyle(el).boxShadow, radius: getComputedStyle(el).borderRadius,
-    divider: getComputedStyle(el).borderBottomColor, fill: getComputedStyle(el).backgroundColor,
-  })))
+  const rowStyle = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
+    const div = getComputedStyle(el, '::after')
+    return {
+      ring: getComputedStyle(el).boxShadow, radius: getComputedStyle(el).borderRadius,
+      fill: getComputedStyle(el).backgroundColor, gap: getComputedStyle(el).marginBottom,
+      /* the hairline lives in the gap now, as an ::after — not as the row's border */
+      divider: div.content === 'none' ? null : +(+div.opacity).toFixed(2),
+    }
+  }))
   const before = await rowBoxes()
   await p.hover('.brief-opt:nth-of-type(2)')
   await p.waitForTimeout(260)
   const after = await rowBoxes()
   const st = await rowStyle()
-  check('the hovered answer row takes a 1px ring at radius 16, 48% white',
-    st[1].ring.includes('0.48') && st[1].ring.includes('inset') && st[1].radius === '16px', st[1].ring)
+  check('the hovered answer row takes a 1px ring at radius 16, 32% white',
+    st[1].ring.includes('0.32') && st[1].ring.includes('inset') && st[1].radius === '16px', st[1].ring)
   check('the ring replaces the fill, it does not add one', st[1].fill === 'rgba(0, 0, 0, 0)', st[1].fill)
   check('the hairlines on both sides of the ring go',
-    st[0].divider === 'rgba(0, 0, 0, 0)' && st[1].divider === 'rgba(0, 0, 0, 0)',
-    `${st[0].divider} / ${st[1].divider}`)
+    st[0].divider === 0 && st[1].divider === 0, `${st[0].divider} / ${st[1].divider}`)
+  check('the rows sit apart, so two rings can never meet', st[0].gap === '6px', st[0].gap)
   check('nothing in the card moves under the hover',
     JSON.stringify(before) === JSON.stringify(after), `${JSON.stringify(before[1])} → ${JSON.stringify(after[1])}`)
   await p.mouse.move(4, 4)
@@ -283,10 +288,23 @@ check('the composer relabels itself as the escape hatch',
     !!rim && rim.mask.includes('linear-gradient') && JSON.stringify(await rowBoxes()) === JSON.stringify(before))
   /* the hairlines fade rather than snap (--dur-fast), so read them once they have */
   await p.waitForTimeout(260)
-  check('the hairlines around the picked row go',
-    await p.$$eval('.brief-opt', (els) => getComputedStyle(els[0]).borderBottomColor === 'rgba(0, 0, 0, 0)'
-      && getComputedStyle(els[1]).borderBottomColor === 'rgba(0, 0, 0, 0)'),
-    await p.$$eval('.brief-opt', (els) => `${getComputedStyle(els[0]).borderBottomColor} / ${getComputedStyle(els[1]).borderBottomColor}`))
+  const div = () => p.$$eval('.brief-opt', (els) => els.map((el) => {
+    const cs = getComputedStyle(el, '::after')
+    return cs.content === 'none' ? null : +(+cs.opacity).toFixed(2)
+  }))
+  check('the hairlines around the picked row go', (await div()).slice(0, 2).every((o) => o === 0),
+    JSON.stringify(await div()))
+  /*
+   * THE ONE THE DESIGNER REPORTED (08.09.2026): a picked row's 2px ring and the hover
+   * ring of the row above it used to land a pixel apart and smear together. They must
+   * stay a clear few pixels apart, whatever either ring is doing.
+   */
+  await p.hover('.brief-opt:nth-of-type(1)')
+  await p.waitForTimeout(260)
+  const clearance = await p.$$eval('.brief-opt', (els) =>
+    +(els[1].getBoundingClientRect().top - els[0].getBoundingClientRect().bottom).toFixed(1))
+  check('a picked row and a hovered neighbour keep their distance', clearance >= 6, `${clearance}px`)
+  await p.mouse.move(4, 4)
   /* the sheen: one band crossing the ring, then gone — not a layer left behind */
   check('a press sends light across the ring', !!(await p.$('.brief-opt:nth-of-type(2) .brief-sheen > i')))
   await p.waitForTimeout(1100)
