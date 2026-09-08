@@ -322,6 +322,30 @@ JS-бандл лежит внутри `<body>`, поэтому в тексте �
 | `5f2ad8f` | The plan gets approved before anything is built |
 | `21641f3` | Three options per question, and glass that had nothing to blur |
 | `35dc00e` | Lettering question shows real specimens; Publish grey until built |
+| `feae649` | Write down the session, so tomorrow starts where today ended |
+| `1ab88ea` | The generation becomes a minute of named work |
+| `2d705f4` | The lighter surface belongs to the page, not to the card |
+| `5ffb062` | Controls that need a site wait for the site |
+| `93ead44` | One arrow in the whole shell, and the pages show up again |
+| `fece76e` | The canvas waits for the page it is a preview of |
+| `1a21e23` | The page header carries only the page's name |
+| `c7842c4` | The brief summary is built from the outline's material |
+| `c9c5bba` | The dock rises out of the composer like a bubble |
+| `f6a024b` | The field never moves, and the bubble bounces |
+| `52fe3d7` | The bubble is a piston, not a clip; steps morph; panel matched to the board |
+| `935e14d` | A charge of light spreads across the field as the bubble forms |
+| `c760fbd` | The collar bounces with the edge |
+| `b317f2c` | Home → builder: darken, the mark assembles once, then flies to its post |
+| `98a82af` | The answer row's states off the boards: a hover ring, a picked ring, a sheen |
+| `c9d17bc` | Give the answer rows room, and take the hover ring down to 32% |
+| `2515254` | The answer rows' rings draw themselves round the row, hover and pick alike |
+| `5287783` | The row's border draws itself in one lap round the row, not two beams |
+| `4376902` | Feather the drawn border: a long gradient head, not a short stepped strip |
+| `a222f0a` | Home → builder: the edge glow runs on the black instead of the mark |
+| `a035fa8` | The drawn border scatters both ways from its corner and rises out of nothing |
+| `fb41cc5` | The drawn border grows out of its corner: nothing lit at frame zero, twice as fast |
+| `b164554` | Publish panel for an unpublished site, and the composer's Autopilot / Build switcher |
+| `67594a4` | The drawn border becomes a schedule of fades: no tip, no dip, no seams |
 
 ## Ссылки
 
