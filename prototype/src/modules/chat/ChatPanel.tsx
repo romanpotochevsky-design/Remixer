@@ -278,15 +278,25 @@ function BriefSummary({ animate }: { animate: boolean }) {
   )
 }
 
-/** While the questions are open, the thread shows what the agent is up to — a
- *  collapsed tool row with the shimmer, and the "…" of a turn still in flight. */
-function BriefStatusRow() {
-  const { t } = useT()
+/**
+ * WHAT THE AGENT IS UP TO — one shape for every wait (designer, 09.09.2026, pointing at a
+ * recording of Lovable's own first turn: "мне нравится что под синкингом есть … и не так пусто").
+ *
+ * A waiting turn is two lines, not one: the shimmering status, and an ellipsis under it. The
+ * ellipsis is doing real work — it is the turn that has not been written yet, standing where it
+ * will be. Without it the answer's whole column is empty while the agent thinks, and an empty
+ * column reads as nothing happening rather than as something coming.
+ *
+ * The brief already had this pair; plain "Thinking" did not, which is exactly the emptiness he
+ * pointed at. Now they are the same component, so the product has ONE waiting shape.
+ */
+function Waiting({ label, arrow = false }: { label: string; arrow?: boolean }) {
   return (
     <div className="flex flex-col gap-2 pr-8">
       <p className="text-[14px] leading-[20px]">
-        <span className="thinking">{t(BRIEF_STATUS)}</span>
-        <span className="ml-1.5 text-[var(--white-400)]">›</span>
+        <span className="thinking">{label}</span>
+        {/* the brief's status is a collapsed tool row, so it keeps its disclosure caret */}
+        {arrow && <span className="ml-1.5 text-[var(--white-400)]">›</span>}
       </p>
       <p className="text-[15px] leading-[16px] tracking-[0.1em] text-[var(--white-500)]">…</p>
     </div>
@@ -567,6 +577,8 @@ export function ChatPanel() {
   /* The satisfaction card is the dock's third sheet, and it shares the slot: Autopilot puts
      up either a proposal or this, never both (see `offerSuggestion`). */
   const rating = world.suggest.show === 'rating' && !asking && !planning
+  /** Anything docked above the composer — the questions, the plan, a proposal, the rating. */
+  const dockUp = asking || planning || suggesting || rating
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
@@ -775,7 +787,19 @@ export function ChatPanel() {
           width the column has — in the 432px column that is the full width, in a
           collapsed-preview shell it is a centred column, no special mode needed.
           This is exactly how Lovable's chat reads at any width (recording, 06.09). */}
-      <ScrollArea className="min-h-0 flex-1" innerClassName="chat-col pl-4 pr-2" viewportRef={viewport}>
+      <ScrollArea
+        /* THE THREAD STEPS BACK WHILE A FORM IS UP (designer, 09.09.2026: "когда открыта форма
+           типа как «What should I do next?» содержимое переписки/чата должно становится
+           прозрачным на 50%… она не будет сливаться с содержимым переписки"). The panel and the
+           thread are the same material — glass cards on the same ground — so a docked question
+           reads as one more turn unless the turns give way. Half is his number.
+           ⚠️ Opacity on an ancestor kills `backdrop-filter` in the subtree, and the bubbles are
+           glass — but what is behind them is the chat's own flat ground, so the blur has nothing
+           to blur and the loss is zero (the same test the dock's own shell had to pass). */
+        className={`chat-dim min-h-0 flex-1${dockUp ? ' chat-dim--on' : ''}`}
+        innerClassName="chat-col pl-4 pr-2"
+        viewportRef={viewport}
+      >
         {/*
          * The fade under the chat toolbar — Figma "BG Gradient" (28016:43309):
          * 48px, solid #09090b straight to transparent with NO flat head. The
@@ -833,7 +857,7 @@ export function ChatPanel() {
             })
           )}
 
-          {asking && <div className="arrive-msg" style={arriveStep(thread.length)}><BriefStatusRow /></div>}
+          {asking && <div className="arrive-msg" style={arriveStep(thread.length)}><Waiting label={t(BRIEF_STATUS)} arrow /></div>}
 
           {/* While the brief card is settling its own title carries the shimmer —
               a second "Thinking" under it would be two spinners for one wait. The
@@ -843,10 +867,8 @@ export function ChatPanel() {
           {working
             && thread[thread.length - 1]?.kind !== 'brief'
             && thread[thread.length - 1]?.kind !== 'build' && (
-            <div className="arrive-msg pr-8" style={arriveStep(thread.length)}>
-              <p className="thinking text-[15px] leading-[25px]">
-                {t({ en: 'Thinking', uk: 'Думаю' })}
-              </p>
+            <div className="arrive-msg" style={arriveStep(thread.length)}>
+              <Waiting label={t({ en: 'Thinking', uk: 'Думаю' })} />
             </div>
           )}
           {world.chat === 'error' && (
@@ -882,7 +904,7 @@ export function ChatPanel() {
           * the way its own board (28016:43526) draws it, so the shell is conditional.
           */}
         <div
-          className={`chat-col dock${asking || planning || suggesting || rating ? ' brief-dock' : ''}`}
+          className={`chat-col dock${dockUp ? ' brief-dock' : ''}`}
           /* The dock's rise, morph and fall are CSS on these classes, started by the sheet
              (dock.ts); once the piston has landed the classes go. */
           onAnimationEnd={endDockMotion}

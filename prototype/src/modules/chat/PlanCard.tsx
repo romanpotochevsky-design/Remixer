@@ -53,6 +53,12 @@ export function PlanCard() {
   const answers = useWorld((s) => s.world.brief.answers)
   const plan = buildPlan(answers)
   const first = plan.sections[0]
+  /* The customer can rewrite the plan in the full-screen Review; the card is the same document
+     seen through a 194px window, so it reads the same edits. Read-only here — a 194px window
+     with a fade over its last 152 is not where anybody edits prose. */
+  const edits = useWorld((s) => s.world.planEdits)
+  const read = (path: string, fallback: string) => edits.text[path] ?? fallback
+  const firstItems = edits.items[0] ?? (first?.items ?? []).map((x) => t(x))
 
   const sheet = useDockSheet<HTMLElement>()
 
@@ -94,17 +100,17 @@ export function PlanCard() {
           <div className="relative h-[194px] overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
             <div className="flex flex-col gap-4 py-[18px] pl-4 pr-6">
               <div className="flex flex-col gap-2.5">
-                <p className="text-[15px] font-medium leading-[1.4] text-white">{t(plan.title)}</p>
-                <p className="text-[14px] leading-[1.4] text-[#ffffffa3]">{t(plan.goal)}</p>
+                <p className="text-[15px] font-medium leading-[1.4] text-white">{read('title', t(plan.title))}</p>
+                <p className="text-[14px] leading-[1.4] text-[#ffffffa3]">{read('goal', t(plan.goal))}</p>
               </div>
               {first && (
                 <div className="flex flex-col gap-2.5">
-                  <p className="text-[15px] font-medium leading-[1.4] text-white">{t(first.heading)}</p>
+                  <p className="text-[15px] font-medium leading-[1.4] text-white">{read('s0:h', t(first.heading))}</p>
                   {/* the board sets the section's lines as one text block, so they share the
                       10px gap with the heading and sit on consecutive leading-1.4 lines */}
                   <div className="text-[14px] leading-[1.4] text-[#ffffffa3]">
-                    {first.items?.map((item) => (
-                      <p key={item.en}>{t(item)}</p>
+                    {firstItems.map((item, j) => (
+                      <p key={j}>{item}</p>
                     ))}
                   </div>
                 </div>

@@ -793,6 +793,33 @@ check('the questions and the plan cost nothing', (await text()).includes('2 000'
 /* Review: the chat narrows back to the split and the document takes the canvas. */
 await p.click('text=Review'); await p.waitForTimeout(900); await shot('10-plan-review')
 check('Review opens the canvas on the plan', (await previewState()) === 'open')
+{
+  /* THE PLAN IS A DOCUMENT YOU CAN TYPE IN (designer, 09.09.2026: "возможность редактировать
+     Build Plan текст как в обычном ворд документе"). The edits are a layer over the compiled
+     plan, so the card in the dock has to come back saying the same thing. */
+  const before = await p.$$eval('[data-plan-path^="s1:"]', (els) =>
+    els.filter((e) => /s1:\d+$/.test(e.dataset.planPath)).length)
+  await p.click('[data-plan-path="title"]')
+  await p.keyboard.press('Control+a')
+  await p.keyboard.type('Our studio, on one page')
+  await p.keyboard.press('Enter')
+  await p.waitForTimeout(300)
+  check('the plan’s own words can be rewritten in place',
+    (await p.$eval('[data-plan-path="title"]', (e) => e.textContent)) === 'Our studio, on one page')
+  /* Enter opens the next bullet — the first thing anybody tries in a list. */
+  await p.click('[data-plan-path="s1:0"]')
+  await p.keyboard.press('End'); await p.keyboard.press('Enter')
+  await p.waitForTimeout(300)
+  const after = await p.$$eval('[data-plan-path^="s1:"]', (els) =>
+    els.filter((e) => /s1:\d+$/.test(e.dataset.planPath)).length)
+  check('…and Enter in a bullet opens the next one', after === before + 1, `${before} → ${after}`)
+  /* Backspace closes an empty one again, so the document goes back as it was. */
+  await p.keyboard.press('Backspace')
+  await p.waitForTimeout(300)
+  check('…and Backspace on an empty bullet closes it',
+    (await p.$$eval('[data-plan-path^="s1:"]', (els) =>
+      els.filter((e) => /s1:\d+$/.test(e.dataset.planPath)).length)) === before)
+}
 check('…with the chat back at its split width', (await asideWidth()) < 480, `aside=${Math.round(await asideWidth())}px`)
 {
   const doc = await text()
@@ -865,6 +892,25 @@ const tail = () => p.evaluate(() => {
 })
 
 await p.waitForTimeout(20000); await shot('12a-mid-build')
+{
+  /* ONE EDGE, NOT TWO (designer, 09.09.2026: "бордер как будто двойной… видно внизу там где
+     About, Services"). Figma's stroke sits inside the geometry, so a full-width child with a
+     stroke and the frame around it are ONE line on the board; in CSS a border adds, and the two
+     landed a pixel apart. The card gives up its own stroke — the children already draw it. */
+  const edges = await p.evaluate(() => {
+    const c = document.querySelector('section[aria-label="What Remixer is building"]')
+    const r = c.getBoundingClientRect()
+    return {
+      card: getComputedStyle(c).borderLeftWidth,
+      kids: [...c.children].map((k) => {
+        const b = k.getBoundingClientRect()
+        return +(b.x - r.x).toFixed(1) + '/' + +(b.width - r.width).toFixed(1)
+      }),
+    }
+  })
+  check('the generation card draws no stroke of its own — its children do, on its own box',
+    edges.card === '0px' && edges.kids.every((k) => k === '0/0'), JSON.stringify(edges))
+}
 check('the growing card stays inside the panel instead of finishing under the composer',
   (await tail())?.below < 0, JSON.stringify(await tail()))
 {
@@ -1055,7 +1101,32 @@ const suggest = () => p.evaluate(() => {
  * and he got neither the proposal nor the Autopilot sign-off line. The mode belongs to the
  * project, so `startBuild` puts it back; this is the check that says so.
  */
+{
+  /* THE THREAD STEPS BACK FOR A DOCKED FORM (designer, 09.09.2026: "содержимое переписки должно
+     становится прозрачным на 50%… она не будет сливаться"). Half is his number. */
+  const dim = await p.evaluate(() => {
+    const el = document.querySelector('aside .chat-dim')
+    return el ? { op: getComputedStyle(el).opacity, on: el.classList.contains('chat-dim--on') } : null
+  })
+  check('the thread steps back to half while a form is docked', dim?.op === '0.5' && dim?.on === true,
+    JSON.stringify(dim))
+}
 await shot('15a-autopilot-proposes')
+{
+  /* ONE SHAPE FOR EVERY WAIT (designer, 09.09.2026, off a recording of Lovable's first turn:
+     "мне нравится что под синкингом есть … и не так пусто"). The ellipsis is the turn that has
+     not been written yet, standing where it will be; without it the answer's column is empty
+     while the agent thinks, and empty reads as nothing happening. */
+  const wait = await p.evaluate(() => {
+    const th = document.querySelector('aside .thinking')
+    if (!th) return null
+    const block = th.closest('div')
+    return { label: th.textContent, lines: block.querySelectorAll('p').length,
+      dots: block.querySelector('p:last-child')?.textContent }
+  })
+  check('a waiting turn is the status AND the ellipsis under it, never the status alone',
+    wait === null || (wait.lines === 2 && wait.dots === '…'), JSON.stringify(wait))
+}
 check('a new site starts in Autopilot, whatever the last one was left in',
   (await modeLabel())?.includes('Autopilot') === true, await modeLabel())
 const first = await suggest()
@@ -1189,6 +1260,24 @@ await p.click('.brief-cell >> nth=8')
 await p.waitForTimeout(400)
 {
   const r = await rating()
+  /* THE CHOSEN SCORE IS A WHITE PLATE WITH BLACK FIGURES — Figma 25744:139649. Read in the
+     DARK theme: Neutral Alpha/1000 is #ffffff and Text/Default/On Default is #09090b; the light
+     export prints both inverted, which would paint a black plate with white figures. The rim
+     leaves with the plate arriving, and the figure thickens to SemiBold. */
+  const plate = await p.evaluate(() => {
+    const on = [...document.querySelectorAll('.brief-cell')].find((c) => c.getAttribute('aria-pressed') === 'true')
+    if (!on) return null
+    const s = getComputedStyle(on), d = getComputedStyle(on.querySelector('.cell-digit'))
+    return { bg: s.backgroundColor, rim: s.boxShadow, ink: d.color, weight: d.fontWeight,
+      ring: getComputedStyle(on.querySelector('.brief-draw--pick') ?? document.body).display,
+      moves: s.transitionProperty }
+  })
+  check('the chosen score is a white plate with black figures, and gives up its rim',
+    plate?.bg === 'rgb(255, 255, 255)' && plate?.ink === 'rgb(9, 9, 11)' && plate?.weight === '600'
+      && plate?.rim === 'rgba(0, 0, 0, 0) 0px 0px 0px 1px inset', JSON.stringify(plate))
+  check('…and it arrives rather than appearing: fill, rim and ink all travel',
+    /background-color/.test(plate?.moves ?? '') && /color/.test(plate?.moves ?? '')
+      && plate?.ring === 'none', plate?.moves)
   check('picking a score picks exactly one cell and wakes Submit',
     r?.picked.join('') === '9' && r?.buttons[1]?.off === false, JSON.stringify(r?.picked))
   check('the composer has not moved through any of it', r?.field === r0?.field,

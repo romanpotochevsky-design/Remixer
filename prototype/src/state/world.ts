@@ -205,6 +205,30 @@ export interface Suggest {
 }
 export const EMPTY_SUGGEST: Suggest = { show: 'none', pick: '', started: [], taken: 0, rated: false, score: null }
 
+/**
+ * The customer's own edits to the build plan (designer, 09.09.2026: "нужно добавить
+ * возможность редактировать Build Plan текст как в обычном ворд документе, кастомер может
+ * менять текст плана"). This closes the note the plan shipped with on 07.09 — the document was
+ * read-only and said so.
+ *
+ * A LAYER OVER THE COMPILED PLAN, never a copy of it. `buildPlan` still writes the document
+ * from the brief's answers; this only says which of its strings the customer has since made
+ * their own. A stored copy would go stale the moment the plan's wording changed under it, and
+ * both the card in the dock and the full-screen document render from one source — so an edit
+ * has to reach both, which it does by being read at render rather than baked in.
+ *
+ *  - `text`  scalars by path: `title`, `goal`, `s0:h` (a section's heading), `s0:b` (its body)
+ *  - `items` a section's bullets, ENTIRE, once any one of them was touched, keyed by the
+ *            section's index. Whole-list rather than per-bullet because a document has to let
+ *            you add and remove lines, and an override map keyed by position cannot say where
+ *            a new line goes without inventing fractional keys.
+ */
+export interface PlanEdits {
+  text: Record<string, string>
+  items: Record<string, string[]>
+}
+export const EMPTY_PLAN_EDITS: PlanEdits = { text: {}, items: {} }
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -262,6 +286,8 @@ export interface World {
   build: Build
   /** What Autopilot is proposing. Lives with the transcript, dies with it. */
   suggest: Suggest
+  /** The customer's own edits to the plan. Lives with the transcript, dies with it. */
+  planEdits: PlanEdits
 }
 
 /** The composer's mode switcher (Figma 29697:54553). See `World.mode`. */
@@ -293,6 +319,7 @@ export const DEFAULT_WORLD: World = {
   brief: EMPTY_BRIEF,
   build: EMPTY_BUILD,
   suggest: EMPTY_SUGGEST,
+  planEdits: EMPTY_PLAN_EDITS,
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -506,6 +533,11 @@ export const useWorld = create<Store>((set, get) => ({
     // ever planned. Same test as the two above, for the same reason.
     if (patch.chat !== undefined && patch.suggest === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
       patch = { ...patch, suggest: EMPTY_SUGGEST }
+    }
+    // …and the plan the customer had rewritten. It belongs to one brief; carried into a staged
+    // situation it would put their sentences into somebody else's document.
+    if (patch.chat !== undefined && patch.planEdits === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
+      patch = { ...patch, planEdits: EMPTY_PLAN_EDITS }
     }
     const world = { ...get().world, ...patch }
     syncUrl(world)

@@ -25,6 +25,8 @@ import { ScrollArea } from '@/ui/ScrollArea'
 import { IconClose } from '@/ui/icons'
 import { SPRING_SOFT, EXIT } from '@/ui/motion'
 import { buildPlan, PLAN_LABEL, PLAN_START } from './plan'
+import { PlanEditable, focusPlanBlock } from './PlanEditable'
+import { editPlanItems, editPlanText } from './send'
 import { approvePlan, closePlanReview } from './send'
 
 const surfaceIn = {
@@ -37,6 +39,9 @@ export function PlanSurface() {
   const { t } = useT()
   const answers = useWorld((s) => s.world.brief.answers)
   const plan = buildPlan(answers)
+  const edits = useWorld((s) => s.world.planEdits)
+  /** What this line says now: the customer's words if they wrote any, else the compiled ones. */
+  const read = (path: string, fallback: string) => edits.text[path] ?? fallback
 
   return (
     <motion.div
@@ -77,33 +82,96 @@ export function PlanSurface() {
       <div className="min-h-0 flex-1 rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)]">
         <ScrollArea className="h-full" thumb="light">
           <div className="mx-auto w-full max-w-[640px] px-8 pb-16 pt-10">
-            <h1 className="font-display text-[28px] font-semibold leading-[1.25] text-white">{t(plan.title)}</h1>
+            {/*
+              * THE DOCUMENT IS THE CUSTOMER'S TO REWRITE. Every line here is editable in place
+              * — the heading, the goal, a paragraph, a bullet — and the bullets behave like a
+              * list: Enter opens the next one, Backspace on an empty one closes it. The edits
+              * are a layer over the compiled plan (`world.planEdits`), so the card in the dock
+              * shows the same sentences without a second copy of them existing anywhere.
+              *
+              * ⚠️ EDITING THE PLAN DOES NOT RE-PLAN THE BUILD. What gets generated compiles
+              * from the brief's answers, not from this prose (build.ts), and in this prototype
+              * that is one hardcoded page either way. So the document is the customer's record
+              * of what was agreed and can be corrected like one — it is not a command line.
+              * Said here because the opposite is exactly what somebody would assume.
+              */}
+            <PlanEditable
+              as="h1"
+              path="title"
+              value={read('title', t(plan.title))}
+              onCommit={(v) => editPlanText('title', v, t(plan.title))}
+              label={t({ en: 'Plan title', uk: 'Заголовок плану' })}
+              className="font-display text-[28px] font-semibold leading-[1.25] text-white"
+            />
 
             <h2 className="mt-8 text-[15px] font-semibold leading-[1.4] text-white">
               {t({ en: 'Goal', uk: 'Мета' })}
             </h2>
-            <p className="mt-2 text-[15px] leading-[1.6] text-[#ffffffd9]">{t(plan.goal)}</p>
+            <PlanEditable
+              path="goal"
+              value={read('goal', t(plan.goal))}
+              onCommit={(v) => editPlanText('goal', v, t(plan.goal))}
+              label={t({ en: 'The goal, in a paragraph', uk: 'Мета, одним абзацом' })}
+              className="mt-2 text-[15px] leading-[1.6] text-[#ffffffd9]"
+            />
 
-            {plan.sections.map((section) => (
+            {plan.sections.map((section, i) => {
+              const items = edits.items[i] ?? (section.items ?? []).map((x) => t(x))
+              const setItems = (next: string[]) => editPlanItems(i, next)
+              /* Hoisted: TypeScript narrows `section.body` for the JSX guard but not inside
+                 the callback under it, which closes over the section rather than the guard. */
+              const body = section.body ? t(section.body) : null
+              return (
               <div key={section.heading.en}>
-                <h2 className="mt-8 text-[15px] font-semibold leading-[1.4] text-white">{t(section.heading)}</h2>
-                {section.body && (
-                  <p className="mt-2 text-[15px] leading-[1.6] text-[#ffffffd9]">{t(section.body)}</p>
+                <PlanEditable
+                  as="h2"
+                  path={`s${i}:h`}
+                  value={read(`s${i}:h`, t(section.heading))}
+                  onCommit={(v) => editPlanText(`s${i}:h`, v, t(section.heading))}
+                  label={t({ en: 'Section heading', uk: 'Заголовок розділу' })}
+                  className="mt-8 text-[15px] font-semibold leading-[1.4] text-white"
+                />
+                {body !== null && (
+                  <PlanEditable
+                    path={`s${i}:b`}
+                    value={read(`s${i}:b`, body)}
+                    onCommit={(v) => editPlanText(`s${i}:b`, v, body)}
+                    label={t({ en: 'Section text', uk: 'Текст розділу' })}
+                    className="mt-2 text-[15px] leading-[1.6] text-[#ffffffd9]"
+                  />
                 )}
-                {section.items && (
+                {items.length > 0 && (
                   <ul className="mt-3 flex flex-col gap-2.5">
-                    {section.items.map((item) => (
-                      <li key={item.en} className="flex gap-3 text-[15px] leading-[1.6] text-[#ffffffd9]">
+                    {items.map((item, j) => (
+                      <li key={`${i}:${j}`} className="flex gap-3 text-[15px] leading-[1.6] text-[#ffffffd9]">
                         {/* a dot rather than a list-style marker: it stays aligned with the
                             first line when an item wraps to three */}
                         <span aria-hidden className="mt-[9px] h-1 w-1 flex-none rounded-full bg-[#ffffff7a]" />
-                        <span>{t(item)}</span>
+                        <PlanEditable
+                          path={`s${i}:${j}`}
+                          value={item}
+                          className="flex-1"
+                          label={t({ en: 'Plan item', uk: 'Пункт плану' })}
+                          onCommit={(v) => { if (v !== item) setItems(items.map((x, k) => (k === j ? v : x))) }}
+                          onEnter={(v) => {
+                            const next = items.map((x, k) => (k === j ? v : x))
+                            next.splice(j + 1, 0, '')
+                            setItems(next)
+                            focusPlanBlock(`s${i}:${j + 1}`)
+                          }}
+                          onEmptyBackspace={() => {
+                            if (items.length === 1) return
+                            setItems(items.filter((_, k) => k !== j))
+                            if (j > 0) focusPlanBlock(`s${i}:${j - 1}`)
+                          }}
+                        />
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
-            ))}
+              )
+            })}
 
           </div>
         </ScrollArea>

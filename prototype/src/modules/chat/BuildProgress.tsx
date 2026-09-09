@@ -106,14 +106,24 @@ export function BuildProgress({ animate }: { animate: boolean }) {
        * fill the card has never shows — the lighter surface in the board belongs to the
        * PAGE BLOCK below, and putting it here instead lit the waiting pages too.
        *
-       * No inner padding: that 1px IS the card's stroke, which Figma draws inside the
-       * geometry and CSS adds outside. Padding on top of the border double-counts it
-       * (the repo's own lesson from the Home composer).
+       * ⚠️ AND IT DRAWS NO STROKE OF ITS OWN — its children do (bug reported by the designer
+       * 09.09.2026: "у этого компонента есть баг с бордером, в некоторых местах бордер как
+       * будто двойной… видно внизу там где About, Services"). Figma's strokes sit INSIDE the
+       * geometry, so a full-width child with a stroke and the frame around it are ONE line on
+       * the board. In CSS a border adds, so the frame's line and the child's landed a pixel
+       * apart: a 2px rail down both sides, doubled again at the corners where radius 21 nested
+       * over the page block's 20 and the waiting rows' 12. It is loudest exactly where he
+       * pointed — the waiting pages are empty, so the rail is all there is to look at.
        *
-       * Radius 21 is DERIVED, not read: the board does not expose this frame's corner,
-       * and 21 is what nests concentrically over the page block's 20 across a 1px stroke.
+       * The children already draw every edge the card needs: the page block strokes all four
+       * sides at radius 20, and each waiting row strokes bottom-left-right and rounds its
+       * bottom at 12. So the card keeps only the radius, for the clip.
+       *
+       * No inner padding either: that 1px WAS the card's stroke, which Figma draws inside the
+       * geometry and CSS adds outside. Padding on top of a border double-counts it (the repo's
+       * own lesson from the Home composer).
        */
-      className={`w-full origin-bottom overflow-hidden rounded-[21px] border border-[var(--gray-800)]${animate ? ' card-arrive' : ''}`}
+      className={`w-full origin-bottom overflow-hidden rounded-[20px]${animate ? ' card-arrive' : ''}`}
     >
       {/* ----------------------------------------- the page being built */}
       {/*
@@ -123,7 +133,8 @@ export function BuildProgress({ animate }: { animate: boolean }) {
         * `rgba(9,9,11,0.04)`, which over this ground is invisible.
         *
         * `px-px pb-px` insets the list box by a pixel on three sides; the header sits
-        * flush at the top.
+        * flush at the top. That pixel is this block's OWN stroke, not the card's — the card
+        * has none (see above).
         */}
       <motion.div variants={body} className="origin-bottom rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
         {/* 56, not the 24 of padding the export reports: the board's row is a

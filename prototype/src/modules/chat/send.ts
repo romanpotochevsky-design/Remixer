@@ -12,7 +12,7 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, type Message, type Suggest } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest } from '@/state/world'
 import type { Text } from '@/i18n'
 import { useUI } from '@/state/ui'
 import { baselineThread, replyTo } from './thread'
@@ -568,6 +568,30 @@ export function skipRating() {
   now.set({ suggest: { ...closed(now.world.suggest), rated: true } }, now.preset)
 }
 
+/* ------------------------------------------------------------- the plan, edited */
+
+/**
+ * Rewrite one string of the plan — a heading, the goal, a paragraph.
+ *
+ * Stored against the compiled document rather than replacing it, so the card in the dock and
+ * the full-screen document keep showing the same words (they both read this at render). An
+ * edit that comes back identical to what was there is not stored: an untouched document should
+ * stay untouched, and `planEdits` is what tells the two apart.
+ */
+export function editPlanText(path: string, value: string, was: string) {
+  const { world, set, preset } = useWorld.getState()
+  const text = { ...world.planEdits.text }
+  if (value === was) delete text[path]
+  else text[path] = value
+  set({ planEdits: { ...world.planEdits, text } }, preset)
+}
+
+/** Rewrite one section's bullets, entire — see `PlanEdits.items` for why entire. */
+export function editPlanItems(section: number, items: string[]) {
+  const { world, set, preset } = useWorld.getState()
+  set({ planEdits: { ...world.planEdits, items: { ...world.planEdits.items, [section]: items } } }, preset)
+}
+
 /**
  * Turn Autopilot off from the panel's footer (designer, 09.09.2026, asking for this button
  * in place of a "Not now": "может вместо Not now кнопку дать типа отключить Autopilot").
@@ -628,6 +652,7 @@ export function startBuild(prompt: string) {
        */
       mode: 'autopilot',
       suggest: EMPTY_SUGGEST,
+      planEdits: EMPTY_PLAN_EDITS,
     },
     preset,
   )

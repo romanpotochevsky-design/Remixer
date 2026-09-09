@@ -3796,10 +3796,88 @@ html[data-drag] .shell-aside { transition: none; }
  * `--ring-side` stays +1 — the stroke sits inside the box, as it does on the answer
  * rows, so a thickening ring never moves the row of ten.
  * ---------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------
+ * THE PLAN IS A DOCUMENT YOU CAN TYPE IN (designer, 09.09.2026).
+ *
+ * The affordance is the one a document uses: nothing at rest — a page covered
+ * in boxes is a form, not a plan — a quiet surface under the pointer, and a real
+ * focus ring once the caret is in. The surface is inset by the same amount it is
+ * padded, so a line does not move by a pixel when it lights up.
+ *
+ * `white-space: pre-wrap` keeps the spaces the customer types; `word-break` keeps
+ * a pasted URL from pushing the measure open.
+ * ---------------------------------------------------------------------- */
+.plan-edit {
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  outline: none;
+  transition: background-color var(--dur-fast) var(--ease-std);
+}
+@media (hover: hover) {
+  .plan-edit:hover { background: var(--white-050); }
+}
+.plan-edit:focus { background: var(--white-050); box-shadow: inset 0 0 0 1px var(--action); }
+/* An emptied line still has to be clickable, or a bullet you cleared cannot be typed into. */
+.plan-edit:empty::before { content: ''; display: inline-block; min-height: 1em; }
+
+/* ------------------------------------------------------------------------
+ * THE THREAD STEPS BACK FOR A DOCKED FORM (designer, 09.09.2026).
+ *
+ * The question panel, the plan, an Autopilot proposal and the satisfaction card
+ * are all built out of the same material as the turns above them — cards on the
+ * chat's own ground — so a form that arrives unannounced reads as one more turn.
+ * At half, the thread is still there to be read and the form is unmistakably the
+ * thing being asked.
+ *
+ * Opacity is composited, so this costs no paint; and it flattens the thread into
+ * one layer, which is why the top fade keeps working inside it — the fade covers
+ * the text BEFORE the group is halved, and the fade's colour is the page's own
+ * ground, so half of it over that ground is still that ground.
+ * ---------------------------------------------------------------------- */
+.chat-dim { transition: opacity var(--dur-slow) var(--ease-std); }
+.chat-dim--on { opacity: .5; }
+
 .brief-cell {
   --ring-r: 8px;
+  color: #fff;
   box-shadow: inset 0 0 0 1px var(--white-200);
+  /* The plate ARRIVES; it does not appear. Colour is the one thing this transition can
+     animate — the fill, the rim on its way out and the ink turning over — and it is a
+     40px box on a gesture the customer made, which is the same allowance `.thinking` and
+     the drawn rings have. */
+  transition:
+    background-color var(--draw-pick, 280ms) var(--ease-std),
+    box-shadow var(--draw-pick, 280ms) var(--ease-std),
+    color var(--draw-pick, 280ms) var(--ease-std);
 }
+/*
+ * THE CHOSEN SCORE IS A WHITE PLATE WITH BLACK FIGURES — Figma 25744:139649 (designer,
+ * 09.09.2026: "давай у выбранного пункта сделаем дизайн состояния с белым фоном и черным
+ * текстом… как после клика фон кнопки становится белым и текст красиво плавно перекрашивается
+ * в чёрный"). Read in the DARK theme the board's tokens are `Neutral Alpha/1000` = #ffffff for
+ * the plate and `Text/Default/On Default` = #09090b for the ink; the light export prints both
+ * inverted, which would paint a black plate with white figures — the picture the board does
+ * NOT draw.
+ *
+ * The rim goes out with the plate coming in: a chosen score is a solid object, not an outlined
+ * one, and the board draws no stroke on it. And the figure thickens to SemiBold, which is the
+ * board too — the one thing here that cannot be animated, so it turns over under the plate
+ * while the plate is arriving and nobody sees it happen.
+ *
+ * This REPLACES the drawn 2px ring the cells wore while the board was silent about them
+ * (08.09's "one language of choice" reading, recorded then as ours). The rows and the tiles
+ * keep their rings; the scale has a state of its own now.
+ */
+.brief-cell[data-on] {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px transparent;
+  color: var(--gray-950);
+}
+.brief-cell[data-on] .cell-digit { font-weight: 600; }
+.brief-cell .brief-draw--pick { display: none; }
 
 .brief-tile { --ring-side: -1; }
 .brief-tile--swatch { --ring-r: 12px; }

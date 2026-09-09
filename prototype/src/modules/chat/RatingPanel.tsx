@@ -21,11 +21,13 @@
  * `rgba(9,9,11,.16)` — a DARKER rim, at a different alpha, on a dark card). Same trap CLAUDE.md
  * records for the composer: read the tokens in the dark theme, not the fallbacks.
  *
- * ⚠️ WHAT THE BOARD DOES NOT DRAW: a picked cell. Rather than invent a state, the cell is a
- * `Pick` like every other answer in this dock and wears the pair of rings the designer chose
- * for the whole component on 08.09.2026 ("анимации ховера и клика возьми из компонента с
- * обычным выбором") — 1px 32% white drawn on hover, 2px house gradient drawn on the pick. The
- * resting 12% rim the board draws stays underneath. Flagged to the designer as ours.
+ * ⚠️ THE CHOSEN SCORE IS A WHITE PLATE WITH BLACK FIGURES — Figma 25744:139649, sent the same
+ * evening ("давай у выбранного пункта сделаем дизайн состояния с белым фоном и черным
+ * текстом"). It replaces the drawn 2px ring the cells wore for the hours the board was silent
+ * about them, which was recorded as ours at the time. The rim goes out as the plate comes in
+ * and the figure thickens to SemiBold — all three in `index.css`, `.brief-cell[data-on]`. The
+ * cells are still `Pick`, so they keep the hover ring and the house click; only the chosen
+ * state is the board's own now.
  */
 import { useState } from 'react'
 import { motion } from 'motion/react'
@@ -86,8 +88,11 @@ export function RatingPanel() {
                     label={t({ en: `${n} out of 10`, uk: `${n} з 10` })}
                     onPick={() => pickScore(n)}
                   >
-                    {/* the numerals are Gilroy — the brand sets names and figures in it */}
-                    <span className="font-display text-[15px] leading-[1.4] text-white">{n}</span>
+                    {/* the numerals are Gilroy — the brand sets names and figures in it. The
+                        colour is INHERITED so the cell can turn it over as the plate arrives
+                        (index.css, `.brief-cell[data-on]`); a literal `text-white` here would
+                        leave a white figure on a white plate. */}
+                    <span className="cell-digit font-display text-[15px] leading-[1.4]">{n}</span>
                   </Pick>
                 ))}
               </div>
