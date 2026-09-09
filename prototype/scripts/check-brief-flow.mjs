@@ -986,10 +986,24 @@ check('…and the typed prompt is built as given', await cardUp())
 
 /* ============================== F. the composer's Autopilot / Build switcher
  *
- * Figma 29697:54553 (the pill 55394, the menu 55602; designer 08.09.2026). The pill is
- * 95×32, the menu 200×113 opening UPWARD with its right edge flush to the pill's and 8px
- * of air between them, rows 52 tall carrying a 40px plate. Autopilot is the default from
- * the first generation on — and the pill is not there at all before there is a site.
+ * Figma 29816:19015 — the section that carries every state (designer, 09.09.2026: "вот тут
+ * находятся все макеты для переключателя, включая выпадающий список… вот тут ты можешь
+ * увидеть как выглядит ховер"). It supersedes the first pass off 29697:54553.
+ *
+ * The pill (29697:55394 closed / 29816:19007 open): 32 tall, 1px `Neutral Alpha/300` round
+ * a padding box of pl 12 + label + gap 2 + chevron 16 + pr 6 — 91 for "Autopilot", 68 for
+ * "Build" on the board's own Proxima Nova. `Black/700` under blur 16, radius 999. The
+ * chevron is 16 and CENTRED, its ink 48% white, and it FLIPS when the menu opens.
+ * Autopilot's label is a gradient; Build's is neutral white.
+ *
+ * The menu (29816:18942): 200×113, Gray/750, radius 10, px 3 / py 4, rows 194×52 whose
+ * state layer FILLS THE ROW and lights `Neutral Alpha/50` on hover, the tick a 24 frame at
+ * the row's x=158 / y=14 wearing Autopilot's gradient.
+ *
+ * ⚠️ Widths that depend on the LABEL are asserted as the board's box arithmetic, not as
+ * 91: Proxima Nova is not in this repo (public), so Figtree stands in and "Autopilot"
+ * measures ~2px wider. Every number the layout owns is exact; the one the font owns is
+ * named as such.
  */
 {
   const enter = async (q) => {
@@ -1005,12 +1019,57 @@ check('…and the typed prompt is built as given', await cardUp())
   await enter('p=built&u=1&a=trial&t=22&c=640')
   check('the composer carries the mode switcher once there is a site', !!(await pill()))
   check('…and it starts on Autopilot', (await label()) === 'Autopilot', await label())
-  const pb = await (await pill()).boundingBox()
-  check('the pill is the board’s 95 × 32',
-    Math.round(pb.width) === 95 && Math.round(pb.height) === 32, `${pb.width} × ${pb.height}`)
+  /* the pill, part by part — everything except the label's own run of glyphs */
+  const pillGeo = () => p.$eval('button[aria-label="Chat mode"]', (el) => {
+    const box = el.getBoundingClientRect()
+    const rel = (e) => { const b = e.getBoundingClientRect(); return { x: +(b.x - box.x).toFixed(2), y: +(b.y - box.y).toFixed(2), w: +b.width.toFixed(2), h: +b.height.toFixed(2) } }
+    const cs = getComputedStyle(el)
+    const lab = el.querySelector('span:first-of-type'), chev = el.querySelector('span:last-of-type')
+    const ls = getComputedStyle(lab)
+    return {
+      h: +box.height.toFixed(2), w: +box.width.toFixed(2), radius: cs.borderRadius, fill: cs.backgroundColor,
+      blur: cs.backdropFilter, border: `${cs.borderTopWidth} ${cs.borderTopColor}`,
+      pl: cs.paddingLeft, pr: cs.paddingRight, gap: cs.columnGap,
+      label: rel(lab), chev: rel(chev), tf: getComputedStyle(chev).transform,
+      glyph: chev.querySelector('svg')?.getAttribute('width'), chevInk: getComputedStyle(chev.querySelector('svg')).stroke,
+      ink: ls.color, grad: ls.backgroundImage, clip: ls.webkitBackgroundClip || ls.backgroundClip,
+    }
+  })
+  {
+    const g = await pillGeo()
+    check('the pill is the board’s box: 32 tall, radius 999, Black/700 under blur 16, a flat 24% rim',
+      g.h === 32 && g.radius === '9999px' && g.fill === 'rgba(9, 9, 11, 0.64)' && g.blur === 'blur(16px)'
+        && g.border === '1px rgba(255, 255, 255, 0.24)',
+      JSON.stringify([g.h, g.radius, g.fill, g.blur, g.border]))
+    check('…pl 12 / gap 2 / pr 6, and its width is exactly that box round the label',
+      g.pl === '12px' && g.pr === '6px' && g.gap === '2px'
+        && Math.abs(g.w - (1 + 12 + g.label.w + 2 + 16 + 6 + 1)) < 0.05,
+      `${g.w} = 1+12+${g.label.w}+2+16+6+1 (the board’s 91 on Proxima Nova)`)
+    /* The label's box is its CAP BAND — the board's 53×9 for 13px, and the reason the
+       glyphs sit on the pill's centre line instead of a line box's. */
+    check('…the label’s box is the cap band, centred on the pill’s middle',
+      Math.abs(g.label.h - 9) < 0.3 && Math.abs(g.label.y + g.label.h / 2 - 16) < 0.4,
+      `cap ${g.label.h} at y ${g.label.y}`)
+    check('…the chevron is 16 and centred, its ink 48% white',
+      g.glyph === '16' && g.chev.w === 16 && g.chev.h === 16 && g.chev.y === 8
+        && g.chevInk === 'rgba(255, 255, 255, 0.48)',
+      JSON.stringify([g.glyph, g.chev, g.chevInk]))
+    /* AUTOPILOT'S INK IS THE GRADIENT (designer, 09.09.2026) — clipped to the text, at the
+       board's 99.64° between its two stops. */
+    check('…and Autopilot’s label is the gradient, not white',
+      g.ink === 'rgba(0, 0, 0, 0)' && g.clip === 'text'
+        && g.grad.includes('99.64deg') && g.grad.includes('rgb(188, 166, 239)') && g.grad.includes('rgb(171, 179, 250)'),
+      `${g.ink} / ${g.clip} / ${g.grad.slice(0, 64)}`)
+    const lb = await p.$eval('button[aria-label="Chat mode"] span:first-of-type', (el) => { const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height } })
+    const px = await pixelAt(Math.round(lb.x + 2), Math.round(lb.y + lb.h / 2))
+    check('…and it really paints: a glyph pixel carries the gradient’s lavender',
+      px[2] > 150 && px[2] - px[1] > 25, `pixel ${px.join(',')} in the first glyph`)
+  }
   await (await pill()).click()
   await p.waitForTimeout(400)
   await shot('24-mode-menu')
+  check('the chevron flips when the menu opens (29816:19007), rather than swapping glyph',
+    (await pillGeo()).tf === 'matrix(1, 0, 0, -1, 0, 0)', (await pillGeo()).tf)
   const menu = await p.evaluate(() => {
     const trigger = document.querySelector('button[aria-label="Chat mode"]')
     const m = document.querySelector('[role="menu"]')
@@ -1022,7 +1081,23 @@ check('…and the typed prompt is built as given', await cardUp())
       w: +mb.width.toFixed(1), h: +mb.height.toFixed(1),
       flush: +(mb.right - tb.right).toFixed(1), above: +(tb.top - mb.bottom).toFixed(1),
       rows: items.map((i) => +i.getBoundingClientRect().height.toFixed(1)),
-      plate: +items[0].firstElementChild.getBoundingClientRect().height.toFixed(1),
+      rowW: +items[0].getBoundingClientRect().width.toFixed(1),
+      pad: `${cs.paddingLeft}/${cs.paddingTop}`,
+      plate: (() => { const b = items[0].firstElementChild.getBoundingClientRect(); const ps = getComputedStyle(items[0].firstElementChild)
+        return { w: +b.width.toFixed(1), h: +b.height.toFixed(1), radius: ps.borderRadius, pad: ps.paddingLeft, gap: ps.columnGap } })(),
+      /* the plate holds a content COLUMN, and the two lines are its children — reaching
+         for `span > span` picks the column itself, whose font is the composer's 16/24 */
+      title: (() => { const col = items[0].firstElementChild.firstElementChild
+        const ts = getComputedStyle(col.firstElementChild); return `${ts.fontSize}/${ts.lineHeight} ${ts.color}` })(),
+      detail: (() => { const col = items[0].firstElementChild.firstElementChild
+        const ds = getComputedStyle(col.lastElementChild); return `${ds.fontSize}/${ds.lineHeight} ${ds.color}` })(),
+      /* the content column: 41 tall (22 + 2 + 17) centred in the 52 row — board y 5.5 */
+      col: (() => { const col = items[0].firstElementChild.firstElementChild
+        const b = col.getBoundingClientRect(), rb = items[0].firstElementChild.getBoundingClientRect()
+        return { y: +(b.y - rb.y).toFixed(1), h: +b.height.toFixed(1) } })(),
+      tick: (() => { const g = m.querySelector('.mode-check'); if (!g) return null
+        const b = g.parentElement.getBoundingClientRect(), rb = items[0].firstElementChild.getBoundingClientRect()
+        return { x: +(b.x - rb.x).toFixed(1), y: +(b.y - rb.y).toFixed(1), w: +b.width.toFixed(1), glyph: g.getAttribute('width'), stroke: getComputedStyle(g).stroke } })(),
       bg: cs.backgroundColor, radius: cs.borderRadius,
       checked: items.map((i) => i.getAttribute('aria-checked')),
       copy: items.map((i) => i.textContent.trim()),
@@ -1033,16 +1108,65 @@ check('…and the typed prompt is built as given', await cardUp())
     JSON.stringify(menu && [menu.w, menu.h, menu.bg, menu.radius]))
   check('…opening UPWARD, right edges flush, 8px of air',
     !!menu && menu.flush === 0 && menu.above === 8, menu && `${menu.flush} / ${menu.above}`)
-  check('…two rows of 52 carrying a 40px plate',
-    !!menu && menu.rows.join() === '52,52' && menu.plate === 40, menu && `${menu.rows.join()} / ${menu.plate}`)
+  check('…px 3 / py 4, so the rows are the board’s 194 × 52',
+    !!menu && menu.pad === '3px/4px' && menu.rows.join() === '52,52' && menu.rowW === 194,
+    menu && `${menu.pad} · ${menu.rowW} × ${menu.rows.join()}`)
+  /* 29816:18945 — the state layer is flex-1 in the row, so the plate IS the row (194×52 at
+     radius 8), not the 40px inset plate the first board was read as giving it. */
+  check('…and each row’s plate fills it: 194 × 52 at radius 8, px 12, gap 12',
+    !!menu && menu.plate.w === 194 && menu.plate.h === 52 && menu.plate.radius === '8px'
+      && menu.plate.pad === '12px' && menu.plate.gap === '12px', JSON.stringify(menu && menu.plate))
+  check('…the row’s title is 14/22 white over a 12/1.4 line at 56%, the pair centred in the 52',
+    !!menu && menu.title === '14px/22px rgb(255, 255, 255)' && menu.detail === '12px/16.8px rgba(255, 255, 255, 0.56)'
+      && Math.abs(menu.col.h - 41) < 0.4 && Math.abs(menu.col.y - 5.5) < 0.4,
+    menu && `${menu.title} · ${menu.detail} · column ${menu.col.h} at y ${menu.col.y}`)
+  /* THE TICK (29816:18951): a 24 frame at the row's x=158 / y=14, wearing Autopilot's
+     gradient rather than `--action` blue — the board binds it to no variable, which is what
+     a raw gradient paint looks like in the export, and the designer asked for it by name. */
+  check('…the tick is the board’s 24 frame at x 158 / y 14, inked with the gradient',
+    !!menu?.tick && menu.tick.x === 158 && menu.tick.y === 14 && menu.tick.w === 24
+      && menu.tick.glyph === '24' && menu.tick.stroke.includes('chat-mode-ink'), JSON.stringify(menu?.tick))
+  {
+    /* …and it PAINTS: a `url()` stroke whose paint server does not resolve renders nothing
+       at all, so read real pixels along the tick's long arm (the 24 glyph runs from its
+       elbow at 9.5,17 up to 19,7.5). */
+    const tb = await p.$eval('.mode-check', (el) => { const b = el.getBoundingClientRect(); return { x: b.x, y: b.y } })
+    const arm = [[12, 14.5], [14, 12.5], [16, 10.5]]
+    const px = []
+    for (const [dx, dy] of arm) px.push(await pixelAt(Math.round(tb.x + dx), Math.round(tb.y + dy)))
+    const lav = px.filter((c) => c[2] > 140 && c[2] - c[1] > 20)
+    check('…and the paint server resolves, so the tick really carries the lavender',
+      lav.length > 0, px.map((c) => c.join(',')).join(' · '))
+  }
   check('…Autopilot ticked, and both rows say what the mode does',
     !!menu && menu.checked.join() === 'true,false' &&
       menu.copy[0].includes('Get smart suggestions') && menu.copy[1].includes('Make changes directly'),
     menu && JSON.stringify(menu.checked))
+  /* THE HOVER THE DESIGNER DREW (29816:18942): `Neutral Alpha/50` over the whole row. */
+  await p.hover('[role="menuitemradio"]:nth-of-type(2)')
+  await p.waitForTimeout(260)
+  {
+    const h = await p.$eval('[role="menuitemradio"]:nth-of-type(2) > span', (el) => {
+      const cs = getComputedStyle(el), b = el.getBoundingClientRect()
+      return { bg: cs.backgroundColor, w: +b.width.toFixed(1), h: +b.height.toFixed(1) }
+    })
+    check('a hovered row lights 4% white across the whole 194 × 52, not an inset plate',
+      h.bg === 'rgba(255, 255, 255, 0.04)' && h.w === 194 && h.h === 52, JSON.stringify(h))
+  }
+  await shot('24-mode-hover')
   await p.click('[role="menuitemradio"]:has-text("Build")')
   await p.waitForTimeout(400)
   check('picking a mode renames the pill and closes the menu',
     (await label()) === 'Build' && !(await p.$('[role="menu"]')), await label())
+  {
+    /* 29816:19011 — Build's pill is the same box round a shorter word (68 on the board's
+       font), and its label is NEUTRAL: the gradient belongs to Autopilot alone. */
+    const g = await pillGeo()
+    check('Build’s pill is the same box round its own label, and its label is not the gradient',
+      Math.abs(g.w - (1 + 12 + g.label.w + 2 + 16 + 6 + 1)) < 0.05 && g.grad === 'none'
+        && g.ink === 'rgba(255, 255, 255, 0.95)' && g.chevInk === 'rgba(255, 255, 255, 0.48)',
+      `${g.w} wide (board 68), ink ${g.ink}`)
+  }
   await (await pill()).click()
   await p.waitForTimeout(300)
   await p.keyboard.press('Escape')

@@ -267,6 +267,11 @@
     --dur-fast: 120ms;
     --dur-base: 200ms;
     --dur-slow: 300ms;
+    /* Autopilot's gradient ink — Figma 29697:55394 / 29816:19007. The only two-colour
+       text in the product, and read off the board as a raw paint (bound to no variable),
+       so the pair lives here and BOTH the pill's label and the menu's tick read it. */
+    --ai-ink-from: #bca6ef;
+    --ai-ink-to: #abb3fa;
     --ease-std: cubic-bezier(0.2, 0, 0, 1);
     --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -3283,6 +3288,42 @@ html[data-drag] .shell-aside { transition: none; }
  * previous box's blur, and this shell resizes with every question. If content is ever put
  * BEHIND this shell, the blur has to come back and the resize needs solving another way.
  * ---------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------
+ * AUTOPILOT'S GRADIENT INK — Figma 29697:55394 / 29816:19007 (designer, 09.09.2026:
+ * "эксклюзивно у режима Autopilot цвет текста и галочки не белый, а градиентный как в
+ * макете").
+ *
+ * Autopilot is the mode where Remixer leads, and its name is the one label in the whole
+ * product that is not a flat token: lavender → periwinkle across the word, at the board's
+ * own 99.64° — nearly horizontal, tipped just enough to read as light falling across the
+ * glass rather than as a two-colour word. The mode's tick in the menu wears the same
+ * paint. Build stays neutral white in both places; that contrast IS the point, so this
+ * ink must never be given to a mode switcher's other options.
+ *
+ * ⚠️ ONE PAIR OF COLOURS, TWO MECHANISMS. Text can only take a gradient through
+ * `background-clip: text`; an SVG stroke can only take one through a `<linearGradient>`
+ * paint server. Both read `--ai-ink-from/to`, so the label and the tick cannot drift
+ * apart — the paint server itself lives with the menu in ChatPanel.tsx and is mounted
+ * only while the menu is (`#chat-mode-ink`).
+ *
+ * ⚠️ The label's box is trimmed to its CAP BAND (`text-box-trim`, on the element), which
+ * is also the box the board paints the gradient in — 53×9, not a 15.6px line box. Clipped
+ * to a taller box the same two stops land at different lightnesses across the glyphs, and
+ * the caps would sit low on the pill's centre line by the descender space underneath.
+ *
+ * COST: none per frame. Both are static paints; nothing here animates.
+ * ---------------------------------------------------------------------- */
+.mode-ink {
+  background-image: linear-gradient(99.64deg, var(--ai-ink-from) 0%, var(--ai-ink-to) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* the menu's tick: a CSS `stroke` beats the icon's own `stroke="currentColor"` attribute */
+.mode-check {
+  stroke: url(#chat-mode-ink);
+}
+
 /* ------------------------------------------------------------------------
  * THE CARD THAT ARRIVES — the rim light (motion.ts `cardIn` has the motion; this is the
  * light). Designer, 09.09.2026: "анимацию появления этих компонентов в чате, в стиле apple

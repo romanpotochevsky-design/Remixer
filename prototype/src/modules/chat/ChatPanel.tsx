@@ -334,14 +334,50 @@ function ModeSwitch() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t({ en: 'Chat mode', uk: 'Режим чату' })}
-        /* 29697:55394: Black/700 under blur 16 with the row's own glass rim (the "+" and
-           the mic beside it are the same material), pill radius, pl 12 / pr 6, label 13
-           medium, the 20px chevron nudged 2px down as drawn. */
-        className="liquid-glass flex h-8 items-center gap-0.5 rounded-full bg-[#09090ba3] pl-3 pr-1.5 text-[13px] font-medium leading-[1.2] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+        /*
+         * 29697:55394, measured on the board: 91×32 — a 1px stroke round a 89px padding box
+         * (pl 12 / pr 6, gap 2, label 53, chevron 16). `Black/700` under blur 16, radius 999.
+         *
+         * ⚠️ THE RIM IS FLAT `Neutral Alpha/300` (24% white), not the row's gradient glass.
+         * The export binds this stroke to ONE variable and writes `border-solid`; where a
+         * stroke really is a gradient the export emits a `linear-gradient` (that is how the
+         * Home controls' 24 → 4 → 24 rims were found). So this pill is not `liquid-glass`,
+         * and its rim reads evenly bright where the "+" and the mic beside it still dim to
+         * ~7% at the middle of their diagonal — flagged to the designer, not "fixed" here.
+         *
+         * ⚠️ The chevron is 16, not 20, and it is CENTRED (frame y=8 of 32 on the board):
+         * the 20px glyph is what the old 2px nudge was compensating for. Its ink is
+         * `Neutral Alpha/500` = 48% white, which the board keeps even in the gradient state.
+         */
+        className="group flex h-8 items-center gap-0.5 rounded-full border border-[#ffffff3d] bg-[#09090ba3] pl-3 pr-1.5 backdrop-blur-[16px]"
       >
-        {t(current.name)}
-        <span className="pt-0.5 text-[var(--white-500)]" aria-hidden>
-          <IconChevronDown size={20} />
+        {/*
+          * The label's box is TRIMMED TO THE CAP BAND (`text-box-trim`), as the board draws
+          * it — 53×9 for 13px Proxima Nova. Two things ride on that: the glyphs sit on the
+          * pill's centre line instead of a line-box centre that carries descender space
+          * below the caps, and the gradient below is clipped to the same box the board
+          * paints it in.
+          */}
+        <span
+          className={`[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] text-[13px] font-medium leading-[1.2] ${
+            /* Autopilot's ink is the gradient (index.css "AUTOPILOT'S GRADIENT INK");
+               every other mode keeps the neutral label. */
+            current.id === 'autopilot'
+              ? 'mode-ink'
+              : 'text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std group-hover:text-white'
+          }`}
+        >
+          {t(current.name)}
+        </span>
+        {/* 29816:19007 — with the menu open the board FLIPS the chevron (`-scale-y-100`),
+            it does not swap in a second glyph. Flipping through the middle is also why
+            the two states can simply be animated into each other. */}
+        <span
+          className="text-[var(--white-480)] transition-transform duration-[var(--dur-fast)] ease-std"
+          style={{ transform: open ? 'scaleY(-1)' : undefined }}
+          aria-hidden
+        >
+          <IconChevronDown size={16} />
         </span>
       </button>
 
@@ -354,11 +390,26 @@ function ModeSwitch() {
             initial="initial"
             animate="animate"
             exit="exit"
-            /* 29697:55602: Gray/750, radius 10, px 2 / py 4, its 1px rim an inset shadow
-               so it cannot widen the 200 the board draws. */
-            className="absolute bottom-[calc(100%+8px)] right-0 z-30 w-[200px] origin-bottom-right rounded-[10px] bg-[var(--gray-750)] px-0.5 py-1"
+            /*
+             * 29816:18942: Gray/750, radius 10, 200 wide, px 3 / py 4 (the rows are 194
+             * and sit at x=3), rim `Neutral Alpha/50` as an INSET shadow so it cannot
+             * widen the 200 the board draws, drop shadow 0 8 16 / 33%.
+             */
+            className="absolute bottom-[calc(100%+8px)] right-0 z-30 w-[200px] origin-bottom-right rounded-[10px] bg-[var(--gray-750)] px-[3px] py-1"
             style={{ boxShadow: 'inset 0 0 0 1px #ffffff0a, 0 8px 16px rgba(0,0,0,0.33)' }}
           >
+            {/* Autopilot's gradient, defined once for the check below: an SVG stroke cannot
+                take `background-clip: text`, so the tick wears the same two colours as a
+                real gradient paint (`stroke: url(...)` from index.css). The stops read the
+                tokens, so the label and the tick can never drift apart. */}
+            <svg className="absolute h-0 w-0" aria-hidden>
+              <defs>
+                <linearGradient id="chat-mode-ink" x1="0" y1="0" x2="1" y2="0.17">
+                  <stop offset="0" stopColor="var(--ai-ink-from)" />
+                  <stop offset="1" stopColor="var(--ai-ink-to)" />
+                </linearGradient>
+              </defs>
+            </svg>
             <div className="flex flex-col gap-px">
               {MODES.map((m) => (
                 <button
@@ -366,18 +417,30 @@ function ModeSwitch() {
                   role="menuitemradio"
                   aria-checked={m.id === world.mode}
                   onClick={() => { set({ mode: m.id }); setOpen(false) }}
-                  /* 52px row carrying a 40px plate — the board's own "-4 density" item,
-                     where the hover plate is shorter than the row it sits in. */
                   className="group flex h-[52px] w-full items-center text-left"
                 >
-                  <span className="flex h-10 w-full items-center gap-3 rounded-[8px] px-3 transition-colors duration-[var(--dur-fast)] ease-std group-hover:bg-[var(--white-100)]">
+                  {/*
+                    * 29816:18945 — the state layer is `flex-1` in the 52px row, so THE
+                    * HOVER PLATE FILLS THE WHOLE ROW (194 × 52, radius 8), and its paint is
+                    * `Neutral Alpha/50` = 4% white. The board the switcher was first built
+                    * from drew a 40px plate inset in the row at 8% — this one is the
+                    * designer's hover state (09.09.2026, "вот тут ты можешь увидеть как
+                    * выглядит ховер"), and it supersedes it.
+                    */}
+                  <span className="flex h-full w-full items-center gap-3 rounded-[8px] px-3 transition-colors duration-[var(--dur-fast)] ease-std group-hover:bg-[var(--white-050)]">
                     <span className="min-w-0 flex-1">
                       <span className="block text-[14px] font-medium leading-[22px] text-white">{t(m.name)}</span>
                       <span className="mt-0.5 block text-[12px] leading-[1.4] text-[#ffffff8f]">{t(m.detail)}</span>
                     </span>
                     {m.id === world.mode && (
-                      <span className="grid h-6 w-6 flex-none place-items-center text-[var(--action)]" aria-hidden>
-                        <IconCheck size={16} />
+                      /* 29697:55611 — a 24 frame with the glyph filling it (the old 16px
+                         tick inked barely half the box), and its paint is Autopilot's
+                         gradient: the board binds this frame to NO variable, which is what
+                         a raw gradient paint looks like in the export, and the designer
+                         asked for it by name (09.09.2026: "цвет текста и галочки не белый,
+                         а градиентный"). Not `--action` blue. */
+                      <span className="flex h-6 w-6 flex-none items-center justify-center" aria-hidden>
+                        <IconCheck size={24} className="mode-check" />
                       </span>
                     )}
                   </span>
