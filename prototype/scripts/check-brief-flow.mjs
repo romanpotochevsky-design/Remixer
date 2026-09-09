@@ -887,6 +887,80 @@ check('the outline card lands when the build starts', await cardUp())
   check('exactly one section is in hand', o?.rows.filter((r) => r.state === 'active').length === 1)
   check('the section in hand says what is happening to it', !!o?.rows.find((r) => r.state === 'active')?.work)
 }
+
+/*
+ * THE CARD'S EDGES — Figma 29531:17269, after the designer reported them twice in one day:
+ * first as a DOUBLED line ("бордер как будто двойной… видно внизу там где About, Services"),
+ * then, once the card's own border had been removed to cure that, as BROKEN lines with gaps
+ * ("какие-то поломанные бордеры с обрывами").
+ *
+ * Both defects are one geometry. The card's stroke is the continuous rail; every seam inside
+ * it is an arc that leaves the side 16–24px early. Nest a full-width child's border inside
+ * the card's and CSS puts them a pixel apart (a 2px rail); take the card's away and each arc
+ * ends in mid-air. The cure is to pull the children ONTO the rail, and that is what these
+ * checks measure: coincident boxes, one seam per row except the last, and then the rail
+ * itself, sampled down the page — lit at every step, dark one pixel in.
+ */
+{
+  const geo = await p.evaluate(() => {
+    const card = document.querySelector('[aria-label="What Remixer is building"]')
+    const r = card.getBoundingClientRect()
+    const cs = getComputedStyle(card)
+    const kids = [...card.children]
+    const edge = (el) => {
+      const k = el.getBoundingClientRect()
+      return { l: +(k.left - r.left).toFixed(2), r: +(r.right - k.right).toFixed(2) }
+    }
+    return {
+      box: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) },
+      border: `${cs.borderTopWidth} ${cs.borderTopColor}`,
+      radius: cs.borderRadius,
+      overflow: cs.overflow,
+      kids: kids.map((el) => ({
+        ...edge(el),
+        bw: getComputedStyle(el).borderBottomWidth,
+        radius: getComputedStyle(el).borderBottomLeftRadius,
+      })),
+    }
+  })
+  check('the card draws the rail itself — 1px #272728 at radius 24 (29531:17269)',
+    geo.border === '1px rgb(39, 39, 40)' && geo.radius === '24px', `${geo.border} / ${geo.radius}`)
+  check('…and does not clip it: overflow would shave the strokes pulled onto it',
+    geo.overflow === 'visible', geo.overflow)
+  check('every block inside sits ON that rail, not a pixel inside it',
+    geo.kids.every((k) => k.l === 0 || (k.l === 1 && k.bw === '0px')),
+    JSON.stringify(geo.kids.map((k) => `${k.l}/${k.bw}`)))
+  check('every waiting page seals its bottom at radius 16 — except the last, which draws nothing',
+    geo.kids.slice(1, -1).every((k) => k.bw === '1px' && k.radius === '16px') &&
+      geo.kids[geo.kids.length - 1].bw === '0px',
+    JSON.stringify(geo.kids.slice(1).map((k) => `${k.bw} r${k.radius}`)))
+
+  /* The rail as the screen has it: every 8px down the straight part of the left edge, the
+     card's own column must be lit and the next one dark. A gap fails the first, a doubled
+     line the second. */
+  const lit = ([r, g, bl]) => r >= 30 && g >= 30 && bl >= 30
+  const dark = []
+  const beside = []
+  let i = 0
+  for (let y = geo.box.y + 26; y < geo.box.y + geo.box.h - 26; y += 8, i++) {
+    const on = await pixelAt(geo.box.x, y)
+    const next = await pixelAt(geo.box.x + 1, y)
+    if (!lit(on)) dark.push([y - geo.box.y, on])
+    if (lit(next)) beside.push([i, y - geo.box.y, next])
+  }
+  check('the rail runs unbroken from corner to corner — no gaps anywhere down it',
+    dark.length === 0, JSON.stringify(dark.slice(0, 4)))
+  /*
+   * A DOUBLED rail lights the neighbouring column at EVERY step; a seam's arc lights it for
+   * the two rows where the curve leaves the side, and no more. Scanned row by row at dpr 1
+   * this build gives exactly three such runs — [297,298], [352,353], [400,401], the page
+   * block's bottom and the two sealed rows', 48px apart — so on an 8px grid no two
+   * consecutive samples can ever be lit unless a real second line is there.
+   */
+  const consecutive = beside.filter((b, n) => n > 0 && b[0] === beside[n - 1][0] + 1)
+  check('…and it is ONE pixel wide: what lights beside it is a seam leaving, never a second line',
+    consecutive.length === 0, JSON.stringify(beside.slice(0, 6)))
+}
 /*
  * THE CANVAS STAYS EMPTY FOR THE WHOLE MINUTE. This pass builds the home page and the
  * preview appears when that page is done (designer, 07.09.2026) — a site on screen at
@@ -917,10 +991,12 @@ const tail = () => p.evaluate(() => {
 
 await p.waitForTimeout(20000); await shot('12a-mid-build')
 {
-  /* ONE EDGE, NOT TWO (designer, 09.09.2026: "бордер как будто двойной… видно внизу там где
-     About, Services"). Figma's stroke sits inside the geometry, so a full-width child with a
-     stroke and the frame around it are ONE line on the board; in CSS a border adds, and the two
-     landed a pixel apart. The card gives up its own stroke — the children already draw it. */
+  /* ONE EDGE, NOT TWO — and not none either. The designer reported this card's edges twice on
+     09.09.2026: first doubled ("бордер как будто двойной… видно внизу там где About, Services"),
+     then, once the card's own stroke had been taken away to cure that, broken ("поломанные
+     бордеры с обрывами"). The board (29531:17269) keeps the card's stroke as the continuous rail
+     and the children are pulled ONTO it, so every full-width child shares the card's box exactly
+     — except the last waiting page, which draws nothing and stays inside. */
   const edges = await p.evaluate(() => {
     const c = document.querySelector('section[aria-label="What Remixer is building"]')
     const r = c.getBoundingClientRect()
@@ -928,12 +1004,15 @@ await p.waitForTimeout(20000); await shot('12a-mid-build')
       card: getComputedStyle(c).borderLeftWidth,
       kids: [...c.children].map((k) => {
         const b = k.getBoundingClientRect()
-        return +(b.x - r.x).toFixed(1) + '/' + +(b.width - r.width).toFixed(1)
+        return +(b.x - r.x).toFixed(1) + '/' + +(b.width - r.width).toFixed(1) + '/' + getComputedStyle(k).borderBottomWidth
       }),
     }
   })
-  check('the generation card draws no stroke of its own — its children do, on its own box',
-    edges.card === '0px' && edges.kids.every((k) => k === '0/0'), JSON.stringify(edges))
+  check('the second build keeps the one rail too — card strokes, children lie on it',
+    edges.card === '1px' &&
+      edges.kids.slice(0, -1).every((k) => k.startsWith('0/0/1px')) &&
+      edges.kids[edges.kids.length - 1] === '1/-2/0px',
+    JSON.stringify(edges))
 }
 check('the growing card stays inside the panel instead of finishing under the composer',
   (await tail())?.below < 0, JSON.stringify(await tail()))

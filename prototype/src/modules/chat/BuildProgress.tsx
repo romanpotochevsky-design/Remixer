@@ -17,13 +17,18 @@
  * spans it. A card pinned to 416 in that state read as a narrow object floating in a wide
  * thread rather than as one more turn in it.
  *
- * GEOMETRY, all measured off the board (29526:455 / 29526:449 / 29612:24918):
- *   card      the message column's full width (416 at the split), radius 21, 1px Gray/800
- *   page rows border b/l/r + rounded-b-12 — that is what gives the stacked-card look;
- *             the first page's name is 16 semibold white, the waiting ones 13 medium 48%
- *   list box  Gray/950 fill, 1px Gray/800, radius 18, pb-16 pr-16
+ * GEOMETRY — the board that owns this card is **29531:17269** (read 09.09.2026 after the
+ * designer's second report on its edges: "какие-то поломанные бордеры с обрывами… должно
+ * быть как в макете перфект пиксель"). It supersedes the readings taken off 29480:48478's
+ * children, and it settles the edges once:
+ *   card      1px #272728, radius 24 — a CONTINUOUS outline, top to bottom
+ *   page blk  1px #272728, radius 24, fill Neutral Alpha/50 (4% white), padding 0/1/1
+ *   header    56 tall, pl-14 pr-8, icon 20, name 16 semibold white
+ *   list box  #09090b, 1px Neutral Alpha/100 (8% white), radius 20 top / 22 bottom, pb-16 pr-16
  *   rows      elbow column 16 wide from x=13, icon 24 at pl-4, text at gap-12, pt-3
  *   gaps      16 between rows, 24 either side of the row in hand
+ *   waiting   48 tall, pl-12 pr-8, icon 20, name 13 medium 48% white; border b/l/r with a
+ *             rounded-16 bottom on every one EXCEPT THE LAST, which draws nothing at all
  *
  * ⚠️ THE SPINE IS BUILT PER ROW, not as one line down the side. The board draws a 1px
  * line of a FIXED 204px height in its own column at x=12, plus an 8px rounded corner per
@@ -101,42 +106,51 @@ export function BuildProgress({ animate }: { animate: boolean }) {
       animate="animate"
       aria-label={t({ en: 'What Remixer is building', uk: 'Що збирає Remixer' })}
       /*
-       * The card is a STROKE, not a surface. `iteration` sits at (1,1) of the 416 card
-       * and its blocks fill it completely (414 wide, 334+48+48 = 430 tall), so whatever
-       * fill the card has never shows — the lighter surface in the board belongs to the
-       * PAGE BLOCK below, and putting it here instead lit the waiting pages too.
+       * The card is a STROKE, not a surface: `iteration` fills it completely, so whatever
+       * fill the card has never shows — the lighter surface belongs to the PAGE BLOCK
+       * below, and putting it here instead lit the waiting pages too.
        *
-       * ⚠️ AND IT DRAWS NO STROKE OF ITS OWN — its children do (bug reported by the designer
-       * 09.09.2026: "у этого компонента есть баг с бордером, в некоторых местах бордер как
-       * будто двойной… видно внизу там где About, Services"). Figma's strokes sit INSIDE the
-       * geometry, so a full-width child with a stroke and the frame around it are ONE line on
-       * the board. In CSS a border adds, so the frame's line and the child's landed a pixel
-       * apart: a 2px rail down both sides, doubled again at the corners where radius 21 nested
-       * over the page block's 20 and the waiting rows' 12. It is loudest exactly where he
-       * pointed — the waiting pages are empty, so the rail is all there is to look at.
+       * ⚠️ AND ITS OWN STROKE IS THE CARD'S SPINE — the one line that runs unbroken from
+       * the top corner to the bottom one. Every seam inside (the page block's rounded
+       * bottom, each waiting row's) is an ARC that leaves the side 16–24px early and
+       * curves inward; those arcs only read as seams because a straight rail continues
+       * behind them. Take the rail away and each arc ends in mid-air: that is exactly the
+       * "поломанные бордеры с обрывами" the designer photographed on 09.09.2026, and it
+       * was my own fix earlier the same day for his FIRST report on these edges ("бордер
+       * как будто двойной… видно внизу там где About, Services").
        *
-       * The children already draw every edge the card needs: the page block strokes all four
-       * sides at radius 20, and each waiting row strokes bottom-left-right and rounds its
-       * bottom at 12. So the card keeps only the radius, for the clip.
+       * Both reports are true, and the board answers both. Figma's strokes sit INSIDE the
+       * geometry, so on the board the card's line and a full-width child's line are one
+       * line; in CSS a border ADDS, so they landed a pixel apart as a 2px rail. The repo's
+       * rule for that names two cures — pull the child out by a pixel, or drop the parent's
+       * border — and the arcs above say which one this card needs: **the children are
+       * pulled out** (`-mx-px`, `-mt-px`), so every child stroke lands ON the card's and
+       * the rail stays 1px the whole way down. Same trick the brief summary's list uses.
        *
-       * No inner padding either: that 1px WAS the card's stroke, which Figma draws inside the
-       * geometry and CSS adds outside. Padding on top of a border double-counts it (the repo's
-       * own lesson from the Home composer).
+       * No `overflow-hidden`: the clip follows the PADDING box, so it would shave the very
+       * strokes that have just been pulled onto the border. Nothing needs clipping — every
+       * child carries its own radius.
        */
-      className={`w-full origin-bottom overflow-hidden rounded-[20px]${animate ? ' card-arrive' : ''}`}
+      className={`w-full origin-bottom rounded-[24px] border border-[#272728]${animate ? ' card-arrive' : ''}`}
     >
       {/* ----------------------------------------- the page being built */}
       {/*
         * The page being built (29612:24965): `Neutral Alpha/50` fill, a full 1px stroke,
-        * radius 20 ALL ROUND — not a bottom-rounded strip, which is how I first read it
+        * radius 24 ALL ROUND — not a bottom-rounded strip, which is how I first read it
         * from the render. Read in the DARK theme: the export resolves NA/50 to
         * `rgba(9,9,11,0.04)`, which over this ground is invisible.
         *
+        * Pulled a pixel out on three sides so its stroke lands ON the card's; its radius is
+        * the card's own 24, so the two paths coincide exactly rather than nesting.
+        *
         * `px-px pb-px` insets the list box by a pixel on three sides; the header sits
-        * flush at the top. That pixel is this block's OWN stroke, not the card's — the card
-        * has none (see above).
+        * flush at the top. Measured against the board that lands the list at x=2 of the
+        * card and the page name at x=44 — the board's own coordinates, to the pixel.
         */}
-      <motion.div variants={body} className="origin-bottom rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
+      <motion.div
+        variants={body}
+        className="-mx-px -mt-px w-[calc(100%+2px)] origin-bottom rounded-[24px] border border-[#272728] bg-[#ffffff0a] px-px pb-px"
+      >
         {/* 56, not the 24 of padding the export reports: the board's row is a
             fixed-height frame with its 20px icon centred in it (icon at y=18 of 56).
             ⚠️ NOTHING BUT THE NAME GOES HERE. It briefly carried a shimmering "Putting
@@ -149,8 +163,12 @@ export function BuildProgress({ animate }: { animate: boolean }) {
           <p className="text-[16px] font-semibold leading-[1.2] text-white">{t(home.name)}</p>
         </div>
 
+        {/* 29526:455 — the inner surface: #09090b under a 1px Neutral Alpha/100 hairline
+            (8% WHITE in the dark theme; the export's `rgba(9,9,11,.08)` is the light
+            fallback), radius 20 at the top and 22 at the bottom. Not `--gray-800`: this
+            line is the faint inner one, a step quieter than the card's #272728. */}
         <div
-          className="rounded-[18px] border border-[var(--gray-800)] pb-4 pr-4"
+          className="rounded-b-[22px] rounded-t-[20px] border border-[var(--white-100)] pb-4 pr-4"
           style={{ background: 'var(--gray-950)' }}
         >
           <ol className="relative pl-[13px] pt-4">
@@ -246,11 +264,28 @@ export function BuildProgress({ animate }: { animate: boolean }) {
           key={page.id}
           variants={row}
           custom={sections.length + j}
-          /* Stroke on three sides and radius 12 at the bottom only (29612:24911) — the
-             block above supplies the line over it. NO fill: these are transparent over
-             the chat's ground, which is what makes the page being built the one lighter
-             surface in the card. */
-          className="flex h-12 items-center gap-2 rounded-b-[12px] border-b border-l border-r border-[var(--gray-800)] pl-3 pr-2"
+          /*
+           * ⚠️ EVERY WAITING ROW SEALS ITS BOTTOM — EXCEPT THE LAST, WHICH DRAWS NOTHING.
+           * The board is explicit about it: `About` (29612:24911) carries a stroke on
+           * bottom/left/right with a rounded-16 bottom, and `Contacts` (29612:24923) carries
+           * no stroke at all. That is the whole stacked-card illusion: each row's rounded
+           * bottom is a card lying on the one behind it, and the last one has nothing to lie
+           * on — the CARD's own bottom corner closes it. Give the last row a seam too and it
+           * reads as a floating strip inside the card, a rounded line hovering a pixel above
+           * the real bottom corner.
+           *
+           * The sealed ones are pulled a pixel out (`-mx-px`) so their sides land on the
+           * card's rail instead of beside it; the last one is not pulled, because with no
+           * stroke of its own the pull would only move its icon a pixel off the board's x=13.
+           *
+           * NO fill on any of them: they are transparent over the chat's ground, which is
+           * what makes the page being built the one lighter surface in the card.
+           */
+          className={`flex h-12 items-center gap-2 pl-3 pr-2 ${
+            j === rest.length - 1
+              ? ''
+              : '-mx-px w-[calc(100%+2px)] rounded-b-[16px] border-b border-l border-r border-[#272728]'
+          }`}
         >
           <IconPage size={20} className="flex-none text-[#ffffff3d]" />
           <span className="text-[13px] font-medium leading-none text-[#ffffff7a]">{t(page.name)}</span>

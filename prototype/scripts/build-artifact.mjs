@@ -199,7 +199,7 @@ writeFileSync(OUT, page)
  * why "fonts embedded" still counts 4. They arrive pre-subset to the single line each one
  * draws, so there is nothing left to trim — see src/fonts/OFL.txt.
  */
-const CEILING = 798_942
+const CEILING = 799_152
 const bytes = Buffer.byteLength(page)
 console.log(`fonts embedded: ${embedded} — ${GLYPHS.length} glyphs kept`)
 console.log(`  ${subsetReport.join(' · ')}`)
