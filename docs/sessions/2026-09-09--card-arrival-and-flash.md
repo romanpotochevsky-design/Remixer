@@ -31,3 +31,4 @@
 
 | хэш | тема |
 |---|---|
+| `560b9a2` | Cards arrive in the thread like glass, and the send flash shows above the field again |
