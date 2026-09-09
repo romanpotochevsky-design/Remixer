@@ -35,19 +35,14 @@
  * measurement: the first row's corner is the top-left one (the line starts there and
  * turns down), every other row's is the bottom-left one (the line arrives and turns in).
  */
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
 import { IconPage, IconStepDone, IconStepQueued, IconStepRunning } from '@/ui/icons'
-import { SPRING_SOFT } from '@/ui/motion'
+import { cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade } from '@/ui/motion'
 import { buildOutline } from './build'
 
 const LINE = 'var(--gray-750)'
-
-const cardIn = {
-  initial: { opacity: 0, y: 12, scale: 0.99 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: SPRING_SOFT },
-}
 
 /** How tall the gap under row `i` is: 16, or 24 next to the row in hand. */
 function gapAfter(i: number, last: number, active: number) {
@@ -81,8 +76,14 @@ function WorkLine({ text, beat }: { text: string; beat: string }) {
   )
 }
 
-export function BuildProgress() {
+/** `animate`: the card has just been sent (ChatPanel's `isFresh`) — a restored one stands still. */
+export function BuildProgress({ animate }: { animate: boolean }) {
   const { t } = useT()
+  /* motion.ts `cardIn` — the same arrival as the brief summary: the glass rises out of
+     the dock, the page block focuses onto it, then the sections and the waiting pages
+     come up one after another down the outline. */
+  const reduce = useReducedMotion()
+  const [glass, body, row] = reduce ? [cardInFade, cardInBodyFade, cardInRowFade] : [cardIn, cardInBody, cardInRow]
   const { brief, build } = useWorld((s) => s.world)
   const pages = buildOutline(brief.answers)
   const [home, ...rest] = pages
@@ -95,8 +96,8 @@ export function BuildProgress() {
 
   return (
     <motion.section
-      variants={cardIn}
-      initial="initial"
+      variants={glass}
+      initial={animate ? 'initial' : false}
       animate="animate"
       aria-label={t({ en: 'What Remixer is building', uk: 'Що збирає Remixer' })}
       /*
@@ -112,7 +113,7 @@ export function BuildProgress() {
        * Radius 21 is DERIVED, not read: the board does not expose this frame's corner,
        * and 21 is what nests concentrically over the page block's 20 across a 1px stroke.
        */
-      className="w-full overflow-hidden rounded-[21px] border border-[var(--gray-800)]"
+      className={`w-full origin-bottom overflow-hidden rounded-[21px] border border-[var(--gray-800)]${animate ? ' card-arrive' : ''}`}
     >
       {/* ----------------------------------------- the page being built */}
       {/*
@@ -124,7 +125,7 @@ export function BuildProgress() {
         * `px-px pb-px` insets the list box by a pixel on three sides; the header sits
         * flush at the top.
         */}
-      <div className="rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
+      <motion.div variants={body} className="origin-bottom rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
         {/* 56, not the 24 of padding the export reports: the board's row is a
             fixed-height frame with its 20px icon centred in it (icon at y=18 of 56).
             ⚠️ NOTHING BUT THE NAME GOES HERE. It briefly carried a shimmering "Putting
@@ -146,8 +147,10 @@ export function BuildProgress() {
               const state = assembling || i < active ? 'done' : i === active ? 'active' : 'queued'
               const first = i === 0
               return (
-                <li
+                <motion.li
                   key={section.id}
+                  variants={row}
+                  custom={i}
                   /* `data-state` is the state in the DOM rather than only in a colour:
                      the headless check reads it, and `aria-current` is the standard way
                      to say which step of a sequence is the live one. */
@@ -219,17 +222,19 @@ export function BuildProgress() {
                       </AnimatePresence>
                     </span>
                   </span>
-                </li>
+                </motion.li>
               )
             })}
           </ol>
         </div>
-      </div>
+      </motion.div>
 
       {/* --------------------------------- the pages this pass does not build */}
-      {rest.map((page) => (
-        <div
+      {rest.map((page, j) => (
+        <motion.div
           key={page.id}
+          variants={row}
+          custom={sections.length + j}
           /* Stroke on three sides and radius 12 at the bottom only (29612:24911) — the
              block above supplies the line over it. NO fill: these are transparent over
              the chat's ground, which is what makes the page being built the one lighter
@@ -238,7 +243,7 @@ export function BuildProgress() {
         >
           <IconPage size={20} className="flex-none text-[#ffffff3d]" />
           <span className="text-[13px] font-medium leading-none text-[#ffffff7a]">{t(page.name)}</span>
-        </div>
+        </motion.div>
       ))}
     </motion.section>
   )

@@ -90,6 +90,47 @@ const onHome = () => p.$('input[aria-label="Describe the site you want"]').then(
 const panelUp = () => p.$('section[aria-label="Questions before building"]').then(Boolean)
 const planUp = () => p.$('section[aria-label="Plan, waiting for your approval"]').then(Boolean)
 const cardUp = () => p.$('section[aria-label="What Remixer is building"]').then(Boolean)
+/*
+ * A card's ARRIVAL, sampled every frame from the first one it exists in (motion.ts `cardIn`,
+ * design-system §5 «Карточки, которые появляются»): the glass (opacity, transform), its inner
+ * surface, the first and last row, the rim light (`::after`), and the card's box.
+ */
+const arrival = (sel, wait, ms) => p.evaluate(`((sel, wait, ms) => new Promise((resolve) => {
+  const out = []; const tw = performance.now(); let t0 = 0; let seen = false
+  const m = (tf) => { const a = tf.match(/matrix\\(([^)]+)\\)/); return a ? +a[1].split(',')[0] : tf === 'none' ? 1 : NaN }
+  const tick = () => {
+    const card = document.querySelector(sel)
+    if (!card && !seen) return performance.now() - tw < wait ? requestAnimationFrame(tick) : resolve(out)
+    if (!seen) { seen = true; t0 = performance.now(); out.push({ appeared: +(t0 - tw).toFixed(0) }) }
+    const cs = getComputedStyle(card), body = card.firstElementChild
+    const rows = card.querySelectorAll('dt, li, [class*="rounded-b-"]')
+    const r = card.getBoundingClientRect()
+    out.push({ t: +(performance.now() - t0).toFixed(1), op: +cs.opacity, scale: m(cs.transform), tf: cs.transform,
+      body: m(getComputedStyle(body).transform), row0: rows[0] ? +getComputedStyle(rows[0]).opacity : null,
+      rowN: rows.length ? +getComputedStyle(rows[rows.length - 1]).opacity : null,
+      glint: +getComputedStyle(card, '::after').opacity, box: [r.left, r.top, r.width, r.height].map((n) => +n.toFixed(1)).join(',') })
+    if (performance.now() - t0 < ms) requestAnimationFrame(tick); else resolve(out)
+  }
+  requestAnimationFrame(tick)
+}))(${JSON.stringify(sel)}, ${wait}, ${ms})`)
+/* the assertions every arriving card has to pass; `what` names the card in the check */
+const checkArrival = (what, s) => {
+  const f = s.filter((x) => x.t !== undefined)
+  const first = f[0], last = f[f.length - 1]
+  check(`the ${what} arrives as glass: transparent and smaller than its box in its first frame`,
+    !!first && first.op < 0.1 && first.scale < 0.96, JSON.stringify(first))
+  check(`…inflates with one soft overshoot past its size and settles clean`,
+    Math.max(...f.map((x) => x.scale)) > 1.0003 && last.tf === 'none' && last.op === 1,
+    `peak ${Math.max(...f.map((x) => x.scale)).toFixed(4)}, last ${last.tf} / ${last.op}`)
+  check(`…its inner surface focusing onto it a beat behind the glass`,
+    f.some((x) => x.body > 1.02 && x.scale < 0.98) && last.body === 1, `body ${f.slice(0, 12).map((x) => x.body.toFixed(3)).join(' ')}`)
+  check(`…its rows coming up one after another, top to bottom`,
+    f.some((x) => x.row0 > 0.8 && x.rowN < 0.2) && last.row0 === 1 && last.rowN === 1,
+    `row0/rowN at 40% of the run ${JSON.stringify(f[Math.floor(f.length * 0.4)])}`)
+  check(`…and a rim light that peaks and is gone`,
+    Math.max(...f.map((x) => x.glint)) > 0.9 && last.glint === 0, `peak ${Math.max(...f.map((x) => x.glint)).toFixed(3)}, last ${last.glint}`)
+  return { first, last, f }
+}
 /** The composer field's box, rounded — the one thing the dock's bubble must never move. */
 const fieldBox = () =>
   p.$eval('.composer-field', (el) => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 100) / 100) })
@@ -593,7 +634,23 @@ await p.click('section button[aria-label="Friendly"]'); await p.waitForTimeout(4
       pick.width === '2px' && pick.masked && pick.shadow === 'none' && pick.rx === '17px' && pick.radius === '16px',
     JSON.stringify(pick))
 }
-await p.click('text=Submit'); await p.waitForTimeout(900); await shot('08-summary')
+/*
+ * THE CARD ARRIVES LIKE GLASS (designer, 09.09.2026: "красивую и плавную анимацию появления
+ * этих компонентов в чате, в стиле apple liquid glass") — motion.ts `cardIn`: the summary
+ * rises out of the dock and inflates from .94 with one soft overshoot, its inner surface
+ * focuses onto it a beat later from 1.035, the rows come up one after another and a rim light
+ * peaks and fades. Sampled every frame from the first one the card exists in.
+ */
+{
+  const sampling = arrival('.chat-col .card-arrive', 3000, 1400)
+  await p.click('text=Submit')
+  const s = await sampling
+  const { last } = checkArrival('summary card', s)
+  await p.waitForTimeout(300)
+  const box = await p.$eval('.chat-col .card-arrive', (el) => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((n) => +n.toFixed(1)).join(',') })
+  check('the summary card has not moved since it settled: the settled box is the laid-out box', last && last.box === box, `${last?.box} → ${box}`)
+}
+await shot('08-summary')
 {
   const body = await text()
   check('the summary card prints the answers',
@@ -632,8 +689,17 @@ await p.click('button[aria-label="Close the plan"]'); await p.waitForTimeout(700
 check('closing the plan puts the canvas away again', (await previewState()) === 'closed')
 check('the plan card is still there after closing the review', await planUp())
 
-await p.click('section[aria-label="Plan, waiting for your approval"] >> text=Approve')
-await p.waitForTimeout(3400); await shot('11-ack-building')
+{
+  /* The outline card takes the same arrival — after the "Got it — …" line has written itself,
+     not on the click: the beat is the card's place in the turn, not a delay for its own sake. */
+  const sampling = arrival('section[aria-label="What Remixer is building"]', 8000, 1600)
+  await p.click('section[aria-label="Plan, waiting for your approval"] >> text=Approve')
+  const s = await sampling
+  check('the outline card lands after the acknowledgement has been written, not on the click',
+    (s[0]?.appeared ?? 0) > 1500, `appeared after ${s[0]?.appeared}ms`)
+  checkArrival('outline card', s)
+}
+await shot('11-ack-building')
 check('Approve is what starts the build', !(await planUp()))
 /* THE CANVAS STAYS AWAY FOR THE MINUTE. A preview is a preview OF a page, and there
    is no page yet; the outline card carries the wait and gets the chat's full width to
@@ -810,8 +876,27 @@ await buildFromHome('website')
 await p.waitForTimeout(4600)
 check('the panel is up before the override', await panelUp())
 await p.fill('textarea', 'A one-page site for my ceramics studio in Odesa')
-await p.keyboard.press('Enter')
-await p.waitForTimeout(700); await shot('20-override')
+/*
+ * THE SEND FLASH SHOWS ABOVE THE FIELD (designer's recording, 09.09.2026: "что-то обрезает или
+ * перекрывает при отправке сообщения эффект свечения над полем ввода"). The flash lives in the
+ * composer, inside the dock; the thread's bottom fade is a sticky `z-10` flush with the field's
+ * top edge. Once the dock isolated, the composer's own `z-20` no longer outranked that fade and
+ * the light along the field's top edge painted UNDER it. The dock must outrank the fades, and a
+ * real pixel above the field at the flash's pose must carry the light.
+ */
+{
+  const fb = await p.$eval('.composer-field', (el) => { const r = el.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width } })
+  const z = await p.evaluate(() => ({
+    dock: +getComputedStyle(document.querySelector('.dock')).zIndex || 0,
+    fade: Math.max(...[...document.querySelectorAll('.chat-col [class*="sticky"]')].map((e) => +getComputedStyle(e).zIndex || 0)),
+  }))
+  check('the dock outranks the thread’s fades, so nothing paints over the composer’s light', z.dock > z.fade, JSON.stringify(z))
+  await p.keyboard.press('Enter')
+  await p.waitForTimeout(230)
+  const px = await pixelAt(Math.round(fb.l + fb.w * 0.72), Math.round(fb.t - 3))
+  check('the flash’s light shows above the field’s top edge at its pose', Math.max(...px) - Math.min(...px) > 20, `pixel ${px.join(',')} 3px above the field`)
+}
+await p.waitForTimeout(470); await shot('20-override')
 check('typing into the composer dismisses the questions', !(await panelUp()))
 /* THINKING_MS + CARD_MS before the outline lands — the same two beats every other
    first build takes, which is the point of the check. */

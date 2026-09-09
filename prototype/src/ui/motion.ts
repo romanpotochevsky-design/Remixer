@@ -94,6 +94,75 @@ export const messageIn = {
 }
 
 /**
+ * A CARD ARRIVING IN THE THREAD — the brief summary after Submit, the generation outline
+ * after Approve (designer, 09.09.2026: "красивую и плавную анимацию появления этих
+ * компонентов в чате, анимацию в стиле apple liquid glass").
+ *
+ * Liquid Glass, the way iOS 26 opens a surface, is three motions at once and none of them
+ * is a fade:
+ *  · the glass INFLATES out of where the gesture happened, with one soft overshoot — both
+ *    cards are born in the dock, where Submit / Approve were pressed, so they rise from
+ *    their bottom edge (`origin-bottom` on the card);
+ *  · the CONTENT lags the glass by a beat and settles the OPPOSITE way — the glass grows
+ *    onto its size while the contents shrink onto theirs, which is what reads as a lens
+ *    focusing rather than a picture fading in; the rows inside then arrive one after
+ *    another, top to bottom;
+ *  · the glass catches the LIGHT as it forms — a rim highlight that brightens and fades
+ *    (`.card-arrive`, index.css "THE CARD THAT ARRIVES"). Opacity only.
+ * Everything here is transform and opacity. The delay lets the dock start folding its
+ * sheet into the collar first: the answers go down, and the card rises out of the fold.
+ */
+export const cardIn = {
+  initial: { opacity: 0, scale: 0.94, y: 22 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      duration: 0.68,
+      bounce: 0.2,
+      delay: 0.08,
+      opacity: { duration: 0.24, delay: 0.08, ease: [0.2, 0, 0, 1] },
+    },
+  },
+}
+/** The card's inner surface: one beat behind the glass, focusing onto it from slightly large. */
+export const cardInBody = {
+  initial: { opacity: 0, scale: 1.035, y: 4 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: 'spring', duration: 0.6, bounce: 0.1, delay: 0.16, opacity: { duration: 0.22, delay: 0.16 } },
+  },
+}
+/** Rows inside the card, one after another (`custom` = the row's index). */
+export const CARD_ROW_STAGGER = 0.045
+export const cardInRow = {
+  initial: { opacity: 0, y: 8 },
+  animate: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { ...SPRING_SOFT, delay: 0.22 + i * CARD_ROW_STAGGER, opacity: { duration: 0.2, delay: 0.22 + i * CARD_ROW_STAGGER } },
+  }),
+}
+/* Reduced motion: the offsets and scales are DROPPED, not jumped into (the `listSwapFade`
+   lesson) — the card and its rows simply come up in place. */
+export const cardInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.24, ease: [0.2, 0, 0, 1] } },
+}
+export const cardInBodyFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, delay: 0.1 } },
+}
+export const cardInRowFade = {
+  initial: { opacity: 0 },
+  animate: (i: number) => ({ opacity: 1, transition: { duration: 0.2, delay: 0.14 + i * 0.03 } }),
+}
+
+/**
  * App-modal: the checkout sheet over the 70% scrim (Figma 27254/27275).
  *
  * Centred sheets have no trigger corner to grow out of, so rule 2 cannot apply —

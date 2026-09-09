@@ -11,7 +11,7 @@
  * from a canned set (modules/chat/thread.ts). See send.ts for what one message moves.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld, canUseAI } from '@/state/world'
 import { useT } from '@/i18n'
 import {
@@ -21,7 +21,7 @@ import {
 import { ScrollArea } from '@/ui/ScrollArea'
 import { baselineThread } from './thread'
 import { sendMessage, resumeInterrupted } from './send'
-import { bubbleSend, messageIn, popover } from '@/ui/motion'
+import { bubbleSend, cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade, popover } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
 import { PlanCard } from './PlanCard'
 import { BuildProgress } from './BuildProgress'
@@ -207,14 +207,20 @@ function BriefSummary({ animate }: { animate: boolean }) {
    * collapsed chat it sat as a small box in an 800px column while every other turn
    * spanned it.
    */
+  /* The arrival — motion.ts `cardIn`: the glass rises out of the dock and inflates, the
+     surface inside focuses onto it a beat later, the rows follow one by one, and the rim
+     catches the light (`.card-arrive`). Only a card that has just been sent animates;
+     one that is on screen at the first paint (a restored transcript) stands still. */
+  const reduce = useReducedMotion()
+  const [glass, body, row] = reduce ? [cardInFade, cardInBodyFade, cardInRowFade] : [cardIn, cardInBody, cardInRow]
   return (
     <motion.div
-      variants={messageIn}
+      variants={glass}
       initial={animate ? 'initial' : false}
       animate="animate"
-      className="w-full overflow-hidden rounded-[21px] border border-[var(--gray-800)]"
+      className={`w-full origin-bottom overflow-hidden rounded-[21px] border border-[var(--gray-800)]${animate ? ' card-arrive' : ''}`}
     >
-      <div className="rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
+      <motion.div variants={body} className="origin-bottom rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
         <p className={`flex h-[56px] items-center pl-[14px] pr-2 text-[16px] font-semibold leading-[1.2] ${settling ? 'thinking' : 'text-white'}`}>
           {title}
         </p>
@@ -222,17 +228,19 @@ function BriefSummary({ animate }: { animate: boolean }) {
           className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-6 gap-y-[10px] rounded-[18px] border border-[var(--gray-800)] px-4 py-4 text-[14px] leading-[1.4]"
           style={{ background: 'var(--gray-950)' }}
         >
-          {BRIEF_QUESTIONS.map((q) => {
+          {BRIEF_QUESTIONS.map((q, i) => {
             const a = answerText(q, world.brief.answers[q.key], lang)
+            /* `display: contents` has no box to move, so the two cells of a row carry the
+               row's motion themselves, on the same clock (`custom` is the row index) */
             return (
               <div key={q.key} className="contents">
-                <dt className="text-[#ffffff7a]">{t(q.label)}</dt>
-                <dd className={a.muted ? 'italic text-[#ffffff7a]' : 'font-medium text-white'}>{a.text}</dd>
+                <motion.dt variants={row} custom={i} className="text-[#ffffff7a]">{t(q.label)}</motion.dt>
+                <motion.dd variants={row} custom={i} className={a.muted ? 'italic text-[#ffffff7a]' : 'font-medium text-white'}>{a.text}</motion.dd>
               </div>
             )
           })}
         </dl>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }
@@ -573,7 +581,7 @@ export function ChatPanel() {
                   ) : m.kind === 'brief' ? (
                     <BriefSummary animate={isFresh(m.id)} />
                   ) : m.kind === 'build' ? (
-                    <BuildProgress />
+                    <BuildProgress animate={isFresh(m.id)} />
                   ) : (
                     <AiMessage
                       text={body}
