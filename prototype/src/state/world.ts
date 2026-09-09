@@ -161,6 +161,35 @@ export interface Build {
 }
 export const EMPTY_BUILD: Build = { at: -1, line: 0 }
 
+/**
+ * What Autopilot is proposing right now — the mode's entire behaviour.
+ *
+ * `mode: 'autopilot'` is a promise that Remixer LEADS (designer, 09.09.2026: "это режим
+ * когда чат сам присылает форму с выбором и рекомендацией что делать дальше… для
+ * пользователей которые вообще не шарят"). This axis is where that promise is kept: after
+ * every edit that actually moved the site, a one-question panel docks above the composer —
+ * the same panel the brief uses, arriving on its own instead of at the start.
+ *
+ * The proposal itself is never stored, only COMPILED (modules/chat/autopilot.ts) from the
+ * brief's answers, from what has already been asked for and from whether the site is live.
+ * Storing the text would let a proposal outlive the site it describes; compiling it means
+ * the panel can only ever offer pages the plan actually promised.
+ *
+ *  - `open`    is a proposal docked?
+ *  - `pick`    which option is chosen. A proposal ARRIVES with its recommendation already
+ *              picked — that is what makes it a recommendation and not a quiz. Free text
+ *              carries the same `other:` prefix the brief uses.
+ *  - `started` pages Remixer has already been asked to start, so the next proposal never
+ *              offers one twice. Without it the loop reads as broken: accept "Start on
+ *              About" and the very next panel offers About again.
+ */
+export interface Suggest {
+  open: boolean
+  pick: string
+  started: string[]
+}
+export const EMPTY_SUGGEST: Suggest = { open: false, pick: '', started: [] }
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -216,6 +245,8 @@ export interface World {
   brief: Brief
   /** How far the first generation has got. Lives with the transcript, dies with it. */
   build: Build
+  /** What Autopilot is proposing. Lives with the transcript, dies with it. */
+  suggest: Suggest
 }
 
 /** The composer's mode switcher (Figma 29697:54553). See `World.mode`. */
@@ -246,6 +277,7 @@ export const DEFAULT_WORLD: World = {
   sent: [],
   brief: EMPTY_BRIEF,
   build: EMPTY_BUILD,
+  suggest: EMPTY_SUGGEST,
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -453,6 +485,12 @@ export const useWorld = create<Store>((set, get) => ({
     // from the previous situation would tick against a project that no longer exists.
     if (patch.chat !== undefined && patch.build === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
       patch = { ...patch, build: EMPTY_BUILD }
+    }
+    // …and anything Autopilot was proposing. A panel offering "Start on About" belongs to
+    // one site's plan; carried into a staged situation it would offer pages that nobody
+    // ever planned. Same test as the two above, for the same reason.
+    if (patch.chat !== undefined && patch.suggest === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
+      patch = { ...patch, suggest: EMPTY_SUGGEST }
     }
     const world = { ...get().world, ...patch }
     syncUrl(world)

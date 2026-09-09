@@ -11,6 +11,7 @@
 import type { World } from './world'
 import { DEFAULT_WORLD, DEMO_PROJECTS } from './world'
 import type { Text } from '../i18n'
+import { leadingDone } from '../modules/chat/autopilot'
 
 export interface Preset {
   id: string
@@ -20,6 +21,12 @@ export interface Preset {
 }
 
 /** Ordered roughly along the customer's life with us. */
+/**
+ * The answers the staged demo presets are built on — one brief, so the generation card, the
+ * plan and Autopilot's proposals all describe the same site wherever a preset shows them.
+ */
+const DEMO_BRIEF = { goal: 'sell', pages: 'few', palette: 'warm-clay', type: 'friendly' } as const
+
 export const PRESETS: Preset[] = [
   {
     id: 'weak-prompt',
@@ -57,7 +64,7 @@ export const PRESETS: Preset[] = [
     patch: {
       account: 'trial', trialDay: 1, credits: 1880, project: 'generating', chat: 'working',
       domain: 'staging', unpublished: 0, published: false, projects: [],
-      brief: { status: 'ready', step: 0, answers: { goal: 'sell', pages: 'few', palette: 'warm-clay', type: 'friendly' } },
+      brief: { status: 'ready', step: 0, answers: DEMO_BRIEF },
       build: { at: 1, line: 1 },
       sent: [
         { id: 1001, who: 'user', text: 'A shop for my ceramics studio' },
@@ -69,6 +76,49 @@ export const PRESETS: Preset[] = [
           },
         },
         { id: 1003, who: 'ai', kind: 'build', text: '' },
+      ],
+    },
+  },
+  {
+    id: 'autopilot',
+    label: { en: 'Autopilot — the first proposal', uk: 'Autopilot — перша пропозиція' },
+    note: {
+      en: 'The home page has just landed and Remixer asks what to do next — the whole behaviour of the mode, without waiting out the minute',
+      uk: 'Головна щойно приїхала, і Remixer питає, що далі — уся поведінка режиму, без хвилини очікування',
+    },
+    /*
+     * THE MOMENT AUTOPILOT IS FOR, staged. The live path to it is a real generation from the
+     * Home page and takes a minute, which is a minute too long to spend in front of an
+     * audience; this is the same state, reached in one click.
+     *
+     * The transcript ends on the hand-over line, produced by the SAME function the live flow
+     * uses (`leadingDone`) rather than retyped here — a preset that quotes the product back
+     * at itself drifts the first time the copy changes, and then demonstrates a version of
+     * the product that no longer exists.
+     *
+     * ⚠️ `sent`, `brief`, `build` and `suggest` all ride in the patch, for the reason the
+     * preset above spells out: a `chat` move whose transcript did not come with it reads as
+     * staging a fresh situation and clears all four.
+     */
+    patch: {
+      account: 'trial', trialDay: 1, credits: 1870, project: 'built', chat: 'long',
+      domain: 'staging', unpublished: 1, published: false, projects: [], mode: 'autopilot',
+      brief: { status: 'ready', step: 0, answers: DEMO_BRIEF },
+      /* Every section green: `at` equal to the section count is the assemble beat, and that
+         is where a finished build leaves the card standing in the transcript. */
+      build: { at: 5, line: 0 },
+      suggest: { open: true, pick: 'stay', started: [] },
+      sent: [
+        { id: 1001, who: 'user', text: 'A shop for my ceramics studio' },
+        {
+          id: 1002, who: 'ai', kind: 'ack',
+          text: {
+            en: 'Got it \u2014 a site built to sell, across a few pages, in Warm Clay with friendly lettering. Let me build that for you.',
+            uk: '\u0417\u0440\u043e\u0437\u0443\u043c\u0456\u0432 \u2014 \u0441\u0430\u0439\u0442, \u044f\u043a\u0438\u0439 \u043f\u0440\u043e\u0434\u0430\u0454, \u043d\u0430 \u043a\u0456\u043b\u044c\u043a\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u043e\u043a, \u0443 \u043f\u0430\u043b\u0456\u0442\u0440\u0456 Warm Clay \u0456 \u0434\u0440\u0443\u0436\u043d\u0456\u043c\u0438 \u0448\u0440\u0438\u0444\u0442\u0430\u043c\u0438. \u0417\u0431\u0438\u0440\u0430\u044e.',
+          },
+        },
+        { id: 1003, who: 'ai', kind: 'build', text: '' },
+        { id: 1004, who: 'ai', text: leadingDone(DEMO_BRIEF) },
       ],
     },
   },

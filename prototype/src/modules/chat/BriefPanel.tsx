@@ -37,10 +37,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
-import { useT } from '@/i18n'
+import { useT, type Text } from '@/i18n'
 import { IconCaretLeft, IconCaretRight } from '@/ui/icons'
 import { sheetExit, stepSwap, stepSwapFade } from '@/ui/motion'
-import { BRIEF_QUESTIONS, OTHER, type BriefQuestion, type BriefOption } from './brief'
+import { BRIEF_QUESTIONS, OTHER, type BriefQuestion } from './brief'
 import { answerBrief, briefGoTo, briefNext, briefSkipAll, asOther } from './send'
 import { useDockSheet } from './dock'
 
@@ -50,7 +50,7 @@ import { useDockSheet } from './dock'
  * `text/default/secondary`, which in the dark theme is the same `gray-400` the composer's
  * own placeholder uses two rows down — one grey for "type here" inside one shell.
  */
-const FIELD =
+export const FIELD =
   'block h-[42px] w-full rounded-[8px] border border-[#ffffff1f] bg-[#09090b29] pl-4 pr-2 text-[14px] text-white outline-none transition-colors duration-[var(--dur-fast)] ease-std placeholder:text-[var(--gray-400,#a1a1aa)] focus:border-[var(--action)]'
 
 /**
@@ -61,7 +61,7 @@ const FIELD =
  * `#09090b` for that token, which would draw a hole instead of a pip; the same trap
  * CLAUDE.md records for the composer's own tokens. Read the render, not the fallback.)
  */
-function Radio({ on }: { on: boolean }) {
+export function Radio({ on }: { on: boolean }) {
   return (
     <span
       aria-hidden
@@ -73,6 +73,40 @@ function Radio({ on }: { on: boolean }) {
     >
       {on && <span className="h-2 w-2 rounded-full bg-white" />}
     </span>
+  )
+}
+
+/**
+ * The paint both rings are drawn with, mounted once wherever a panel of pickables lives.
+ * Its own panel used to hold it inline; Autopilot's proposals wear the same rings
+ * (autopilot.ts), so the definitions had to stop belonging to one of the two callers.
+ */
+export function PickDefs() {
+  return (
+    <>
+      {/* The pick ring's gradient, defined once for every row (index.css "THE BORDER THAT
+          DRAWS ITSELF") — the house diagonal, .98 → .55 → .82. It is worn as a MASK
+          (`url(#brief-pick-mask)`, luminance = white × the stop alphas) on the ring's `.ink`
+          group, not as the stroke's paint: the strokes are opaque so that overlapping dashes
+          cannot seam, and the alpha the board gives the ring is applied to the flattened result.
+          ⚠️ The mask's rect reaches 5% PAST the group's box: the box is the stroke's centre
+          line, and a rect sized exactly to it clipped the stroke's outer pixel (the 2px ring
+          rendered 1px). The gradient is `userSpaceOnUse` so that, drawn inside a mask whose
+          content units are the box, it still runs −.069 → 1.069 of the BOX, not of the wider
+          rect — the same pixels the stroke used to be painted with. */}
+      <svg className="absolute h-0 w-0" aria-hidden>
+        <defs>
+          <linearGradient id="brief-pick-grad" gradientUnits="userSpaceOnUse" x1="-0.069" y1="0.401" x2="1.069" y2="0.599">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.98" />
+            <stop offset="0.48" stopColor="#fff" stopOpacity="0.55" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0.82" />
+          </linearGradient>
+          <mask id="brief-pick-mask" maskContentUnits="objectBoundingBox" x="-0.1" y="-0.1" width="1.2" height="1.2">
+            <rect x="-0.05" y="-0.05" width="1.1" height="1.1" fill="url(#brief-pick-grad)" />
+          </mask>
+        </defs>
+      </svg>
+    </>
   )
 }
 
@@ -172,22 +206,27 @@ function Pick({ className, on, label, title, onPick, children }: {
  * pixel on row 1 was the divider's own weight, and the divider has moved out of the row's
  * box into the gap.
  */
-function Row({ q, o, on }: { q: BriefQuestion; o: BriefOption; on: boolean }) {
+export function Row({ name, detail, on, onPick }: {
+  name: Text
+  detail?: Text
+  on: boolean
+  onPick: () => void
+}) {
   const { t } = useT()
   return (
     <Pick
       className="brief-opt flex w-full items-start gap-3 py-[18px] pl-4 pr-6 text-left"
       on={on}
-      label={t(o.name)}
-      onPick={() => answerBrief(q.key, o.id)}
+      label={t(name)}
+      onPick={onPick}
     >
       <span className="flex items-center pt-1.5">
         <Radio on={on} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[15px] font-medium leading-[1.4] text-white">{t(o.name)}</span>
+        <span className="text-[15px] font-medium leading-[1.4] text-white">{t(name)}</span>
         {/* the consequence — what changes on the page if this is picked (29464:34362) */}
-        <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">{o.detail ? t(o.detail) : null}</span>
+        <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">{detail ? t(detail) : null}</span>
       </span>
     </Pick>
   )
@@ -412,8 +451,14 @@ function Body({ q }: { q: BriefQuestion }) {
       )}
 
       {!grid &&
-        options.map((o, i) => (
-          <Row key={o.id} q={q} o={o} on={picked === o.id} />
+        options.map((o) => (
+          <Row
+            key={o.id}
+            name={o.name}
+            detail={o.detail}
+            on={picked === o.id}
+            onPick={() => answerBrief(q.key, o.id)}
+          />
         ))}
 
       <div className={options.length && !grid ? 'flex items-start gap-3 px-4 pb-4 pt-2' : 'px-4 pb-4 pt-2'}>
@@ -477,28 +522,7 @@ export function BriefPanel() {
          full-width children of the shell, so the answers card and the field share edges. */
       className="relative z-20"
     >
-      {/* The pick ring's gradient, defined once for every row (index.css "THE BORDER THAT
-          DRAWS ITSELF") — the house diagonal, .98 → .55 → .82. It is worn as a MASK
-          (`url(#brief-pick-mask)`, luminance = white × the stop alphas) on the ring's `.ink`
-          group, not as the stroke's paint: the strokes are opaque so that overlapping dashes
-          cannot seam, and the alpha the board gives the ring is applied to the flattened result.
-          ⚠️ The mask's rect reaches 5% PAST the group's box: the box is the stroke's centre
-          line, and a rect sized exactly to it clipped the stroke's outer pixel (the 2px ring
-          rendered 1px). The gradient is `userSpaceOnUse` so that, drawn inside a mask whose
-          content units are the box, it still runs −.069 → 1.069 of the BOX, not of the wider
-          rect — the same pixels the stroke used to be painted with. */}
-      <svg className="absolute h-0 w-0" aria-hidden>
-        <defs>
-          <linearGradient id="brief-pick-grad" gradientUnits="userSpaceOnUse" x1="-0.069" y1="0.401" x2="1.069" y2="0.599">
-            <stop offset="0" stopColor="#fff" stopOpacity="0.98" />
-            <stop offset="0.48" stopColor="#fff" stopOpacity="0.55" />
-            <stop offset="1" stopColor="#fff" stopOpacity="0.82" />
-          </linearGradient>
-          <mask id="brief-pick-mask" maskContentUnits="objectBoundingBox" x="-0.1" y="-0.1" width="1.2" height="1.2">
-            <rect x="-0.05" y="-0.05" width="1.1" height="1.1" fill="url(#brief-pick-grad)" />
-          </mask>
-        </defs>
-      </svg>
+      <PickDefs />
       {/* THE SHEET TRAVELS INSIDE A CLIP — index.css ".dock-clip" (designer's screen
           recording, 08.09.2026: "при переходах есть дефекты и глюки визуальные"). The
           sheet rides the piston, so on a morph to a TALLER question it starts the height

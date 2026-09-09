@@ -12,7 +12,8 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, type Message } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, type Message, type Suggest } from '@/state/world'
+import type { Text } from '@/i18n'
 import { useUI } from '@/state/ui'
 import { baselineThread, replyTo } from './thread'
 import {
@@ -20,6 +21,7 @@ import {
   type BriefKey, type BriefAnswers,
 } from './brief'
 import { buildBeats, BUILD_INTRO } from './build'
+import { nextProposal, optionOf, recommended, leadingDone, AUTOPILOT_OFF } from './autopilot'
 
 /*
  * The demo's clock — slowed on 07.09.2026 at the designer's call ("медленнее, ближе к
@@ -123,7 +125,7 @@ function nextId(over: Message[]): number {
   return ++seq
 }
 
-export function sendMessage(raw: string) {
+export function sendMessage(raw: string, reply?: Text) {
   const text = raw.trim()
   if (!text) return
 
@@ -138,7 +140,7 @@ export function sendMessage(raw: string) {
 
   // The fork. Nothing built yet and nothing to build from → ask, don't guess.
   if (fresh && isWeakPrompt(text)) {
-    set({ sent: [...base, mine], chat: 'working', brief: EMPTY_BRIEF }, preset)
+    set({ sent: [...base, mine], chat: 'working', brief: EMPTY_BRIEF, suggest: closed(world.suggest) }, preset)
     // The mirror of the line below: a build needs a canvas, and asking does not.
     // Nothing will be generated for as long as this turn lasts, so the canvas
     // collapses and the chat takes the whole shell — which is where the questions
@@ -157,7 +159,21 @@ export function sendMessage(raw: string) {
     {
       sent: [...base, mine],
       chat: 'working',
-      brief: EMPTY_BRIEF,
+      /* ⚠️ ONLY AN OPEN BRIEF IS OVERRIDDEN — an ANSWERED one is a record, not a panel.
+         This cleared the brief on every send, and the cards that render FROM it rewrote
+         themselves the next time anybody typed: the outline card sitting in the transcript
+         swapped its section names (measured: "Product grid · Cart & checkout" became "What
+         you offer · Enquiry form", the fallback every skipped question falls to) and the
+         summary card would have gone to "Remixer's pick" in every row. That is the same
+         mistake `world.set` was taught to avoid for staged situations — a live send that
+         APPENDS keeps the brief — made again here by hand. Autopilot is what exposed it:
+         accepting a proposal posts a message, so the card rewrote itself mid-flow. */
+      brief: world.brief.status === 'asking' || world.brief.status === 'planning' ? EMPTY_BRIEF : world.brief,
+      /* Typing is the soft way out of a proposal, and the reason its footer spends its
+         second button on turning the MODE off rather than on a "not now": the composer
+         inside the panel already is the "not now". What is dismissed is the question —
+         never `started`, or the next proposal would offer a page twice. */
+      suggest: closed(world.suggest),
       // An empty project starts building on the first message, like the real thing.
       ...(fresh ? { project: 'generating' as const } : null),
     },
@@ -174,7 +190,7 @@ export function sendMessage(raw: string) {
   // gets its canned answer and is done in 3.4s; a first build gets a minute of named
   // work, because that is what the real one costs.
   if (fresh) schedule(startFirstBuild, THINKING_MS)
-  else schedule(() => deliverAnswer(text), THINKING_MS)
+  else schedule(() => deliverAnswer(text, reply), THINKING_MS)
 }
 
 /**
@@ -221,9 +237,11 @@ function openOutline(answers: BriefAnswers) {
   runBuild(answers)
 }
 
-function deliverAnswer(prompt: string) {
+function deliverAnswer(prompt: string, reply?: Text) {
   const now = useWorld.getState()
-  const answer: Message = { id: nextId(now.world.sent), who: 'ai', text: replyTo(prompt) }
+  /* An accepted Autopilot proposal brings its own answer, because only it knows which page
+     the row named; everything else is matched on keywords as before. */
+  const answer: Message = { id: nextId(now.world.sent), who: 'ai', text: reply ?? replyTo(prompt) }
   now.set(
     {
       sent: [...now.world.sent, answer],
@@ -234,6 +252,9 @@ function deliverAnswer(prompt: string) {
     },
     now.preset,
   )
+  /* THE SITE MOVED, SO AUTOPILOT HAS SOMETHING TO LEAD ON FROM. Only here and at the end
+     of the first build — never after a question that changed nothing. */
+  schedule(offerSuggestion, SUGGEST_MS)
 }
 
 /* ------------------------------------------------------------- the brief */
@@ -377,7 +398,10 @@ function acknowledge(answers: BriefAnswers) {
 function finishBuild(answers: BriefAnswers) {
   stopBuildClock()
   const now = useWorld.getState()
-  const done: Message = { id: nextId(now.world.sent), who: 'ai', text: briefDone(answers) }
+  /* Leading changes what this line has to do: the proposal that follows it owns the list of
+     what to do next, so the line stops naming one (see `leadingDone`). */
+  const text = now.world.mode === 'autopilot' ? leadingDone(answers) : briefDone(answers)
+  const done: Message = { id: nextId(now.world.sent), who: 'ai', text }
   now.set(
     {
       sent: [...now.world.sent, done],
@@ -388,6 +412,111 @@ function finishBuild(answers: BriefAnswers) {
       credits: Math.max(0, now.world.credits - COST),
       unpublished: now.world.unpublished + 1,
     },
+    now.preset,
+  )
+  schedule(offerSuggestion, SUGGEST_MS)
+}
+
+/* ------------------------------------------------------------ autopilot */
+
+/**
+ * How long after an answer lands the proposal rises.
+ *
+ * Long enough for the answer to have finished typing (`.stream-word` caps a reply at
+ * ~1.1s): a panel growing out of the composer while the words above it are still
+ * appearing gives the eye two things to follow and it follows neither. The two motions
+ * are sequenced for the same reason the thread's scroll waits out the send spring.
+ */
+const SUGGEST_MS = 1300
+
+/** A proposal dismissed — the question goes, the memory of what was asked for stays. */
+const closed = (s: Suggest): Suggest => ({ ...s, open: false, pick: '' })
+
+/** Whichever language the prototype is being demoed in. */
+const say = (text: Text) => text[useWorld.getState().world.lang]
+
+/**
+ * Dock a proposal, if Autopilot has one to make.
+ *
+ * Every gate here is a reason NOT to lead: the mode is off, there is no site to lead on,
+ * the dock already belongs to the brief or to the plan, or the ladder has run out
+ * (autopilot.ts returns null). Nothing here decides WHAT to propose — that is compiled
+ * from the plan the customer already agreed to.
+ */
+function offerSuggestion() {
+  const now = useWorld.getState()
+  const w = now.world
+  if (w.mode !== 'autopilot' || w.project !== 'built') return
+  if (w.brief.status === 'asking' || w.brief.status === 'planning') return
+  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published)
+  if (!proposal) return
+  now.set({ suggest: { ...w.suggest, open: true, pick: recommended(proposal) } }, now.preset)
+}
+
+/** Choose one of the proposal's answers. Free text arrives with the brief's `other:` prefix. */
+export function pickSuggest(value: string) {
+  const { world, set, preset } = useWorld.getState()
+  set({ suggest: { ...world.suggest, pick: value } }, preset)
+}
+
+/**
+ * Take the proposal up — the one press that acts on it.
+ *
+ * Accepting POSTS THE ROW'S OWN SENTENCE AS THE CUSTOMER'S, and Remixer answers it. The
+ * thread is the record of what was decided, and a decision made in a panel that left no
+ * turn behind would be a decision the transcript cannot account for. It also means an
+ * accepted proposal costs exactly what typing the same thing costs — the credits come off
+ * in `deliverAnswer`, once, wherever the sentence came from.
+ */
+export function acceptSuggest() {
+  const now = useWorld.getState()
+  const w = now.world
+  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published)
+  if (!proposal) return
+
+  // The escape hatch: whatever was typed into "Something else — tell me…" is just a message.
+  if (w.suggest.pick.startsWith(OTHER)) {
+    const text = w.suggest.pick.slice(OTHER.length).trim()
+    if (text) sendMessage(text)
+    return
+  }
+
+  const option = optionOf(proposal, w.suggest.pick)
+  if (!option) return
+
+  if (option.act === 'publish') {
+    now.set({ suggest: closed(w.suggest) }, now.preset)
+    useUI.getState().togglePublish(true)
+    return
+  }
+
+  /* Remembered BEFORE the send, so the proposal that follows this edit already knows this
+     page has been asked for and offers the next one instead. */
+  now.set(
+    {
+      suggest: {
+        ...closed(w.suggest),
+        started: option.page ? [...w.suggest.started, option.page] : w.suggest.started,
+      },
+    },
+    now.preset,
+  )
+  if (option.say) sendMessage(say(option.say), option.reply)
+}
+
+/**
+ * Turn Autopilot off from the panel's footer (designer, 09.09.2026, asking for this button
+ * in place of a "Not now": "может вместо Not now кнопку дать типа отключить Autopilot").
+ *
+ * It is a mode switch, so it says so in the thread and names the control that brings it
+ * back. The person most likely to press it is a beginner who meant "not this suggestion",
+ * and the mode they just left is the one that exists for beginners.
+ */
+export function turnOffAutopilot() {
+  const now = useWorld.getState()
+  const line: Message = { id: nextId(now.world.sent), who: 'ai', text: AUTOPILOT_OFF }
+  now.set(
+    { mode: 'build', sent: [...now.world.sent, line], suggest: closed(now.world.suggest) },
     now.preset,
   )
 }

@@ -24,6 +24,7 @@ import { sendMessage, resumeInterrupted } from './send'
 import { bubbleSend, cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade, popover } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
 import { PlanCard } from './PlanCard'
+import { SuggestPanel } from './SuggestPanel'
 import { BuildProgress } from './BuildProgress'
 import { endDockMotion } from './dock'
 import { PLAN_WAITING } from './plan'
@@ -521,6 +522,10 @@ export function ChatPanel() {
      what to do instead…") and the thread shows the agent holding. */
   const asking = world.brief.status === 'asking'
   const planning = world.brief.status === 'planning'
+  /* Autopilot's proposal shares the dock with those two and never argues with them: the
+     brief and the plan are work the customer is in the middle of, a proposal is Remixer
+     asking for the next piece of work, and there is no moment when both are true. */
+  const suggesting = world.suggest.open && !asking && !planning
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
@@ -744,7 +749,7 @@ export function ChatPanel() {
           * the way its own board (28016:43526) draws it, so the shell is conditional.
           */}
         <div
-          className={`chat-col dock${asking || planning ? ' brief-dock' : ''}`}
+          className={`chat-col dock${asking || planning || suggesting ? ' brief-dock' : ''}`}
           /* The dock's rise, morph and fall are CSS on these classes, started by the sheet
              (dock.ts); once the piston has landed the classes go. */
           onAnimationEnd={endDockMotion}
@@ -772,7 +777,13 @@ export function ChatPanel() {
           * next step — and gates the build: nothing generates until Start Building.
           */}
         <AnimatePresence mode="wait">
-          {asking ? <BriefPanel key="brief" /> : planning ? <PlanCard key="plan" /> : null}
+          {asking ? (
+            <BriefPanel key="brief" />
+          ) : planning ? (
+            <PlanCard key="plan" />
+          ) : suggesting ? (
+            <SuggestPanel key="suggest" />
+          ) : null}
         </AnimatePresence>
         <div ref={composerBox} className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}

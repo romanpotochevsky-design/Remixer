@@ -905,6 +905,124 @@ check('the grip brings it back', (await previewState()) === 'open')
   check('…and does so again from a reopened canvas', (await previewState()) === 'closed')
 }
 
+/* ===================== A2. Autopilot takes the lead once the first page is live */
+/*
+ * The mode switcher has sat in the composer since 08.09.2026 with nothing behind it; this
+ * is the behaviour (designer, 09.09.2026: "это режим когда чат сам присылает форму с
+ * выбором и рекомендацией что делать дальше"). It is checked HERE, at the tail of case A,
+ * because the only honest way to reach the first proposal is the customer's own: a real
+ * brief, a real plan and the real minute this case has just sat through. A staged world
+ * would prove the panel renders and prove nothing about when it arrives.
+ *
+ * ⚠️ The last check here presses "Turn off Autopilot", so cases B–D run in `build` mode —
+ * which is what they ran in before this feature existed, so their expectations are
+ * untouched. That is deliberate: the alternative is proposals docking in the middle of
+ * three other cases' assertions.
+ */
+const suggest = () => p.evaluate(() => {
+  const sec = document.querySelector('section[aria-label="What Remixer suggests next"]')
+  if (!sec) return null
+  const rows = [...sec.querySelectorAll('.brief-opt')]
+  const foot = sec.querySelector('.dock-foot')
+  const f = document.querySelector('.composer-field').getBoundingClientRect()
+  const head = rows.map((r) => r.innerText.split('\n')[0])
+  return {
+    question: sec.querySelector('p').innerText,
+    rows: head,
+    picked: rows.filter((r) => r.getAttribute('aria-pressed') === 'true').map((r) => r.innerText.split('\n')[0]),
+    detail: rows.map((r) => r.innerText.split('\n')[1] ?? ''),
+    buttons: [...foot.querySelectorAll('button')].map((x) => x.innerText.trim()),
+    arrows: foot.querySelectorAll('button[aria-label]').length,
+    shell: !!document.querySelector('.dock.brief-dock'),
+    field: [f.x, f.y, f.width, f.height].map((n) => +n.toFixed(2)).join(','),
+  }
+})
+const modeLabel = () => p.evaluate(() => document.querySelector('.mode-switch, [aria-haspopup="menu"]')?.innerText.trim() ?? null)
+
+await shot('15a-autopilot-proposes')
+const first = await suggest()
+check('Autopilot proposes the next piece of work once the first page is live', !!first)
+check('…as ONE question, not a new brief', first?.question === 'What should I do next?', first?.question)
+/*
+ * COMPILED FROM THE PLAN, not written down: the pages on offer are pages the outline card
+ * one turn above named, and the page that is already live is not among them. A proposal
+ * that could offer a page the plan never promised is the failure this is guarding.
+ */
+check('the pages it offers are the plan’s own, minus the one that is live',
+  first?.rows.join(' · ') === 'Keep working on this page · Start the About page · Start the Services page',
+  first?.rows.join(' · '))
+check('every option says what happens if it is picked',
+  first?.detail.every((d) => d.length > 20), JSON.stringify(first?.detail))
+/* The recommendation IS a pick — same ring a chosen brief answer wears, so the button
+   under it is already true. A panel of empty radios would be a quiz, not guidance. */
+check('it arrives with its recommendation picked, and only that one',
+  first?.picked.length === 1 && first?.picked[0] === 'Keep working on this page',
+  JSON.stringify(first?.picked))
+/* One question has nothing to page through and no "all" to skip. */
+check('no paging arrows and no "Skip all" on a single proposal',
+  first?.arrows === 0 && !first?.buttons.includes('Skip all'), JSON.stringify(first?.buttons))
+check('the footer offers the way out of the MODE, as the designer asked',
+  first?.buttons[0] === 'Turn off Autopilot', JSON.stringify(first?.buttons))
+check('the blue button names what the press does', first?.buttons[1] === 'Keep going', first?.buttons[1])
+check('the proposal and the composer are ONE glass object, like the brief’s panel', first?.shell === true)
+{
+  const body = await text()
+  /* The line above the panel stops listing what to do next, because the panel below it now
+     does that in rows with consequences — the plan card's status line had to learn the same
+     thing on 09.09.2026. What it says instead is the one thing a panel cannot: how much of
+     the plan is still outstanding. */
+  check('the hand-over line does not name options the panel owns',
+    !body.includes('Tell me what to change, or hit Publish'))
+  check('…and says how much of the plan is still waiting',
+    body.includes('Three more pages are waiting in the plan'))
+}
+
+/* Picking a page re-labels the button: the two options do different things and the press
+   has to name the one it will do (the plan card's `Start Building` rule). */
+await p.click('.brief-opt >> nth=1'); await p.waitForTimeout(400)
+{
+  const s = await suggest()
+  check('picking a page moves the pick and re-labels the button',
+    s?.picked.join('') === 'Start the About page' && s?.buttons[1] === 'Start Building',
+    `${s?.picked.join('')} / ${s?.buttons[1]}`)
+  check('the field has not moved a pixel through any of it', s?.field === first?.field,
+    `${first?.field} → ${s?.field}`)
+}
+
+/* Accepting posts the row's own sentence AS THE CUSTOMER'S. The transcript is the record of
+   what was decided; a decision taken in a panel that left no turn behind is one the thread
+   cannot account for. */
+await p.click('.dock-foot button >> nth=1')
+await p.waitForTimeout(700)
+check('accepting takes the panel away and puts the decision in the thread',
+  !(await suggest()) && (await text()).includes('Start the About page.'))
+/* The answer, the 1.3s hand-over, and the next proposal. */
+await p.waitForTimeout(6000); await shot('15b-autopilot-again')
+{
+  const body = await text()
+  const s = await suggest()
+  check('Remixer answers naming the page the row named', body.includes('About is in'))
+  check('the outline card keeps the sections it was built with',
+    body.includes('Product grid') && !body.includes('Enquiry form'),
+    'a send used to clear the answered brief and rewrite the card')
+  check('the next proposal comes after the work, and drops the page already asked for',
+    s?.rows.join(' · ') === 'Keep working on this page · Start the Services page · Start the Contact page',
+    s?.rows.join(' · '))
+  check('the build it started spends a build’s worth of credits', body.includes('1 980'),
+    'toolbar balance after the accepted proposal')
+}
+
+/* Turning the mode off is a mode switch, so it says so and names the way back. */
+await p.click('.dock-foot button >> nth=0'); await p.waitForTimeout(1200); await shot('15c-autopilot-off')
+{
+  const body = await text()
+  check('Turn off Autopilot takes the panel down', !(await suggest()))
+  check('…flips the composer’s mode pill to Build', (await modeLabel())?.includes('Build') === true,
+    await modeLabel())
+  check('…and leaves one line naming the way back', body.includes('Autopilot is off')
+    && body.includes('mode button below'))
+}
+
 /* ========================================= B. the composer's own example builds */
 
 await buildFromHome('Bella’s Bakery')
