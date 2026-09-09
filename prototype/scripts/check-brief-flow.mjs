@@ -103,7 +103,7 @@ const arrival = (sel, wait, ms) => p.evaluate(`((sel, wait, ms) => new Promise((
     if (!card && !seen) return performance.now() - tw < wait ? requestAnimationFrame(tick) : resolve(out)
     if (!seen) { seen = true; t0 = performance.now(); out.push({ appeared: +(t0 - tw).toFixed(0) }) }
     const cs = getComputedStyle(card), body = card.firstElementChild
-    const rows = card.querySelectorAll('dt, li, [class*="rounded-b-"]')
+    const rows = card.querySelectorAll('.card-row').length ? card.querySelectorAll('.card-row') : card.querySelectorAll('dt, li, [class*="rounded-b-"]')
     const r = card.getBoundingClientRect()
     out.push({ t: +(performance.now() - t0).toFixed(1), op: +cs.opacity, scale: m(cs.transform), tf: cs.transform,
       body: m(getComputedStyle(body).transform), row0: rows[0] ? +getComputedStyle(rows[0]).opacity : null,
@@ -329,6 +329,41 @@ const pixelAt = async (x, y) => {
   }
   const raw = (await import('node:zlib')).inflateSync(Buffer.concat(idat))
   return [raw[1], raw[2], raw[3]]
+}
+{
+  /*
+   * …AND ON EVERY PICKABLE (designer, 09.09.2026: "может добавить эффект клика и на эти
+   * кнопки? я про тот эффект клика который мы на кнопках используем (в стиле гугл)"). One
+   * class on the shared `Pick` reaches the answer row, the colour plate, the lettering card
+   * and the satisfaction card's cells at once. It has to clip to the ROW's rounded box, not
+   * a square: `.brief-pick` already carries `--ring-r` as its own radius, and this is the
+   * check that says the bloom found it.
+   */
+  const bb = await (await p.$('.brief-opt')).boundingBox()
+  await p.mouse.move(bb.x + bb.width * 0.3, bb.y + bb.height * 0.5)
+  await p.mouse.down()
+  await p.waitForTimeout(120)
+  const bloom = await p.$eval('.brief-opt', (el) => {
+    const layer = el.querySelector(':scope > .glass-ripples')
+    const rip = layer?.querySelector('.glass-ripple')
+    const b = el.getBoundingClientRect(), r = rip?.getBoundingClientRect()
+    return {
+      radius: getComputedStyle(layer ?? el).borderTopLeftRadius,
+      clipped: layer ? getComputedStyle(layer).overflow : null,
+      from: r ? +((r.left + r.width / 2 - b.left) / b.width).toFixed(2) : null,
+      op: rip ? +getComputedStyle(rip).opacity : 0,
+    }
+  })
+  /* Released off the row: a pointerup on it is a click, and that would answer the question. */
+  /* 500, not 260: the fade out is 200ms but it may not START before MIN_HOLD (180ms after
+     the press), and the press here was only held 120 — so the earliest it can be gone is
+     380ms after the release. 260 caught it mid-fade. */
+  await p.mouse.move(10, 10); await p.mouse.up(); await p.waitForTimeout(500)
+  check('an answer row blooms from the press, clipped to the ring’s own radius',
+    bloom.op > 0 && bloom.clipped === 'hidden' && bloom.radius === '16px'
+      && Math.abs(bloom.from - 0.3) < 0.08, JSON.stringify(bloom))
+  check('…and leaves nothing behind once the pointer is up',
+    (await p.$$('.brief-opt .glass-ripple')).length === 0)
 }
 {
   const before = await rowBoxes()
@@ -811,7 +846,27 @@ check('there is no site anywhere while the page is being written', !(await siteU
 check('the rail offers no site tools while there is no site', (await railTools()) === 0,
   `${await railTools()} up`)
 
+/*
+ * THE THREAD FOLLOWS ITS OWN CONTENT (designer, 09.09.2026: "нужно добавить автоскрол чата
+ * точно так же как у lovable.dev… контент что в чате появляется может быть обрезан").
+ * The outline card grows for a minute; measured before the follower existed, its bottom
+ * finished under the composer and stayed there.
+ */
+const tail = () => p.evaluate(() => {
+  const vp = document.querySelector('aside .scroll-area > div')
+  const turns = [...document.querySelectorAll('aside .arrive-msg')]
+  const last = turns[turns.length - 1]
+  if (!vp || !last) return null
+  return {
+    below: +(last.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom).toFixed(1),
+    fromEnd: Math.round(vp.scrollHeight - vp.scrollTop - vp.clientHeight),
+    top: Math.round(vp.scrollTop),
+  }
+})
+
 await p.waitForTimeout(20000); await shot('12a-mid-build')
+check('the growing card stays inside the panel instead of finishing under the composer',
+  (await tail())?.below < 0, JSON.stringify(await tail()))
 {
   const o = await outline()
   const done = o?.rows.filter((r) => r.state === 'done').length ?? 0
@@ -824,6 +879,12 @@ await p.waitForTimeout(20000); await shot('12a-mid-build')
 
 /* Out to the far side of the hardcoded minute (5 sections + the assembling beat). */
 await p.waitForTimeout(45000); await shot('12-built')
+/* The canvas opening halves the chat's width and re-wraps the whole thread taller. That is
+   the moment a naive follower switches ITSELF off: the re-wrap fires `scroll` with nobody
+   touching anything, and read as a reader's gesture it strands the thread short of its end
+   (measured before the fix: 666px). Only a wheel, a touch or a key may turn it off. */
+check('…and is still at its end after the canvas opens and re-wraps it',
+  (await tail())?.fromEnd === 0, JSON.stringify(await tail()))
 {
   const body = await text()
   check('the canvas opens by itself on the page it is a preview of',
@@ -851,6 +912,23 @@ await p.waitForTimeout(45000); await shot('12-built')
   check('…and the chat header keeps its own two controls there',
     !!(await p.$('aside > header button[aria-label="Version history"]'))
       && !!(await p.$('aside > header button[aria-label="Collapse chat"]')))
+}
+
+{
+  /* …and a reader who scrolls up to re-read something is not yanked back to the bottom by
+     the next thing that arrives. Following is a courtesy, not a leash. */
+  await p.mouse.move(300, 400)
+  await p.mouse.wheel(0, -500)
+  await p.waitForTimeout(500)
+  const parked2 = (await tail())?.top
+  await p.waitForTimeout(2500)
+  check('a reader who scrolls up keeps their place', (await tail())?.top === parked2,
+    `${parked2} → ${(await tail())?.top}`)
+  /* and coming back to the end turns it on again */
+  await p.mouse.wheel(0, 3000)
+  await p.waitForTimeout(600)
+  check('…and coming back to the end picks the following up again', (await tail())?.fromEnd <= 32,
+    JSON.stringify(await tail()))
 }
 
 /* Collapsing is a DRAG, not a button (designer, 07.09.2026, said twice): pulling the
@@ -884,15 +962,47 @@ check('dragging the divider past the canvas minimum collapses it', (await previe
   })
   check('the outline card fills the chat column, whatever its width',
     fits.card === fits.inner && fits.card > 700, JSON.stringify(fits))
-  /* The brief summary is the same object one moment earlier — what was agreed, then what
-     is being built from it — so it is the same material and the same width. */
+  /*
+   * THE SUMMARY NO LONGER MATCHES IT. It has its own board now (29848:28823) and its own
+   * width — 480, the designer's number and the one the board is drawn at (09.09.2026). It
+   * used to be sized off the generation outline's board, which is where "the full width of
+   * the chat column" came from; in the collapsed chat that is 800, and the values floated an
+   * inch from their labels. So the outline still fills the column and the summary caps.
+   */
   const sum = await p.evaluate(() => {
     const dl = document.querySelector('dl')
     const card = dl && dl.parentElement.parentElement
-    return card && Math.round(card.getBoundingClientRect().width)
+    if (!card) return null
+    const cs = getComputedStyle(card)
+    const rows = [...dl.children]
+    const dt = rows[0]?.querySelector('dt')
+    return {
+      w: Math.round(card.getBoundingClientRect().width),
+      h: Math.round(card.getBoundingClientRect().height),
+      max: cs.maxWidth,
+      radius: cs.borderTopLeftRadius,
+      border: `${cs.borderTopWidth} ${cs.borderTopColor}`,
+      fill: cs.backgroundColor,
+      listFill: getComputedStyle(dl).backgroundColor,
+      head: (() => { const p2 = card.querySelector('p'); const c = getComputedStyle(p2)
+        return `${Math.round(p2.getBoundingClientRect().height)}/${c.fontSize}/${c.fontWeight}/${c.paddingLeft}` })(),
+      rows: rows.map((r) => Math.round(r.getBoundingClientRect().height)).join(','),
+      label: dt ? `${Math.round(dt.getBoundingClientRect().width)}/${getComputedStyle(dt).color}` : null,
+    }
   })
-  check('the brief summary is built to match, and matches its width',
-    sum === fits.card, `summary=${sum} outline=${fits.card}`)
+  check('the brief summary caps at the 480 its board is drawn at', sum?.w === 480 && sum?.max === '480px',
+    `${sum?.w} (max ${sum?.max}) in a ${fits.card}px column`)
+  /* 1 + 56 + (12 + 4×36 + 12) + 1. The list's top padding is 11 because Figma's stroke sits
+     INSIDE the geometry and a CSS border adds — the same correction the plan card's fade needed. */
+  check('…and is exactly as tall as the board', sum?.h === 226, `${sum?.h} vs 226`)
+  check('…with the board’s frame: 1px #272728, radius 24, and no fill on either surface',
+    sum?.radius === '24px' && sum?.border === '1px rgb(39, 39, 40)'
+      && sum?.fill === 'rgba(0, 0, 0, 0)' && sum?.listFill === 'rgba(0, 0, 0, 0)',
+    `${sum?.radius} / ${sum?.border} / ${sum?.fill} / ${sum?.listFill}`)
+  check('…a 56px header at 15 medium on the board’s 16 of padding', sum?.head === '56/15px/500/16px', sum?.head)
+  check('…rows of 36 behind a 160px label column at 48% white',
+    sum?.rows === '36,36,36,36' && sum?.label === '160/rgba(255, 255, 255, 0.48)',
+    `${sum?.rows} | ${sum?.label}`)
 }
 check('…and only then does the chat header offer to bring it back',
   !!(await p.$('aside > header button[aria-label="Show preview"]')))

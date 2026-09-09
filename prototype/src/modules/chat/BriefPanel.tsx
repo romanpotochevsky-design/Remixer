@@ -185,9 +185,18 @@ export function Pick({ className, on, label, title, onPick, children }: {
          nothing in others. */
       aria-label={label}
       title={title}
-      /* `brief-pick` carries the ring clocks, the ground the strokes fade from and the
+      /* THE HOUSE CLICK RIDES ON EVERY PICKABLE (designer, 09.09.2026: "может добавить
+         эффект клика и на эти кнопки? я про тот эффект клика который мы на кнопках
+         используем (в стиле гугл)"). `press-bloom` and nothing else — light blooming from
+         the point of the press, no 8% wash: each of these already owns a hover, and it is a
+         drawn ring rather than a fill. One class here reaches all four shapes at once — the
+         answer row, the colour plate, the lettering card and the satisfaction card's cells —
+         because they are all this one button. It clips to `--ring-r`, which `.brief-pick`
+         already sets as its own radius, so the bloom follows the ring and not a square.
+
+         `brief-pick` carries the ring clocks, the ground the strokes fade from and the
          ring's radius; the shape's own class carries its geometry and spacing. */
-      className={`brief-pick relative ${className}`}
+      className={`brief-pick press-bloom relative ${className}`}
     >
       <DrawRing kind="hover" drawKey={hovKey} onDrawn={() => setHovKey(0)} />
       <DrawRing kind="pick" drawKey={press} onDrawn={() => setPress(0)} />

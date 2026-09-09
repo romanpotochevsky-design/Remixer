@@ -39,6 +39,10 @@ const arriveStep = (i: number) => ({ '--i': Math.min(i, 6) } as React.CSSPropert
 
 /** Where a freshly sent message parks: just clear of the 48px top fade. */
 const TOP_INSET = 48
+/** How far off the end still counts as "at the end" — a wheel notch of slack. */
+const END_SLACK = 32
+/** How long after a wheel, a touch or a key a scroll still counts as the reader's. */
+const DRIVE_WINDOW = 250
 
 function UserBubble({
   children,
@@ -197,17 +201,47 @@ function BriefSummary({ animate }: { animate: boolean }) {
         ? t(PLAN_WAITING)
         : t(BRIEF_STATUS)
   /*
-   * SAME MATERIAL AS THE GENERATION OUTLINE, and full width (designer, 07.09.2026:
-   * "вот в макете дизайн для этой формы … и он на всю ширину чата как в макете",
-   * pointing at 29480:48478). The two cards are the same object at two moments of one
-   * turn — what was agreed, then what is being built from it — so they are built from
-   * the same anatomy the board gives that one: a hairline shell, a 56px header carrying
-   * the title, and a darker inset box holding the rows.
+   * THE CARD HAS ITS OWN BOARD — Figma 29848:28823 (designer, 09.09.2026: "сделай этот
+   * компонент перфект пиксель как в макете… и у него максимальная ширина 480px"), and it
+   * re-draws the anatomy the card was borrowing from the generation outline:
    *
-   * ⚠️ NOT `w-fit`. It used to shrink to its content, which made the widest row set the
-   * card's width — the same card came out a different size on every run, and in the
-   * collapsed chat it sat as a small box in an 800px column while every other turn
-   * spanned it.
+   *   outer   1px #272728, radius 24, and NOTHING else — no fill
+   *   header  56 tall, px 16, the title at 15 MEDIUM (it was 16 semibold)
+   *   list    1px #272728 on left, right and top, px 16 / py 12, corners 16 at the top and
+   *           24 at the bottom, where it meets the card's own
+   *   row     36 tall, the label in a fixed 160 column at 48% white, the value 14 REGULAR
+   *
+   * The arithmetic closes on the board's own box: 1 + 56 + (12 + 4×36 + 12) + 1 = 226, which
+   * is the height Figma reports for the node at its drawn width of 480.
+   *
+   * ⚠️ THE LIST'S TOP PADDING IS 11, NOT 12, and that is the arithmetic and not a fudge:
+   * Figma's stroke sits INSIDE the geometry, so the block's 12 is measured from its outer
+   * edge and the stroke stands in the first pixel of it. A CSS border adds instead, so the
+   * card measured 227. 11 + the border is the board's 12, and the total is 226 again — the
+   * same correction the plan card's fade needed when it read `top: 41` for a drawn 42.
+   *
+   * ⚠️ NO FILLS. The card used to be a lighter block over a darker inset — the anatomy the
+   * generation outline's board gives IT — and this board gives neither surface a fill: the
+   * whole card is strokes on the thread's own ground. That is the one thing here that could
+   * not be checked against the board's own pixels (the proxy refuses figma.com's asset URLs,
+   * CLAUDE.md), so it rests on the export, which prints a fill wherever there is one, and on
+   * the height above, which leaves no room for anything else.
+   *
+   * ⚠️ THE LIST IS PULLED OUT A PIXEL so its side strokes land ON the card's, not one pixel
+   * inside them. The board draws left, right and top strokes on a block that spans the card,
+   * and Figma's strokes sit inside the geometry; a plain child of a bordered box would stack
+   * its own edge next to the card's and read as a 2px rail down everything below the header.
+   * Pulled out, every stroke the board draws is present and the card keeps one 1px edge.
+   *
+   * ⚠️ MAX WIDTH 480 REPLACES "the full width of the chat column" (07.09.2026, when the card
+   * was drawn on the generation outline's board and had no width of its own). His screenshot
+   * shows why: in the collapsed chat the column is 800, and the values floated an inch away
+   * from their labels. The cap is his number and it is the width the board draws.
+   *
+   * ⚠️ THE LABELS STAY OURS — Goal / Pages / Colours / Lettering. The board's "Website type /
+   * Content sections / Color palette / Typography" are Lovable's questions, and ours were
+   * chosen against them on 07.09 for reasons that have not changed. This board re-draws the
+   * card, not the brief.
    */
   /* The arrival — motion.ts `cardIn`: the glass rises out of the dock and inflates, the
      surface inside focuses onto it a beat later, the rows follow one by one, and the rim
@@ -220,25 +254,22 @@ function BriefSummary({ animate }: { animate: boolean }) {
       variants={glass}
       initial={animate ? 'initial' : false}
       animate="animate"
-      className={`w-full origin-bottom overflow-hidden rounded-[21px] border border-[var(--gray-800)]${animate ? ' card-arrive' : ''}`}
+      className={`w-full max-w-[480px] origin-bottom overflow-hidden rounded-[24px] border border-[#272728]${animate ? ' card-arrive' : ''}`}
     >
-      <motion.div variants={body} className="origin-bottom rounded-[20px] border border-[var(--gray-800)] bg-[#ffffff0a] px-px pb-px">
-        <p className={`flex h-[56px] items-center pl-[14px] pr-2 text-[16px] font-semibold leading-[1.2] ${settling ? 'thinking' : 'text-white'}`}>
+      <motion.div variants={body} className="origin-bottom">
+        <p className={`flex h-[56px] items-center px-4 text-[15px] font-medium leading-[1.2] ${settling ? 'thinking' : 'text-white'}`}>
           {title}
         </p>
-        <dl
-          className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-6 gap-y-[10px] rounded-[18px] border border-[var(--gray-800)] px-4 py-4 text-[14px] leading-[1.4]"
-          style={{ background: 'var(--gray-950)' }}
-        >
+        <dl className="-mx-px w-[calc(100%+2px)] rounded-b-[24px] rounded-t-[16px] border-l border-r border-t border-[#272728] px-4 pb-3 pt-[11px] text-[14px] leading-[1.4]">
           {BRIEF_QUESTIONS.map((q, i) => {
             const a = answerText(q, world.brief.answers[q.key], lang)
             /* `display: contents` has no box to move, so the two cells of a row carry the
                row's motion themselves, on the same clock (`custom` is the row index) */
             return (
-              <div key={q.key} className="contents">
-                <motion.dt variants={row} custom={i} className="text-[#ffffff7a]">{t(q.label)}</motion.dt>
-                <motion.dd variants={row} custom={i} className={a.muted ? 'italic text-[#ffffff7a]' : 'font-medium text-white'}>{a.text}</motion.dd>
-              </div>
+              <motion.div key={q.key} variants={row} custom={i} className="card-row flex h-9 items-center">
+                <dt className="w-40 flex-none text-[#ffffff7a]">{t(q.label)}</dt>
+                <dd className={a.muted ? 'italic text-[#ffffff7a]' : 'text-white'}>{a.text}</dd>
+              </motion.div>
             )
           })}
         </dl>
@@ -504,6 +535,12 @@ export function ChatPanel() {
   const spacer = useRef<HTMLDivElement>(null)
   const list = useRef<HTMLDivElement>(null)
   const parked = useRef<number | null>(null)
+  /* The park owns the scroll for the length of its choreography; the follower below must
+     not race it to the same pixels. */
+  const parking = useRef(false)
+  /* Is the reader at the end of the thread? Set from the scroller itself, because only it
+     knows whether the last move was the follower's or a hand on the wheel. */
+  const atEnd = useRef(true)
   /*
    * Which messages have already been on screen. Animation is per message, not a
    * global "have we mounted yet" flag: with a flag, every send re-rendered the
@@ -590,6 +627,7 @@ export function ChatPanel() {
     // One frame later: the bubble is in the DOM and laid out, so the numbers
     // below are the ones the user will actually see.
     let park = 0
+    let done = 0
     const raf = requestAnimationFrame(() => {
       // Measure WITHOUT touching the spacer — subtract it instead of collapsing
       // it. Collapsing shortened the scrollable range mid-measurement, so the
@@ -610,8 +648,12 @@ export function ChatPanel() {
        * the spring's own length — cut it shorter and the scroll starts while the
        * bubble is still growing, which is what hid it in the first place.
        */
+      parking.current = true
       park = window.setTimeout(() => {
         vp.scrollTo({ top: Math.max(0, an.offsetTop - TOP_INSET), behavior: 'smooth' })
+        /* Hand the scroll back once the smooth run is over, so the follower above takes it
+           from where the park left it rather than fighting it there. */
+        done = window.setTimeout(() => { parking.current = false; atEnd.current = true }, 700)
       }, 620)
     })
     /* Cancel the rAF too, not only the timer. In a hidden tab rAF callbacks
@@ -619,8 +661,95 @@ export function ChatPanel() {
        the cleanup used to run with `park` still 0, leaving the frozen callback
        to fire on return and scroll the thread against layout that no longer
        exists. */
-    return () => { cancelAnimationFrame(raf); window.clearTimeout(park) }
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(park); window.clearTimeout(done); parking.current = false }
   }, [thread])
+
+  /*
+   * THE THREAD FOLLOWS ITS OWN CONTENT — the autoscroll (designer, 09.09.2026: "нужно
+   * добавить автоскрол чата точно так же как у lovable.dev, потому что сейчас новые
+   * сообщения и контент что в чате появляется может быть обрезан и нужно вручную скролить").
+   *
+   * ⚠️ IT IS NOT "STICK TO THE BOTTOM", and the difference is the whole design. The send
+   * above parks your message at the top of the view and RESERVES the rest of the panel as
+   * empty room for the answer (the spacer). A scroller that simply stayed at the bottom
+   * would scroll to the end of that reserved emptiness — pushing your own message off the
+   * top by the height of every word as it arrived, which is exactly what the park exists to
+   * prevent, and leaving a screenful of nothing under the answer.
+   *
+   * So the room GIVES WAY instead. Whenever the content below the parked message changes
+   * height, the reserve is recomputed as what is left of the panel — the answer grows down
+   * into it, the spacer shrinks by the same amount, the total does not move and neither does
+   * anything on screen. Only when the reserve is spent (`want === 0`) is the content taller
+   * than the room it was given, and only then does the thread follow its own end. That is
+   * the point at which the parked message scrolling away is correct rather than a bug, and
+   * it is the case the designer hit: a generation card that grows for a minute, and a plan
+   * that arrives taller than the panel, both used to finish underneath the composer.
+   *
+   * ⚠️ A HAND ON THE WHEEL WINS. `atEnd` is false the moment the reader scrolls up to look
+   * at something, and the follower does nothing until they come back to the end. Yanking
+   * somebody back to the bottom while they are reading is worse than a card cut off.
+   *
+   * Cost: the observer fires on layout changes, not per frame, and it writes only when the
+   * number actually changes — so it cannot loop against its own write (the spacer it sets is
+   * inside the box it watches, and the second pass computes the same value and stops).
+   */
+  useEffect(() => {
+    const vp = viewport.current
+    const sp = spacer.current
+    const ls = list.current
+    if (!vp || !sp || !ls) return
+
+    /*
+     * ⚠️ ONLY THE READER MAY TURN THE FOLLOWING OFF, and a scroll event is not proof that
+     * the reader did anything. Re-wrapping the thread into a narrower column — which is what
+     * the canvas opening does the moment the first page lands — grows the content under a
+     * fixed `scrollTop` and the browser fires `scroll` all the same. Read naively, that is
+     * indistinguishable from a hand on the wheel, and the first build measured it exactly
+     * so: the follower switched itself off at 60s and the thread sat 666px short of its own
+     * end for the rest of the session.
+     *
+     * So a scroll only counts while the reader is actually driving: a wheel, a touch or a
+     * key opens a window, and each scroll inside it keeps the window open (momentum is still
+     * the reader). Anything outside it — our own write, a re-wrap, a clamp — has no opinion
+     * about where they want to be.
+     */
+    let driving = 0
+    const mark = () => { driving = performance.now() }
+    const onScroll = () => {
+      if (performance.now() - driving > DRIVE_WINDOW) return
+      driving = performance.now()
+      atEnd.current = vp.scrollHeight - vp.scrollTop - vp.clientHeight <= END_SLACK
+    }
+    vp.addEventListener('scroll', onScroll, { passive: true })
+    vp.addEventListener('wheel', mark, { passive: true })
+    vp.addEventListener('touchstart', mark, { passive: true })
+    vp.addEventListener('keydown', mark)
+
+    const follow = () => {
+      const an = anchor.current
+      if (parking.current || !an) return
+      /* Same measurement the park makes, and for the same reason it subtracts the spacer
+         rather than collapsing it: a collapsed spacer shortens the range mid-read and the
+         browser clamps `scrollTop` under us. */
+      const below = ls.offsetTop + ls.offsetHeight - sp.offsetHeight - an.offsetTop
+      const want = Math.max(0, vp.clientHeight - TOP_INSET - below)
+      if (Math.abs(want - sp.offsetHeight) >= 1) sp.style.height = `${want}px`
+      if (want === 0 && atEnd.current) { vp.scrollTop = vp.scrollHeight; atEnd.current = true }
+    }
+
+    /* Both boxes: the content grows, and the viewport shrinks under it when the dock puts
+       up a panel — either one can leave the newest thing off screen. */
+    const ro = new ResizeObserver(follow)
+    ro.observe(ls)
+    ro.observe(vp)
+    return () => {
+      ro.disconnect()
+      vp.removeEventListener('scroll', onScroll)
+      vp.removeEventListener('wheel', mark)
+      vp.removeEventListener('touchstart', mark)
+      vp.removeEventListener('keydown', mark)
+    }
+  }, [])
 
   const composerBox = useRef<HTMLDivElement>(null)
 
