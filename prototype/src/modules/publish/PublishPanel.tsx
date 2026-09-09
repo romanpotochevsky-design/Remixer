@@ -115,15 +115,26 @@ export function PublishPanel() {
           initial="initial"
           animate="animate"
           exit="exit"
-          /* Figma pins it at x1961 y48 on the 2560 frame: 51px off the right edge
-             (5px over the rail), 48px down (4px over the topbar). FIXED, not
-             absolute: mounted inside <main>, "right" used to resolve against the
-             centre column, so the panel drifted with the chat width.
-             ⚠️ 480 WIDE, not the old 548: every visible frame on 29697:36970 is laid
-             out at 480 (card 468, field 436), and the banner's copy breaks into the two
-             lines the board draws only in the 324px text column that width gives. The
-             548 frames are still in the file, switched off. */
-          className="fixed right-[51px] top-12 z-40 w-[480px] origin-top-right rounded-[20px] bg-[var(--gray-850)]"
+          /*
+           * WHERE IT SITS — the SHELL board 29697:54553, which is the one that shows the
+           * panel in its window (designer, 09.09.2026: "сделай расположение этого открытого
+           * окна Publish как в макете"). `Frame 22` is at x=2025 y=8 in the 2560×1166 frame:
+           *   top    8 — it rides at the TOP of the window and COVERS the right end of the
+           *          topbar, the credits pill and the Publish button that opened it. Not
+           *          tucked under the 52px bar, which is where the panel's own board
+           *          (29697:36970) left it because that board has no window around it.
+           *   right  55 — the rail is 2504…2560, so the panel's right edge (2505) lands one
+           *          pixel over its inner edge. Shipped as drawn; a pixel under an opaque
+           *          rail is invisible either way, and 55 is what the board measures.
+           * FIXED, not absolute: mounted inside <main>, so an absolute "right" would resolve
+           * against the centre column and the panel would drift with the chat's width.
+           *
+           * ⚠️ 480 WIDE, not the old 548: every visible frame on 29697:36970 is laid
+           * out at 480 (card 468, field 436), and the banner's copy breaks into the two
+           * lines the board draws only in the 324px text column that width gives. The
+           * 548 frames are still in the file, switched off.
+           */
+          className="fixed right-[55px] top-2 z-40 w-[480px] origin-top-right rounded-[20px] bg-[var(--gray-850)]"
           /* The rim is an INSET SHADOW, not a border, here and on the card, the banner and
              the URL field inside: Figma's 1px stroke sits inside the geometry and does not
              shrink a frame's children, while a CSS border does — four nested borders had

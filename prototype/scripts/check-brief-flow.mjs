@@ -1533,6 +1533,24 @@ check('…and the typed prompt is built as given', await cardUp())
   await openPublish('p=built&u=1&v=false&a=trial&t=22&c=640')
   await shot('21-publish-not-published')
   check('an unpublished site’s panel is titled by its status', (await title()) === 'Not published', await title())
+  /*
+   * WHERE IT SITS — shell board 29697:54553 (designer, 09.09.2026: "сделай расположение
+   * этого открытого окна Publish как в макете"). `Frame 22` is x=2025 y=8 in a 2560 frame,
+   * so the panel rides at the TOP of the window, over the right end of the topbar, with its
+   * right edge one pixel inside the 56px rail. Measured from the right and the top, so the
+   * assertion holds at any window width.
+   */
+  {
+    const pos = await p.evaluate(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      const r = d.getBoundingClientRect()
+      const bar = document.querySelector('header').getBoundingClientRect()
+      return { top: Math.round(r.top), fromRight: Math.round(innerWidth - r.right), overTopbar: r.top < bar.bottom }
+    })
+    check('the panel sits where the shell board puts it — 8 down, 55 in from the right',
+      pos.top === 8 && pos.fromRight === 55, JSON.stringify(pos))
+    check('…which means it rides OVER the topbar, not tucked under it', pos.overTopbar)
+  }
   check('…and carries the nudge banner', !!(await hint()))
   /* the board's box: 480 panel, 468 card, 452 banner at 120 tall, ✕ inset 8 from the
      banner's top-right corner, copy held to a 324px column that breaks in two lines.
