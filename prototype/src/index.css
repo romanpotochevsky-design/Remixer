@@ -953,7 +953,26 @@
   .liquid-glass--pill::before {
     background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
   }
-  .liquid-glass--dim {
+  /*
+ * THE BUILDER COMPOSER'S GLASS CIRCLES — the "+" and the mic beside the mode pill, from
+ * the designer's own Figma inspector on the "+" (09.09.2026: "у кнопок этих в стиле Apple
+ * liquid glass вот такие параметры, у тебя в вёрстке они не такие"):
+ *
+ *   32×32 · background rgba(9, 9, 11, 0.64) · backdrop-filter blur(16px) · radius 999
+ *   stroke: LINEAR, top-left → bottom-right, stops 24% → 4% (at 50%) → 20% white
+ *
+ * The box, the fill, the blur and the radius were already right; the RIM was not. Bare
+ * `.liquid-glass` carries the shell's own rim (150°, 20 → 9 → 7 → 16), which is both dimmer
+ * and on a different axis — that is what he was looking at.
+ *
+ * ⚠️ Home's circles keep `.liquid-glass--control` (24 → 4 → 24 off their own board, 26.08).
+ * If the design system really has ONE rim for glass circles, these two classes collapse
+ * into one — his call, not a silent edit.
+ */
+.liquid-glass--composer::before {
+  background: linear-gradient(to bottom right, #ffffff3d, #ffffff0a 50%, #ffffff33);
+}
+.liquid-glass--dim {
     background: #09090b7a; /* Black/500 */
   }
   .liquid-glass--dim::before {

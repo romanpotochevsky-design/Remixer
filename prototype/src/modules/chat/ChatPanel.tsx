@@ -810,7 +810,10 @@ export function ChatPanel() {
           <div className="flex items-center justify-between pl-2">
             <button
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
-              className="liquid-glass grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+              /* the designer's own inspector on this button (09.09.2026): 32×32, Black/700
+                 under blur 16, radius 999, and a rim of 24 → 4 → 20 % white top-left to
+                 bottom-right — index.css "THE BUILDER COMPOSER'S GLASS CIRCLES" */
+              className="liquid-glass liquid-glass--composer grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
             >
               <IconPlus size={13} />
             </button>
@@ -819,7 +822,7 @@ export function ChatPanel() {
               {world.project === 'built' && <ModeSwitch />}
               <button
                 aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-                className="liquid-glass grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+                className="liquid-glass liquid-glass--composer grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
               >
                 <IconMic size={15} />
               </button>

@@ -1017,6 +1017,27 @@ check('…and the typed prompt is built as given', await cardUp())
   const label = () => p.$eval('button[aria-label="Chat mode"]', (el) => el.textContent.trim())
 
   await enter('p=built&u=1&a=trial&t=22&c=640')
+  /*
+   * THE GLASS CIRCLES BESIDE IT — the designer pasted this button's own Figma CSS
+   * (09.09.2026: "у кнопок этих в стиле Apple liquid glass вот такие параметры, у тебя в
+   * вёрстке они не такие"): 32×32, rgba(9,9,11,.64) under blur 16, radius 999, and a stroke
+   * that is a LINEAR gradient top-left → bottom-right with stops 24 % → 4 % → 20 % white.
+   * The box, fill, blur and radius were already right; the rim was the shell's own
+   * (150°, 20 → 9 → 7 → 16) and read dimmer on the wrong axis.
+   */
+  {
+    const circles = await p.evaluate(() => ['button[aria-label="Attach"]', 'button[aria-label="Voice input"]'].map((sel) => {
+      const el = document.querySelector(sel), cs = getComputedStyle(el), bs = getComputedStyle(el, '::before')
+      const b = el.getBoundingClientRect()
+      return { box: `${b.width}×${b.height}`, fill: cs.backgroundColor, blur: cs.backdropFilter, radius: cs.borderRadius, rim: bs.backgroundImage, pad: bs.padding }
+    }))
+    check('the composer’s glass circles are 32 × 32 in Black/700 under blur 16, fully round',
+      circles.every((c) => c.box === '32×32' && c.fill === 'rgba(9, 9, 11, 0.64)' && c.blur === 'blur(16px)' && c.radius === '9999px'),
+      JSON.stringify(circles[0]))
+    check('…and their 1px rim is the board’s 24 → 4 → 20 % white, top-left to bottom-right',
+      circles.every((c) => c.pad === '1px' && c.rim === 'linear-gradient(to right bottom, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.2))'),
+      circles[0].rim)
+  }
   check('the composer carries the mode switcher once there is a site', !!(await pill()))
   check('…and it starts on Autopilot', (await label()) === 'Autopilot', await label())
   /* the pill, part by part — everything except the label's own run of glyphs */
