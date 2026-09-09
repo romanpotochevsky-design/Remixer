@@ -9,7 +9,7 @@
  * the chat narrows back to its split width and the plan fills the rest.
  *
  * The bar carries what the screenshots carry: ✕ on the left, the title in the middle, and
- * `Approve` on the right — so the decision can be made from here without scrolling back to
+ * `Start Building` on the right — so the decision can be made here without scrolling back to
  * the card. Same frame, radius and shadow as the domains surface, because they are
  * siblings.
  *
@@ -24,7 +24,7 @@ import { useT } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { IconClose } from '@/ui/icons'
 import { SPRING_SOFT, EXIT } from '@/ui/motion'
-import { buildPlan, PLAN_LABEL } from './plan'
+import { buildPlan, PLAN_LABEL, PLAN_START } from './plan'
 import { approvePlan, closePlanReview } from './send'
 
 const surfaceIn = {
@@ -50,7 +50,7 @@ export function PlanSurface() {
         boxShadow: '0px 8px 8px rgba(0,0,0,0.12), 0px 56px 72px rgba(0,0,0,0.12)',
       }}
     >
-      {/* the bar: close · title · Approve — the same 48px height the domains surface uses */}
+      {/* the bar: close · title · Start Building — the same 48px the domains surface uses */}
       <div className="grid h-12 flex-none grid-cols-[1fr_auto_1fr] items-center px-2">
         <div>
           <button
@@ -67,7 +67,7 @@ export function PlanSurface() {
             onClick={approvePlan}
             className="h-8 rounded-[8px] bg-[var(--action)] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
           >
-            {t({ en: 'Approve', uk: 'Підтвердити' })}
+            {t(PLAN_START)}
           </button>
         </div>
       </div>

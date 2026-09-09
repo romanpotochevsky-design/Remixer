@@ -183,7 +183,7 @@ function AiMessage({ text, actions, animate, thought }: { text: string; actions?
 function BriefSummary({ animate }: { animate: boolean }) {
   const { world } = useWorld()
   const { t, lang } = useT()
-  /* The shimmer says "Remixer is working". While the plan waits for Approve it is NOT
+  /* The shimmer says "Remixer is working". While the plan waits to be started it is NOT
      working — the turn is the customer's — so the title goes still and says so. */
   const waiting = world.brief.status === 'planning' && world.chat !== 'working'
   const settling = world.chat === 'working' && world.project !== 'built'
@@ -365,7 +365,19 @@ function ModeSwitch() {
           * below the caps, and the gradient below is clipped to the same box the board
           * paints it in.
           */}
-        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] text-[13px] font-medium leading-[1.2]">
+        {/*
+          * ⚠️ AND ONE PIXEL DOWN FROM THERE, on the designer's eye (09.09.2026: "текст в
+          * кнопке явно выше визуально, не отцентрирован по высоте"). The board centres the
+          * CAP BAND — cap centre on the pill's centre line, which is what the geometry
+          * measures and what shipped — but a lowercase word read against a pill's rounded
+          * shape looks high there, because the eye weighs the x-height mass and not the cap.
+          * Filmed as a ladder (up 1 · up .5 · as shipped · down .5 · down 1 · down 1.5,
+          * scratchpad/mode/ladder-sheet.png) and 1px down is the frame that reads centred.
+          * It is a deliberate optical correction, not a geometry fix: everything else about
+          * the label still matches the board to a hundredth, so this is the one number to
+          * turn if he wants it further either way.
+          */}
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] translate-y-px text-[13px] font-medium leading-[1.2]">
           {/*
             * ⚠️ THE INK RIDES AN INNER SPAN, AND THE TRIM STAYS ON THE OUTER ONE. A
             * background NEVER paints outside its element's border box, and `background-clip:
@@ -437,7 +449,11 @@ function ModeSwitch() {
                   role="menuitemradio"
                   aria-checked={m.id === world.mode}
                   onClick={() => { set({ mode: m.id }); setOpen(false) }}
-                  className="group flex h-[52px] w-full items-center text-left"
+                  /* `press-bloom`, not `glass-interactive`: the row's hover plate is the
+                     board's own `Neutral Alpha/50` (above), so it takes the house bloom alone
+                     — the designer's order for these rows, 09.09.2026 ("на кнопки в этом меню
+                     тоже эффект клика добавь такой же"). */
+                  className="press-bloom group flex h-[52px] w-full items-center text-left"
                 >
                   {/*
                     * 29816:18945 — the state layer is `flex-1` in the 52px row, so THE
@@ -753,7 +769,7 @@ export function ChatPanel() {
           * collar before the plan rises out of it. Overlapping them put both in the dock
           * at once for the length of an exit, and the shell's top edge jumped by a card's
           * height. The plan takes the questions' place in the same shell — same object,
-          * next step — and gates the build: nothing generates until Approve.
+          * next step — and gates the build: nothing generates until Start Building.
           */}
         <AnimatePresence mode="wait">
           {asking ? <BriefPanel key="brief" /> : planning ? <PlanCard key="plan" /> : null}

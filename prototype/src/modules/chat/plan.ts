@@ -4,7 +4,7 @@
  * THIS IS WHERE REMIXER PARTS WAYS WITH LOVABLE (designer, 07.09.2026). Lovable's brief
  * ends at "Got it — …" and the build starts on its own. Ours ends with a PLAN the customer
  * approves: the four answers are compiled into a document, shown in the dock with `Review`
- * and `Approve`, and nothing is generated until Approve is pressed. Lovable does have this
+ * and `Start Building`, and nothing is generated until that button is pressed. Lovable does have this
  * shape — it is what their Plan mode does when you switch the composer from Build to Plan
  * (the screenshots the designer sent) — but they do not put it on the first generation,
  * which is exactly where it is worth the most: the customer arrived with "website", was
@@ -222,12 +222,23 @@ export function buildPlan(a: BriefAnswers): Plan {
 }
 
 /** The dock card's label, and the plan surface's bar title. */
-export const PLAN_LABEL: Text = { en: 'Plan', uk: 'План' }
+/* The card's own title — the board's words (29816:21550), not ours: this is the plan for a
+   build, and the header says so. The full-canvas review surface shows the same label in its
+   bar; one name for one document. */
+export const PLAN_LABEL: Text = { en: 'Build Plan', uk: 'План збірки' }
 
-/** What the thread says once the plan is on screen and waiting. */
+/** The action that ends this step — the board's own words (29816:21584). One verb for one
+ *  action, so the card and the full-canvas review surface say the same thing. */
+export const PLAN_START: Text = { en: 'Start Building', uk: 'Почати збірку' }
+
+/** What the thread says once the plan is on screen and waiting.
+ *  ⚠️ It must NOT name the button — it used to say "approve it and I’ll build", and the
+ *  board (29816:21584) renamed that button to `Start Building`. A status line that names a
+ *  control by a label the control no longer wears is the kind of small lie a reader trips
+ *  over; it points at the verb the button actually carries instead. */
 export const PLAN_WAITING: Text = {
-  en: 'Plan ready — approve it and I’ll build',
-  uk: 'План готовий — підтвердьте, і я зберу',
+  en: 'Plan ready — start the build when it looks right',
+  uk: 'План готовий — почніть збірку, коли все влаштує',
 }
 
 /** The line that lands in the thread when the plan is approved. */

@@ -37,7 +37,7 @@ const THINKING_MS = 3400
 const CLARIFY_MS = 5200
 /** Summary card → the plan appearing. Remixer is "writing" it in this window. */
 const PLAN_MS = 2400
-/** Approve → "Got it — …". */
+/** Start Building → "Got it — …". */
 const ACK_MS = 2000
 /** "Got it" → the outline card appearing, so the two arrivals read as two beats. */
 const CARD_MS = 900
@@ -202,7 +202,7 @@ function startFirstBuild() {
 /**
  * The outline card arrives and the clock starts.
  *
- * Both entry points land here — the brief's `Approve` and the strong-prompt path — so
+ * Both entry points land here — the brief's `Start Building` and the strong-prompt path — so
  * the generation has exactly one beginning however the customer got to it.
  */
 function openOutline(answers: BriefAnswers) {
@@ -337,7 +337,7 @@ export function closePlanReview() {
 }
 
 /**
- * `Approve` — the one press that spends a build. From the dock card or from the plan
+ * `Start Building` — the one press that spends a build. From the dock card or from the plan
  * surface; both land here, and the surface closes itself on the way through so the canvas
  * is showing the site by the time the glow starts.
  */

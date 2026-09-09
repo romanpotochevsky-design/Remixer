@@ -22,7 +22,7 @@
  *      COLLAPSED and the chat centred at 800, Remixer asks for direction, the four questions
  *      dock above the composer, the answers survive paging, Submit compiles the summary
  *      card — and then the PLAN, which is Remixer's own step: nothing generates until
- *      Approve. Review moves it into the canvas at full size and ✕ brings it back. Then
+ *      Start Building. Review moves it into the canvas at full size and ✕ brings it back. Then
  *      the GENERATION: one hardcoded minute with the outline card naming every section
  *      of the home page, one in hand at a time, and NO CANVAS AT ALL until that page is
  *      finished — then the canvas opens on it. Then the three ways to work the divider.
@@ -663,10 +663,92 @@ await shot('08-summary')
 await p.waitForTimeout(2600); await shot('09-plan-card')
 check('the plan is docked where the questions were', await planUp())
 {
+  /*
+   * THE PLAN CARD, PIXEL BY PIXEL — Figma 29816:21533 (designer, 09.09.2026: "изучи макет
+   * максимально детально… сделай перфект пиксель как в макете"). Everything here is a
+   * number read off the board, so a restyle that drifts fails loudly rather than quietly.
+   */
+  /* ⚠️ PARK THE POINTER FIRST. Submit was clicked where the plan card's blue button now
+     is, so the button sat hovered and read `--action-hover` instead of `--action` — a probe
+     bug that looked exactly like a wrong token. */
+  await p.mouse.move(8, 8); await p.waitForTimeout(220)
+  const g = await p.evaluate(() => {
+    const px = (v) => Math.round(parseFloat(v) * 100) / 100
+    const card = document.querySelector('section[aria-label="Plan, waiting for your approval"]')
+    const sheet = card.querySelector('.dock-sheet')
+    const head = sheet.children[0]
+    const title = head.querySelector('p')
+    const block = sheet.children[1]
+    const inner = block.children[0]
+    const fade = block.children[1]
+    const foot = card.querySelector('footer.dock-foot')
+    const [review, start] = [...foot.querySelectorAll('button')]
+    const cs = (el) => getComputedStyle(el)
+    const box = (el) => { const r = el.getBoundingClientRect(); return [r.width, r.height].map((n) => Math.round(n * 100) / 100) }
+    const bs = cs(block), is = cs(inner), fs = cs(fade), ft = cs(foot)
+    return {
+      head: box(head)[1], headPad: [px(cs(head).paddingLeft), px(cs(head).paddingRight)],
+      titleSize: px(cs(title).fontSize), titleWeight: cs(title).fontWeight,
+      titleTrim: cs(title).textBoxTrim || cs(title).webkitTextBoxTrim || '',
+      titleY: Math.round((title.getBoundingClientRect().top - head.getBoundingClientRect().top) * 100) / 100,
+      blockH: box(block)[1], blockR: px(bs.borderTopLeftRadius), blockBg: bs.backgroundColor,
+      blockRim: [bs.borderTopWidth, bs.borderTopColor].join(' '),
+      pad: [px(is.paddingTop), px(is.paddingRight), px(is.paddingBottom), px(is.paddingLeft)],
+      gapOuter: px(is.rowGap), gapInner: px(cs(inner.children[0]).rowGap),
+      lead: [...inner.querySelectorAll('p')].slice(0, 2).map((el) => [px(cs(el).fontSize), cs(el).fontWeight, cs(el).color, px(cs(el).lineHeight)]),
+      fadeTop: Math.round((fade.getBoundingClientRect().top - block.getBoundingClientRect().top) * 100) / 100,
+      fadeH: box(fade)[1], fadeInk: fs.backgroundImage, fadeR: px(fs.borderBottomLeftRadius),
+      foot: [px(ft.paddingTop), px(ft.paddingRight), px(ft.paddingBottom), px(ft.paddingLeft)],
+      review: { box: box(review), r: px(cs(review).borderTopLeftRadius), bg: cs(review).backgroundColor,
+        size: px(cs(review).fontSize), weight: cs(review).fontWeight, bloom: review.classList.contains('press-bloom'), label: review.innerText },
+      start: { box: box(start), r: px(cs(start).borderTopLeftRadius), bg: cs(start).backgroundColor,
+        size: px(cs(start).fontSize), weight: cs(start).fontWeight, bloom: start.classList.contains('press-bloom'), label: start.innerText },
+      /* the one invariant that outranks the board: the field never moves (CLAUDE.md) */
+      sameWidth: Math.abs(box(block)[0] - box(document.querySelector('.composer-field'))[0]) < 0.6,
+    }
+  })
+  check('the plan card\u2019s header is the board\u2019s 56 with 16 either side',
+    g.head === 56 && g.headPad.join(',') === '16,16', `${g.head} / ${g.headPad}`)
+  check('\u2026its title is 18 semibold, trimmed to the cap band, a pixel below plain centring',
+    g.titleSize === 18 && g.titleWeight === '600' && g.titleTrim.includes('trim-both') &&
+      g.titleY > 22 && g.titleY < 23.6,
+    `${g.titleSize}/${g.titleWeight} ${g.titleTrim} y=${g.titleY}`)
+  check('\u2026the document block is 194 at radius 16, Black/600 under a 1px NA/100 rim',
+    g.blockH === 194 && g.blockR === 16 && g.blockBg === 'rgba(9, 9, 11, 0.56)' &&
+      g.blockRim === '1px rgba(255, 255, 255, 0.08)',
+    `${g.blockH} r${g.blockR} ${g.blockBg} / ${g.blockRim}`)
+  check('\u2026padded 18 / 24 / 18 / 16, with 16 between the blocks and 10 inside each',
+    g.pad.join(',') === '18,24,18,16' && g.gapOuter === 16 && g.gapInner === 10,
+    `${g.pad} gaps ${g.gapOuter}/${g.gapInner}`)
+  check('\u2026a 15 medium white line over a 14 regular one at 64% white, both at leading 1.4',
+    JSON.stringify(g.lead) === JSON.stringify([[15, '500', 'rgb(255, 255, 255)', 21], [14, '400', 'rgba(255, 255, 255, 0.64)', 19.6]]),
+    JSON.stringify(g.lead))
+  check('\u2026and the tail dissolves over the last 152px, from y=42, into the card\u2019s own colour',
+    g.fadeTop === 42 && g.fadeH === 152 && g.fadeR === 16 &&
+      /rgba\(16, 16, 18, 0\)/.test(g.fadeInk) && /rgb\(16, 16, 18\)/.test(g.fadeInk),
+    `top ${g.fadeTop} h ${g.fadeH} r${g.fadeR} ${g.fadeInk}`)
+  check('the plan card is one width with the composer, as the questions are', g.sameWidth)
+  check('the footer is pt 12 / pb 16 / px 10',
+    g.foot.join(',') === '12,10,16,10', g.foot.join(','))
+  check('Review is the board\u2019s TONAL button \u2014 8% white, not an outline',
+    g.review.label === 'Review' && g.review.box[1] === 32 && g.review.r === 8 &&
+      g.review.bg === 'rgba(255, 255, 255, 0.08)' && g.review.size === 13 && g.review.weight === '600',
+    JSON.stringify(g.review))
+  check('\u2026and the blue one says Start Building, on our --action',
+    g.start.label === 'Start Building' && g.start.box[1] === 32 && g.start.r === 8 &&
+      g.start.bg === 'rgb(21, 135, 255)' && g.start.size === 13 && g.start.weight === '600',
+    JSON.stringify(g.start))
+  check('both footer buttons take the house click', g.review.bloom && g.start.bloom)
+}
+{
   const body = await text()
   check('the plan is compiled from the answers, not canned',
     body.includes('A site that sells') && body.includes('Four pages'),
     'title and structure should follow goal=sell, pages=few')
+  /* The status line must not name a button by a label the button does not wear: the board
+     renamed `Approve` to `Start Building`, so the line moved with it. */
+  check('the waiting line points at the verb the card actually carries',
+    body.includes('start the build when it looks right') && !body.toLowerCase().includes('approve it'))
 }
 check('NOTHING is generated while the plan waits', (await previewState()) === 'closed')
 check('Publish is dead while there is nothing to publish',
@@ -693,14 +775,14 @@ check('the plan card is still there after closing the review', await planUp())
   /* The outline card takes the same arrival — after the "Got it — …" line has written itself,
      not on the click: the beat is the card's place in the turn, not a delay for its own sake. */
   const sampling = arrival('section[aria-label="What Remixer is building"]', 8000, 1600)
-  await p.click('section[aria-label="Plan, waiting for your approval"] >> text=Approve')
+  await p.click('section[aria-label="Plan, waiting for your approval"] >> text=Start Building')
   const s = await sampling
   check('the outline card lands after the acknowledgement has been written, not on the click',
     (s[0]?.appeared ?? 0) > 1500, `appeared after ${s[0]?.appeared}ms`)
   checkArrival('outline card', s)
 }
 await shot('11-ack-building')
-check('Approve is what starts the build', !(await planUp()))
+check('Start Building is what starts the build', !(await planUp()))
 /* THE CANVAS STAYS AWAY FOR THE MINUTE. A preview is a preview OF a page, and there
    is no page yet; the outline card carries the wait and gets the chat's full width to
    do it in (designer, 07.09.2026). It opens by itself when that page exists. */
@@ -1139,10 +1221,19 @@ check('…and the typed prompt is built as given', await cardUp())
       g.pl === '13px' && g.pr === '7px' && g.gap === '2px'
         && Math.abs(g.w - (13 + g.label.w + 2 + 16 + 7)) < 0.05,
       `${g.w} = 13+${g.label.w}+2+16+7 (the board’s 91 on Proxima Nova)`)
-    /* The label's box is its CAP BAND — the board's 53×9 for 13px, and the reason the
-       glyphs sit on the pill's centre line instead of a line box's. */
-    check('…the label’s box is the cap band, centred on the pill’s middle',
-      Math.abs(g.label.h - 9) < 0.3 && Math.abs(g.label.y + g.label.h / 2 - 16) < 0.4,
+    /*
+     * The label's box is its CAP BAND — the board's 53×9 for 13px, and the reason the
+     * glyphs sit on the pill's centre line instead of a line box's.
+     *
+     * ⚠️ AND ONE PIXEL BELOW IT, on the designer's eye (09.09.2026: "текст в кнопке явно
+     * выше визуально, не отцентрирован по высоте"). Cap-band centring is what the board
+     * draws and what every measurement here agrees with; a lowercase word read against a
+     * pill still looks high there, because the eye weighs the x-height mass. Filmed as a
+     * ladder (scratchpad/mode/ladder-sheet.png) and 1px down is the frame that reads
+     * centred. So the assertion is 17, not 16 — the one number to turn if he wants more.
+     */
+    check('…the label’s box is the cap band, a pixel below the pill’s middle by eye',
+      Math.abs(g.label.h - 9) < 0.3 && Math.abs(g.label.y + g.label.h / 2 - 17) < 0.4,
       `cap ${g.label.h} at y ${g.label.y}`)
     check('…the chevron is 16 and centred, its ink 48% white',
       g.glyph === '16' && g.chev.w === 16 && g.chev.h === 16 && g.chev.y === 8
@@ -1268,6 +1359,45 @@ check('…and the typed prompt is built as given', await cardUp())
     })
     check('a hovered row lights 4% white across the whole 194 × 52, not an inset plate',
       h.bg === 'rgba(255, 255, 255, 0.04)' && h.w === 194 && h.h === 52, JSON.stringify(h))
+  }
+  {
+    /* THE HOUSE CLICK, ON THESE ROWS TOO (designer, 09.09.2026: "на кнопки в этом меню тоже
+       эффект клика добавь такой же") — `press-bloom` alone, since the row's hover paint is
+       the board's own plate. Pressed and held so the bloom is still on screen when read. */
+    const row = await p.$('[role="menuitemradio"]:nth-of-type(2)')
+    const rb = await row.boundingBox()
+    await p.mouse.move(rb.x + 30, rb.y + rb.height / 2)
+    await p.mouse.down()
+    /*
+     * ⚠️ SAMPLED UNTIL IT MOVES, not read once. The bloom is a Web Animations pair with
+     * `fill: forwards`, so before the first frame after the press it computes as its FROM
+     * keyframe — scale(0) at opacity 0, indistinguishable from "no bloom". A single read
+     * 120ms in failed for exactly that reason on this software rasteriser, on a gesture
+     * that a direct probe showed working. Growth over frames is also the better assertion:
+     * it proves the bloom expands rather than that one frame happened to be lit.
+     */
+    const bloom = await p.evaluate(() => new Promise((resolve) => {
+      const t0 = performance.now()
+      const sc = (tf) => { const m = tf.match(/matrix\(([^)]+)\)/); return m ? +m[1].split(',')[0] : tf === 'none' ? 1 : NaN }
+      const out = []
+      const tick = () => {
+        const r = document.querySelector('[role="menuitemradio"]:nth-of-type(2) .glass-ripples .glass-ripple')
+        if (r) { const cs = getComputedStyle(r); out.push({ op: +cs.opacity, s: +sc(cs.transform).toFixed(3), ink: cs.backgroundImage.slice(0, 24) }) }
+        if (performance.now() - t0 < 420) requestAnimationFrame(tick)
+        else resolve({ n: out.length, first: out[0] ?? null, peak: out.length ? Math.max(...out.map((x) => x.s)) : 0,
+          op: out.length ? Math.max(...out.map((x) => x.op)) : 0, ink: out[0]?.ink ?? '' })
+      }
+      requestAnimationFrame(tick)
+    }))
+    /* Released OFF the row: up on the row is a click, which picks that mode and unmounts
+       the menu — the reason the next step's click found a detaching element. */
+    await p.mouse.move(8, 8); await p.mouse.up()
+    await p.waitForTimeout(200)
+    check('a pressed row blooms from the click point, like every other button in the product',
+      bloom.peak > 0.25 && bloom.op > 0.5 && bloom.ink.startsWith('radial-gradient'),
+      JSON.stringify(bloom))
+    check('…and the menu is still open, because the bloom is not a selection',
+      !!(await p.$('[role="menu"]')))
   }
   await shot('24-mode-hover')
   await p.click('[role="menuitemradio"]:has-text("Build")')
