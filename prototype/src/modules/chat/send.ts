@@ -15,7 +15,7 @@
 import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest } from '@/state/world'
 import type { Text } from '@/i18n'
 import { useUI } from '@/state/ui'
-import { baselineThread, replyTo } from './thread'
+import { baselineThread, replyTo, streamDuration } from './thread'
 import {
   isWeakPrompt, BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS, briefAck, briefDone, OTHER,
   type BriefKey, type BriefAnswers,
@@ -259,7 +259,23 @@ function deliverAnswer(prompt: string, reply?: Text) {
 
 /* ------------------------------------------------------------- the brief */
 
-/** The agent declines to guess and opens the questions. Free — nothing was built. */
+/**
+ * How long the customer gets with the line BEFORE the questions dock over it.
+ *
+ * The line and the panel used to land in the same commit, and since a docked form takes the
+ * thread down to half (index.css `.chat-dim`), the one sentence explaining why nothing is
+ * being built was dimmed while it was still writing itself. The designer caught it on his own
+ * build (09.09.2026): "пользователь не успеет прочитать этот текст… нужно дать несколько
+ * секунд, то есть добавить небольшую паузу перед появлением формы".
+ *
+ * Counted from when the line has FINISHED writing itself, not from when it starts — the
+ * reveal is a second of that on its own, and `streamDuration` knows how long it takes for
+ * whatever the copy happens to say (thread.ts). So this number is the reading, and only the
+ * reading: turn this one to give more or less of it.
+ */
+const READ_MS = 2600
+
+/** The agent declines to guess. Free — nothing was built. */
 function askForDirection() {
   const now = useWorld.getState()
   const ask: Message = {
@@ -269,10 +285,22 @@ function askForDirection() {
     thought: Math.round(CLARIFY_MS / 1000),
     text: BRIEF_INTRO,
   }
-  now.set(
-    { sent: [...now.world.sent, ask], chat: 'long', brief: { status: 'asking', step: 0, answers: {} } },
-    now.preset,
-  )
+  now.set({ sent: [...now.world.sent, ask], chat: 'long' }, now.preset)
+  schedule(openQuestions, streamDuration(say(BRIEF_INTRO)) + READ_MS)
+}
+
+/**
+ * …and only then asks. Nothing else moves here: the axis alone opens the panel, so none of
+ * `world.set`'s staged-situation rules can fire and take the transcript with them.
+ *
+ * The guard is for the customer who answered in the composer instead of waiting — that send
+ * clears the brief and takes the timer slot with it, so this can only arrive late, never over
+ * the top of a build that has already started.
+ */
+function openQuestions() {
+  const now = useWorld.getState()
+  if (now.world.project !== 'empty') return
+  now.set({ brief: { status: 'asking', step: 0, answers: {} } }, now.preset)
 }
 
 /** Record one answer. An empty value clears it (the question will count as skipped). */

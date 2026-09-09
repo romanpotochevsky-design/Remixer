@@ -248,7 +248,31 @@ check('the chat takes the whole shell', (await asideWidth()) > 1200, `aside=${Ma
   check('the chat content is an 800px column, centred', centred, JSON.stringify(cols))
 }
 
-await p.waitForTimeout(4600)
+/*
+ * THE LINE GETS READ BEFORE THE PANEL LANDS ON IT (designer, 09.09.2026: "пользователь не
+ * успеет прочитать этот текст… нужно добавить небольшую паузу перед появлением формы"). A
+ * docked form takes the thread to half, and the two used to land in the same commit — so the
+ * one sentence explaining why nothing is being built was dimmed while it was still writing
+ * itself. The pause is the reveal's own length plus the reading; this measures the whole gap
+ * from the line landing to the thread going down.
+ */
+{
+  const gap = await p.evaluate(() => new Promise((done) => {
+    let t0 = 0
+    const tick = () => {
+      const lit = [...document.querySelectorAll('aside .arrive-msg')]
+        .some((e) => e.innerText.includes('a guess costs you a build'))
+      if (lit && !t0) t0 = performance.now()
+      if (t0 && document.querySelector('aside .chat-dim--on')) return done(Math.round(performance.now() - t0))
+      if (performance.now() - (t0 || performance.now()) < 12000) requestAnimationFrame(tick)
+      else done(null)
+    }
+    requestAnimationFrame(tick)
+  }))
+  check('the line asking for direction is read before the form dims it', gap !== null && gap > 2500,
+    `${gap}ms between the line landing and the thread stepping back`)
+}
+await p.waitForTimeout(1200)
 await shot('03-question-1')
 const askedBody = await text()
 check('Remixer asks for direction instead of guessing', askedBody.includes('a guess costs you a build'))
@@ -1372,7 +1396,9 @@ check('the template path runs the same generation', await cardUp())
 /* ============================= D. the composer overrides the open question panel */
 
 await buildFromHome('website')
-await p.waitForTimeout(4600)
+/* 4600 was enough while the line and the panel landed together; since the line now gets read
+   first (see READ_MS), the panel is ~3.7s behind it. Waited for rather than slept through. */
+await p.waitForSelector('section[aria-label="Questions before building"]', { timeout: 20000 })
 check('the panel is up before the override', await panelUp())
 await p.fill('textarea', 'A one-page site for my ceramics studio in Odesa')
 /*

@@ -136,3 +136,21 @@ export function replyTo(text: string): Copy {
   if (hit) return hit.text
   return GENERIC[generic++ % GENERIC.length]
 }
+
+/* --------------------------------------------------------------- the writing */
+
+/**
+ * How long the word-by-word reveal of this text will take, in ms.
+ *
+ * The whole sentence is laid out at once and each word fades up on a stagger — the step
+ * shrinks as the answer grows, so a long paragraph still finishes in about a second instead
+ * of crawling (`.stream-word`, ChatPanel).
+ *
+ * It lives here, with the replies, rather than in the renderer, because the SCHEDULER needs
+ * it too: a line that has to be read before something else lands on top of it can only be
+ * given reading time once it has finished writing itself (send.ts, `READ_MS`).
+ */
+export function streamDuration(text: string) {
+  const n = Math.max(text.split(' ').length, 1)
+  return Math.round((n - 1) * Math.min(26, 820 / n)) + 320
+}

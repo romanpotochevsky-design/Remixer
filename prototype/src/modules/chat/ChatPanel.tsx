@@ -19,7 +19,7 @@ import {
   IconReplyArrow, IconThumbUp, IconThumbDown, IconCopy, IconMore,
 } from '@/ui/icons'
 import { ScrollArea } from '@/ui/ScrollArea'
-import { baselineThread } from './thread'
+import { baselineThread, streamDuration } from './thread'
 import { sendMessage, resumeInterrupted } from './send'
 import { bubbleSend, cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade, popover } from '@/ui/motion'
 import { BriefPanel } from './BriefPanel'
@@ -131,12 +131,6 @@ function AiActions({ text }: { text: string }) {
  * the step shrinks as the answer grows, so a long paragraph still finishes in
  * about a second instead of crawling.
  */
-/** How long the word-by-word reveal of this text will take, in ms. */
-function streamDuration(text: string) {
-  const n = Math.max(text.split(' ').length, 1)
-  return Math.round((n - 1) * Math.min(26, 820 / n)) + 320
-}
-
 function StreamedText({ text }: { text: string }) {
   const words = text.split(' ')
   const step = Math.min(26, 820 / Math.max(words.length, 1))
