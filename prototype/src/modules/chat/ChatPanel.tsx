@@ -338,18 +338,25 @@ function ModeSwitch() {
          * 29697:55394, measured on the board: 91×32 — a 1px stroke round a 89px padding box
          * (pl 12 / pr 6, gap 2, label 53, chevron 16). `Black/700` under blur 16, radius 999.
          *
-         * ⚠️ THE RIM IS FLAT `Neutral Alpha/300` (24% white), not the row's gradient glass.
-         * The export binds this stroke to ONE variable and writes `border-solid`; where a
-         * stroke really is a gradient the export emits a `linear-gradient` (that is how the
-         * Home controls' 24 → 4 → 24 rims were found). So this pill is not `liquid-glass`,
-         * and its rim reads evenly bright where the "+" and the mic beside it still dim to
-         * ~7% at the middle of their diagonal — flagged to the designer, not "fixed" here.
+         * ⚠️ THE RIM IS GLASS, the same 24 → 4 → 20 % diagonal its neighbours wear
+         * (`.liquid-glass--composer`). The export flattened it: it binds the stroke to ONE
+         * variable and writes `border-solid`, so the first pass shipped a flat 24 % rim —
+         * and the designer sent it back (09.09.2026: "на кнопке нет эффекта стекла на
+         * бордере, сделай как в макете"). The tell was already in the export's own variable
+         * list: `Neutral Alpha/50` (4 %) appeared there with nothing to explain it, which is
+         * exactly this gradient's middle stop. Same trap as the Home controls' rims.
+         *
+         * ⚠️ AND THAT IS WHY THE PADDING IS 13 / 7, not the board's 12 / 6. A `border` takes
+         * a layout box; the glass rim is a masked `::before` inside the box and takes none.
+         * The board's 91 has its 1px stroke INSIDE it (its text starts at x=13, its chevron
+         * ends 7 from the right), so the padding has to carry that pixel: 13 + label + 2 +
+         * 16 + 7 = the same 91, with the rim painting the outermost pixel of it.
          *
          * ⚠️ The chevron is 16, not 20, and it is CENTRED (frame y=8 of 32 on the board):
          * the 20px glyph is what the old 2px nudge was compensating for. Its ink is
          * `Neutral Alpha/500` = 48% white, which the board keeps even in the gradient state.
          */
-        className="group flex h-8 items-center gap-0.5 rounded-full border border-[#ffffff3d] bg-[#09090ba3] pl-3 pr-1.5 backdrop-blur-[16px]"
+        className="liquid-glass liquid-glass--composer glass-interactive group flex h-8 items-center gap-0.5 rounded-full bg-[#09090ba3] pl-[13px] pr-[7px]"
       >
         {/*
           * The label's box is TRIMMED TO THE CAP BAND (`text-box-trim`), as the board draws
@@ -812,8 +819,11 @@ export function ChatPanel() {
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
               /* the designer's own inspector on this button (09.09.2026): 32×32, Black/700
                  under blur 16, radius 999, and a rim of 24 → 4 → 20 % white top-left to
-                 bottom-right — index.css "THE BUILDER COMPOSER'S GLASS CIRCLES" */
-              className="liquid-glass liquid-glass--composer grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+                 bottom-right — index.css "THE BUILDER COMPOSER'S GLASS CIRCLES".
+                 `glass-interactive` is the house gesture (design-system §5): the 8 % hover
+                 wash and the press bloom that opens FROM the click point — one class, the
+                 delegation in ui/ripple.ts does the rest. */
+              className="liquid-glass liquid-glass--composer glass-interactive grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
             >
               <IconPlus size={13} />
             </button>
@@ -822,7 +832,7 @@ export function ChatPanel() {
               {world.project === 'built' && <ModeSwitch />}
               <button
                 aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-                className="liquid-glass liquid-glass--composer grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+                className="liquid-glass liquid-glass--composer glass-interactive grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
               >
                 <IconMic size={15} />
               </button>
@@ -830,7 +840,10 @@ export function ChatPanel() {
                 onClick={submit}
                 disabled={!armed}
                 aria-label={t({ en: 'Send', uk: 'Надіслати' })}
-                className={`grid h-8 w-8 place-items-center rounded-full border transition-colors duration-[var(--dur-fast)] ease-std ${
+                /* `press-bloom`, not `glass-interactive`: a filled button already owns its
+                   hover and pressed paint (--action-hover / --action-pressed), so it takes the
+                   bloom alone — the split the canon draws (ui/ripple.ts, "TWO HOSTS"). */
+                className={`press-bloom grid h-8 w-8 place-items-center rounded-full border transition-colors duration-[var(--dur-fast)] ease-std ${
                   armed
                     ? 'border-[var(--action)] bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
                     : /* Figma 28016:43545 — outlined, no fill, Neutral Alpha/100 rim */

@@ -1038,6 +1038,62 @@ check('…and the typed prompt is built as given', await cardUp())
       circles.every((c) => c.pad === '1px' && c.rim === 'linear-gradient(to right bottom, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.2))'),
       circles[0].rim)
   }
+  /*
+   * THE HOUSE GESTURE ON THE WHOLE ROW (designer, 09.09.2026: "нужно добавить ховер на кнопки
+   * эти и эффект клика который мы используем везде в стиле гугл"). design-system §5
+   * «Интерактивные состояния Liquid Glass»: hover is an 8 % white wash on a composited
+   * `::after`, press is a bloom that opens FROM THE CLICK POINT, clipped to the control's own
+   * rounded box, and leaves nothing in the DOM. The glass members take both
+   * (`glass-interactive`); the send button, which owns its own hover and pressed paint, takes
+   * the bloom alone (`press-bloom`) — the split ui/ripple.ts calls "TWO HOSTS, ONE BLOOM".
+   */
+  {
+    const glass = ['button[aria-label="Chat mode"]', 'button[aria-label="Attach"]', 'button[aria-label="Voice input"]']
+    const rest = await p.evaluate((sels) => sels.map((s) => getComputedStyle(document.querySelector(s), '::after').opacity), glass)
+    check('the row’s glass controls carry no wash at rest', rest.every((o) => o === '0'), JSON.stringify(rest))
+    const washed = []
+    for (const sel of glass) {
+      await p.hover(sel)
+      await p.waitForTimeout(200)
+      washed.push(await p.$eval(sel, (el) => { const a = getComputedStyle(el, '::after'); return `${a.opacity}/${a.backgroundColor}` }))
+    }
+    check('…and each lights the house 8 % wash on hover',
+      washed.every((w) => w === '1/rgba(255, 255, 255, 0.08)'), JSON.stringify(washed))
+    /* the bloom, pressed deliberately off-centre so its position can be read */
+    const pressed = async (sel) => {
+      const b = await p.$eval(sel, (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } })
+      await p.mouse.move(b.x + b.w * 0.25, b.y + b.h * 0.7)
+      await p.mouse.down()
+      await p.waitForTimeout(120)
+      const r = await p.$eval(sel, (el) => {
+        const layer = el.querySelector(':scope > .glass-ripples'), rip = layer && layer.firstElementChild
+        if (!rip) return null
+        const rb = rip.getBoundingClientRect(), eb = el.getBoundingClientRect()
+        return { clip: getComputedStyle(layer).overflow, radius: getComputedStyle(layer).borderRadius,
+          paint: getComputedStyle(rip).backgroundImage.startsWith('radial-gradient'),
+          cx: +((rb.x + rb.width / 2 - eb.x) / eb.width).toFixed(2), cy: +((rb.y + rb.height / 2 - eb.y) / eb.height).toFixed(2) }
+      })
+      await p.mouse.up()
+      await p.waitForTimeout(400)
+      const left = await p.$eval(sel, (el) => el.querySelectorAll(':scope > .glass-ripples > *').length)
+      return { ...r, left }
+    }
+    const onPill = await pressed('button[aria-label="Chat mode"]')
+    check('a press blooms FROM the click point, clipped to the control’s own rounded box',
+      !!onPill && onPill.paint && onPill.clip === 'hidden' && onPill.radius === '9999px'
+        && onPill.cx === 0.25 && onPill.cy === 0.7, JSON.stringify(onPill))
+    check('…and the gesture leaves nothing behind in the DOM', onPill && onPill.left === 0, `${onPill?.left} ripples`)
+    /* the send button is the solid member: disabled until armed, then the bloom alone */
+    check('the send button is not bloomed while it is disabled',
+      (await pressed('button[aria-label="Send"]')).cx === undefined, 'disabled → no ripple')
+    await p.fill('textarea[aria-label="Message Remixer"]', 'Make the hero warmer')
+    await p.waitForTimeout(150)
+    const onSend = await pressed('button[aria-label="Send"]')
+    check('…and takes the bloom once it is armed', !!onSend && onSend.paint && onSend.left === 0, JSON.stringify(onSend))
+    await p.fill('textarea[aria-label="Message Remixer"]', '')
+    await p.mouse.move(4, 4)
+    await p.waitForTimeout(200)
+  }
   check('the composer carries the mode switcher once there is a site', !!(await pill()))
   check('…and it starts on Autopilot', (await label()) === 'Autopilot', await label())
   /* the pill, part by part — everything except the label's own run of glyphs */
@@ -1045,13 +1101,16 @@ check('…and the typed prompt is built as given', await cardUp())
     const box = el.getBoundingClientRect()
     const rel = (e) => { const b = e.getBoundingClientRect(); return { x: +(b.x - box.x).toFixed(2), y: +(b.y - box.y).toFixed(2), w: +b.width.toFixed(2), h: +b.height.toFixed(2) } }
     const cs = getComputedStyle(el)
-    /* the pill's two children, by position — `span:last-of-type` would find the INK span
-       nested inside the label before it ever reached the chevron */
-    const lab = el.firstElementChild, chev = el.lastElementChild
+    /* the pill's two OWN spans, by index. Not `querySelector('span:last-of-type')` (it finds
+       the INK span nested inside the label first) and not `lastElementChild` (after a press
+       the ripple engine's `.glass-ripples` layer is the last child). */
+    const lab = el.firstElementChild, chev = el.querySelector(':scope > span:nth-of-type(2)')
     const ls = getComputedStyle(lab.querySelector('.mode-ink') || lab)
     return {
       h: +box.height.toFixed(2), w: +box.width.toFixed(2), radius: cs.borderRadius, fill: cs.backgroundColor,
-      blur: cs.backdropFilter, border: `${cs.borderTopWidth} ${cs.borderTopColor}`,
+      blur: cs.backdropFilter, border: cs.borderTopWidth,
+      rim: getComputedStyle(el, '::before').backgroundImage, rimPad: getComputedStyle(el, '::before').padding,
+      rimZ: getComputedStyle(el, '::before').zIndex,
       pl: cs.paddingLeft, pr: cs.paddingRight, gap: cs.columnGap,
       label: rel(lab), chev: rel(chev), tf: getComputedStyle(chev).transform,
       glyph: chev.querySelector('svg')?.getAttribute('width'), chevInk: getComputedStyle(chev.querySelector('svg')).stroke,
@@ -1060,14 +1119,26 @@ check('…and the typed prompt is built as given', await cardUp())
   })
   {
     const g = await pillGeo()
-    check('the pill is the board’s box: 32 tall, radius 999, Black/700 under blur 16, a flat 24% rim',
-      g.h === 32 && g.radius === '9999px' && g.fill === 'rgba(9, 9, 11, 0.64)' && g.blur === 'blur(16px)'
-        && g.border === '1px rgba(255, 255, 255, 0.24)',
-      JSON.stringify([g.h, g.radius, g.fill, g.blur, g.border]))
-    check('…pl 12 / gap 2 / pr 6, and its width is exactly that box round the label',
-      g.pl === '12px' && g.pr === '6px' && g.gap === '2px'
-        && Math.abs(g.w - (1 + 12 + g.label.w + 2 + 16 + 6 + 1)) < 0.05,
-      `${g.w} = 1+12+${g.label.w}+2+16+6+1 (the board’s 91 on Proxima Nova)`)
+    check('the pill is the board’s box: 32 tall, radius 999, Black/700 under blur 16',
+      g.h === 32 && g.radius === '9999px' && g.fill === 'rgba(9, 9, 11, 0.64)' && g.blur === 'blur(16px)',
+      JSON.stringify([g.h, g.radius, g.fill, g.blur]))
+    /*
+     * ⚠️ ITS RIM IS GLASS, not a flat 24 % stroke (designer, 09.09.2026: "на кнопке нет
+     * эффекта стекла на бордере, сделай как в макете"). The export flattens a gradient stroke
+     * to `border-solid` bound to its first stop's variable — the tell was the unexplained
+     * `Neutral Alpha/50` (4 %) sitting in the same variable list, this gradient's middle stop.
+     * The rim is therefore the masked `::before` ring the glass family uses, which takes NO
+     * layout box — so the padding carries the board's inside-stroke pixel instead: 13 + label
+     * + 2 + 16 + 7 = the same 91, and the label still starts at x=13.
+     */
+    check('…and that rim is the glass 24 → 4 → 20 %, a 1px masked ring ABOVE the wash and the bloom',
+      g.border === '0px' && g.rimPad === '1px' && g.rimZ === '1'
+        && g.rim === 'linear-gradient(to right bottom, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.2))',
+      `${g.border} border, rim ${g.rim}`)
+    check('…pl 13 / gap 2 / pr 7 (the rim takes no box), and its width is exactly that round the label',
+      g.pl === '13px' && g.pr === '7px' && g.gap === '2px'
+        && Math.abs(g.w - (13 + g.label.w + 2 + 16 + 7)) < 0.05,
+      `${g.w} = 13+${g.label.w}+2+16+7 (the board’s 91 on Proxima Nova)`)
     /* The label's box is its CAP BAND — the board's 53×9 for 13px, and the reason the
        glyphs sit on the pill's centre line instead of a line box's. */
     check('…the label’s box is the cap band, centred on the pill’s middle',
