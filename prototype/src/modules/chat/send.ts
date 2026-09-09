@@ -12,7 +12,7 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, type Message, type Suggest } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, type Message, type Suggest } from '@/state/world'
 import type { Text } from '@/i18n'
 import { useUI } from '@/state/ui'
 import { baselineThread, replyTo } from './thread'
@@ -21,7 +21,7 @@ import {
   type BriefKey, type BriefAnswers,
 } from './brief'
 import { buildBeats, BUILD_INTRO } from './build'
-import { nextProposal, optionOf, recommended, leadingDone, AUTOPILOT_OFF } from './autopilot'
+import { nextProposal, optionOf, recommended, leadingDone, ratingSaid, ratingThanks, AUTOPILOT_OFF } from './autopilot'
 
 /*
  * The demo's clock — slowed on 07.09.2026 at the designer's call ("медленнее, ближе к
@@ -429,8 +429,8 @@ function finishBuild(answers: BriefAnswers) {
  */
 const SUGGEST_MS = 1300
 
-/** A proposal dismissed — the question goes, the memory of what was asked for stays. */
-const closed = (s: Suggest): Suggest => ({ ...s, open: false, pick: '' })
+/** The dock emptied — the question goes, everything Autopilot remembers stays. */
+const closed = (s: Suggest): Suggest => ({ ...s, show: 'none', pick: '' })
 
 /** Whichever language the prototype is being demoed in. */
 const say = (text: Text) => text[useWorld.getState().world.lang]
@@ -448,9 +448,25 @@ function offerSuggestion() {
   const w = now.world
   if (w.mode !== 'autopilot' || w.project !== 'built') return
   if (w.brief.status === 'asking' || w.brief.status === 'planning') return
+
+  /*
+   * THE SATISFACTION CARD COMES FIRST, ONCE — after the first proposal the customer actually
+   * answered (designer, 09.09.2026). It takes the proposal's turn rather than stacking on top
+   * of it: the dock holds one thing, and two questions in a row from a system that has just
+   * been told to lead is one question too many.
+   *
+   * It is gated on the mode as well, and that is deliberate: somebody who has just pressed
+   * "Turn off Autopilot" has said stop leading me, and following that with "how are we
+   * doing?" would be the wrong sentence at the wrong moment.
+   */
+  if (w.suggest.taken >= 1 && !w.suggest.rated) {
+    now.set({ suggest: { ...w.suggest, show: 'rating', pick: '' } }, now.preset)
+    return
+  }
+
   const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published)
   if (!proposal) return
-  now.set({ suggest: { ...w.suggest, open: true, pick: recommended(proposal) } }, now.preset)
+  now.set({ suggest: { ...w.suggest, show: 'proposal', pick: recommended(proposal) } }, now.preset)
 }
 
 /** Choose one of the proposal's answers. Free text arrives with the brief's `other:` prefix. */
@@ -485,7 +501,7 @@ export function acceptSuggest() {
   if (!option) return
 
   if (option.act === 'publish') {
-    now.set({ suggest: closed(w.suggest) }, now.preset)
+    now.set({ suggest: { ...closed(w.suggest), taken: w.suggest.taken + 1 } }, now.preset)
     useUI.getState().togglePublish(true)
     return
   }
@@ -496,12 +512,60 @@ export function acceptSuggest() {
     {
       suggest: {
         ...closed(w.suggest),
+        taken: w.suggest.taken + 1,
         started: option.page ? [...w.suggest.started, option.page] : w.suggest.started,
       },
     },
     now.preset,
   )
   if (option.say) sendMessage(say(option.say), option.reply)
+}
+
+/* ------------------------------------------------------- the satisfaction card */
+
+/** How long Remixer takes to answer a score. A beat, not a think: nothing is being done. */
+const THANKS_MS = 900
+
+/** Pick a number on the scale. Held in `pick`, the same slot a proposal's answer uses. */
+export function pickScore(score: number) {
+  const { world, set, preset } = useWorld.getState()
+  set({ suggest: { ...world.suggest, pick: String(score) } }, preset)
+}
+
+/**
+ * Send the score.
+ *
+ * ⚠️ NOT THROUGH `sendMessage`. That path spends ten credits and lights the preview, and
+ * charging somebody for telling us how we did — especially for telling us we did badly —
+ * would be indefensible. The turn is posted directly and the reply is a beat behind it.
+ */
+export function submitRating(note: string) {
+  const now = useWorld.getState()
+  const w = now.world
+  const score = Number(w.suggest.pick)
+  if (!Number.isFinite(score) || score < 1) return
+  const mine: Message = { id: nextId(w.sent), who: 'user', text: say(ratingSaid(score, note)) }
+  now.set(
+    {
+      sent: [...w.sent, mine],
+      suggest: { ...closed(w.suggest), rated: true, score },
+    },
+    now.preset,
+  )
+  schedule(() => {
+    const then = useWorld.getState()
+    const thanks: Message = { id: nextId(then.world.sent), who: 'ai', text: ratingThanks(score, note) }
+    then.set({ sent: [...then.world.sent, thanks] }, then.preset)
+  }, THANKS_MS)
+}
+
+/**
+ * Skip it — and skipping is SILENT. A line saying the customer declined to rate us is a line
+ * about us, written into their transcript, in place of the work they came here to do.
+ */
+export function skipRating() {
+  const now = useWorld.getState()
+  now.set({ suggest: { ...closed(now.world.suggest), rated: true } }, now.preset)
 }
 
 /**
@@ -543,7 +607,30 @@ export function startBuild(prompt: string) {
   /* A generation still ticking from the previous site would keep writing beats into
      this one; the staged `chat` axis clears `world.build`, but not the timer behind it. */
   stopBuildClock()
-  set({ project: 'empty', chat: 'empty', sent: [], unpublished: 0, published: false }, preset)
+  set(
+    {
+      project: 'empty', chat: 'empty', sent: [], unpublished: 0, published: false,
+      /*
+       * ⚠️ THE MODE BELONGS TO THE PROJECT, SO A NEW SITE GETS THE DEFAULT BACK.
+       *
+       * `Autopilot` is the default from the first generation onward (world.ts, designer
+       * 08.09.2026), and the pill only exists while a site does — so the mode is a property
+       * of the site in front of you, not a setting on the account. Left out of this patch it
+       * was neither: somebody who tried `Build` on their last site started their next one in
+       * it, with no proposals and no satisfaction card, and the generation signed off with
+       * the build-mode line. Reported by the designer on his own build 09.09.2026 ("почему-то
+       * не стоит по умолчанию в чате Autopilot и я не получил после генерации окна с
+       * выбором") — one cause, both symptoms.
+       *
+       * `suggest` rides along for the reason `finishBuild` states about `build`: the staged
+       * `chat` axis would clear it anyway, and saying so is the difference between a decision
+       * and an accident.
+       */
+      mode: 'autopilot',
+      suggest: EMPTY_SUGGEST,
+    },
+    preset,
+  )
   sendMessage(text)
 }
 

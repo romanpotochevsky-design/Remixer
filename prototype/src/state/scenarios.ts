@@ -107,7 +107,7 @@ export const PRESETS: Preset[] = [
       /* Every section green: `at` equal to the section count is the assemble beat, and that
          is where a finished build leaves the card standing in the transcript. */
       build: { at: 5, line: 0 },
-      suggest: { open: true, pick: 'stay', started: [] },
+      suggest: { show: 'proposal', pick: 'stay', started: [], taken: 0, rated: false, score: null },
       sent: [
         { id: 1001, who: 'user', text: 'A shop for my ceramics studio' },
         {
@@ -119,6 +119,39 @@ export const PRESETS: Preset[] = [
         },
         { id: 1003, who: 'ai', kind: 'build', text: '' },
         { id: 1004, who: 'ai', text: leadingDone(DEMO_BRIEF) },
+      ],
+    },
+  },
+  {
+    id: 'rating',
+    label: { en: 'Autopilot — the satisfaction ask', uk: 'Autopilot — питання про враження' },
+    note: {
+      en: 'The 1–10 card, asked once after the first proposal was answered (Figma 25744:139153)',
+      uk: 'Картка 1–10, що з’являється раз після першої відповіді на пропозицію (Figma 25744:139153)',
+    },
+    /*
+     * One step past the preset above: the proposal was answered, About is under way, and the
+     * card asks how the site landed. `taken: 1` is what earns it and `rated: false` is what
+     * keeps it — set `rated` and the card is spent, which is the state a second run leaves.
+     */
+    patch: {
+      account: 'trial', trialDay: 1, credits: 1860, project: 'built', chat: 'long',
+      domain: 'staging', unpublished: 2, published: false, projects: [], mode: 'autopilot',
+      brief: { status: 'ready', step: 0, answers: DEMO_BRIEF },
+      build: { at: 5, line: 0 },
+      suggest: { show: 'rating', pick: '', started: ['About'], taken: 1, rated: false, score: null },
+      sent: [
+        { id: 1001, who: 'user', text: 'A shop for my ceramics studio' },
+        { id: 1003, who: 'ai', kind: 'build', text: '' },
+        { id: 1004, who: 'ai', text: leadingDone(DEMO_BRIEF) },
+        { id: 1005, who: 'user', text: 'Start the About page.' },
+        {
+          id: 1006, who: 'ai',
+          text: {
+            en: 'About is in \u2014 the same grid, palette and lettering as the home page, and linked from the nav so the site reads as one piece. Tell me what belongs on it and I will fill it in.',
+            uk: '\u0421\u0442\u043e\u0440\u0456\u043d\u043a\u0430 \u00ab\u041f\u0440\u043e \u043d\u0430\u0441\u00bb \u043d\u0430 \u043c\u0456\u0441\u0446\u0456 \u2014 \u0442\u0430 \u0441\u0430\u043c\u0430 \u0441\u0456\u0442\u043a\u0430, \u043f\u0430\u043b\u0456\u0442\u0440\u0430 \u0456 \u0448\u0440\u0438\u0444\u0442\u0438, \u0449\u043e \u043d\u0430 \u0433\u043e\u043b\u043e\u0432\u043d\u0456\u0439.',
+          },
+        },
       ],
     },
   },

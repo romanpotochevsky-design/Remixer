@@ -271,3 +271,76 @@ export function leadingDone(a: BriefAnswers): Text {
     uk: `Готово — ваша головна сторінка онлайн${gUk}.${restUk ? `${restUk} ось що я зробив би далі.` : ' Ось що я зробив би далі.'}`,
   }
 }
+
+/* ============================================ THE SATISFACTION CARD (Figma 25744:139153) */
+
+/**
+ * "How would you rate Remixer?" — a 1–10 scale, asked once, after the first proposal the
+ * customer actually answered (designer, 09.09.2026: "после первого Autopilot вопроса, когда
+ * пользователь что-то выберет, нам нужно узнать у кастомера насколько он доволен
+ * сгенерированным сайтом", with the board).
+ *
+ * WHY IT LIVES HERE and not in a module of its own: it is the same dock, put up by the same
+ * gate as a proposal, and it is the second half of the same conversation — Autopilot leads,
+ * and having led once it asks whether that was any good. The panel is `RatingPanel.tsx`.
+ *
+ * ⚠️ ASKED ONCE. `suggest.rated` is set whether the answer was given or skipped: a survey
+ * that comes back is not a survey, it is nagging — and this one interrupts a customer who
+ * has a site to finish.
+ *
+ * ⚠️ IT COSTS NOTHING. Answering does not go through `sendMessage`: that path spends ten
+ * credits and lights the preview, and charging somebody for telling us we did badly would be
+ * the single worst line in the product.
+ */
+export const RATE_TITLE: Text = {
+  en: 'How would you rate Remixer?',
+  uk: 'Як ви оцінили б Remixer?',
+}
+
+/** The ends of the scale. ⚠️ The board spells the right-hand one "Exellent" — shipped fixed. */
+export const RATE_LOW: Text = { en: 'Poor', uk: 'Погано' }
+export const RATE_HIGH: Text = { en: 'Excellent', uk: 'Відмінно' }
+
+export const RATE_PLACEHOLDER: Text = {
+  en: 'Share your thoughts (optional)…',
+  uk: 'Поділіться думками (необов’язково)…',
+}
+
+export const RATE_SKIP: Text = { en: 'Skip', uk: 'Пропустити' }
+export const RATE_SUBMIT: Text = { en: 'Submit', uk: 'Надіслати' }
+
+/** What the customer's own turn says, so the transcript can account for the answer. */
+export function ratingSaid(score: number, note: string): Text {
+  const tail = note.trim() ? ` ${note.trim()}` : ''
+  return { en: `${score} out of 10.${tail}`, uk: `${score} з 10.${tail}` }
+}
+
+/**
+ * What Remixer says back.
+ *
+ * THREE ANSWERS, NOT ONE, because a three and a ten cannot honestly get the same sentence.
+ * The bands are the ones the question is built on — a 1–10 scale with "Poor" and "Excellent"
+ * at its ends is read that way by everyone who has ever been sent one — and each reply does
+ * the one thing that band deserves: a high score is thanked, a middling one is asked what the
+ * missing point was, a low one is taken seriously and answered with an offer to fix. None of
+ * them promises anything the product cannot do.
+ */
+export function ratingThanks(score: number, note: string): Text {
+  const base: Text =
+    score >= 9
+      ? {
+          en: 'Thank you — that is good to hear. I will keep the bar there.',
+          uk: 'Дякую — приємно чути. Триматиму цю планку.',
+        }
+      : score >= 7
+        ? {
+            en: 'Thank you. If one thing would have made it a nine, name it and I will do it.',
+            uk: 'Дякую. Якщо чогось одного бракує до дев’ятки — назвіть, і я це зроблю.',
+          }
+        : {
+            en: 'Thank you for being straight with me — that is the answer worth having. Tell me what is wrong and I will put it right.',
+            uk: 'Дякую за прямоту — така відповідь і потрібна. Скажіть, що не так, і я виправлю.',
+          }
+  if (!note.trim()) return base
+  return { en: `${base.en} Your note goes with it.`, uk: `${base.uk} Ваш коментар іде разом із оцінкою.` }
+}

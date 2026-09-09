@@ -25,6 +25,7 @@ import { bubbleSend, cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, 
 import { BriefPanel } from './BriefPanel'
 import { PlanCard } from './PlanCard'
 import { SuggestPanel } from './SuggestPanel'
+import { RatingPanel } from './RatingPanel'
 import { BuildProgress } from './BuildProgress'
 import { endDockMotion } from './dock'
 import { PLAN_WAITING } from './plan'
@@ -525,7 +526,10 @@ export function ChatPanel() {
   /* Autopilot's proposal shares the dock with those two and never argues with them: the
      brief and the plan are work the customer is in the middle of, a proposal is Remixer
      asking for the next piece of work, and there is no moment when both are true. */
-  const suggesting = world.suggest.open && !asking && !planning
+  const suggesting = world.suggest.show === 'proposal' && !asking && !planning
+  /* The satisfaction card is the dock's third sheet, and it shares the slot: Autopilot puts
+     up either a proposal or this, never both (see `offerSuggestion`). */
+  const rating = world.suggest.show === 'rating' && !asking && !planning
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
@@ -749,7 +753,7 @@ export function ChatPanel() {
           * the way its own board (28016:43526) draws it, so the shell is conditional.
           */}
         <div
-          className={`chat-col dock${asking || planning || suggesting ? ' brief-dock' : ''}`}
+          className={`chat-col dock${asking || planning || suggesting || rating ? ' brief-dock' : ''}`}
           /* The dock's rise, morph and fall are CSS on these classes, started by the sheet
              (dock.ts); once the piston has landed the classes go. */
           onAnimationEnd={endDockMotion}
@@ -783,6 +787,8 @@ export function ChatPanel() {
             <PlanCard key="plan" />
           ) : suggesting ? (
             <SuggestPanel key="suggest" />
+          ) : rating ? (
+            <RatingPanel key="rating" />
           ) : null}
         </AnimatePresence>
         <div ref={composerBox} className="relative z-20">

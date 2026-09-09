@@ -3780,6 +3780,27 @@ html[data-drag] .shell-aside { transition: none; }
  * The radius follows the same arithmetic: the box is concentric with what it
  * holds, so it is the plate's 8 (or the card's 12) plus the 4px gap.
  * ---------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------
+ * THE SCALE'S CELLS — Figma 25744:139153, the satisfaction card's 1–10 row.
+ *
+ * The board draws each cell with a RESTING rim: `Neutral Alpha/200`, which in the
+ * dark theme is 12% white — the same `--white-200` the shell's own controls wear.
+ * (The light-theme export prints it as `rgba(9,9,11,.16)`: a darker rim, at a
+ * different alpha, on a dark card. Read the tokens in the dark theme.) It is an
+ * inset shadow and not a `border` for the house reason — Figma's stroke sits inside
+ * the geometry and a CSS border would take a pixel off the digit's box.
+ *
+ * What the board does NOT draw is a picked cell, so the cell is a `Pick` and wears
+ * the pair of rings the whole component already uses: 1px 32% white on hover, the
+ * 2px house gradient on the pick, both drawn (see "THE BORDER THAT DRAWS ITSELF").
+ * `--ring-side` stays +1 — the stroke sits inside the box, as it does on the answer
+ * rows, so a thickening ring never moves the row of ten.
+ * ---------------------------------------------------------------------- */
+.brief-cell {
+  --ring-r: 8px;
+  box-shadow: inset 0 0 0 1px var(--white-200);
+}
+
 .brief-tile { --ring-side: -1; }
 .brief-tile--swatch { --ring-r: 12px; }
 .brief-tile--card { --ring-r: 16px; }

@@ -184,11 +184,26 @@ export const EMPTY_BUILD: Build = { at: -1, line: 0 }
  *              About" and the very next panel offers About again.
  */
 export interface Suggest {
-  open: boolean
+  /**
+   * What is docked. The dock holds ONE thing, so this is a slot and not a set of flags:
+   * Autopilot can put either a proposal or the satisfaction card in it, never both.
+   */
+  show: 'none' | 'proposal' | 'rating'
   pick: string
   started: string[]
+  /**
+   * Proposals the customer has actually acted on. The satisfaction card is asked after
+   * the FIRST one (designer, 09.09.2026: "после первого Autopilot вопроса, когда
+   * пользователь что-то выберет, нам нужно узнать у кастомера насколько он доволен").
+   * Dismissing a proposal by typing does not count — nothing was answered.
+   */
+  taken: number
+  /** Whether the satisfaction card has been put up. Asked ONCE, answered or skipped. */
+  rated: boolean
+  /** What they said, 1–10. null = never answered. */
+  score: number | null
 }
-export const EMPTY_SUGGEST: Suggest = { open: false, pick: '', started: [] }
+export const EMPTY_SUGGEST: Suggest = { show: 'none', pick: '', started: [], taken: 0, rated: false, score: null }
 
 export interface World {
   /** Which language the simulated product renders in. */

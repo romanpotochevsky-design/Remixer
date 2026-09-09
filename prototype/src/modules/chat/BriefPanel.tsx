@@ -149,7 +149,7 @@ const dockInMotion = (el: Element) => {
   return !!dock && DOCK_MOTION.some((c) => dock.classList.contains(c))
 }
 
-function Pick({ className, on, label, title, onPick, children }: {
+export function Pick({ className, on, label, title, onPick, children }: {
   className: string
   on: boolean
   label: string

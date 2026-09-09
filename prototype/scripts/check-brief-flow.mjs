@@ -919,6 +919,7 @@ check('the grip brings it back', (await previewState()) === 'open')
  * untouched. That is deliberate: the alternative is proposals docking in the middle of
  * three other cases' assertions.
  */
+const modeLabel = () => p.evaluate(() => document.querySelector('.mode-switch, [aria-haspopup="menu"]')?.innerText.trim() ?? null)
 const suggest = () => p.evaluate(() => {
   const sec = document.querySelector('section[aria-label="What Remixer suggests next"]')
   if (!sec) return null
@@ -937,9 +938,16 @@ const suggest = () => p.evaluate(() => {
     field: [f.x, f.y, f.width, f.height].map((n) => +n.toFixed(2)).join(','),
   }
 })
-const modeLabel = () => p.evaluate(() => document.querySelector('.mode-switch, [aria-haspopup="menu"]')?.innerText.trim() ?? null)
 
+/*
+ * ⚠️ AND THE MODE IS THE DEFAULT ONE, on a site started from the Home page in a browser whose
+ * previous site was left in `Build` — the designer's own build did exactly that on 09.09.2026
+ * and he got neither the proposal nor the Autopilot sign-off line. The mode belongs to the
+ * project, so `startBuild` puts it back; this is the check that says so.
+ */
 await shot('15a-autopilot-proposes')
+check('a new site starts in Autopilot, whatever the last one was left in',
+  (await modeLabel())?.includes('Autopilot') === true, await modeLabel())
 const first = await suggest()
 check('Autopilot proposes the next piece of work once the first page is live', !!first)
 check('…as ONE question, not a new brief', first?.question === 'What should I do next?', first?.question)
@@ -996,20 +1004,112 @@ await p.click('.dock-foot button >> nth=1')
 await p.waitForTimeout(700)
 check('accepting takes the panel away and puts the decision in the thread',
   !(await suggest()) && (await text()).includes('Start the About page.'))
-/* The answer, the 1.3s hand-over, and the next proposal. */
-await p.waitForTimeout(6000); await shot('15b-autopilot-again')
+/* The answer, the 1.3s hand-over — and then the SATISFACTION CARD, not a second proposal. */
+await p.waitForTimeout(6000); await shot('15b-autopilot-rating')
 {
   const body = await text()
-  const s = await suggest()
   check('Remixer answers naming the page the row named', body.includes('About is in'))
   check('the outline card keeps the sections it was built with',
     body.includes('Product grid') && !body.includes('Enquiry form'),
     'a send used to clear the answered brief and rewrite the card')
-  check('the next proposal comes after the work, and drops the page already asked for',
-    s?.rows.join(' · ') === 'Keep working on this page · Start the Services page · Start the Contact page',
-    s?.rows.join(' · '))
   check('the build it started spends a build’s worth of credits', body.includes('1 980'),
     'toolbar balance after the accepted proposal')
+}
+
+/* ------------------ the satisfaction card (Figma 25744:139153), asked once, after the
+   first proposal the customer answered. It takes the second proposal's turn rather than
+   stacking on it: the dock holds one thing. */
+const rating = () => p.evaluate(() => {
+  const sec = document.querySelector('section[aria-label="How would you rate Remixer?"]')
+  if (!sec) return null
+  const cs = (el, k) => getComputedStyle(el)[k]
+  const cells = [...sec.querySelectorAll('.brief-cell')]
+  /* The two ends of the scale — scoped off the cells' own row so the digits inside the
+     cells cannot answer for them (they did, the first time this was written). */
+  const ends = [...(cells[0].parentElement.previousElementSibling?.children ?? [])]
+  const input = sec.querySelector('input')
+  const foot = sec.querySelector('.dock-foot')
+  const card = sec.querySelector('.dock-sheet > div')
+  const f = document.querySelector('.composer-field').getBoundingClientRect()
+  const w = (e) => Math.round(e.getBoundingClientRect().width)
+  return {
+    title: sec.querySelector('p').innerText,
+    n: cells.length,
+    digits: cells.map((c) => c.innerText).join(''),
+    equal: new Set(cells.map(w)).size === 1,
+    h: Math.round(cells[0].getBoundingClientRect().height),
+    gap: Math.round(cells[1].getBoundingClientRect().x - cells[0].getBoundingClientRect().right),
+    rim: cs(cells[0], 'boxShadow'),
+    picked: cells.filter((c) => c.getAttribute('aria-pressed') === 'true').map((c) => c.innerText),
+    ends: ends.map((e) => e.innerText).join('|'),
+    endsColour: ends[0] ? cs(ends[0], 'color') : null,
+    cardBg: cs(card, 'backgroundColor'),
+    note: { h: Math.round(input.getBoundingClientRect().height), place: input.placeholder },
+    buttons: [...foot.querySelectorAll('button')].map((b) => ({ t: b.innerText.trim(), off: b.disabled })),
+    field: [f.x, f.y, f.width, f.height].map((n) => +n.toFixed(2)).join(','),
+  }
+})
+
+await shot('15c-rating')
+const r0 = await rating()
+check('the satisfaction card is asked once the first proposal has been answered', !!r0)
+check('…and it takes the second proposal’s turn, not a slot beside it', !(await suggest()))
+check('the scale is 1–10, ten equal cells 40 tall six apart',
+  r0?.n === 10 && r0?.digits === '12345678910' && r0?.equal && r0?.h === 40 && r0?.gap === 6,
+  `${r0?.n} cells / ${r0?.h}h / gap ${r0?.gap} / equal ${r0?.equal}`)
+/* Neutral Alpha/200 read in the DARK theme is 12% white; the light export prints .16 of a
+   near-black, which on this card would be a rim darker than the surface it sits on. */
+check('each cell rests on the board’s 12% rim',
+  r0?.rim === 'rgba(255, 255, 255, 0.12) 0px 0px 0px 1px inset', r0?.rim)
+check('the ends of the scale are named, and the board’s "Exellent" ships spelled right',
+  r0?.ends === 'Poor|Excellent', r0?.ends)
+check('…at 48% white, the token read in the dark theme',
+  r0?.endsColour === 'rgba(255, 255, 255, 0.48)', r0?.endsColour)
+check('the card is the same surface the questions and the proposals stand in',
+  r0?.cardBg === 'rgba(9, 9, 11, 0.56)', r0?.cardBg)
+check('the note is optional and says so', r0?.note.h === 40 && /optional/.test(r0?.note.place ?? ''),
+  JSON.stringify(r0?.note))
+/* Nothing to send before a number is chosen, so the button says so rather than lying. */
+check('nothing is picked when it arrives, and Submit is dead until something is',
+  r0?.picked.length === 0 && r0?.buttons[1]?.off === true, JSON.stringify(r0?.buttons))
+check('the way out is Skip, and it is the only other control', r0?.buttons[0]?.t === 'Skip'
+  && r0?.buttons.length === 2, JSON.stringify(r0?.buttons))
+
+await p.click('.brief-cell >> nth=8')
+await p.waitForTimeout(400)
+{
+  const r = await rating()
+  check('picking a score picks exactly one cell and wakes Submit',
+    r?.picked.join('') === '9' && r?.buttons[1]?.off === false, JSON.stringify(r?.picked))
+  check('the composer has not moved through any of it', r?.field === r0?.field,
+    `${r0?.field} → ${r?.field}`)
+}
+await p.fill('section[aria-label="How would you rate Remixer?"] input', 'The hero came out better than I expected.')
+await p.click('.dock-foot button >> nth=1')
+await p.waitForTimeout(2200); await shot('15d-rated')
+{
+  const body = await text()
+  check('sending the score takes the card away and puts the answer in the thread',
+    !(await rating()) && body.includes('9 out of 10.'))
+  check('…with the note the customer wrote', body.includes('The hero came out better than I expected.'))
+  /* Three replies, not one: a three and a ten cannot honestly get the same sentence. */
+  check('Remixer answers in the band the score falls in',
+    body.includes('that is good to hear') && body.includes('Your note goes with it'))
+  /* THE ONE LINE THAT MUST NEVER CHANGE: telling us how we did is free. Charging for it —
+     and above all charging for a bad score — would be the worst line in the product. */
+  check('rating costs nothing', body.includes('1 980'), 'toolbar balance unchanged by the rating')
+}
+
+/* And now the second proposal, on the next edit — the card does not come back. */
+await p.fill('textarea', 'Make the headline shorter.')
+await p.keyboard.press('Enter')
+await p.waitForTimeout(6200); await shot('15e-autopilot-again')
+{
+  const s = await suggest()
+  check('the next proposal comes after the next edit, and drops the page already asked for',
+    s?.rows.join(' · ') === 'Keep working on this page · Start the Services page · Start the Contact page',
+    s?.rows.join(' · '))
+  check('the satisfaction card is asked ONCE and does not come back', !(await rating()))
 }
 
 /* Turning the mode off is a mode switch, so it says so and names the way back. */
