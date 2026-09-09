@@ -3318,6 +3318,22 @@ html[data-drag] .shell-aside { transition: none; }
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  /*
+   * ⚠️ A BACKGROUND NEVER PAINTS OUTSIDE ITS OWN BORDER BOX, and `background-clip: text`
+   * only narrows that further to the glyphs. Put this on the label's TRIMMED box (9.09px of
+   * cap band where the glyphs need 15) and the ascenders and the p's descender simply go
+   * unpainted — which is what the designer saw on his machine (09.09.2026: "что это за
+   * фигня?", the word sliced top and bottom). Two things keep it whole:
+   *  · this class rides an INNER inline span (ChatPanel.tsx), whose box is the font's own
+   *    content area rather than the cap band;
+   *  · and 3px of block padding past that, which on an inline box extends the background
+   *    area WITHOUT touching the line box or the flex layout — so nothing can shave a glyph
+   *    even where the compositor rasterises this layer to its border box (it renders whole
+   *    on a software rasteriser and sliced on his GPU, so the box, not the path, is the fix).
+   * Neither changes the gradient's horizontal span: the ramp still runs exactly the width of
+   * the word, the way the board paints it.
+   */
+  padding-block: 3px;
 }
 /* the menu's tick: a CSS `stroke` beats the icon's own `stroke="currentColor"` attribute */
 .mode-check {

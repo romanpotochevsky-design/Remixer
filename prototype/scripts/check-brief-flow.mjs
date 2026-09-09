@@ -1024,8 +1024,10 @@ check('…and the typed prompt is built as given', await cardUp())
     const box = el.getBoundingClientRect()
     const rel = (e) => { const b = e.getBoundingClientRect(); return { x: +(b.x - box.x).toFixed(2), y: +(b.y - box.y).toFixed(2), w: +b.width.toFixed(2), h: +b.height.toFixed(2) } }
     const cs = getComputedStyle(el)
-    const lab = el.querySelector('span:first-of-type'), chev = el.querySelector('span:last-of-type')
-    const ls = getComputedStyle(lab)
+    /* the pill's two children, by position — `span:last-of-type` would find the INK span
+       nested inside the label before it ever reached the chevron */
+    const lab = el.firstElementChild, chev = el.lastElementChild
+    const ls = getComputedStyle(lab.querySelector('.mode-ink') || lab)
     return {
       h: +box.height.toFixed(2), w: +box.width.toFixed(2), radius: cs.borderRadius, fill: cs.backgroundColor,
       blur: cs.backdropFilter, border: `${cs.borderTopWidth} ${cs.borderTopColor}`,
@@ -1064,6 +1066,28 @@ check('…and the typed prompt is built as given', await cardUp())
     const px = await pixelAt(Math.round(lb.x + 2), Math.round(lb.y + lb.h / 2))
     check('…and it really paints: a glyph pixel carries the gradient’s lavender',
       px[2] > 150 && px[2] - px[1] > 25, `pixel ${px.join(',')} in the first glyph`)
+    /*
+     * ⚠️ THE REGRESSION THIS ONE EXISTS FOR (designer, 09.09.2026: "что это за фигня?" over
+     * a sliced "Autopilot"). A background never paints outside its element's border box, and
+     * `background-clip: text` narrows it to the glyphs — so the gradient on the label's
+     * TRIMMED box was cut to the cap band: 9.09px where the glyphs need 15, with the
+     * ascenders and the p's descender unpainted. It rendered whole on this software
+     * rasteriser and sliced on his GPU, so the assertion is the BOX, not a pixel: the inked
+     * element's paint area must contain every glyph of the word, with room to spare.
+     */
+    const ink = await p.$eval('button[aria-label="Chat mode"] .mode-ink', (el) => {
+      const tn = el.firstChild
+      let top = Infinity, bot = -Infinity
+      for (let i = 0; i < tn.data.length; i++) {
+        const r = document.createRange(); r.setStart(tn, i); r.setEnd(tn, i + 1)
+        const b = r.getBoundingClientRect(); top = Math.min(top, b.top); bot = Math.max(bot, b.bottom)
+      }
+      const b = el.getBoundingClientRect()
+      return { top: +b.top.toFixed(2), bottom: +b.bottom.toFixed(2), glyphTop: +top.toFixed(2), glyphBottom: +bot.toFixed(2) }
+    })
+    check('…on a paint box that contains every glyph, so no ascender or descender is shaved',
+      ink.top <= ink.glyphTop - 2 && ink.bottom >= ink.glyphBottom + 2,
+      `ink ${ink.top}…${ink.bottom} vs glyphs ${ink.glyphTop}…${ink.glyphBottom}`)
   }
   await (await pill()).click()
   await p.waitForTimeout(400)

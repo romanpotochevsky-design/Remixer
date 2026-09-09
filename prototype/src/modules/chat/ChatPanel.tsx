@@ -358,16 +358,29 @@ function ModeSwitch() {
           * below the caps, and the gradient below is clipped to the same box the board
           * paints it in.
           */}
-        <span
-          className={`[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] text-[13px] font-medium leading-[1.2] ${
-            /* Autopilot's ink is the gradient (index.css "AUTOPILOT'S GRADIENT INK");
-               every other mode keeps the neutral label. */
-            current.id === 'autopilot'
-              ? 'mode-ink'
-              : 'text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std group-hover:text-white'
-          }`}
-        >
-          {t(current.name)}
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] text-[13px] font-medium leading-[1.2]">
+          {/*
+            * ⚠️ THE INK RIDES AN INNER SPAN, AND THE TRIM STAYS ON THE OUTER ONE. A
+            * background NEVER paints outside its element's border box, and `background-clip:
+            * text` narrows it further to the glyphs — so a gradient on the TRIMMED box was
+            * cut to the cap band: measured, the box was 9.09px tall where the glyphs need 15,
+            * and the 3px above and below it went unpainted. The designer saw "Autopilot" with
+            * its ascenders and the p's descender sliced off (09.09.2026: "что это за фигня?").
+            * The inner inline span's box is the font's own content area, which covers every
+            * glyph, while the outer box stays the cap band the board positions by — and the
+            * gradient still spans exactly the word's width, as the board paints it.
+            */}
+          <span
+            className={
+              /* Autopilot's ink is the gradient (index.css "AUTOPILOT'S GRADIENT INK");
+                 every other mode keeps the neutral label. */
+              current.id === 'autopilot'
+                ? 'mode-ink'
+                : 'text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std group-hover:text-white'
+            }
+          >
+            {t(current.name)}
+          </span>
         </span>
         {/* 29816:19007 — with the menu open the board FLIPS the chevron (`-scale-y-100`),
             it does not swap in a second glyph. Flipping through the middle is also why
