@@ -188,9 +188,11 @@ function ListFooter({ onShowMore }: { onShowMore?: () => void }) {
   return (
     <div className="flex items-center justify-between px-6 py-3">
       <p className="whitespace-nowrap text-[15px] leading-normal text-[#ffffff7a]">{more}</p>
+      {/* Hover is a full pill on the faintest wash we have (NA/50, the same 4% the
+          rows use): at 8% the plate read as a solid button sitting in the bar. */}
       <button
         onClick={onShowMore}
-        className="flex h-10 items-center justify-center gap-1 rounded-[10px] py-2.5 pl-6 pr-2 text-[15px] font-medium leading-none text-[#ffffffb8] opacity-80 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:opacity-100"
+        className="flex h-10 items-center justify-center gap-1 rounded-full py-2.5 pl-6 pr-2 text-[15px] font-medium leading-none text-[#ffffffb8] opacity-80 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a] hover:opacity-100"
       >
         {t({ en: 'Show more', uk: 'Показати ще' })}
         <span className="grid h-6 w-6 flex-none place-items-center">
