@@ -1522,6 +1522,30 @@ await p.click('.dock-foot button >> nth=0'); await p.waitForTimeout(1200); await
     && body.includes('mode button below'))
 }
 
+/* The mark in the chat header is the way back to the Home page — the one exit from the
+   builder, as it is in every builder in the category. Checked HERE because the next line
+   navigates from scratch anyway, so leaving the shell costs nothing (10.09.2026: the
+   designer asked why the logo had stopped leading Home — it had not; the artifact had
+   rolled back to a build from a branch that has no Home page at all, so its mark was a
+   picture. Nothing had ever clicked it in 250 checks). Both halves are probed: the mark
+   and the wordmark are one button, and nothing may cover either. */
+{
+  const hit = await p.evaluate(() => {
+    const btn = document.querySelector('button[aria-label="Back to Home"]')
+    if (!btn) return null
+    const r = btn.getBoundingClientRect()
+    return [r.left + 16, r.left + r.width - 16].map((x) => {
+      const el = document.elementFromPoint(x, r.top + r.height / 2)
+      return !!el && btn.contains(el)
+    })
+  })
+  check('the mark in the chat header is a live button, mark and word alike',
+    !!hit && hit[0] === true && hit[1] === true, JSON.stringify(hit))
+  await p.click('button[aria-label="Back to Home"]')
+  await p.waitForTimeout(500)
+  check('…and clicking it returns to the Home page', await onHome())
+}
+
 /* ========================================= B. the composer's own example builds */
 
 await buildFromHome('Bella’s Bakery')
