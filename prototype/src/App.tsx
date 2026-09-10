@@ -11,23 +11,25 @@
  * drive this shell exactly as they drove the old one.
  */
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
+import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
+import { SPRING } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
   IconChevronDown, IconCoin, IconStyle, IconExtension, IconAnalytics, IconCloud,
-  IconChatBubble,
+  IconChatBubble, IconExpand,
 } from '@/ui/icons'
 
 /** Glass pill: the shared chrome surface — tinted fill, backdrop blur, one hairline. */
@@ -49,7 +51,7 @@ const RAIL = [
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth } = useUI()
+  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
 
   /*
    * The glow waits for the send choreography to finish.
@@ -65,6 +67,26 @@ export default function App() {
   const busy = world.project === 'generating' || world.chat === 'working' || reloading
   const working = world.chat === 'working'
   const [glow, setGlow] = useState(false)
+  /*
+   * THE FIRST GENERATION DOES NOT HOLD THE GLOW ON — it pulses once per section.
+   *
+   * The rule this bends is a real one ("the glow is the only loading indicator"), and it
+   * was written when the first build was 5.6 seconds. It is now a MINUTE, and there is a
+   * progress card in the chat that names the section in hand (modules/chat/build.ts).
+   *
+   * MEASURED on this build, same page, same second (07.09.2026, software renderer):
+   *   mid-section, glow off .... 60.6 fps
+   *   during a glow pulse ...... 9.5 – 10.3 fps
+   * The card's animations ARE the deliverable here — a shimmering work line, a spinning
+   * ring, rows changing height — and sixty seconds at 10fps would have killed every one
+   * of them. That is the same failure as the original 9fps lesson, just spread over a
+   * minute instead of a second.
+   *
+   * So the glow says what it is good at saying: something landed. One ~0.9s pulse as each
+   * section completes, and a longer one on the assembling beat that runs into the page
+   * appearing — six events over the minute, ~8% of it, instead of one continuous burn.
+   */
+  const building = world.project === 'generating'
   /*
    * `working` is a dependency ON PURPOSE, not just `busy`. busy is a union of
    * three sources, and unions hide transitions: send during a reload pulse and
@@ -82,17 +104,67 @@ export default function App() {
     // keeps busy true; a plain reload/generating start keeps the tuned 700.
     const revealNeedsRoom = wasWorking.current && !working
     wasWorking.current = working
-    if (!busy) { setGlow(false); return }
+    // `building` drives its own pulses below; holding the glow here as well would put
+    // both on the same element and the pulses would never be seen going out.
+    if (!busy || building) { setGlow(false); return }
     setGlow(false)
     const t = window.setTimeout(() => setGlow(true), revealNeedsRoom ? 1200 : 700)
     return () => window.clearTimeout(t)
-  }, [busy, working])
+  }, [busy, working, building])
+
+  /* One pulse per section. Depends on `at` and not on the whole `build` object, so the
+     work lines inside a section (which change every few seconds) do not re-fire it. */
+  /*
+   * ONE PULSE, ON ARRIVAL. With the canvas away for the whole generation there is nothing
+   * for a running glow to run along — the outline card carries the minute, row by row. So
+   * the glow does the job it was invented for and does cheaply: it marks the preview
+   * appearing, once, as the canvas opens on the finished page.
+   */
+  const wasBuilding = useRef(false)
+  useEffect(() => {
+    const landed = wasBuilding.current && !building && world.project === 'built'
+    wasBuilding.current = building
+    if (!landed) return
+    setGlow(true)
+    const t = window.setTimeout(() => setGlow(false), 1600)
+    return () => window.clearTimeout(t)
+  }, [building, world.project])
 
   // The resizer writes --chat-w straight to <html> during a drag; this keeps the
   // stored value authoritative everywhere else (reset, reload, another session).
   useEffect(() => {
     document.documentElement.style.setProperty('--chat-w', `${chatWidth}px`)
   }, [chatWidth])
+
+  /*
+   * The collapsible preview (Lovable, recorded 06.09.2026). A brand-new project has
+   * nothing to show, so its canvas starts COLLAPSED and the chat takes the whole
+   * shell, centring itself; the moment a build starts the canvas opens by itself.
+   * Both are defaults, not locks — the arrows in the top bars and the divider let
+   * the user open or close it whenever they like.
+   */
+  const fresh = world.project === 'empty' && world.sent.length === 0 && world.chat === 'empty'
+  /* An open brief is the same situation with a transcript in front of it: still
+     nothing generated, so still nothing to preview. Kept as a derived default and
+     not a one-shot write, so that a reload landing mid-questions comes back the way
+     it left — this store is not persisted, and its default is "open". Both are
+     defaults, not locks: they only re-run when the SITUATION changes, so a user who
+     opens the canvas mid-brief keeps it open. */
+  /* 'planning' joins it: the plan is docked, nothing is generated, and the canvas has
+     nothing to show — the same situation. Review opens it deliberately, and because this
+     only re-runs when the SITUATION changes, that choice survives. */
+  /* 'generating' joins them, and this REPLACES the earlier "canvas opens when the build
+     starts" (designer, 07.09.2026, on seeing the minute for himself: "нет смысла показывать
+     превью сайта, пока не сгенерируется страница первая"). That decision was made when the
+     first build was 5.6 seconds and there was nothing else to look at; it is now a minute,
+     and the outline card is the thing to look at — which it does far better at the chat's
+     800 than squeezed into 432 beside an empty rectangle. Same situation as the brief and
+     the plan: nothing generated, so nothing to preview. */
+  const waiting =
+    world.brief.status === 'asking' || world.brief.status === 'planning' || world.project === 'generating'
+  useEffect(() => { if (fresh || waiting) setPreviewOpen(false) }, [fresh, waiting, setPreviewOpen])
+  /* …and it opens on the page it is a preview OF, at the moment that page exists. */
+  useEffect(() => { if (world.project === 'built') setPreviewOpen(true) }, [world.project, setPreviewOpen])
   const { t } = useT()
 
   const address =
@@ -100,37 +172,90 @@ export default function App() {
       ? 'fit-ration.com'
       : 'fit-ration.remixer.site'
 
+  /* "Update" only means something once the site is live: it is the word for pushing
+     edits out to visitors who already have the old version. A site that has never been
+     published just says Publish, and carries no pending-change count either — the count
+     answers "how far behind is what people see", which has no answer yet. */
   const publishLabel =
-    world.unpublished > 0
+    world.published && world.unpublished > 0
       ? { en: 'Update', uk: 'Оновити' }
       : { en: 'Publish', uk: 'Опублікувати' }
 
   return (
-    <div className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]">
-      {/* ================================================== chat column, 432px */}
-      <aside className="flex flex-none flex-col" style={{ width: 'calc(var(--chat-w) - 1px)' }}>
+    <div
+      className="flex h-full overflow-hidden bg-[var(--gray-950)] text-[var(--white-900)]"
+      data-preview={previewOpen ? 'open' : 'closed'}
+      /* the Home → builder arrival: while set, the `arrive-*` parts below play their
+         entrance (index.css "THE ARRIVAL"; the phases are ui/BootCover.tsx's) */
+      data-boot={boot ?? undefined}
+    >
+      {/* ================================================== chat column, 432px —
+          or the whole shell when the preview is collapsed. The width transition
+          IS the open/close animation: the canvas column just gets what is left,
+          so the chat content slides over while the preview grows out of the
+          right edge — Lovable's move, measured at ~0.42s ease-out. */}
+      <aside
+        className="shell-aside flex flex-none flex-col"
+        style={{ width: previewOpen ? 'calc(var(--chat-w) - 1px)' : 'calc(100% - var(--rail-w))' }}
+      >
         {/* chat top toolbar (Figma 25819:143769) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
-          <div className="flex items-center">
+          {/* the mark is the way back to the Home page, as it is in every builder
+              in the category */}
+          <button
+            onClick={() => goHome()}
+            aria-label={t({ en: 'Back to Home', uk: 'На головну' })}
+            className="flex items-center"
+          >
             <div className="grid w-14 place-items-center">
-              <LogoRemixer size={32} />
+              {/* `arrive-mark`: on the Home → builder arrival the mark lights up here, just
+                  before the wordmark unfolds from it (index.css "THE ARRIVAL") */}
+              <span className="arrive-mark grid h-8 w-8 place-items-center">
+                <LogoRemixer size={32} />
+              </span>
             </div>
-            <span className="font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
-          </div>
-          <Glass className="gap-0.5 p-0.5">
-            <button
-              aria-label={t({ en: 'Version history', uk: 'Історія версій' })}
-              className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-            >
-              <IconHistory size={18} />
-            </button>
-            <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-            <button
-              aria-label={t({ en: 'Collapse chat', uk: 'Згорнути чат' })}
-              className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-            >
-              <IconSidebar size={18} />
-            </button>
+            <span className="arrive-word font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
+          </button>
+          {/*
+            * THE PILL HOLDS ONE THING OR THE OTHER, never both (designer, 07.09.2026:
+            * "кнопок история и скрыть чат тут быть не может").
+            *
+            *  · canvas open  — the chat is a 432 column beside it, and these two controls
+            *    are ABOUT that column: its history, and putting it away.
+            *  · canvas away  — the chat IS the shell. "Collapse chat" has nothing left to
+            *    collapse to, and version history ends up a thousand pixels from the thread
+            *    it belongs to, pinned to the far right of the window. All that is left to
+            *    say here is "bring the canvas back", and that is the ONE arrow in the whole
+            *    shell (there is none on the canvas side either — collapsing is a drag of
+            *    the divider). Do not put a second one anywhere.
+            */}
+          <Glass className="arrive-pill gap-0.5 p-0.5">
+            {previewOpen ? (
+              <>
+                <button
+                  aria-label={t({ en: 'Version history', uk: 'Історія версій' })}
+                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+                >
+                  <IconHistory size={18} />
+                </button>
+                <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+                <button
+                  aria-label={t({ en: 'Collapse chat', uk: 'Згорнути чат' })}
+                  className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+                >
+                  <IconSidebar size={18} />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setPreviewOpen(true)}
+                aria-label={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                title={t({ en: 'Show preview', uk: 'Показати прев’ю' })}
+                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+              >
+                <IconExpand size={17} />
+              </button>
+            )}
           </Glass>
         </header>
 
@@ -142,8 +267,10 @@ export default function App() {
           last pixel is the divider, so it lives here and the aside gives it back. */}
       <ChatResizer />
 
-      {/* ================================================== center column */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* ================================================== center column —
+          clipped, so that while the aside grows this column shrinks to nothing
+          instead of re-flowing its toolbar into a heap. */}
+      <div className="arrive-canvas flex min-w-0 flex-1 flex-col overflow-hidden" aria-hidden={!previewOpen}>
         {/* canvas top toolbar (Figma 25819:143717) */}
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           {/* left: Visual Editor + device preview */}
@@ -179,6 +306,16 @@ export default function App() {
               >
                 {device === 'desktop' ? <IconMonitor size={17} /> : <IconPhone size={17} />}
               </button>
+              {/*
+                * NO COLLAPSE ARROW HERE EITHER (designer, 07.09.2026, twice: "эта стрелка
+                * не нужна тут, она видна только когда скрыто превью", then "какова черта я
+                * вижу тут эту кнопку?"). The rule is exactly one arrow in the whole shell,
+                * in the chat header, and only while the preview is away — it expands.
+                *
+                * Collapsing is a DRAG: pulling the divider past the canvas minimum puts
+                * the preview away (ChatResizer, PREVIEW_MIN). Do not add a button back on
+                * either side.
+                */}
             </Glass>
           </div>
 
@@ -219,12 +356,35 @@ export default function App() {
                 <IconChevronDown size={16} />
               </span>
             </div>
+            {/*
+              * Publish is DEAD until there is a site to publish (designer, 07.09.2026).
+              * `built` is the only state that qualifies: on an empty project there is
+              * nothing, and during `generating` there is not yet anything — a live blue
+              * Publish through the whole brief and the whole build invites the one press
+              * that cannot work, right where the flow is trying to teach a sequence.
+              *
+              * Greyed with the same pair the Home page's Build uses when it is not armed
+              * (`--white-100` plate, 24%-white label), so "not yet" looks the same
+              * everywhere in the product.
+              */}
             <button
               onClick={() => togglePublish()}
-              className="h-9 rounded-[10px] bg-[var(--action)] px-4 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+              disabled={world.project !== 'built'}
+              title={
+                world.project !== 'built'
+                  ? t({ en: 'Nothing to publish yet', uk: 'Публікувати поки нічого' })
+                  : undefined
+              }
+              className={`h-9 rounded-[10px] px-4 text-[13px] font-semibold leading-[1.4] transition-colors duration-[var(--dur-fast)] ease-std ${
+                world.project === 'built'
+                  ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
+                  : 'cursor-not-allowed bg-[var(--white-100)] text-[#ffffff3d]'
+              }`}
             >
               {t(publishLabel)}
-              {world.unpublished > 0 && <span className="ml-1.5 tabular-nums opacity-70">{world.unpublished}</span>}
+              {world.published && world.unpublished > 0 && (
+                <span className="ml-1.5 tabular-nums opacity-70">{world.unpublished}</span>
+              )}
             </button>
           </div>
         </header>
@@ -238,7 +398,12 @@ export default function App() {
             390px frame centred on the ground, not a scaled-down desktop. */}
         <main className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
           {(() => {
-            return surface === 'domains' ? (
+            /* The plan document takes the canvas the same way the domains dashboard
+               does — a surface in place of the site, not a modal over it. There is no
+               site to preview at this point in the flow, so nothing is being covered. */
+            return surface === 'plan' ? (
+              <PlanSurface />
+            ) : surface === 'domains' ? (
               <DomainsSurface />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -264,8 +429,18 @@ export default function App() {
                   ) : (
                     <div className="grid h-full place-items-center bg-[var(--gray-900)] px-6 text-center">
                       {world.project === 'generating' ? (
+                        /* "pages", plural, was a lie: this pass builds ONE page and the
+                           site appears when that page is done (designer, 07.09.2026).
+                           The board draws this canvas bare, and bare in a static frame
+                           is fine; live, an unexplained dark rectangle for a minute
+                           reads as broken. One quiet line, and the detail — which
+                           section, what is happening to it — stays in the chat where
+                           the card already carries it. */
                         <p className="text-[14px] text-[var(--white-400)]">
-                          {t({ en: 'Building your pages…', uk: 'Збираємо сторінки…' })}
+                          {t({
+                            en: 'Your home page appears here as soon as it’s built',
+                            uk: 'Головна з’явиться тут, щойно буде готова',
+                          })}
                         </p>
                       ) : (
                         <p className="text-[14px] text-[var(--white-300)]">
@@ -284,31 +459,62 @@ export default function App() {
       </div>
 
       {/* ================================================== right rail, 56px */}
-      <nav className="flex flex-none flex-col items-center pb-6" style={{ width: 'var(--rail-w)' }}>
+      <nav className="arrive-rail flex flex-none flex-col items-center pb-6" style={{ width: 'var(--rail-w)' }}>
         <div className="grid place-items-center" style={{ height: 'var(--topbar-h)' }}>
           <button
             aria-label={t({ en: 'Account', uk: 'Акаунт' })}
-            className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white"
+            className="arrive-rail-item h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white"
           >
             R
           </button>
         </div>
-        <div className="mt-2.5 flex flex-col gap-2">
-          {RAIL.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              title={label}
-              aria-label={label}
-              className="grid h-12 w-12 place-items-center rounded-[16px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+        {/*
+          * THE TOOLS ARRIVE WITH THE SITE (designer, 07.09.2026: "когда идет генерация
+          * первая и сайта еще нет… этих кнобок нет, они потом красиво с анимацией
+          * появляются"). Style, Integrations, Analytics and Cloud all act on a site, and
+          * through the whole brief and the whole minute of the first build there is no
+          * site for them to act on — the same reasoning that greys out Publish, taken one
+          * step further: a control with nothing to do is better absent than dead.
+          *
+          * The avatar above and the support chat below stay: an account and a way to ask
+          * for help exist before any site does.
+          *
+          * ⚠️ `initial={false}` so opening a project that is ALREADY built does not
+          * replay the arrival. The animation belongs to the moment the site appears, not
+          * to every mount — the same rule the chat's own reveal follows (`settled`).
+          */}
+        <AnimatePresence initial={false}>
+          {world.project === 'built' && (
+            <motion.div
+              key="rail-tools"
+              className="mt-2.5 flex flex-col gap-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.14 } }}
             >
-              <Icon size={22} />
-            </button>
-          ))}
-        </div>
+              {RAIL.map(({ id, label, Icon }, i) => (
+                <motion.button
+                  key={id}
+                  title={label}
+                  aria-label={label}
+                  /* One after the other from the top, 70ms apart: the rail fills in the
+                     direction it is read. Only transform and opacity, so the stagger
+                     costs the compositor and nothing else. */
+                  initial={{ opacity: 0, scale: 0.82, y: -6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ ...SPRING, delay: 0.12 + i * 0.07 }}
+                  className="grid h-12 w-12 place-items-center rounded-[16px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                >
+                  <Icon size={22} />
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="flex-1" />
         <button
           aria-label={t({ en: 'Support chat', uk: 'Чат підтримки' })}
-          className="grid h-9 w-9 place-items-center rounded-full bg-[#48ba79] text-white transition-transform duration-[var(--dur-fast)] ease-std hover:scale-105"
+          className="arrive-rail-item grid h-9 w-9 place-items-center rounded-full bg-[#48ba79] text-white transition-transform duration-[var(--dur-fast)] ease-std hover:scale-105"
         >
           <IconChatBubble size={20} />
         </button>

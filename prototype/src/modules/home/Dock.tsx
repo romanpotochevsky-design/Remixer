@@ -1,0 +1,1084 @@
+/**
+ * The Home page's bottom dock — Figma 28364:40053 (`My projects`) and 28375:43006
+ * (`Templates`). One component, because the boards draw one band in two states:
+ *
+ *   · the customer HAS sites  → a segmented control `My projects | Templates` over
+ *     their shelf: the real project card plus the drawn empty slots
+ *   · the customer has NONE   → the `Templates` heading, the category filter chips,
+ *     and the six template cards
+ *
+ * Which one you get is product truth (`world.projects`), not a page flag — see the
+ * `projects` axis in state/world.ts. Picking the `Templates` tab shows the same
+ * template content without the heading, since the tab already names it.
+ *
+ * Geometry: the band is 376 tall and full-bleed, with 32px side insets, an 80px title
+ * row and 24px of slack under the cards. Card widths are an OUTPUT, never an input —
+ * every card is `flex: 1 0 0`, which at six-up in a 1592 column is the 238.667 the
+ * board reports. There is no fill, no hairline and no shadow on this band: the hero's
+ * rounded bottom corners are the entire separation.
+ */
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform,
+  type TargetAndTransition,
+} from 'motion/react'
+import { hasProjects, useWorld, type HomeProject } from '@/state/world'
+import { useUI, type DockTab } from '@/state/ui'
+import { useT, type Text } from '@/i18n'
+import {
+  cardAdd, cardAddFade, cardAddScrim, listSwapBehind, listSwapFade, listSwapPop, listSwapPopFade,
+  segmentedPill,
+} from '@/ui/motion'
+import {
+  TEMPLATES, TEMPLATE_CATEGORIES, templatesIn,
+  type Template, type TemplateCategoryId,
+} from '@/data/templates'
+import { ScrollArea } from '@/ui/ScrollArea'
+import { IconFullscreen, IconMoreVertical, IconPlus } from '@/ui/icons'
+import { Thumb } from './thumbs'
+import { rectOf } from './attachment'
+
+/** How many slots the shelf shows. Six is what the canonical board draws. */
+const SLOTS = 6
+
+/** No animation at all — see `instant` on TemplateCard. */
+const NO_TIME = { duration: 0 } as const
+
+/**
+ * WHERE THE HOVER'S `Preview` PILL SITS — an open design call, two variants, one
+ * switch (manager's review, 26.08.2026 night). The first cut put the pill in the
+ * corner with no ground of its own, and on a light drawing it sat straight on the
+ * site's own copy and cut it mid-word: a sticker on the screenshot rather than a
+ * layer over it.
+ *
+ *   `corner` — bottom-left over a short bottom VEIL, which is the designer's own
+ *              caption plate turned 90° (same recipe, same `--card-ground` rule)
+ *   `centre` — the gallery convention: no veil, the pill as the focal point
+ *
+ * Frames for the choice: `scratchpad/wp3/A-*` (corner) and `B-*` (centre). Both
+ * class names are written out as literals below because Tailwind tree-shakes
+ * `@layer` by the literals it can see, and the veil stays mounted in both so one
+ * build can be filmed both ways. When the designer picks, the loser's rules, this
+ * constant and the ternary all go.
+ */
+const PEEK_VARIANT: 'corner' | 'centre' = 'corner'
+
+/**
+ * Which conveyor the tab switch's content rides — the house one, or the same
+ * one with the movement taken out when the OS asks for less motion.
+ *
+ * ⚠️ `<MotionConfig reducedMotion="user">` at the root is NOT enough here, and
+ * that is worth knowing: it disables transform animations, and "disabled" means
+ * the value SNAPS to its target, so the conveyor's `exit: { y: -12 }` turned
+ * into a 12px HOP at 90% opacity instead of a slide (measured). A hop is not
+ * less motion than a slide. `listSwapFade` drops the displacement itself, which
+ * is what the setting is actually asking for; see the note on it in ui/motion.ts.
+ */
+function useConveyor() {
+  return useReducedMotion() ? listSwapFade : listSwapBehind
+}
+
+/* ------------------------------------------------------------------- header */
+
+/**
+ * `Tabs (Small)` 28364:42996 — track 211 × 44, 4% white fill, and a GRADIENT
+ * rim (32% → 4% → 24% down the pixel diagonal — the loudest cut of the Liquid
+ * Glass rim family; `.home-tabs-track` in index.css has the exact paint).
+ * ⚠️ The old flat `32% white` here was a flattened export read, not the drawn paint.
+ *
+ * SEAT GEOMETRY, as drawn: 6px of padding all round, two seats 101 and 92 wide
+ * with 6px between them. The widths are per POSITION, not per selection — they
+ * come from the two labels, so the pill is 101 wide on the left and 92 on the
+ * right. That difference is the whole reason the pill is built the way it is
+ * below.
+ */
+const SEAT_PAD = 6
+const SEAT_GAP = 6
+const SEAT_H = 32
+/** A 999-radius box this tall has 16px caps — the number the capsule maths needs. */
+const SEAT_R = SEAT_H / 2
+const SEATS: { id: DockTab; label: Text; w: number }[] = [
+  { id: 'projects', label: { en: 'My projects', uk: 'Мої проєкти' }, w: 101 },
+  { id: 'templates', label: { en: 'Templates', uk: 'Шаблони' }, w: 92 },
+]
+/** Left / right edge of seat i in the track's padding-box coordinates. */
+const seatL = (i: number) => SEAT_PAD + SEATS.slice(0, i).reduce((s, t) => s + t.w + SEAT_GAP, 0)
+const seatR = (i: number) => seatL(i) + SEATS[i].w
+/**
+ * Each half of the travelling capsule: the NARROW seat minus one cap radius.
+ *
+ * ⚠️ This number is not a taste call, it is the one that keeps the seam
+ * invisible — see `TabPill`. The two halves overlap by `seat − CAP_W`, and that
+ * overlap has to stay inside `[R, CAP_W − 2R]` = [16, 44] at BOTH seats and
+ * everywhere in between: 16 so each buried cap lands inside the other half's
+ * full-height run (below 16 the two arcs come within a pixel of each other and
+ * Chrome composites both AA edges, which is exactly the artifact this replaced),
+ * 44 so the two straight runs still touch. Overlap here is 25 and 16.
+ */
+const CAP_W = Math.min(...SEATS.map((s) => s.w)) - SEAT_R
+
+/**
+ * The travelling pill — the designer's order, 26.08.2026: "a smooth, great
+ * animation for the segmented control switch".
+ *
+ * THE CAPSULE OF TWO. The seats are different widths, so the shape genuinely
+ * changes (101 → 92) and the obvious `translate + scaleX` is wrong twice over:
+ * scaling a 999-radius box squashes its caps (16px vertical radius against
+ * 14.6 horizontal), which means the SETTLED pill is no longer the drawn one —
+ * and pixel-QA'd geometry is not something an animation gets to spend.
+ *
+ * So the pill is two identical 76-wide capsules, one pinned to the active
+ * seat's LEFT edge and one to its RIGHT edge, each animating `x` and nothing
+ * else. The union of two equal-height capsules is always a capsule, so the
+ * ends stay exactly round at every width in between, and both bodies are
+ * opaque white, so the seam inside the union does not exist. Nothing scales,
+ * nothing repaints, and each half's OWN caps are buried in the other half's
+ * full-height run — which is what `CAP_W` above is chosen for, and what a
+ * first cut at this got wrong: two 92-wide halves land exactly on top of each
+ * other on `Templates`, Chrome composites both antialiased cap arcs, and the
+ * settled pill came out 333 subpixels heavier than the one QA signed off.
+ *
+ * Why the two halves stay in phase: a spring is a linear system, so two
+ * springs with the same parameters trace the same NORMALIZED curve whatever
+ * distance they cover — 107px and 98px here. That holds through interruption
+ * too, since each carries velocity proportional to its own distance. The law
+ * is `segmentedPill` in ui/motion.ts.
+ */
+function TabPill({ active }: { active: number }) {
+  return (
+    /* Inset 0 = the track's PADDING box, which is also its border box (the rim
+       is a mask ring on ::before, never a border) — so `left`/`top` below are
+       seat coordinates straight out of the board. */
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
+      {([0, 1] as const).map((end) => (
+        <motion.div
+          key={end}
+          className="absolute top-[6px] h-8 rounded-full bg-white"
+          style={{ width: CAP_W, left: end ? seatR(0) - CAP_W : seatL(0) }}
+          /* `initial={false}`: on mount the pill IS at its seat. Without this
+             it would spring in from x:0 during the Home entrance, which already
+             animates the whole dock as one block (`he-dock`). */
+          initial={false}
+          animate={{ x: end ? seatR(active) - seatR(0) : seatL(active) - seatL(0) }}
+          transition={segmentedPill.transition}
+        />
+      ))}
+    </div>
+  )
+}
+
+function DockTabs() {
+  const { t } = useT()
+  const { dockTab, setDockTab } = useUI()
+  const active = SEATS.findIndex((s) => s.id === dockTab)
+
+  return (
+    /* 211 × 44: 6px of padding, 101 + 6 + 92 of tabs. The rim is a mask ring
+       overlaying the padding's outer pixel rather than a border adding to the
+       track, the same reason as the composer's. */
+    <div className="home-tabs-track relative flex h-11 w-[211px] flex-none items-center gap-1.5 rounded-full p-[6px]">
+      <TabPill active={active} />
+      {SEATS.map((seat, i) => {
+        const on = i === active
+        return (
+          /*
+           * `relative` is load-bearing: the pill is an absolutely-positioned
+           * sibling, and a non-positioned button would have its text painted
+           * UNDER it (positioned boxes paint after in-flow ones).
+           *
+           * Interaction states belong to the INACTIVE seat only. The active
+           * seat is solid white — a white wash and a white bloom on white are
+           * invisible — and pressing what is already selected is a no-op, so
+           * there is nothing to acknowledge. `glass-interactive` therefore
+           * comes and goes with the selection; both the 8% wash and the
+           * positional ripple clip to the button's own rounded box.
+           *
+           * ⚠️ The inactive seat's drawn radius is 8 while the active pill is
+           * a full 999 — flagged to the designer as probably accidental (spec
+           * §12.10). It used to be invisible either way; the wash and ripple
+           * are the first things that would ever SHOW it, so they take the
+           * pill's radius instead of enshrining a probable accident. The drawn
+           * 8 stays recorded here and in the spec.
+           */
+          <button
+            key={seat.id}
+            onClick={() => setDockTab(seat.id)}
+            style={{ width: seat.w }}
+            aria-pressed={on}
+            className={`group relative h-8 rounded-full text-[14px] leading-none ${on ? '' : 'glass-interactive'}`}
+          >
+            {/*
+             * TWO INKS, CROSS-FADING IN PLACE. The label's colour is not the
+             * only thing that changes between states — the WEIGHT does too
+             * (semibold dark / medium muted, as drawn), and a weight cannot be
+             * interpolated. So each seat carries both inks stacked in the same
+             * box and only their opacity moves: no glyph travels, no glyph
+             * scales, and the ink never snaps.
+             *
+             * What is tuned is WHEN the fade passes 50%, not how long it takes:
+             * both bad states are equally invisible (near-black on the track,
+             * 48%-white on the pill), so the ink has to be mid-grey exactly
+             * while the pill is between the seats. See `.home-tab-ink` in
+             * index.css for the measured numbers.
+             */}
+            {/* ⚠️ One of the two carries the accessible name and the other is
+                `aria-hidden` UNCONDITIONALLY — not "whichever is visible".
+                Both inks are real text, so without this the button is named
+                "Templates Templates", and flipping the flag with the selection
+                would make the name churn on every switch. The name is the same
+                string either way; the selected state is on `aria-pressed`. */}
+            <span className="home-tab-ink font-semibold text-[var(--gray-950)]" style={{ opacity: on ? 1 : 0 }}>
+              {t(seat.label)}
+            </span>
+            <span
+              aria-hidden
+              className="home-tab-ink font-medium text-[var(--white-480)] group-hover:text-white"
+              style={{ opacity: on ? 0 : 1 }}
+            >
+              {t(seat.label)}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------- the chip row's pill */
+
+/** Chip height as drawn (h-9), hence the pill's cap radius. */
+const CHIP_H = 36
+const CHIP_R = CHIP_H / 2
+/** The bar's rendered width; `scaleX` states every real span against it. */
+const BAR_REF = 100
+
+/** A pill position: both edges, in the chip row's own coordinates. */
+type Span = { l: number; r: number }
+
+/**
+ * A chip's box relative to the row. Both rects are read in the same frame, so
+ * the subtraction cancels any translation the row is under — which matters,
+ * because the dock's row rides the tab conveyor and is often mid-flight.
+ */
+function spanOf(row: HTMLElement, chip: HTMLElement): Span {
+  const a = row.getBoundingClientRect()
+  const b = chip.getBoundingClientRect()
+  return { l: b.left - a.left, r: b.right - a.left }
+}
+
+/**
+ * The category chip row — `Tab Alt (Dark theme)`, one Figma component with two
+ * homes: right-aligned in the dock's title row (28376:43912) and centred under
+ * the template picker's heading (28626:583). Same chips, same order, same
+ * styles in both, so one React component too. Controlled, because the two
+ * homes keep different filter state: the dock's lives in the ui store, the
+ * picker's is per-open.
+ *
+ * THE ACTIVE FILL TRAVELS (designer's order, 26.08.2026 evening: make the
+ * filter switch "more interesting and smoother" — a gesture, not a swap). Same
+ * law as the dock's segmented control (`segmentedPill`, ui/motion.ts), with two
+ * differences that the chips force and that are worth reading before touching
+ * this:
+ *
+ * 1. THE CAPSULE HAS THREE PARTS, not two. The two-capsule trick needs every
+ *    seat at least twice its own height; measured off the built page the chips
+ *    run 68.53…152.39 wide at 36 tall, so its window `C ∈ [Wmax/2+R, Wmin−R]` =
+ *    `[94.20, 50.53]` is EMPTY (`More` is 1.9× its height). So the pill is two
+ *    36px discs, one per end, plus a plain RECTANGLE spanning cap centre to cap
+ *    centre and scaled on X — a rectangle has no radius to distort, which is the
+ *    one thing scaling a pill was never allowed to do. Everything derives from
+ *    two motion values (the pill's left and right edge), so the bar's right end
+ *    is the right cap's centre ALGEBRAICALLY on every frame: `(l + R) +
+ *    BAR_REF·sx = r − R` by construction, not by two springs agreeing.
+ *
+ * 2. IT ONLY EXISTS WHILE IT FLIES. The chips' widths come from their text, so
+ *    unlike the segmented control's drawn 101/92 there is no constant to place a
+ *    permanent layer at — and a permanent layer would also mean the resting page
+ *    is composited where today it is painted. Instead the pill is measured off
+ *    the real DOM at the moment of the press, flies, and on landing hands the
+ *    fill back to the chip in ONE commit: the chip's own `bg` returns as the
+ *    pill unmounts, and the two are the same colour in the same box, so the swap
+ *    is the codebase's usual hard swap of identical pixels (the same idiom as
+ *    the detail view's `landed`). At rest this feature is not in the DOM at all.
+ *
+ * The `to` span is read in a LAYOUT EFFECT, after the commit that changed the
+ * selection, not in the click handler — the destination has to be the box the
+ * pill will actually hand the fill back to, measured in the layout that box
+ * lives in.
+ *
+ * ⚠️ AND THE RIM HAD TO STOP BEING A `border` FOR ANY OF THIS TO LAND STILL.
+ * Only the inactive state is drawn with a rim, and as a CSS border that is 2px
+ * of extra BOX on the inactive chip alone (Figma strokes sit inside the
+ * geometry — the standing lesson in CLAUDE.md). So every press used to resize
+ * two chips and reflow the row between them: measured, `More`'s row-local left
+ * edge moved 771.80 → 773.80 in the commit that selected it, and the label
+ * inside every inactive chip sat 1px right of the active one's. Both were
+ * invisible while the fill blinked from chip to chip; with a pill travelling
+ * across the row they would be the thing you watch. `shadow-[inset_0_0_0_1px]`
+ * draws the same hairline without owning any layout, and it also brings the
+ * chips CLOSER to the board: the drawn widths (figma-spec.md §7.3 — 112 / 105 /
+ * 86 / 151 / 146 / 67, both states padded `0 18px`) sat 1.4…3.9px under our
+ * rendered ones, of which exactly 2 was this border; what is left is
+ * font-substitution noise of −0.6…+1.9px. The cost is honest and visible in the
+ * before/after: the dock's row is right-aligned, so losing 2px from each of six
+ * inactive chips slides the row 12px right of where it was this morning.
+ */
+export function CategoryChips({
+  value, onChange, swap = false,
+}: {
+  value: TemplateCategoryId
+  onChange: (id: TemplateCategoryId) => void
+  /**
+   * The dock's instance is half of the segmented-control conveyor and has to
+   * arrive and leave with the shelf. It rides on the ROW ITSELF rather than in
+   * a wrapper around it, and that is measured, not tidiness: an extra box here
+   * — same class, same measured position to 1/64 px — still moved the chips'
+   * corner antialiasing by 1–2/255 on 102 pixels against the signed-off build.
+   * The picker's instance leaves this off and renders exactly as before (a
+   * `motion.div` with no animation props adds nothing to the DOM).
+   */
+  swap?: boolean
+}) {
+  const conveyor = useConveyor()
+  const reduce = useReducedMotion()
+  const row = useRef<HTMLDivElement>(null)
+
+  /** The pill's two edges, row-local. Everything the three layers do is derived
+   *  from these, so the shape cannot come apart mid-flight. */
+  const l = useMotionValue(0)
+  const r = useMotionValue(0)
+  const capR = useTransform(r, (v) => v - CHIP_H)
+  const barX = useTransform(l, (v) => v + CHIP_R)
+  const barS = useTransform([l, r], ([a, b]: number[]) => (b - a - CHIP_H) / BAR_REF)
+
+  /** Mounted only while the fill is in the air (see the note above). */
+  const [flying, setFlying] = useState(false)
+  /** Where the pill last came to rest — null until the first paint has measured. */
+  const seat = useRef<Span | null>(null)
+  /** True between take-off and landing: a second press re-targets the springs
+   *  instead of restarting them, so the flight keeps its velocity. */
+  const live = useRef(false)
+  /** Only the newest flight may declare the landing. */
+  const gen = useRef(0)
+  const running = useRef<{ stop: () => void }[]>([])
+  /** Unsubscribes the ink watcher and hands every label back to its state ink. */
+  const dropInk = useRef<(() => void) | null>(null)
+  useEffect(() => () => {
+    running.current.forEach((c) => c.stop())
+    dropInk.current?.()
+  }, [])
+
+  useLayoutEffect(() => {
+    const rowEl = row.current
+    const on = rowEl?.querySelector<HTMLElement>('[data-chip-on]')
+    if (!rowEl || !on) return
+    const to = spanOf(rowEl, on)
+    const from = seat.current
+    seat.current = to
+    /* First paint (nothing to fly from), or the OS asked for less motion: the
+       chip simply wears its own fill, exactly as it did before this feature —
+       and no ink is touched either, because nothing ever slides under a label. */
+    if (!from || reduce) return
+    if (!live.current) { l.jump(from.l); r.jump(from.r) }
+    live.current = true
+    setFlying(true)
+
+    /*
+     * THE INK FOLLOWS THE GROUND (manager's defect, 26.08.2026 — the pill erased
+     * every label it passed under). Each chip's box is read ONCE per hop; from
+     * then on one subscription to the pill's two edges decides, per chip, whether
+     * its glyphs are standing on the white fill, half on it, or clear of it, and
+     * writes a discrete `data-ink`. The recipe, the contrast numbers and why the
+     * states carry `transition: none` are in `.home-chip-ink` in index.css.
+     *
+     * Two things make this cheap and exact rather than a per-frame repaint:
+     *  · the subscriber only WRITES on a change of state — two to four attribute
+     *    writes per crossed label per hop, and it compares against the DOM rather
+     *    than a remembered array, so an interruption mid-flight reconciles every
+     *    label from the pill's real position instead of from history;
+     *  · it fires in the same frame that writes the pill's transform, so the ink
+     *    is never a frame behind the fill.
+     * Chip boxes are safe to cache for the hop because the rim stopped owning
+     * layout (see the note above) — selecting a chip no longer resizes it.
+     */
+    const chips = [...rowEl.querySelectorAll<HTMLElement>('button')]
+    const spans = chips.map((el) => spanOf(rowEl, el))
+    const inkFor = (s: Span, over: Span, full: Span) => {
+      /* Half a pixel of slack at both ends: the spring's tail can sit 0.001 off
+         its target, and `on` must not blink back to `mid` on the last frame. */
+      if (full.l <= s.l + 0.5 && full.r >= s.r - 0.5) return 'on'
+      return over.r > s.l && over.l < s.r ? 'mid' : 'off'
+    }
+    const paintInk = () => {
+      /*
+       * ⚠️ ONE FRAME OF LEAD, and it is not a fudge: motion hands these
+       * transforms to the compositor, so the FILL can be painted a frame ahead of
+       * the main-thread value this subscriber reads. Measured — freeze the main
+       * thread mid-hop and the painted pill sits 100px / 32px / 16px past the
+       * span the DOM reports, at 70 / 110 / 150ms (the gap shrinks as the spring
+       * decelerates). Left alone, that lets a glyph stand on the fill for a frame
+       * while its ink still says `off`: white on white, 1.07:1, for exactly the
+       * frame this whole law exists to prevent.
+       *
+       * So both spans are swept one frame forward from each edge's own velocity:
+       * the OVERLAP test takes the union (never late), the FULL-COVERAGE test
+       * takes the intersection (never early). Both err toward `mid` — the ink
+       * that reads on every ground — which is the invariant to keep if this is
+       * ever touched again.
+       */
+      const dt = 1 / 60
+      const [a, b] = [l.get(), l.get() + l.getVelocity() * dt]
+      const [c, d] = [r.get(), r.get() + r.getVelocity() * dt]
+      const over = { l: Math.min(a, b), r: Math.max(c, d) }
+      const full = { l: Math.max(a, b), r: Math.min(c, d) }
+      chips.forEach((el, i) => {
+        const ink = inkFor(spans[i], over, full)
+        if (el.dataset.ink !== ink) el.dataset.ink = ink
+      })
+    }
+    paintInk()
+    const unsub = [l.on('change', paintInk), r.on('change', paintInk)]
+    /* Landing (and unmount) hands the ink back to the selection: by then the pill
+       covers the selected chip completely, so `on` and the selected state are the
+       same near-black and the hand-off changes no pixel. */
+    dropInk.current = () => {
+      unsub.forEach((f) => f())
+      chips.forEach((el) => delete el.dataset.ink)
+    }
+
+    const mine = ++gen.current
+    running.current = [
+      animate(l, to.l, segmentedPill.transition),
+      animate(r, to.r, {
+        ...segmentedPill.transition,
+        onComplete: () => {
+          if (mine !== gen.current) return
+          dropInk.current?.()
+          dropInk.current = null
+          live.current = false
+          setFlying(false)
+        },
+      }),
+    ]
+    /* The cleanup unsubscribes and NOTHING else. It does not stop the springs —
+       this effect re-runs on the next press and stopping here would throw away
+       the velocity the re-target inherits — and it does not clear `data-ink`,
+       because the re-run's own `paintInk()` reconciles every chip in the same
+       commit, before anything paints. */
+    return () => unsub.forEach((f) => f())
+  }, [value, reduce, l, r])
+
+  return (
+    <motion.div
+      ref={row}
+      /* `relative`: the pill is an absolutely-positioned sibling. The chips are
+         `relative` too, so they paint AFTER it — positioned boxes paint in DOM
+         order, and the labels have to stay on top of the fill. */
+      className="relative flex h-9 flex-none items-center gap-2"
+      {...(swap
+        ? { variants: conveyor, initial: 'initial', animate: 'animate', exit: 'exit' }
+        : {})}
+    >
+      {/* THE TRAVELLING FILL — two caps and a bar, all `--gray-75`, all opaque,
+          so the union has no seam and the ends stay perfectly round at every
+          width. Only `x` and `scaleX` animate. */}
+      {flying && (
+        <>
+          <motion.div aria-hidden className="pointer-events-none absolute left-0 top-0 h-9 w-9 rounded-full bg-[var(--gray-75)]" style={{ x: l }} />
+          <motion.div aria-hidden className="pointer-events-none absolute left-0 top-0 h-9 w-9 rounded-full bg-[var(--gray-75)]" style={{ x: capR }} />
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-0 h-9 bg-[var(--gray-75)]"
+            /* Origin at the left edge so the scale grows rightward from the
+               translated position — motion applies translate before scale. */
+            style={{ width: BAR_REF, x: barX, scaleX: barS, transformOrigin: '0 50%' }}
+          />
+        </>
+      )}
+
+      {TEMPLATE_CATEGORIES.map((chip) => {
+        const active = value === chip.id
+        return (
+          <button
+            key={chip.id}
+            /* The layout effect finds the destination by this, after the commit. */
+            data-chip-on={active ? '' : undefined}
+            aria-pressed={active}
+            onClick={() => onChange(chip.id)}
+            /*
+             * NO `text-…` UTILITY, AND NO TIMED INK CROSS. Both were here and both
+             * are gone: the label's colour lives in `.home-chip-ink` (index.css),
+             * because the geometric `[data-ink]` states have to out-specify the
+             * selected state and a utility on the button would out-specify both.
+             *
+             * The first cut tuned the cross the way the segmented control does —
+             * 30ms of delay so `--ease-std` puts 50% at 54ms, on the spring's own
+             * half-way at ~62ms. That is right for a control whose pill never
+             * leaves the two seats, and wrong here: on a 762px hop the pill covers
+             * ~84px per frame, so a timed cross is nowhere near the label it is
+             * meant to be timed for. The ink is now a function of what is BEHIND
+             * the glyphs, and the endpoints are just its settled cases — see the
+             * subscription in the layout effect above.
+             *
+             * The label is ONE text node, not the segmented control's two: there
+             * the WEIGHT changes between states and a weight cannot be
+             * interpolated. Both chip states are `font-semibold`, so a colour
+             * change is honest here — and it is what the chip already did.
+             *
+             * ⚠️ THE FILL IS NEVER TRANSITIONED. It was the
+             * blanket `transition-colors`, which also covers
+             * `background-color` — and that quietly ruined the hand-off: the
+             * fill is added in the same commit that unmounts the pill, so a
+             * transition on it made the chip's own fill ramp up from
+             * transparent over 30 + 120ms while the pill was already gone.
+             * Measured on the landing frame: `backgroundColor` read
+             * `rgba(0,0,0,0)` with zero pill layers left — i.e. the selected
+             * chip visibly blinked empty. The fill must be an instant swap of
+             * identical pixels; only the ink crosses.
+             *
+             * `glass-interactive` on the INACTIVE chip only, the same rule as the
+             * segmented control's seats: a white wash and a white bloom on the
+             * near-white active fill are invisible, and pressing the chip you are
+             * already filtering by is a no-op with nothing to acknowledge. It
+             * also replaces the old `hover:bg-[var(--white-100)]` with the
+             * family's wash — the same 8% white, as an opacity on its own layer
+             * instead of a background repaint.
+             */
+            className={`home-chip-ink relative h-9 flex-none whitespace-nowrap rounded-full px-[18px] text-[13px] font-semibold leading-none ${
+              active
+                ? `${flying ? '' : 'bg-[var(--gray-75)]'}`
+                : 'glass-interactive shadow-[inset_0_0_0_1px_var(--white-200)]'
+            }`}
+          >
+            {/* verbatim from the board, capitalisation included — see data/templates.ts */}
+            {chip.label}
+          </button>
+        )
+      })}
+    </motion.div>
+  )
+}
+
+/** The dock's instance, wired to the ui store's filter — and on the conveyor. */
+function FilterChips() {
+  const { templateFilter, setTemplateFilter } = useUI()
+  return <CategoryChips value={templateFilter} onChange={setTemplateFilter} swap />
+}
+
+/* -------------------------------------------------------------------- cards */
+
+/**
+ * The real project card (`Website` 28364:40628): thumbnail on top, a 56px meta bar
+ * with the name, the relative time and the kebab.
+ *
+ * The thumbnail frame is `flex: 1` in Figma, so its 216 is what is left of the 272
+ * card after the meta bar — which means the card survives a shorter dock by giving
+ * the picture height rather than clipping the name. No hover state is drawn anywhere
+ * on this page (spec §11), so the card takes the quietest one that still answers the
+ * pointer: a hairline on the thumbnail.
+ */
+function ProjectCard({ project }: { project: HomeProject }) {
+  const { t } = useT()
+  const { openBuilder } = useUI()
+  const { world, set, preset } = useWorld()
+
+  /* Opening a card means standing in that site — so the project axis has to say
+     `built`, otherwise the builder opens on an empty canvas for a customer who is
+     looking straight at their finished site. */
+  function open() {
+    if (world.project !== 'built') set({ project: 'built' }, preset)
+    openBuilder()
+  }
+
+  return (
+    /* `home-card-face`: a card is a picture, not a document — see the rule in
+       index.css. The caption and the drawing's own labels are unselectable, so a
+       press that drifts cannot select text through the card's button instead of
+       opening it (designer's bug, 26.08.2026). */
+    <div className="home-card home-card-face group relative flex flex-col">
+      {/* `home-thumb` carries the drawn 238.667 / 216 ratio instead of a bare
+          `flex-1`, so the picture keeps its proportion wherever the card has the
+          height for it; inside the dock's fixed band it shrinks back to 216.
+          Hover duration via `--card-hover-dur` — see TemplateCard. */}
+      <div className="home-thumb relative w-full overflow-hidden rounded-[12px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1">
+        <Thumb id={project.thumb} className="absolute inset-0" />
+      </div>
+
+      <div className="flex h-14 w-full flex-none items-center justify-between">
+        <div className="flex min-w-0 flex-col gap-[5px] pb-px pl-1 pt-3">
+          <p className="truncate font-display text-[18px] font-medium leading-[1.2] text-white">{project.name}</p>
+          <p className="truncate text-[12px] leading-[1.4] text-[var(--white-480)]">{t(project.updatedLabel)}</p>
+        </div>
+        {/* 40 × 40, radius 10, 24px icon box with a 20px leaf. What the menu holds is
+            not drawn anywhere (spec §12.15), so it stays a button with no menu. */}
+        <button
+          aria-label={t({ en: 'Project options', uk: 'Дії з проєктом' })}
+          className="relative z-10 grid h-10 w-10 flex-none place-items-center rounded-[10px] text-[var(--white-480)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+        >
+          <IconMoreVertical size={20} />
+        </button>
+      </div>
+
+      {/* The card is the click target. A stretched button keeps the kebab a real
+          button instead of nesting one button inside another. */}
+      <button
+        onClick={open}
+        aria-label={t({ en: `Open ${project.name}`, uk: `Відкрити ${project.name}` })}
+        className="absolute inset-0 rounded-[16px]"
+      />
+    </div>
+  )
+}
+
+/**
+ * An empty slot (`Website` 28364:40657 and siblings): structurally the real card with
+ * every child at `opacity: 0` plus a dashed rim, which renders as an empty dashed box.
+ *
+ * Whether the five slots mean "you may have six sites" or are simply filler, and
+ * whether they should start a new site when clicked, is not drawn (spec §12.16) — so
+ * they stay inert rather than inventing an interaction.
+ *
+ * The rim is an SVG rect, not `border: 1px dashed`: Figma does not expose its dash
+ * values, the measured pattern is ≈6/6, and the browser's own dashed border is nearer
+ * 3/3 and cannot be told otherwise. The box is inset half a pixel so a 1px stroke
+ * centred on it covers exactly the card's edge, and rx follows the 16px radius.
+ */
+function EmptySlot() {
+  return (
+    <div className="home-card relative" aria-hidden>
+      <svg
+        className="absolute left-0 top-0 overflow-visible"
+        style={{ width: 'calc(100% - 1px)', height: 'calc(100% - 1px)' }}
+      >
+        <rect
+          x="0.5" y="0.5" width="100%" height="100%" rx="15.5"
+          fill="none" stroke="#ffffff1f" strokeWidth="1" strokeDasharray="6 6"
+        />
+      </svg>
+    </div>
+  )
+}
+
+/**
+ * A template card (28375:43585 and siblings; the picker's 18 at 28626:592+ are
+ * the same component, only narrower) — name 16px, description under it. One
+ * card, two homes, and since 26.08.2026 ONE ACTION in both: clicking it opens the
+ * full-screen preview (designer: «нет, в доке ховера + нет, только открыть превью
+ * и там будет кнопка "Начать из этого тимплейта"»). The dock used to start a
+ * generation on the click; that now lives behind the preview's own
+ * `Remix this template`. The picker still overrides the click, because its
+ * preview is opened from INSIDE the sheet (no page-level flight, no second
+ * surface) — see `onPick`.
+ *
+ * The picker's ghost kebab (`opacity: 0` on all 18 cards) is simply not
+ * rendered — hidden as drawn, same as here.
+ */
+export function TemplateCard({
+  template,
+  className = 'home-card',
+  thumbClassName = 'home-thumb home-thumb--template',
+  onPick, pickLabel, dataKey, dockKey, onAdd, addLabel, instant, item,
+}: {
+  template: Template
+  /** Wrapper sizing. The dock's flex row sizes cards itself (`home-card`);
+   *  the picker's grid column owns the width and the card takes its height
+   *  from the thumbnail's ratio, so it grows proportionally. */
+  className?: string
+  /** The thumbnail's drawn ratio — 238.667/218 in the dock, 233.333/218 in the
+   *  picker (`tplpick-thumb`). Both land on the drawn 272 card at the drawn
+   *  width; see the note beside them in index.css. */
+  thumbClassName?: string
+  /** Overrides the default click — the picker opens its detail view instead
+   *  of building. */
+  onPick?: () => void
+  /** Accessible name for the overriding action. */
+  pickLabel?: string
+  /** Rendered as `data-tpl-card` on the card root. The picker's detail view
+   *  finds the clicked card by it — to fly the preview out of the thumbnail's
+   *  measured rect, and back into its CURRENT rect on the way out. */
+  dataKey?: number
+  /**
+   * The same idea for the DOCK, and deliberately a SECOND attribute rather than
+   * the same one: `data-tpl-card` is an index into `TEMPLATE_LIBRARY` and this is
+   * an index into `TEMPLATES`. They are different lists that disagree on one
+   * drawing (see data/templates.ts), so sharing one attribute name would be the
+   * index-space bug the flight payload was just fixed to avoid. Rendered as
+   * `data-dock-card`; the flight layer lands the returning object in
+   * `[data-dock-card="N"] .home-thumb`, re-measured at close.
+   */
+  dockKey?: number
+  /**
+   * THE BLUE `+`, drawn 26.08.2026 on ONE of the picker's eighteen cards —
+   * `28637:42070` on the rest board, `28734:66455` on the scrolled one — in the
+   * exact slot where the other seventeen park their transparent kebab, and with
+   * that card's kebab switched OFF. One card of eighteen, in the state slot,
+   * carrying the detail view's own glyph and the kit's Filled/Blue/Small icon
+   * button: this file's idiom for "this is the hovered card". So it ships as the
+   * card's hover affordance, and it does what a blue filled `+` on a template
+   * says — attaches that template, the same action as `Choose a template` one
+   * step earlier. Flagged to the designer (§14.6): the boards label no state and
+   * say nothing about what it does.
+   *
+   * Passed only by the picker; the dock's cards are drawn without it.
+   */
+  onAdd?: () => void
+  /** Accessible name for the `+`. */
+  addLabel?: string
+  /**
+   * Reveal the `+` and its plate with no time at all — the same call the
+   * thumbnail's hover ring makes through `--card-hover-dur`, and for the same
+   * reason: a surface that ARRIVES under a parked cursor leaves one card hovered
+   * a frame after it mounts, and a spring firing there announces itself on top
+   * of the sheet's own entrance. Passed by the picker while its sheet is still
+   * springing; unset everywhere else, so a settled picker and the dock both get
+   * the drawn motion.
+   */
+  instant?: boolean
+  /**
+   * The gallery's per-item beat on a filter swap. The card is the item, so the
+   * variant sits on the card's own root rather than on a wrapper: a wrapper in
+   * the dock's shelf would have to take over `home-card`'s flex sizing, and in
+   * the picker's grid it would take over the column — both are pixel-QA'd
+   * geometry that an animation has no business owning. Unset everywhere else, in
+   * which case this is a plain `div` with no motion props (`motion.div` renders
+   * nothing extra, and once a variant settles it writes `transform: none`).
+   */
+  item?: boolean
+}) {
+  const { t } = useT()
+  const openCardPreview = useUI((s) => s.openCardPreview)
+  const reduce = useReducedMotion()
+  /** The thumbnail's box — the rect every flight out of this card is measured on. */
+  const thumb = useRef<HTMLDivElement>(null)
+
+  /*
+   * The BLUE `+`'s own state, and it is REACT state rather than CSS `:hover`
+   * because what it drives is a spring (motion.ts, `cardAdd`). One pointer event
+   * per card, never a frame; and the two sources are kept apart so that tabbing
+   * out of a card the pointer is still over does not hide the button. Only wired
+   * when there IS a `+` — the dock's cards must not re-render on hover for
+   * nothing, and since 26.08.2026 they do not have to: the CARD's own hover (the
+   * zoom, the glass edge and the `Preview` pill, all three in both homes) is pure
+   * CSS, so it costs zero renders here and zero in the picker. See «THE CARD'S
+   * OWN HOVER» in index.css.
+   */
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const hot = hovered || focused
+  const hover = onAdd
+    ? {
+        /* A tap on a touch screen fires pointerenter too, and there it would
+           park the button on the card until the next tap elsewhere. Hover is a
+           pointer affordance; touch gets the card's own action. */
+        onPointerEnter: (e: React.PointerEvent) => { if (e.pointerType !== 'touch') setHovered(true) },
+        onPointerLeave: () => setHovered(false),
+        /* focusin/focusout, i.e. focus-WITHIN: reaching the card by keyboard
+           shows the `+` before you reach the `+` itself. The `contains` guard is
+           what stops the one-frame blink as focus moves from the card's own
+           button to the `+` — focusout fires before focusin. */
+        onFocus: () => setFocused(true),
+        onBlur: (e: React.FocusEvent) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false)
+        },
+      }
+    : null
+  const add = reduce ? cardAddFade : cardAdd
+  const timed = (target: TargetAndTransition) => (instant ? { ...target, transition: NO_TIME } : target)
+
+  /*
+   * THE DOCK'S CLICK OPENS THE PREVIEW (designer, 26.08.2026). It used to call
+   * `startBuild` + `openBuilder` straight from here, i.e. a click on a 238px
+   * thumbnail committed you to a generation. Now it opens the same full-screen
+   * sheet the picker opens, and the commitment lives on that sheet's own
+   * `Remix this template` — one look before one decision.
+   *
+   * The rect is measured HERE, in the handler, before the sheet exists: the
+   * page-level flight layer (TemplateFlight.tsx) needs the source rect in the
+   * very commit the destination mounts. Nothing else is measured — the drawing's
+   * id travels with the flight, because the dock's list is not the library's.
+   */
+  function open() {
+    const el = thumb.current
+    if (!el || dockKey == null) return
+    openCardPreview(dockKey, template.id, rectOf(el))
+  }
+
+  return (
+    <motion.div
+      className={`${className} home-card-face group relative flex flex-col`}
+      data-tpl-card={dataKey}
+      data-dock-card={dockKey}
+      {...(item ? { variants: reduce ? listSwapPopFade : listSwapPop } : {})}
+      {...hover}
+    >
+      {/* radius 8 here against the project card's 12 — as drawn on the two boards,
+          flagged as probably accidental (spec §12.12)
+
+          THE CARD'S OWN HOVER lives in three children of this box and is defined
+          in `THE CARD'S OWN HOVER` in index.css — the designer asked for one
+          hover on the card itself, identical in the dock and in the picker,
+          because in both the click now opens the same full-screen preview. The
+          box only has to CLIP (`overflow: hidden`, which — unlike a mask — is
+          safe for the pill's `backdrop-filter`).
+
+          ⚠️ `--card-hover-dur` is the same variable the old flat ring read, and
+          for the same reason: a surface that arrives under a parked cursor makes
+          one card hovered a frame after it mounts, and an affordance animating
+          itself in on top of a still-springing sheet read as the grid glitching.
+          An owner that is still animating writes `0s` and the affordance is
+          simply THERE when the sheet lands (honest — the pointer IS over that
+          card). Unset everywhere else. */}
+      <div
+        ref={thumb}
+        className={`${thumbClassName} ${PEEK_VARIANT === 'corner' ? 'peek-corner' : 'peek-centre'} relative w-full overflow-hidden rounded-[8px]`}
+      >
+        {/* the drawing, on its own layer so the 1.03 lean cannot touch layout */}
+        <div className="home-thumb-zoom">
+          <Thumb id={template.id} className="absolute inset-0" />
+        </div>
+        {/* the glass edge (gradient rim, opacity only) */}
+        <span aria-hidden className="home-thumb-rim" />
+        {/* the pill's ground in the `corner` variant — the designer's caption
+            plate, turned 90°; inert in `centre` (see PEEK_VARIANT) */}
+        <span aria-hidden className="home-thumb-veil" />
+        {/* LOOK. In `corner` it sits bottom-left, so it can never share a pixel
+            with the picker's blue `+` = TAKE (which lives in the meta row's
+            top-right); in `centre` it is the thumbnail's focal point — still a
+            different BOX from the `+`, so still no collision at any card width.
+            Deaf and `aria-hidden`: the card's stretched button is the action and
+            already carries the name. */}
+        <span aria-hidden className="home-thumb-peek">
+          {t({ en: 'Preview', uk: 'Перегляд' })}
+          <IconFullscreen size={14} />
+        </span>
+      </div>
+
+      {/* THE CAPTION'S BOX NEVER MOVES — not at rest, not on hover.
+          The board's hovered card measures its `Text` frame at 185.333, i.e.
+          48 narrower, but that is Figma's auto-layout reacting to the button
+          being inserted beside it, not a second layout to reproduce: copying it
+          would jump a long name's ellipsis 48px left the instant the pointer
+          arrives. The room the button needs is taken by the PLATE below, which
+          fades the caption out as it reaches the button instead of re-cutting
+          it. */}
+      <div className="relative flex h-[54px] w-full flex-none flex-col gap-[5px] pb-px pl-1 pt-3">
+        {/* verbatim from the board; the captions do not describe their own
+            screenshots and two of the six repeat — see data/templates.ts */}
+        <p className="truncate font-display text-[16px] font-medium leading-[1.2] text-white">{template.name}</p>
+        <p className="truncate text-[12px] leading-[1.4] text-[var(--white-480)]">{template.description}</p>
+
+        {onAdd && (
+          <>
+            {/* The plate — `Rectangle 1162905197` 28740:66863, the gradient that
+                "looks like a shadow and stops the text running ugly into the
+                button" (the designer, 26.08.2026). Geometry, the ground-colour
+                rule and the two departures from the drawn rect are in
+                `.home-card-scrim` in index.css. Below the button, above the
+                caption, and deaf to the pointer, so hovering it still means
+                hovering the card. */}
+            <motion.span
+              aria-hidden
+              data-card-scrim
+              className="home-card-scrim"
+              initial={false}
+              animate={timed(hot ? cardAddScrim.on : cardAddScrim.off)}
+            />
+
+            {/* 32 × 32, radius 10, Background/Blue/Default #1587ff (the export's
+                #0073ec is the light-theme trap), 24-box white glyph on 4px of
+                padding, flush with the card's right edge at meta-local y 16 —
+                all drawn. `z-10` puts it over the card's own stretched button,
+                the same way the project card's kebab sits over it, and it stays
+                in the DOM at rest so the Tab order does not depend on what the
+                pointer is doing. Colours on hover/press are the house convention
+                for a filled blue button (PublishPanel, DomainModal, the detail
+                bar's own pill) — the kit's variant here is State=Enabled and the
+                boards draw no others.
+
+                `press-bloom`: the press ripple, added 26.08.2026 evening with
+                the rest of the family's move onto solid fills — the designer's
+                answer to our question about this button's states was that he had
+                not thought about them, so it takes the house one. Bloom only, no
+                8% wash: the colour change above IS this button's hover. Ink and
+                its measurement: the block comment in index.css. ⚠️ At 32px the
+                bloom is only just positional (±16px of origin) — the same size
+                argument that kept it OFF the 18px ✕ badge; here the designer
+                asked for consistency across the blue buttons and 32 is enough to
+                see where you pressed. */}
+            <motion.button
+              data-card-add
+              onClick={onAdd}
+              aria-label={addLabel}
+              initial={false}
+              animate={timed(hot ? add.on : add.off)}
+              /* Deaf to the pointer while it is not on offer — an invisible
+                 button in the corner of a card must not take a tap (it can
+                 still be reached and pressed by keyboard, which is the point of
+                 keeping it mounted). */
+              className={`press-bloom absolute right-0 top-4 z-10 grid h-8 w-8 place-items-center overflow-hidden rounded-[10px] bg-[var(--action)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)] ${hot ? '' : 'pointer-events-none'}`}
+            >
+              <IconPlus size={24} />
+            </motion.button>
+          </>
+        )}
+      </div>
+
+      <button
+        onClick={onPick ?? open}
+        /* Both homes open the same preview now, so the default name says that
+           rather than the old "Start from …" — the generation is one screen
+           further on, behind `Remix this template`. */
+        aria-label={pickLabel ?? t({ en: `Open ${template.name}`, uk: `Відкрити ${template.name}` })}
+        className="absolute inset-0 rounded-[16px]"
+      />
+    </motion.div>
+  )
+}
+
+/* --------------------------------------------------------------------- dock */
+
+export function HomeDock() {
+  const { t } = useT()
+  const { world } = useWorld()
+  const { dockTab, templateFilter } = useUI()
+  const conveyor = useConveyor()
+
+  const owned = hasProjects(world)
+  /* No projects means no tabs to pick from — templates are all there is. */
+  const showTemplates = !owned || dockTab === 'templates'
+  const templates = showTemplates ? templatesIn(templateFilter) : TEMPLATES
+
+  return (
+    <section
+      /*
+       * Full-bleed, 32px side insets, 24px of slack below the cards, and a title
+       * row whose height is the ONE thing the two boards disagree about: 80 with
+       * the tabs (28364:40053, dock 376) and 88 with the `Templates` heading
+       * (28375:43006, dock 384, hero 804). Carrying both means the heading and
+       * the filter chips land on their drawn y instead of 4px low — and because
+       * the extra 8px comes out of the hero, the card row still starts at 900 in
+       * both states, exactly as the boards draw it.
+       *
+       * It may be squeezed on a short viewport, and when it is the cards give up
+       * picture height instead of the page growing a scrollbar.
+       */
+      /* `he-dock`: the Home entrance's hook — the whole dock rises as ONE block
+         on the composer beat (index.css, HOME ENTRANCE). The production page
+         has no dock at all, so this is ours: same fade/rise as the chips, kept
+         subtle. Inert until the page root carries `data-home-entrance`. */
+      className={`he-dock flex flex-none flex-col px-8 pb-6 ${owned ? 'min-h-[236px]' : 'min-h-[244px]'}`}
+      style={{ flex: owned ? '0 1 376px' : '0 1 384px' }}
+    >
+      {/* title row 1592 × 80 (tabs) / × 88 (heading) */}
+      <div
+        className={`flex flex-none items-center justify-between gap-6 pr-2 ${owned ? 'h-20' : 'h-[88px]'}`}
+      >
+        {owned ? (
+          <DockTabs />
+        ) : (
+          /* Gilroy SemiBold 32, cap-trimmed, a literal #ffffff in Figma */
+          <h2 className="flex-none font-display text-[32px] font-semibold leading-none text-white">
+            {t({ en: 'Templates', uk: 'Шаблони' })}
+          </h2>
+        )}
+        {/* The chips are the title row's half of the same conveyor — they
+            arrive and leave with the shelf, on the same beat, so the switch is
+            ONE gesture and not a control plus two unrelated fades. */}
+        <AnimatePresence mode="wait" initial={false}>
+          {showTemplates && <FilterChips key="chips" />}
+        </AnimatePresence>
+      </div>
+
+      {/*
+       * The card row. Cards are `flex: 1` and stop shrinking at 200px, so on a
+       * narrow window the row scrolls sideways rather than grinding the cards down
+       * past readable — through ScrollArea, because native scrollbars are off
+       * app-wide and a bar that steals a row of layout is exactly what this
+       * component exists to avoid.
+       */}
+      {/*
+       * THE SHELF ACKNOWLEDGES THE SWITCH. The house conveyor (`listSwapBehind`
+       * = `listSwap` plus the 60ms beat, ui/motion.ts), the same one the domains
+       * surface uses when its lists change hands under a header that stays: the
+       * old shelf leaves UPWARD, the new one rises from just below, so the eye
+       * reads "this was replaced by that" instead of "the picture changed".
+       * `mode="wait"` keeps twelve cards from overlapping mid-flight.
+       *
+       * The wrapper is OUTSIDE the ScrollArea on purpose: nothing about the
+       * scroller, its flex row or the cards' `flex: 1 0 0` sizing is touched,
+       * and each shelf gets a fresh scroll position and a fresh ResizeObserver
+       * instead of inheriting the other's.
+       *
+       * `initial={false}`: the first shelf must NOT animate in — the Home
+       * entrance already raises the whole dock as one block (`he-dock`), and a
+       * second entrance on top of it would double-animate the row.
+       */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          /*
+           * THE FILTER IS PART OF THE KEY, and that is the whole of the shelf's
+           * half of the filter gesture: a chip press now replaces the shelf on
+           * the same conveyor as a tab press, instead of silently re-rendering
+           * the cards in place. It also answers the scroll question for free —
+           * a new key is a new ScrollArea, so a sideways-scrolled shelf starts
+           * at its left edge under the new filter rather than showing the
+           * middle of a list the customer has not seen. (The picker's grid keeps
+           * its scroller and resets it by hand; same decision, see the note
+           * there.)
+           */
+          key={showTemplates ? `templates:${templateFilter}` : 'projects'}
+          variants={conveyor}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          {/*
+            * `home-shelf--sparse` ONLY when the shelf holds fewer cards than the
+            * drawn six: `flex: 1 0 0` divides the row between however many cards
+            * there are, so a chip that returns one card blew it up to the full
+            * 1592 (four of the seven chips do). The class caps a card at the
+            * width it has at six-up and leaves the row left-aligned; the drawn
+            * six-up case never sees the rule at all, so it cannot move. The
+            * recipe and the numbers are in index.css.
+            */}
+          <ScrollArea
+            axis="x"
+            className="min-h-0 flex-1"
+            innerClassName={`flex items-stretch gap-8${showTemplates && templates.length < SLOTS ? ' home-shelf--sparse' : ''}`}
+          >
+            {showTemplates ? (
+              templates.length ? (
+                templates.map((tpl) => (
+                  /* `dockKey` is the row's index in TEMPLATES, not in this
+                     filtered list: the filter changes what is on the shelf, and
+                     the flight home has to find the same card afterwards. */
+                  <TemplateCard
+                    key={tpl.id}
+                    template={tpl}
+                    dockKey={TEMPLATES.indexOf(tpl)}
+                    item
+                  />
+                ))
+              ) : (
+                /* Not drawn on any board: no card carries a category, so the chips
+                   cannot really filter (spec §12.13) and the designer has never had to
+                   decide what an empty result looks like. One honest line until he does. */
+                <p className="self-center text-[14px] text-[var(--white-400)]">
+                  {t({ en: 'No templates in this category yet.', uk: 'У цій категорії ще немає шаблонів.' })}
+                </p>
+              )
+            ) : (
+              <>
+                {world.projects.slice(0, SLOTS).map((p) => <ProjectCard key={p.id} project={p} />)}
+                {Array.from({ length: Math.max(0, SLOTS - world.projects.length) }, (_, i) => (
+                  <EmptySlot key={`slot-${i}`} />
+                ))}
+              </>
+            )}
+          </ScrollArea>
+        </motion.div>
+      </AnimatePresence>
+    </section>
+  )
+}

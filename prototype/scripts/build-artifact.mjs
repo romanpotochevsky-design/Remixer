@@ -4,8 +4,39 @@
  * The artifact page runs under a strict CSP that blocks every external request,
  * so nothing may stay as a URL: the CSS, the JS and every .woff2 have to travel
  * inside the file as text or as a data: URI.
+ *
+ * THE FILE ONLY GROWS — every new drawn template site, every new surface — and the
+ * host that publishes it has a size limit somewhere, so the build reports its own
+ * size and the headroom under the largest page this host has actually accepted
+ * (689,918 bytes). That number is a floor on the limit, not the limit itself.
+ *
+ * ⚠️ AND IT IS NOT WHY A PUBLISH GETS REFUSED. On 26.08.2026 five publishes in a
+ * row were rejected with "carries the artifact-pr-review machinery … too large for
+ * a review page" — a message that contradicts itself, since this page is not a
+ * review page. Ruled out by experiment, so nobody repeats it: size (686,488 bytes
+ * was refused exactly like 736,745, while 689,918 had gone through hours earlier),
+ * the artifact's identity (a brand-new artifact was refused too), and a `data-pr…`
+ * attribute in the markup (removing it changed nothing). The same file published
+ * fine earlier in the same day, so the trigger is session state on the host side,
+ * not this page — the next session publishes it unchanged.
+ *
+ * THE FONTS ARE SUBSET HERE ANYWAY, and this is the one lever that costs nothing
+ * visible: the four stand-in faces ship as full Latin subsets (~77 kB, ~103 kB
+ * once base64'd) while this interface draws about a hundred distinct characters.
+ * The glyph set is not guessed — it is READ OUT of the built CSS and JS, which
+ * between them contain every string the app can render, unioned with printable
+ * ASCII and the punctuation the drawings use. Anything the app can put on screen
+ * is therefore in the set by construction. Cyrillic is not: the OFL stand-ins
+ * never had it (the UK locale already falls through to a system font by glyph),
+ * so subsetting removes nothing that worked.
+ *
+ * This trim is ARTIFACT-ONLY. `npm run dev` and `npm run build` keep every glyph;
+ * only the single published file is subset, and it is verified by pixel-diffing
+ * the published page against the un-subset build, not by trusting this comment.
  */
-import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdtempSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -17,14 +48,79 @@ const assets = readdirSync(`${DIST}/assets`)
 let css = readFileSync(`${DIST}/assets/${assets.find((f) => f.endsWith('.css'))}`, 'utf8')
 const js = readFileSync(`${DIST}/assets/${assets.find((f) => f.endsWith('.js'))}`, 'utf8')
 
+/**
+ * Every character the built page can render, as one string for `pyftsubset`.
+ *
+ * Source of truth is the build output itself, so a string added to a component
+ * this afternoon is covered without anyone remembering to widen a list. The
+ * curated tail is for characters a font needs even when they never appear in a
+ * literal: the space family, the typographic punctuation the drawings use, and
+ * the glyphs our own UI draws (the return arrow on Build, the multiplication
+ * sign in the sizes, the arrows in the pills).
+ */
+function usedCharacters(...sources) {
+  const set = new Set()
+  for (let code = 0x20; code <= 0x7e; code++) set.add(String.fromCharCode(code))
+  for (const ch of '\u00a0\u2007\u2009\u200a\u2018\u2019\u201c\u201d\u2013\u2014\u2026\u00d7\u00b7\u2022\u00ab\u00bb\u20ac\u00a3\u00a5\u2190\u2191\u2192\u2193\u2197\u21b5\u2713\u00ae\u2122\u00a9\u00b0\u00b1\u2212\u2044\u00bd') set.add(ch)
+  for (const src of sources) for (const ch of src) if (ch.codePointAt(0) > 0x1f) set.add(ch)
+  return [...set].join('')
+}
+
+/**
+ * Subset one woff2 to `text` and return the new path, or null if the subsetter
+ * is not on this machine. A missing subsetter must not fail the build — it just
+ * means a bigger file, and the headroom line below will say so.
+ */
+function subsetFont(path, text, dir) {
+  const out = `${dir}/${path.split('/').pop()}`
+  try {
+    execFileSync('pyftsubset', [
+      path,
+      `--output-file=${out}`,
+      '--flavor=woff2',
+      `--text=${text}`,
+      /* `*` keeps the WHOLE GSUB/GPOS table, and it stays that way. Trimming to
+         the shaping features saved 4.3 KB and silently killed `tabular-nums`:
+         the detail panel's `$1,799,980` reflowed to proportional figures. The
+         check that missed it grepped index.css for `font-variant` — but Tailwind
+         GENERATES the activation, so the only honest place to look is the BUILT
+         css. Keeping the numeric family back (tnum/pnum/lnum/onum/ordn/zero/
+         frac/afrc) leaves just 453 bytes of the saving, which is not worth a
+         hand-maintained list that breaks the first time someone types
+         `slashed-zero`. */
+      '--layout-features=*',
+      '--no-hinting',
+      '--desubroutinize',
+      '--drop-tables+=DSIG',
+    ], { stdio: 'pipe' })
+    return existsSync(out) ? out : null
+  } catch {
+    return null
+  }
+}
+
 const dataUri = (path) =>
   `data:font/woff2;base64,${readFileSync(path).toString('base64')}`
 
 // 1. Fonts Vite bundled (the OFL stand-ins from src/fonts/) — always present.
+//    Subset to the characters this build can actually draw before embedding.
+const GLYPHS = usedCharacters(css, js)
+const SUBSET_DIR = mkdtempSync(`${tmpdir()}/remixer-subset-`)
 let embedded = 0
+let fontBytesBefore = 0
+let fontBytesAfter = 0
+const subsetReport = []
 css = css.replace(/url\(\/assets\/([^)]+\.woff2)\)/g, (_m, file) => {
   embedded++
-  return `url(${dataUri(`${DIST}/assets/${file}`)})`
+  const full = `${DIST}/assets/${file}`
+  const before = readFileSync(full).length
+  const subset = subsetFont(full, GLYPHS, SUBSET_DIR)
+  const use = subset ?? full
+  const after = readFileSync(use).length
+  fontBytesBefore += before
+  fontBytesAfter += after
+  subsetReport.push(`${file} ${(before / 1024).toFixed(1)}→${(after / 1024).toFixed(1)} KB`)
+  return `url(${dataUri(use)})`
 })
 
 // 2. Fonts served from public/ (the licensed Gilroy / Proxima Nova, if someone
@@ -47,6 +143,29 @@ css = css.replace(/@font-face\{[^}]*\}/g, (block) => {
   return ''
 })
 
+// 4. Tailwind's preflight declares its ~40 `--tw-*` defaults twice: once on
+//    `*,:before,:after` and once on `::backdrop`. The second copy only ever
+//    matches an element in the TOP LAYER — a `<dialog>` opened with showModal,
+//    fullscreen, or the Popover API — and this app has none of those, so it is
+//    1.1 KB that can never apply. Dropped only after checking the built bundle
+//    for them, so the day someone adds a `<dialog>` the rule comes straight
+//    back instead of silently going missing (the same mistake the font trim
+//    made: a saving is only free while nothing can reach what it removed).
+//    Only three things actually put an element in the top layer. `role="dialog"`
+//    is NOT one of them — it is an ARIA role on a plain div, which both the
+//    publish panel and the domain modal use, and matching on it kept the rule
+//    for no reason. Nor is a `<dialog>` that is merely rendered: it gets a
+//    backdrop only once `showModal()` opens it.
+const topLayer = /\bshowModal\b|\brequestFullscreen\b|\bpopover\b/.test(js)
+let backdropDropped = 0
+if (!topLayer) {
+  css = css.replace(/::backdrop\{[^}]*\}/g, (block) => {
+    if (!block.includes('--tw-')) return block
+    backdropDropped += block.length
+    return ''
+  })
+}
+
 // The artifact host supplies <!doctype>/<html>/<head>/<body>, so emit page
 // content only. index.html carries class="dark" on <html>; re-apply it here.
 const page = `<title>Remixer — prototype</title>
@@ -61,6 +180,40 @@ ${js}
 `
 
 writeFileSync(OUT, page)
-console.log(`fonts embedded: ${embedded}`)
+/*
+ * The largest page this host has actually accepted, in bytes — a FLOOR on the limit, never
+ * the limit itself, which is why the line below reports headroom rather than a verdict.
+ * 777,983 went through on 09.09.2026, after 777,463 the same day — and the run before it
+ * printed "0.9 KB over the largest page the host has accepted", which is exactly the
+ * verdict this line is written not to trust.
+ * 756,860 went through on 07.09.2026 — the ninth data point that day, after 756,148,
+ * 754,751, 754,641, 754,590, 740,372,
+ * 724,265 and 707,289 also went through and this same script had called 704,239 "2.3 KB
+ * under" and 754,259 doomed. That last one is the whole argument: a file 331 bytes SMALLER
+ * than one that has now published was pronounced dead by this line. Raise it whenever a
+ * bigger file publishes; do not lower it to be safe, because the number's only job is to
+ * be evidence.
+ *
+ * ⚠️ The `*-specimen.woff2` faces do NOT pass through the subsetter below: Vite inlines
+ * them as data URIs in the CSS (they are 1.5-2.4 KB, under `assetsInlineLimit`), which is
+ * why "fonts embedded" still counts 4. They arrive pre-subset to the single line each one
+ * draws, so there is nothing left to trim — see src/fonts/OFL.txt.
+ */
+const CEILING = 799_327
+const bytes = Buffer.byteLength(page)
+console.log(`fonts embedded: ${embedded} — ${GLYPHS.length} glyphs kept`)
+console.log(`  ${subsetReport.join(' · ')}`)
+console.log(`  font payload ${(fontBytesBefore / 1024).toFixed(1)} → ${(fontBytesAfter / 1024).toFixed(1)} KB raw`)
 console.log(`fonts absent (rules dropped): ${missing.length ? missing.join(', ') : 'none'}`)
-console.log(`wrote ${OUT} — ${(page.length / 1024 / 1024).toFixed(2)} MB`)
+console.log(
+  topLayer
+    ? '::backdrop preflight KEPT — the bundle can reach the top layer'
+    : `::backdrop preflight dropped: ${backdropDropped} bytes (nothing here reaches the top layer)`,
+)
+console.log(`wrote ${OUT} — ${bytes.toLocaleString('en-US')} bytes (${(bytes / 1024).toFixed(1)} KB)`)
+const headroom = CEILING - bytes
+console.log(
+  headroom >= 0
+    ? `publish headroom: ${(headroom / 1024).toFixed(1)} KB under the ${(CEILING / 1024).toFixed(0)} KB the host has actually accepted`
+    : `${(-headroom / 1024).toFixed(1)} KB over the largest page the host has accepted (${(CEILING / 1024).toFixed(0)} KB) — try it, then raise CEILING here if it goes through`,
+)

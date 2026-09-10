@@ -12,9 +12,10 @@
  *      a button press. `speed` scales the whole timeline for a demo.
  */
 import { create } from 'zustand'
-import type { World } from './world'
-import { useWorld } from './world'
+import type { World, Message } from './world'
+import { useWorld, EMPTY_BRIEF } from './world'
 import type { Text } from '../i18n'
+import { BRIEF_INTRO, BRIEF_STATUS, briefAck, briefDone, type BriefAnswers } from '../modules/chat/brief'
 
 export interface FlowStep {
   id: string
@@ -40,7 +41,104 @@ export interface Flow {
 
 /* ------------------------------------------------------------------ flows */
 
+/* The thin-prompt flow is scripted from real messages, so the thread reads as it would live. */
+const THIN_PROMPT: Message = { id: 1, who: 'user', text: 'Build me a website.' }
+const THIN_ASK: Message = { id: 2, who: 'ai', kind: 'clarify', thought: 5, text: BRIEF_INTRO }
+/*
+ * The demo's answers, and they are chosen to tell ONE story rather than to show off the
+ * form: a person with nothing to say picks the plainest commercial goal, a small site, a
+ * warm palette and friendly lettering — and the site that then appears on the canvas (a
+ * food business, two-tone, priced) is exactly that. Lovable's own demo answered "design
+ * portfolio" and then built a meal-prep page; a demo whose summary contradicts its own
+ * canvas teaches the room to distrust the summary.
+ *
+ * All four are PICKED options rather than typed text, so the summary prints real names and
+ * the panel gets to show both of its drawn shapes — the radio rows and the palette grid.
+ */
+const THIN_ANSWERS: BriefAnswers = {
+  goal: 'sell',
+  pages: 'few',
+  palette: 'warm-clay',
+  type: 'friendly',
+}
+const THIN_CARD: Message = { id: 3, who: 'ai', kind: 'brief', text: BRIEF_STATUS }
+const THIN_ACK: Message = { id: 4, who: 'ai', kind: 'ack', text: briefAck(THIN_ANSWERS) }
+const THIN_BUILD: Message = { id: 5, who: 'ai', kind: 'build', text: '' }
+const THIN_DONE: Message = { id: 6, who: 'ai', text: briefDone(THIN_ANSWERS) }
+/** The transcript at the point the outline card is up — every step from here uses it. */
+const THIN_BUILDING = [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK, THIN_BUILD]
+const THIN_BRIEF_READY = { status: 'ready' as const, step: 3, answers: THIN_ANSWERS }
+
 export const FLOWS: Flow[] = [
+  {
+    id: 'thin-prompt',
+    label: { en: 'Thin prompt → questions → first build', uk: 'Слабкий промпт → запитання → перша збірка' },
+    note: {
+      en: 'Nothing to build from, so Remixer asks first, then shows the PLAN it compiled and waits for Approve — that last step is ours, not Lovable\'s. The preview stays collapsed until the build starts.',
+      uk: 'Будувати нема з чого: Remixer спершу питає, потім показує зібраний ПЛАН і чекає Approve — цей крок наш, не Lovable. Прев’ю згорнуте, доки не почнеться збірка.',
+    },
+    setup: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], brief: EMPTY_BRIEF, domain: 'staging', inventory: 'none', unpublished: 0 },
+    steps: [
+      { id: 'typed', label: { en: '"Build me a website." is sent — Remixer thinks', uk: 'Надіслано «Build me a website.» — Remixer думає' },
+        patch: { sent: [THIN_PROMPT], chat: 'working', brief: EMPTY_BRIEF }, ms: 5200,
+        note: { en: 'Preview collapsed: nothing to show yet, the chat owns the shell', uk: 'Прев’ю згорнуте: показувати нічого, чат займає весь шелл' } },
+      { id: 'asks', label: { en: 'Instead of building, it asks for direction', uk: 'Замість збірки — просить напрямок' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK], chat: 'long', brief: { status: 'asking', step: 0, answers: {} } }, awaitUser: true,
+        note: { en: 'The question panel docks above the composer; the composer becomes "Tell Remixer what to do instead…"', uk: 'Панель запитань стає над композером; композер — «Tell Remixer what to do instead…»' } },
+      { id: 'q1', label: { en: 'Q1 — what the site is for', uk: 'В1 — для чого сайт' },
+        patch: { brief: { status: 'asking', step: 1, answers: { goal: THIN_ANSWERS.goal } } }, ms: 1400 },
+      { id: 'q2', label: { en: 'Q2 — how much there is to say', uk: 'В2 — скільки треба розповісти' },
+        patch: { brief: { status: 'asking', step: 2, answers: { goal: THIN_ANSWERS.goal, pages: THIN_ANSWERS.pages } } }, ms: 1400 },
+      { id: 'q3', label: { en: 'Q3 — a colour plate is picked from the grid', uk: 'В3 — обрано плитку кольорів' },
+        patch: { brief: { status: 'asking', step: 3, answers: { goal: THIN_ANSWERS.goal, pages: THIN_ANSWERS.pages, palette: THIN_ANSWERS.palette } } }, ms: 1400 },
+      { id: 'q4', label: { en: 'Q4 — lettering picked, ready to submit', uk: 'В4 — обрано шрифти, можна надсилати' },
+        patch: { brief: { status: 'asking', step: 3, answers: THIN_ANSWERS } }, awaitUser: true,
+        note: { en: '"Submit" is the user\'s decision — nothing is built until they press it', uk: '«Submit» — рішення користувача: до нього нічого не будується' } },
+      { id: 'summary', label: { en: 'Answers compiled into a brief card', uk: 'Відповіді зібрано в картку брифу' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'working', brief: { status: 'planning', step: 3, answers: THIN_ANSWERS } }, ms: 2400 },
+      { id: 'plan', label: { en: 'The PLAN is offered — nothing builds until Approve', uk: 'Показано ПЛАН — до Approve нічого не збирається' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'long', brief: { status: 'planning', step: 3, answers: THIN_ANSWERS } }, awaitUser: true,
+        note: {
+          en: 'Where Remixer parts ways with Lovable: the answers are compiled into a plan and the customer approves it. `Review` moves the document into the canvas at full size.',
+          uk: 'Тут Remixer розходиться з Lovable: відповіді збираються в план, і клієнт його підтверджує. «Review» переносить документ у канвас на повний розмір.',
+        } },
+      { id: 'ack', label: { en: 'Approved — "Got it — …", and the canvas opens EMPTY', uk: 'Підтверджено — «Got it — …», канвас відкривається ПОРОЖНІМ' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK], chat: 'working', brief: THIN_BRIEF_READY, project: 'generating' }, ms: 2200,
+        note: {
+          en: 'This pass builds the home page, and the preview is a preview OF that page — so there is nothing in the canvas yet',
+          uk: 'Цей прохід збирає головну, а прев’ю — це прев’ю САМЕ ЦІЄЇ сторінки, тож у канвасі поки нічого',
+        } },
+      /*
+       * The generation, in four beats instead of its real minute.
+       *
+       * A scripted flow is for showing the SHAPE of a thing to a room — the real clock
+       * (build.ts) is one click away from the Home page for anyone who wants to sit
+       * through it. What must survive the compression is the shape itself: the whole
+       * site outlined, one section in hand at a time, and the canvas empty until the
+       * page it previews actually exists.
+       */
+      { id: 'outline', label: { en: 'The whole site is outlined — the home page first', uk: 'Показано план усього сайту — спершу головна' },
+        patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 0, line: 0 } }, ms: 2600,
+        note: {
+          en: 'Only the first page is generated in this pass — About, Services and Contact are named and visibly waiting (Figma 29480:48478)',
+          uk: 'У цьому проході генерується лише перша сторінка — About, Services і Contact названі й видимо чекають (Figma 29480:48478)',
+        } },
+      { id: 'sections', label: { en: 'Section by section, with the work named', uk: 'Секція за секцією, з назвою роботи' },
+        patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 2, line: 1 } }, ms: 2600,
+        note: {
+          en: 'Done above, in hand in the middle with the line that says what is happening to it, waiting below',
+          uk: 'Готове вище, у роботі — посередині, з рядком про те, що саме відбувається; те, що в черзі — нижче',
+        } },
+      { id: 'assembling', label: { en: 'Every section done — the page is put together', uk: 'Усі секції готові — сторінка збирається' },
+        patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 5, line: 0 } }, ms: 2200 },
+      { id: 'built', label: { en: 'The home page appears in the canvas', uk: 'Головна з’являється в канвасі' },
+        patch: { sent: [...THIN_BUILDING, THIN_DONE], chat: 'long', brief: THIN_BRIEF_READY, project: 'built', build: { at: 5, line: 0 }, credits: 1990, unpublished: 1 }, awaitUser: true,
+        note: {
+          en: 'The outline stays in the transcript: it is the record of what was built, and of which pages have not been',
+          uk: 'План лишається у стрічці: це запис про те, що зібрано і які сторінки ще ні',
+        } },
+    ],
+  },
   {
     id: 'connect-external',
     label: { en: 'Connect a domain hosted elsewhere (GoDaddy)', uk: 'Підключити домен з іншого хостингу (GoDaddy)' },

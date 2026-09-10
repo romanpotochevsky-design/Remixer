@@ -29,16 +29,36 @@ export const LogoRemixer = ({ size = 32, className }: IconProps) => (
     <path d="M90.0026 60.0028C73.4385 60.0028 60.0061 73.4351 60.0061 89.9991V119.995H120.012V59.9902H90.0152L90.0026 60.0028Z" fill="url(#rxl-a)" />
     <path d="M60.0058 29.9963V0H0.000244141V60.0051H29.9967C46.5608 60.0051 59.9932 46.5728 59.9932 30.0088L60.0058 29.9963Z" fill="url(#rxl-b)" />
     <path d="M29.9971 60.0078C46.5635 60.008 59.9931 73.4376 59.9932 90.0039C59.9932 106.57 46.5635 120 29.9971 120C13.4305 120 0 106.57 0 90.0039C0.000106173 73.4375 13.4305 60.0078 29.9971 60.0078ZM90.0029 0C106.569 0.000219558 119.999 13.4298 119.999 29.9961C119.999 46.5624 106.569 59.992 90.0029 59.9922C73.4363 59.9922 60.0059 46.5626 60.0059 29.9961C60.0059 13.4297 73.4364 0 90.0029 0Z" fill="url(#rxl-c)" />
-    <path d="M60.0061 30H90.0026V59.9963C73.4385 59.9963 60.0061 46.5514 60.0061 30Z" fill="white" />
-    <path d="M29.9965 60.0078 29.9965 30.0116 59.993 30.0116C59.993 46.5756 46.548 60.0078 29.9965 60.0078Z" fill="white" />
-    <path d="M60.0061 89.998H30.0096L30.0096 60.0018C46.5737 60.0018 60.0061 73.4467 60.0061 89.998Z" fill="white" />
-    <path d="M90.0033 60.0078V90.0041H60.0068C60.0068 73.4401 73.4518 60.0078 90.0033 60.0078Z" fill="white" />
+    {/*
+      * The white centre plate: a 60×60 square with a four-pointed sparkle knocked out
+      * of it (evenodd). It is NOT four quarter-wedges.
+      *
+      * ⚠️ It used to be, and that inverted the mark. Four wedges whose inner edge is a
+      * quarter-arc of r30 about the centre leave a hole that reaches almost to the
+      * plate's edges, so the WHITE read as a big four-point star and the dark shape as
+      * a fat diamond behind it. The board is the other way round: an unbroken white
+      * square with a SMALL dark sparkle inside it, points on the axes at 20 of the
+      * plate's 30 half-width, waist ≈8.3 on the diagonals. Measured off a 96px render
+      * of `Logo` 28364:40192 — note that a `contentsOnly` render of `Logotype`
+      * 28364:40193 loses the knock-out entirely and comes back as a plain white
+      * square, so it is the parent frame that has to be rendered to see this.
+      */}
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M30 30H90V90H30V30ZM60 40C60 51.0457 51.0457 60 40 60C51.0457 60 60 68.9543 60 80C60 68.9543 68.9543 60 80 60C68.9543 60 60 51.0457 60 40Z"
+      fill="white"
+    />
     <defs>
+      {/* The two grey cells: light at the mark's OUTER corner, dark at the centre.
+          ⚠️ The light end was Gray/500 #71717a and read noticeably lighter than the
+          board at 96px — the cells are meant to sit back, not compete with the two
+          coloured discs. Gray/600 #52525b → Gray/700 #3f3f46, both kit tokens. */}
       <linearGradient id="rxl-a" x1="60.0118" y1="59.9902" x2="120.011" y2="119.99" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#3F3F46" /><stop offset="1" stopColor="#71717A" />
+        <stop stopColor="#3F3F46" /><stop offset="1" stopColor="#52525B" />
       </linearGradient>
       <linearGradient id="rxl-b" x1="0.00593913" y1="0" x2="60.0051" y2="59.9997" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#71717A" /><stop offset="1" stopColor="#3F3F46" />
+        <stop stopColor="#52525B" /><stop offset="1" stopColor="#3F3F46" />
       </linearGradient>
       <linearGradient id="rxl-c" x1="-42.6678" y1="168.529" x2="-31.5028" y2="-70.2933" gradientUnits="userSpaceOnUse">
         <stop stopColor="#BE59FF" /><stop offset="0.19" stopColor="#9D60FF" />
@@ -246,6 +266,39 @@ export const IconMore = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/* ---- Home page set (Figma 28364:40053 / 28375:43006) ---- */
+
+/**
+ * The return arrow on the composer's Build button (28364:40245).
+ * Standard ↵: a shaft running right→left with a chevron head at the left end and a
+ * riser at the right that turns down into it.
+ */
+export const IconEnter = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M19 7v4.5a1.5 1.5 0 0 1-1.5 1.5H6" />
+    <path d="m9.5 9.5-3.5 3.5 3.5 3.5" />
+  </svg>
+)
+
+/**
+ * The chip row's end cap (28364:40343) is a plain chevron, not an arrow with a shaft —
+ * `IconArrowRight` is the wrong glyph there.
+ */
+export const IconChevronRight = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path d="m7.5 4.5 6 5.5-6 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** The project card's kebab (28364:40640) — VERTICAL, unlike IconMore. */
+export const IconMoreVertical = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="0" fill="currentColor">
+    <circle cx="12" cy="5.5" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="12" cy="18.5" r="1.6" />
+  </svg>
+)
+
 /* ---- domains dashboard set (Figma 27085:106382 / 26181:33524) ---- */
 
 export const IconSearch = ({ size = 20, className }: IconProps) => (
@@ -261,10 +314,40 @@ export const IconArrowRight = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/** ← back, the template-detail header (Figma 28640:43362 — SVG proxy-blocked,
+ *  redrawn as the mirror of IconArrowRight on the same grid and stroke). */
+export const IconArrowLeft = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path d="M16.5 10h-12M9 4.5 3.5 10 9 15.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
 export const IconGlobe = ({ size = 20, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
     <circle cx="10" cy="10" r="7.2" stroke="currentColor" strokeWidth="1.5" />
     <path d="M2.8 10h14.4M10 2.8c-2 2-3 4.4-3 7.2s1 5.2 3 7.2c2-2 3-4.4 3-7.2s-1-5.2-3-7.2Z" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+)
+
+/**
+ * The `Preview` pill's glyph on a template card's hover (ours — no board draws
+ * this affordance): four corner brackets, the video-player "full screen" mark.
+ *
+ * ⚠️ IT WAS TWO DIAGONAL ARROWS AND THEY READ AS AN ARROW (manager's review,
+ * 26.08.2026 night — confirmed on a 3× crop of the real pill, `wp3/glyph-a-*`).
+ * At the shipped 14px the two arrowheads fuse into ONE double-headed arrow, which
+ * is the "resize" mark, and beside the word `Preview` an arrow says "go
+ * somewhere" rather than "make this fill the screen". The brackets carry no
+ * arrowhead at all, so nothing about them can be read as direction; they are
+ * also what every video player on the market puts on this exact action. Arms of
+ * 5 on the 20-box (≈3.5px at 14), 1.8px strokes like every other glyph here.
+ */
+export const IconFullscreen = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path
+      d="M3.5 8.5V3.5h5M11.5 3.5h5v5M16.5 11.5v5h-5M8.5 16.5h-5v-5"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    />
   </svg>
 )
 
@@ -331,5 +414,119 @@ export const IconSparkleAI = ({ size = 20, className }: IconProps) => (
       d="M10 1.6c.5 3.6 1.6 5.6 2.9 6.6 1.2 1 3 1.5 5.5 1.8-2.5.3-4.3.8-5.5 1.8-1.3 1-2.4 3-2.9 6.6-.5-3.6-1.6-5.6-2.9-6.6-1.2-1-3-1.5-5.5-1.8 2.5-.3 4.3-.8 5.5-1.8 1.3-1 2.4-3 2.9-6.6Z"
       fill="url(#sparkle-ai)"
     />
+  </svg>
+)
+
+/* ---- added 06.09.2026 for the pre-build brief and the collapsible preview ---- */
+
+/*
+ * The brief footer's ‹ › pair (Lovable, 06.09.2026). Deliberately NOT the chip row's
+ * `IconChevronRight` above: that one is drawn to a Figma node at a heavier weight in a
+ * 20 box, and a mirror pair has to match its partner — a 55%-tall 1.8 stroke next to a
+ * 42%-tall 1.7 one reads as two different buttons. So the pair is its own glyph, cut
+ * from the shared `base`, and the chip cap keeps the weight the board gives it.
+ */
+export const IconCaretLeft = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m14 7-5 5 5 5" />
+  </svg>
+)
+
+export const IconCaretRight = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m10 7 5 5-5 5" />
+  </svg>
+)
+
+export const IconChevronUp = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m7 14 5-5 5 5" />
+  </svg>
+)
+
+/** Two arrows pointing outward — "open the preview" (Lovable parks it top-right). */
+export const IconExpand = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M14 4h6v6" />
+    <path d="m20 4-6 6" />
+    <path d="M10 20H4v-6" />
+    <path d="m4 20 6-6" />
+  </svg>
+)
+
+/** The same arrows pointing inward — "hide the preview". */
+export const IconCollapse = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20 10h-6V4" />
+    <path d="m14 10 6-6" />
+    <path d="M4 14h6v6" />
+    <path d="m10 14-6 6" />
+  </svg>
+)
+
+/* ------------------------------------------ the generation outline (29480:48478) */
+
+/**
+ * A page in the site outline. The board sets it at 20 in the row and 20 in the page
+ * headers, so it is drawn on the 24 grid like everything else and sized by the caller.
+ */
+export const IconPage = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.6">
+    <path d="M13.5 3.5H7A2 2 0 0 0 5 5.5v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z" />
+    <path d="M13.5 3.5V7a2 2 0 0 0 2 2H19" />
+  </svg>
+)
+
+/**
+ * The three states of a section, all on one geometry so the row never shifts as it
+ * changes: a ring of the same centre, and only the colour and what is inside it move.
+ *
+ * ⚠️ THE RINGS ARE SMALLER THAN A 24-GRID CIRCLE, and that is measured off the board
+ * rather than assumed. Figma gives the finished and running icons a 24 frame and the
+ * queued ones a 20 frame, so the obvious reading is "a circle filling each frame" —
+ * which is what the first cut drew, at 20px of ink. In the board's own render all three
+ * rings come out around 16-17px: the artwork does not fill its frame. r=8 with a 1.5
+ * stroke is 17.5, r=7.25 is 16.
+ *
+ * The SVG exports would settle it exactly, but figma.com asset URLs are unreachable
+ * from this environment (403 at the proxy, for curl and download_assets alike), so
+ * these are drawn against the render. If the icons ever get here as files, check the
+ * ring diameters first.
+ */
+export const IconStepDone = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.5">
+    <circle cx="12" cy="12" r="8" />
+    <path d="m8.7 12.2 2.4 2.4 4.5-4.9" strokeWidth="1.6" />
+  </svg>
+)
+
+/**
+ * The section in hand. One arc of the ring, spinning.
+ *
+ * The gap is what makes it read as motion rather than as a dot: a full ring turning
+ * looks identical to a still one. Rotation is a transform, so this costs the
+ * compositor a matrix and the main thread nothing — the one animation in the card
+ * that can run for a whole minute without being thought about.
+ */
+export const IconStepRunning = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.7">
+    <circle
+      cx="12"
+      cy="12"
+      r="8"
+      /* 2πr = 50.3, so this is roughly 300° of arc and a 60° gap. */
+      strokeDasharray="42 9"
+      /* class, not an inline animation: `prefers-reduced-motion` can only stop a
+         CSS animation it can select, and motion/react's MotionConfig does not
+         reach SVG keyframes. */
+      className="step-spin"
+    />
+  </svg>
+)
+
+/** Queued: the same ring, a shade smaller and unlit (a 20 frame against a 24). */
+export const IconStepQueued = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.5">
+    <circle cx="12" cy="12" r="7.25" />
   </svg>
 )

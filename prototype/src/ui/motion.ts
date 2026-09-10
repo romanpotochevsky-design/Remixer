@@ -94,6 +94,75 @@ export const messageIn = {
 }
 
 /**
+ * A CARD ARRIVING IN THE THREAD — the brief summary after Submit, the generation outline
+ * after Approve (designer, 09.09.2026: "красивую и плавную анимацию появления этих
+ * компонентов в чате, анимацию в стиле apple liquid glass").
+ *
+ * Liquid Glass, the way iOS 26 opens a surface, is three motions at once and none of them
+ * is a fade:
+ *  · the glass INFLATES out of where the gesture happened, with one soft overshoot — both
+ *    cards are born in the dock, where Submit / Approve were pressed, so they rise from
+ *    their bottom edge (`origin-bottom` on the card);
+ *  · the CONTENT lags the glass by a beat and settles the OPPOSITE way — the glass grows
+ *    onto its size while the contents shrink onto theirs, which is what reads as a lens
+ *    focusing rather than a picture fading in; the rows inside then arrive one after
+ *    another, top to bottom;
+ *  · the glass catches the LIGHT as it forms — a rim highlight that brightens and fades
+ *    (`.card-arrive`, index.css "THE CARD THAT ARRIVES"). Opacity only.
+ * Everything here is transform and opacity. The delay lets the dock start folding its
+ * sheet into the collar first: the answers go down, and the card rises out of the fold.
+ */
+export const cardIn = {
+  initial: { opacity: 0, scale: 0.94, y: 22 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      duration: 0.68,
+      bounce: 0.2,
+      delay: 0.08,
+      opacity: { duration: 0.24, delay: 0.08, ease: [0.2, 0, 0, 1] },
+    },
+  },
+}
+/** The card's inner surface: one beat behind the glass, focusing onto it from slightly large. */
+export const cardInBody = {
+  initial: { opacity: 0, scale: 1.035, y: 4 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: 'spring', duration: 0.6, bounce: 0.1, delay: 0.16, opacity: { duration: 0.22, delay: 0.16 } },
+  },
+}
+/** Rows inside the card, one after another (`custom` = the row's index). */
+export const CARD_ROW_STAGGER = 0.045
+export const cardInRow = {
+  initial: { opacity: 0, y: 8 },
+  animate: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { ...SPRING_SOFT, delay: 0.22 + i * CARD_ROW_STAGGER, opacity: { duration: 0.2, delay: 0.22 + i * CARD_ROW_STAGGER } },
+  }),
+}
+/* Reduced motion: the offsets and scales are DROPPED, not jumped into (the `listSwapFade`
+   lesson) — the card and its rows simply come up in place. */
+export const cardInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.24, ease: [0.2, 0, 0, 1] } },
+}
+export const cardInBodyFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, delay: 0.1 } },
+}
+export const cardInRowFade = {
+  initial: { opacity: 0 },
+  animate: (i: number) => ({ opacity: 1, transition: { duration: 0.2, delay: 0.14 + i * 0.03 } }),
+}
+
+/**
  * App-modal: the checkout sheet over the 70% scrim (Figma 27254/27275).
  *
  * Centred sheets have no trigger corner to grow out of, so rule 2 cannot apply —
@@ -104,12 +173,213 @@ export const modalScrim = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.18, ease: [0.2, 0, 0, 1] } },
   exit: { opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+  /* Leaving UNDER something that is still flying (the picked template on its
+     way into the composer): a shade longer than the plain exit, so the page is
+     not fully lit before the object has landed on it. */
+  dissolve: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
 }
 
 export const modalSheet = {
   initial: { opacity: 0, scale: 0.97, y: 12 },
   animate: { opacity: 1, scale: 1, y: 0, transition: SPRING_SOFT },
   exit: { opacity: 0, scale: 0.985, y: 6, transition: EXIT },
+}
+
+/**
+ * Fullscreen sheet — the template picker (Figma 28616:59168): a 16px-inset
+ * surface that covers the whole page. Unlike the centred checkout sheet this
+ * one HAS a trigger, so rule 2 applies at full size: the caller sets
+ * `transform-origin` to the pill that opened it and the sheet grows out of
+ * that point. Scale starts much nearer 1 than a popover's — on a 1624px-wide
+ * surface 4% is already a ~65px sweep at the far corner; any more reads as a
+ * zoom, not as a surface arriving. Nothing here (or on the sheet) may carry a
+ * live backdrop blur: the sheet is the biggest thing the product ever moves.
+ */
+export const fullscreenSheet = {
+  initial: { opacity: 0, scale: 0.96 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    /* Opacity pulled forward on its own quick curve — the bubbleSend trick,
+       for the same reason: a surface that stays translucent through the whole
+       spring reads as gauze, not as a solid panel arriving. (It also shortens
+       the window in which a 1624px layer needs alpha-blending, though measured
+       on a software-rendered browser the open's cost is dominated by the
+       full-viewport composite itself, which any full-screen motion pays.) */
+    transition: { ...SPRING_SOFT, opacity: { duration: 0.15, ease: [0.2, 0, 0, 1] } },
+  },
+  exit: { opacity: 0, scale: 0.975, transition: EXIT },
+  /*
+   * DISSOLVE — the sheet after "Choose a template". It leaves by fading where
+   * it stands, and deliberately does NOT shrink back toward the pill: the
+   * chosen template is at that moment flying across the whole screen into the
+   * composer, and a surface collapsing toward one corner while an object flies
+   * to another is two gestures fighting for one pair of eyes. The flying object
+   * owns the eye; the ground it leaves behind only gets out of the way.
+   */
+  dissolve: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
+}
+
+/**
+ * The fullscreen sheet when it is NOT the thing you are watching — the picker
+ * opened on the template that is already attached (the tile's preview).
+ *
+ * Rule 2 does not apply, and applying it anyway would be wrong: on that path
+ * the object flying out of the tile is the gesture, and a 1624px surface
+ * inflating from the same point at the same time gives the eye two things to
+ * follow. So the ground simply materialises under the flight and dissolves out
+ * from under it — a fade, nothing else moves.
+ */
+export const fullscreenSheetFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18, ease: [0.2, 0, 0, 1] } },
+  dissolve: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
+}
+
+/**
+ * ───────────────────── THE ATTACHMENT'S CHOREOGRAPHY ─────────────────────
+ *
+ * ONE OBJECT DOCTRINE. A template is a single physical thing: a card in the
+ * picker's grid, the full-screen stage it grows into, and the 56px tile in the
+ * composer. Every hand-off between those homes is the same FLIP morph with the
+ * nested counter-scale — never a fade-out here plus a fade-in there. The
+ * geometry lives in modules/home/TemplateFlight.tsx; the springs are here.
+ *
+ * WHY A BOUNCE ON ARRIVAL AND NONE ON DEPARTURE: rule 4. The attach is the
+ * object being handed to you — it seats with one small overshoot, which is what
+ * makes a 1600px stage collapsing into a 56px tile read as "caught" rather than
+ * "shrunk". The way back up is a plain settle: nothing is being received.
+ */
+
+/** Stage → tile. Duration-based so the whole distance is covered in one beat
+ *  whatever the viewport; bounce 0.16 = the tile dips ~1px past its box and
+ *  seats. */
+export const FLIGHT_SEAT = { type: 'spring', duration: 0.62, bounce: 0.16 } as const
+
+/** Tile → stage. Slightly longer and flat: a surface arriving, not a catch. */
+export const FLIGHT_OPEN = { type: 'spring', duration: 0.56, bounce: 0 } as const
+
+/**
+ * THE SNAP-ONCE RULE, and it is a performance rule before it is a taste one.
+ *
+ * The composer's field grows 46px when a template lands in it (138 → 184, board
+ * 28726:64760). Transitioning its `height` would relayout the hero column on
+ * every frame of the spring — the exact per-frame layout this project's contract
+ * forbids. So the layout SNAPS in the one commit that adds the tile, and the
+ * rows that moved are put back where they were with a transform and sprung home:
+ * the eye sees a field growing, the browser sees one reflow. `useSnapSlide` in
+ * modules/home/HomePage.tsx applies it; the distances are drawn constants (the
+ * text row moves 72, the button row and the chip row 46), so nothing is measured
+ * and nothing can drift.
+ *
+ * Growing is a spring with a hair of overshoot — it is opening WITH the tile
+ * that is landing. Closing is flat and quicker (rule 4).
+ */
+export const FIELD_GROW = { type: 'spring', duration: 0.5, bounce: 0.12 } as const
+export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
+
+/*
+ * The question dock's sheet (BriefPanel, PlanCard). The dock itself grows as a PISTON
+ * (index.css "THE BUBBLE", driven by modules/chat/dock.ts): the shell's edge, rim and
+ * corners travel up out of the collar around the field on one damped spring, and the
+ * sheet's content rides that same curve, fading in once the edge has cleared the field —
+ * all of it CSS, on the dock's classes, so that a piston and a passenger on different
+ * clocks cannot tear. The exit is CSS too (`dock-sink` / `dock-out`, 220ms): the content
+ * fades while the piston sinks. Leaving is quicker than arriving, and without a bounce —
+ * the house rule for overlays.
+ *
+ * ⚠️ What motion does here is only HOLD the element in the tree for the fall: an "exit"
+ * that goes to an opacity indistinguishable from 1. It used to fade the content itself,
+ * and that fade — a compositor tween — hands the element back at its inline opacity of 1
+ * for the one frame between finishing and React removing the node: the questions flashed
+ * at full brightness over an already-gone shell (measured, one frame at t≈290ms). A CSS
+ * fill-forwards fade on the dock's own classes has no such frame, so the fade lives there.
+ */
+export const DOCK_FALL_MS = 260
+export const sheetExit = {
+  exit: { opacity: 0.999, transition: { duration: DOCK_FALL_MS / 1000, ease: 'linear' } },
+} as const
+
+/*
+ * Changing question (Next, ‹ ›). The shell's edge morphs to the new height on the dock's
+ * spring; the question and its answers are swapped as ONE group, `popLayout`, so the
+ * layout snaps to the new height at once and the outgoing group rides the edge while it
+ * fades. Direction is carried in `custom`: forward, the new step comes in from the right
+ * and the old leaves to the left, the way a wizard pages — back, the reverse. The footer
+ * does not move: its buttons are anchored to the field, under the pointer that pressed
+ * them.
+ *
+ * ⚠️ `stepSwapFade` is the reduced-motion variant and drops the x OFFSETS, not just the
+ * spring: MotionConfig would otherwise jump x to its target and fade from there (the
+ * shelf-of-the-dock lesson, 26.08.2026).
+ */
+/*
+ * ⚠️ THE HAND-OFF IS SEQUENTIAL, NOT A CROSS-FADE (designer's screen recording,
+ * 08.09.2026: "при переходах есть дефекты и глюки визуальные"). The first cut
+ * had the old question fading out over 170ms while the new one's opacity was
+ * already climbing from 80ms: a 90ms window in which two whole questions —
+ * title, rows, card, field — were painted over each other at about half alpha
+ * each. On this much content that does not read as a cross-fade, it reads as a
+ * double exposure ("Which lettering suits the tone?" printed through "Which
+ * colours feel right?", measured off the recording's frames 51-53).
+ *
+ * So the old one leaves FAST and is gone before the new one starts to appear:
+ * out by 120ms, in from 140ms. One frame of the bare panel between them is the
+ * price, and it is invisible — the panel's own edge is morphing through it.
+ * The x spring is untouched: what was wrong was the overlap, not the travel.
+ */
+export const stepSwap = {
+  initial: (dir: number) => ({ opacity: 0, x: 36 * dir }),
+  animate: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      x: { type: 'spring', duration: 0.56, bounce: 0.2 },
+      opacity: { duration: 0.2, delay: 0.14 },
+    },
+  },
+  exit: (dir: number) => ({
+    opacity: 0,
+    x: -24 * dir,
+    transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
+  }),
+} as const
+export const stepSwapFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18, delay: 0.12 } },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
+} as const
+
+/*
+ * THE SCROLL-COMPACTING HEADER USED TO HAVE A SPRING HERE — `HEADER_COMPACT`
+ * (duration .44 / bounce 0), the `FIELD_GROW` law one size up: the picker's
+ * header snapped 215 → 146 in one commit and everything that moved was put back
+ * with a transform and sprung home.
+ *
+ * It is GONE (26.08.2026 night) because the design it served was the designer's
+ * scroll-jerk bug. Covering the snap kept the HEADER continuous while the GRID
+ * moved 69px that nobody asked for — measured worst frame 16.6px of content
+ * travel with `ΔscrollTop` exactly 0. The header's height is now a direct
+ * function of the scroll offset (`useHeadRamp` in modules/home/TemplatePicker.tsx),
+ * so there is no transition to time: the finger is the timeline. The law and its
+ * numbers live in `design-system.md` §5 «Шапка, которая сжимается при скролле».
+ *
+ * The lesson the token carried is worth keeping even though the token is not:
+ * a spring answering a gesture the user is STILL MAKING must not overshoot —
+ * an overshoot on top of live scrolling reads as the scroller rubber-banding,
+ * i.e. as a bug. Same reason `FLIGHT_OPEN` and `FIELD_CLOSE` are flat.
+ */
+
+/**
+ * Rule 3 for the fullscreen sheet: the content column, one beat behind the
+ * surface — and ONE block, never a stagger. Its grid is 18 cards; 18 springs
+ * is 18 layers of cost and pure noise, so the whole column lands together.
+ */
+export const fullscreenContent = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { ...SPRING_SOFT, delay: 0.06 } },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
 }
 
 /**
@@ -132,6 +402,219 @@ export const listSwapItem = {
   initial: { opacity: 0, y: 14 },
   animate: { opacity: 1, y: 0, transition: SPRING_SOFT },
 }
+
+/**
+ * The same conveyor, one beat BEHIND a control that moved — the Home dock's
+ * segmented control (`My projects | Templates`, Figma 28364:42996).
+ *
+ * Rule 3 turned sideways: the pill takes the gesture, the shelf answers it.
+ * Everything is `listSwap` — same distances, same spring, same stagger — and
+ * the beat is the only difference, so the two surfaces still speak one
+ * language. It sits on the EXIT, because that is where the gesture starts:
+ * under `AnimatePresence mode="wait"` the old shelf holds still for 60ms while
+ * the pill sets off, and only then whisks up. (Delaying the entrance instead
+ * would just add dead air in the middle — the exit already separates them.)
+ */
+export const listSwapBehind = {
+  ...listSwap,
+  exit: { ...listSwap.exit, transition: { ...EXIT, delay: 0.06 } },
+}
+
+/**
+ * The conveyor with the movement taken out — what it becomes under
+ * `prefers-reduced-motion`. Pick it with `useReducedMotion()`.
+ *
+ * ⚠️ THIS IS NOT REDUNDANT WITH `MotionConfig reducedMotion="user"`, and that
+ * is the trap. The flag DISABLES transform animations, and "disabled" means the
+ * value SNAPS to its target — so an exit whose target is `y: -12` does not stop
+ * moving, it HOPS 12px, at ~90% opacity, and only then fades. A hop is not less
+ * motion than a slide; it is worse motion, and it is the one thing the setting
+ * exists to prevent. Measured on the dock's shelf: y = 0 → −12 in one frame at
+ * opacity .906. The flag is still doing its job — nothing INTERPOLATES — but a
+ * variant whose exit target is a displacement has to drop the displacement
+ * itself, not just its animation.
+ */
+export const listSwapFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { ...SPRING_SOFT, staggerChildren: 0.055 } },
+  exit: { opacity: 0, transition: { ...EXIT, delay: 0.06 } },
+}
+
+/**
+ * ─────────── THE FILTERED GALLERY: the cards answer the chip, one by one
+ *
+ * A filter change is the same conveyor as everything else — old shelf out, new
+ * shelf in on `listSwapBehind`'s 60ms beat behind the pill — with the per-item
+ * stagger the house `listSwap` already carries. What the ITEM does is the one
+ * thing that had to be different: **it pops, it does not slide.**
+ *
+ * WHY NOT `listSwapItem`'s 14px rise: the dock's shelf lives inside a horizontal
+ * ScrollArea, and `overflow-x: auto` forces the other axis to `auto` too — the
+ * box clips vertically, and it has no slack to clip into (the cards are
+ * `items-stretch` in a 272px band, so card height IS scroller height). A 14px
+ * rise there cuts 14px off every card's bottom edge and opens a 14px band of
+ * ground above it for the length of the animation. Scale is the one displacement
+ * a clipping box cannot cut: 3.5% of a 238px card is ~8px of travel on all four
+ * edges, entirely inside the box. The picker's grid has room for a rise, but it
+ * gets the same variant on purpose — one dialect for "the gallery was filtered",
+ * whichever home you are looking at.
+ *
+ * The stagger is sized to the count, because the tail is what you feel: 6 dock
+ * cards × 55ms = 275ms, but the picker's 18 × 55ms would be 935ms of cards still
+ * arriving long after the press. `gridSwapBehind` tightens it to 22ms (18 × 22 =
+ * 396ms), which is the same cascade at the same total length.
+ */
+export const listSwapPop = {
+  initial: { opacity: 0, scale: 0.965 },
+  animate: { opacity: 1, scale: 1, transition: SPRING_SOFT },
+} as const
+
+/**
+ * The same item under `prefers-reduced-motion` — opacity only.
+ *
+ * ⚠️ Third instance of the same trap (`listSwapFade`, `cardAddFade`): the root
+ * `MotionConfig reducedMotion="user"` does not cancel a transform target, it
+ * JUMPS to it, so `listSwapPop` under the setting would park every card at
+ * 0.965 and snap it to 1 — a pop where the user asked for none.
+ */
+export const listSwapPopFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: SPRING_SOFT },
+} as const
+
+/** `listSwapBehind` with the stagger sized for the picker's 18 cards. */
+export const gridSwapBehind = {
+  ...listSwapBehind,
+  animate: { ...listSwapBehind.animate, transition: { ...SPRING_SOFT, staggerChildren: 0.022 } },
+}
+
+/**
+ * A segmented control's pill changing seats — one object travelling, never a
+ * cut. Only the LAW lives here; the seat geometry belongs to the control
+ * (`DockTabs` in modules/home/Dock.tsx).
+ *
+ * WHICH SPRING, and why not the overlay one: `SPRING` (520/34/.9), described
+ * at the top of this file as "quick, one barely-perceptible overshoot", is
+ * exactly what a segmented pill wants — measured here it covers half the
+ * 107px hop in ~60ms and is settled by ~250ms, with a ~2% overshoot that
+ * reads as the pill seating itself rather than as a wobble. `SPRING_SOFT` is
+ * for large surfaces and lands the same hop dead-flat: correct, and duller.
+ * A control this small under the soft spring reads as sliding on rails.
+ *
+ * WHAT MOVES: nothing but `x`, on two layers. The two seats are DIFFERENT
+ * widths (101 and 92, per position, as drawn), and a pill that `scaleX`es
+ * between them ends its life with elliptical caps — 16px vertical radius
+ * against 14.6 horizontal — i.e. a settled state that is no longer the
+ * drawn one. So the travelling shape is a CAPSULE OF TWO: two identical
+ * pills, one pinned to each end of the active seat, translating only.
+ * The union of two equal-height capsules is always a capsule, so the ends
+ * stay perfectly round at every width, and the seam is white-on-white.
+ * (Their width is derived, not chosen — `CAP_W` in Dock.tsx: overlap them
+ * too far and Chrome composites both antialiased cap arcs, which shows up as
+ * a heavier pill in the settled pixel diff.)
+ * Because a spring is a linear system, two springs with identical parameters
+ * follow the same NORMALIZED curve whatever distance they cover — so the two
+ * ends stay in phase, including when a click interrupts a flight already in
+ * progress (both carry velocity proportional to their own distance).
+ */
+export const segmentedPill = { transition: SPRING } as const
+
+/**
+ * ONE LAW, TWO CONTROLS — and on the second one the capsule of two becomes a
+ * CAPSULE OF THREE (the filter chips, designer's order 26.08.2026: make the
+ * filter switch a gesture, not a swap).
+ *
+ * `CategoryChips` in modules/home/Dock.tsx flies the same white pill between
+ * chips on the same `SPRING`, for the same reason and with the same proof of
+ * phase (a spring is a linear system, so the normalized curve — half-way at
+ * ~62ms — is the same whether the hop is 122px or 762px; only the velocity
+ * scales, and so does the overshoot: 1.84% analytic, +13px measured on the long
+ * one). What does NOT transfer is the ink timing: this control's pill crosses up
+ * to five labels on its way, so their ink is driven by the pill's POSITION
+ * rather than by a tuned delay (`.home-chip-ink`, index.css).
+ *
+ * What does NOT transfer is the two-capsule trick, and the arithmetic says so
+ * before any eye does. Two halves of width C at seats of width W hold a seamless
+ * union only while `W − C ∈ [R, C − 2R]`, i.e. `C ∈ [Wmax/2 + R, Wmin − R]`.
+ * The dock's two seats (101, 92 at R 16) leave a wide window. The chips, measured
+ * off the built page, run 68.53…152.39 wide at R 18 — window `[94.20, 50.53]`,
+ * EMPTY, and it is empty for a structural reason: the trick needs every seat to
+ * be at least twice its own height, and `More` is 1.9×.
+ *
+ * So the third layer is a plain RECTANGLE between the two cap centres, scaled on
+ * X. It costs one more layer and buys exactness: with the pill expressed as two
+ * motion values (left edge, right edge) the bar's right end is
+ * `(L + R_cap) + REF · sx = R − R_cap` = the right cap's centre ALGEBRAICALLY, on
+ * every frame and under interruption, instead of by two springs happening to
+ * agree. A rectangle has no corner radius to distort under `scaleX`, which is
+ * the whole reason the pill was never allowed to scale.
+ */
+
+/**
+ * THE TEMPLATE CARD'S HOVER AFFORDANCE — the blue `+` that offers a card
+ * straight to the composer, and the gradient plate that keeps the caption from
+ * colliding with it. Board 28626:606: the button `28637:42070`, the plate
+ * `28740:66863`. Neither is drawn with a state, so this law is ours.
+ *
+ * THE BUTTON SPRINGS, ITS OPACITY DOES NOT. Scale rides `SPRING`, whose ~2%
+ * overshoot is what makes a 32px control read as SEATING itself rather than
+ * blinking on; opacity gets its own 120ms tween, because a spring on opacity
+ * would keep the button faint for a third of a second and the affordance has to
+ * answer a gesture the user is still making. Together they give a control that
+ * is legible almost at once and settles a beat later.
+ *
+ * THE PLATE FADES WITH IT, NOT AFTER IT. Same 120ms tween, same start: the
+ * plate exists to stop the caption standing at full strength beside a solid
+ * button, so any lag it took would show the exact collision it was added to
+ * prevent. Ramping together, the text is always being covered at the rate the
+ * button is arriving.
+ *
+ * LEAVING IS `EXIT` (rule 4), and the button gives up only a tenth of its size
+ * on the way out — a control that collapses reads as cancelled, and this one is
+ * simply no longer on offer.
+ */
+export const cardAdd = {
+  off: { opacity: 0, scale: 0.9, transition: EXIT },
+  on: {
+    opacity: 1,
+    scale: 1,
+    transition: { ...SPRING, opacity: { duration: 0.12, ease: [0.2, 0, 0, 1] } },
+  },
+} as const
+
+/**
+ * The same affordance with the movement taken out — the plate ALWAYS (it only
+ * ever had opacity), and the button under `prefers-reduced-motion`.
+ *
+ * ⚠️ It exists for the reason `listSwapFade` exists: `MotionConfig
+ * reducedMotion="user"` does not cancel a transform target, it JUMPS to it.
+ * Under the setting, `cardAdd` would park the button at 0.9 and snap it to 1 —
+ * a hop where the user asked for none. A variant whose target is a
+ * displacement has to drop the displacement itself, not just its animation.
+ */
+export const cardAddFade = {
+  off: { opacity: 0, transition: EXIT },
+  on: { opacity: 1, transition: { duration: 0.12, ease: [0.2, 0, 0, 1] } },
+} as const
+
+/**
+ * The plate: arrives WITH the button, leaves AFTER it.
+ *
+ * Coming in they share one tween — see `cardAdd`. Going out they must not: a
+ * button fading from 1 to 0 is translucent for most of those 140ms, and if the
+ * plate fades with it the caption comes back UNDER the ghost and reads through
+ * it. Filmed at 3× (scratchpad/qa16), that is the muddiest frame of the whole
+ * gesture — and it is precisely the collision the plate was added to prevent, so
+ * the plate has no business leaving first. It holds for 100ms while the button
+ * dissolves and then lifts, which reads as a shadow being taken off the text.
+ *
+ * The plate is invisible on its own (it is the ground colour, on the ground), so
+ * this costs nothing anywhere else on the card.
+ */
+export const cardAddScrim = {
+  off: { opacity: 0, transition: { ...EXIT, delay: 0.1 } },
+  on: cardAddFade.on,
+} as const
 
 /** Full-surface swaps — a screen replacing another inside the same shell. */
 export const surface = {

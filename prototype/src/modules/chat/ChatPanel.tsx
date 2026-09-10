@@ -11,20 +11,38 @@
  * from a canned set (modules/chat/thread.ts). See send.ts for what one message moves.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld, canUseAI } from '@/state/world'
 import { useT } from '@/i18n'
 import {
-  IconPlus, IconMic, IconArrowUp,
+  IconPlus, IconMic, IconArrowUp, IconChevronDown, IconCheck,
   IconReplyArrow, IconThumbUp, IconThumbDown, IconCopy, IconMore,
 } from '@/ui/icons'
 import { ScrollArea } from '@/ui/ScrollArea'
-import { baselineThread } from './thread'
+import { baselineThread, streamDuration } from './thread'
 import { sendMessage, resumeInterrupted } from './send'
-import { bubbleSend } from '@/ui/motion'
+import { bubbleSend, cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade, popover } from '@/ui/motion'
+import { BriefPanel } from './BriefPanel'
+import { PlanCard } from './PlanCard'
+import { SuggestPanel } from './SuggestPanel'
+import { RatingPanel } from './RatingPanel'
+import { BuildProgress } from './BuildProgress'
+import { endDockMotion } from './dock'
+import { PLAN_WAITING } from './plan'
+import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
+
+/**
+ * The stagger step of a turn on the Home → builder arrival (index.css "THE ARRIVAL"):
+ * capped so a long thread does not push the last turns past the arrival phase's end.
+ */
+const arriveStep = (i: number) => ({ '--i': Math.min(i, 6) } as React.CSSProperties)
 
 /** Where a freshly sent message parks: just clear of the 48px top fade. */
 const TOP_INSET = 48
+/** How far off the end still counts as "at the end" — a wheel notch of slack. */
+const END_SLACK = 32
+/** How long after a wheel, a touch or a key a scroll still counts as the reader's. */
+const DRIVE_WINDOW = 250
 
 function UserBubble({
   children,
@@ -113,12 +131,6 @@ function AiActions({ text }: { text: string }) {
  * the step shrinks as the answer grows, so a long paragraph still finishes in
  * about a second instead of crawling.
  */
-/** How long the word-by-word reveal of this text will take, in ms. */
-function streamDuration(text: string) {
-  const n = Math.max(text.split(' ').length, 1)
-  return Math.round((n - 1) * Math.min(26, 820 / n)) + 320
-}
-
 function StreamedText({ text }: { text: string }) {
   const words = text.split(' ')
   const step = Math.min(26, 820 / Math.max(words.length, 1))
@@ -134,12 +146,19 @@ function StreamedText({ text }: { text: string }) {
 }
 
 /** Figma: message column, 9px between the text and its action row. */
-function AiMessage({ text, actions, animate }: { text: string; actions?: boolean; animate: boolean }) {
+function AiMessage({ text, actions, animate, thought }: { text: string; actions?: boolean; animate: boolean; thought?: number }) {
+  const { t } = useT()
   return (
     /* No container fade here: the words do the arriving. Nesting a motion
        opacity animation around per-word CSS animations left the whole block
        parked at opacity 0 with the word animations sitting at currentTime 0. */
     <div className="flex flex-col gap-[9px] pr-8">
+      {thought !== undefined && (
+        /* Lovable: a quiet "Thought for 21s" over the turn that asked instead of built. */
+        <p className="-mb-1 text-[13px] leading-[20px] text-[var(--white-400)]">
+          {t({ en: `Thought for ${thought}s`, uk: `Думав ${thought} с` })}
+        </p>
+      )}
       <p className="whitespace-pre-wrap text-[15px] leading-[25px] text-[var(--gray-350,#c7c7cd)]">
         {animate ? <StreamedText text={text} /> : text}
       </p>
@@ -156,6 +175,128 @@ function AiMessage({ text, actions, animate }: { text: string; actions?: boolean
   )
 }
 
+/**
+ * The brief, summarised — Lovable's card after "Submit": a tool-row title over a
+ * two-column table of the answers (frame 11 of the recording). Skipped questions
+ * read as Remixer's pick, so nobody wonders whether an answer got lost.
+ */
+function BriefSummary({ animate }: { animate: boolean }) {
+  const { world } = useWorld()
+  const { t, lang } = useT()
+  /* The shimmer says "Remixer is working". While the plan waits to be started it is NOT
+     working — the turn is the customer's — so the title goes still and says so. */
+  const waiting = world.brief.status === 'planning' && world.chat !== 'working'
+  const settling = world.chat === 'working' && world.project !== 'built'
+  const title = world.project === 'built'
+    ? t({ en: 'Acknowledged brief and preferences', uk: 'Бриф і вподобання прийнято' })
+    : world.project === 'generating'
+      ? t({ en: 'Reviewing page layout and style choices', uk: 'Переглядаю лейаут і стилістичні рішення' })
+      : waiting
+        ? t(PLAN_WAITING)
+        : t(BRIEF_STATUS)
+  /*
+   * THE CARD HAS ITS OWN BOARD — Figma 29848:28823 (designer, 09.09.2026: "сделай этот
+   * компонент перфект пиксель как в макете… и у него максимальная ширина 480px"), and it
+   * re-draws the anatomy the card was borrowing from the generation outline:
+   *
+   *   outer   1px #272728, radius 24, and NOTHING else — no fill
+   *   header  56 tall, px 16, the title at 15 MEDIUM (it was 16 semibold)
+   *   list    1px #272728 on left, right and top, px 16 / py 12, corners 16 at the top and
+   *           24 at the bottom, where it meets the card's own
+   *   row     36 tall, the label in a fixed 160 column at 48% white, the value 14 REGULAR
+   *
+   * The arithmetic closes on the board's own box: 1 + 56 + (12 + 4×36 + 12) + 1 = 226, which
+   * is the height Figma reports for the node at its drawn width of 480.
+   *
+   * ⚠️ THE LIST'S TOP PADDING IS 11, NOT 12, and that is the arithmetic and not a fudge:
+   * Figma's stroke sits INSIDE the geometry, so the block's 12 is measured from its outer
+   * edge and the stroke stands in the first pixel of it. A CSS border adds instead, so the
+   * card measured 227. 11 + the border is the board's 12, and the total is 226 again — the
+   * same correction the plan card's fade needed when it read `top: 41` for a drawn 42.
+   *
+   * ⚠️ NO FILLS. The card used to be a lighter block over a darker inset — the anatomy the
+   * generation outline's board gives IT — and this board gives neither surface a fill: the
+   * whole card is strokes on the thread's own ground. That is the one thing here that could
+   * not be checked against the board's own pixels (the proxy refuses figma.com's asset URLs,
+   * CLAUDE.md), so it rests on the export, which prints a fill wherever there is one, and on
+   * the height above, which leaves no room for anything else.
+   *
+   * ⚠️ THE LIST IS PULLED OUT A PIXEL so its side strokes land ON the card's, not one pixel
+   * inside them. The board draws left, right and top strokes on a block that spans the card,
+   * and Figma's strokes sit inside the geometry; a plain child of a bordered box would stack
+   * its own edge next to the card's and read as a 2px rail down everything below the header.
+   * Pulled out, every stroke the board draws is present and the card keeps one 1px edge.
+   *
+   * ⚠️ MAX WIDTH 480 REPLACES "the full width of the chat column" (07.09.2026, when the card
+   * was drawn on the generation outline's board and had no width of its own). His screenshot
+   * shows why: in the collapsed chat the column is 800, and the values floated an inch away
+   * from their labels. The cap is his number and it is the width the board draws.
+   *
+   * ⚠️ THE LABELS STAY OURS — Goal / Pages / Colours / Lettering. The board's "Website type /
+   * Content sections / Color palette / Typography" are Lovable's questions, and ours were
+   * chosen against them on 07.09 for reasons that have not changed. This board re-draws the
+   * card, not the brief.
+   */
+  /* The arrival — motion.ts `cardIn`: the glass rises out of the dock and inflates, the
+     surface inside focuses onto it a beat later, the rows follow one by one, and the rim
+     catches the light (`.card-arrive`). Only a card that has just been sent animates;
+     one that is on screen at the first paint (a restored transcript) stands still. */
+  const reduce = useReducedMotion()
+  const [glass, body, row] = reduce ? [cardInFade, cardInBodyFade, cardInRowFade] : [cardIn, cardInBody, cardInRow]
+  return (
+    <motion.div
+      variants={glass}
+      initial={animate ? 'initial' : false}
+      animate="animate"
+      className={`w-full max-w-[480px] origin-bottom overflow-hidden rounded-[24px] border border-[#272728]${animate ? ' card-arrive' : ''}`}
+    >
+      <motion.div variants={body} className="origin-bottom">
+        <p className={`flex h-[56px] items-center px-4 text-[15px] font-medium leading-[1.2] ${settling ? 'thinking' : 'text-white'}`}>
+          {title}
+        </p>
+        <dl className="-mx-px w-[calc(100%+2px)] rounded-b-[24px] rounded-t-[16px] border-l border-r border-t border-[#272728] px-4 pb-3 pt-[11px] text-[14px] leading-[1.4]">
+          {BRIEF_QUESTIONS.map((q, i) => {
+            const a = answerText(q, world.brief.answers[q.key], lang)
+            /* `display: contents` has no box to move, so the two cells of a row carry the
+               row's motion themselves, on the same clock (`custom` is the row index) */
+            return (
+              <motion.div key={q.key} variants={row} custom={i} className="card-row flex h-9 items-center">
+                <dt className="w-40 flex-none text-[#ffffff7a]">{t(q.label)}</dt>
+                <dd className={a.muted ? 'italic text-[#ffffff7a]' : 'text-white'}>{a.text}</dd>
+              </motion.div>
+            )
+          })}
+        </dl>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/**
+ * WHAT THE AGENT IS UP TO — one shape for every wait (designer, 09.09.2026, pointing at a
+ * recording of Lovable's own first turn: "мне нравится что под синкингом есть … и не так пусто").
+ *
+ * A waiting turn is two lines, not one: the shimmering status, and an ellipsis under it. The
+ * ellipsis is doing real work — it is the turn that has not been written yet, standing where it
+ * will be. Without it the answer's whole column is empty while the agent thinks, and an empty
+ * column reads as nothing happening rather than as something coming.
+ *
+ * The brief already had this pair; plain "Thinking" did not, which is exactly the emptiness he
+ * pointed at. Now they are the same component, so the product has ONE waiting shape.
+ */
+function Waiting({ label, arrow = false }: { label: string; arrow?: boolean }) {
+  return (
+    <div className="flex flex-col gap-2 pr-8">
+      <p className="text-[14px] leading-[20px]">
+        <span className="thinking">{label}</span>
+        {/* the brief's status is a collapsed tool row, so it keeps its disclosure caret */}
+        {arrow && <span className="ml-1.5 text-[var(--white-400)]">›</span>}
+      </p>
+      <p className="text-[15px] leading-[16px] tracking-[0.1em] text-[var(--white-500)]">…</p>
+    </div>
+  )
+}
+
 /** The Gemini trick: the disclaimer rides under the LAST answer instead of living
  *  below the composer, where it would cost every screen a permanent bottom margin. */
 function Disclaimer() {
@@ -164,6 +305,225 @@ function Disclaimer() {
     <p className="text-[12px] leading-[26px] text-[var(--gray-500)]">
       {t({ en: 'Recorded AI chats may contain errors.', uk: 'Записані чати з AI можуть містити помилки.' })}
     </p>
+  )
+}
+
+/**
+ * THE COMPOSER'S MODE SWITCHER — Figma 29697:54553 (the pill 29697:55394, the open menu
+ * 29697:55602; designer 08.09.2026: "нужно в чат добавить кнопку с переключателем режимов
+ * Autopilot или Build… точно такой же переключатель есть у lovable.dev").
+ *
+ * `Autopilot` is Remixer leading: after almost every task it comes back proposing the
+ * next one. `Build` is the standard mode for somebody who knows what they want. What the
+ * two modes MEAN lives on the axis itself (`World.mode`); Autopilot's proposal cards are
+ * the next piece of work and are deliberately not faked here.
+ *
+ * ⚠️ IT ONLY EXISTS ONCE THERE IS A SITE. Through the brief and the whole first build
+ * there is nothing for Autopilot to lead and nothing for Build to change, and this
+ * project's rule for a control with nothing to do is that it is better absent than dead
+ * (the right rail's buttons, the greyed Publish — CLAUDE.md). Autopilot is the default
+ * from the first generation onward, which is exactly when the pill turns up.
+ *
+ * The menu opens UPWARD out of the pill's right edge — 8px above it, right edges flush,
+ * 200 wide, and it overlaps the field's own box as the board draws it. Motion comes from
+ * the house popover (ui/motion.ts): it grows from the trigger's corner, so the origin is
+ * bottom-right.
+ */
+const MODES = [
+  {
+    id: 'autopilot' as const,
+    name: { en: 'Autopilot', uk: 'Автопілот' },
+    detail: { en: 'Get smart suggestions', uk: 'Отримувати підказки' },
+  },
+  {
+    id: 'build' as const,
+    name: { en: 'Build', uk: 'Збирати' },
+    detail: { en: 'Make changes directly', uk: 'Змінювати напряму' },
+  },
+]
+
+function ModeSwitch() {
+  const { world, set } = useWorld()
+  const { t } = useT()
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  const current = MODES.find((m) => m.id === world.mode) ?? MODES[0]
+
+  /* Same dismissal as the Publish panel: a press anywhere else, or Escape. */
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (root.current && !root.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={root} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t({ en: 'Chat mode', uk: 'Режим чату' })}
+        /*
+         * 29697:55394, measured on the board: 91×32 — a 1px stroke round a 89px padding box
+         * (pl 12 / pr 6, gap 2, label 53, chevron 16). `Black/700` under blur 16, radius 999.
+         *
+         * ⚠️ THE RIM IS GLASS, the same 24 → 4 → 20 % diagonal its neighbours wear
+         * (`.liquid-glass--composer`). The export flattened it: it binds the stroke to ONE
+         * variable and writes `border-solid`, so the first pass shipped a flat 24 % rim —
+         * and the designer sent it back (09.09.2026: "на кнопке нет эффекта стекла на
+         * бордере, сделай как в макете"). The tell was already in the export's own variable
+         * list: `Neutral Alpha/50` (4 %) appeared there with nothing to explain it, which is
+         * exactly this gradient's middle stop. Same trap as the Home controls' rims.
+         *
+         * ⚠️ AND THAT IS WHY THE PADDING IS 13 / 7, not the board's 12 / 6. A `border` takes
+         * a layout box; the glass rim is a masked `::before` inside the box and takes none.
+         * The board's 91 has its 1px stroke INSIDE it (its text starts at x=13, its chevron
+         * ends 7 from the right), so the padding has to carry that pixel: 13 + label + 2 +
+         * 16 + 7 = the same 91, with the rim painting the outermost pixel of it.
+         *
+         * ⚠️ The chevron is 16, not 20, and it is CENTRED (frame y=8 of 32 on the board):
+         * the 20px glyph is what the old 2px nudge was compensating for. Its ink is
+         * `Neutral Alpha/500` = 48% white, which the board keeps even in the gradient state.
+         */
+        className="liquid-glass liquid-glass--composer glass-interactive group flex h-8 items-center gap-0.5 rounded-full bg-[#09090ba3] pl-[13px] pr-[7px]"
+      >
+        {/*
+          * The label's box is TRIMMED TO THE CAP BAND (`text-box-trim`), as the board draws
+          * it — 53×9 for 13px Proxima Nova. Two things ride on that: the glyphs sit on the
+          * pill's centre line instead of a line-box centre that carries descender space
+          * below the caps, and the gradient below is clipped to the same box the board
+          * paints it in.
+          */}
+        {/*
+          * ⚠️ AND ONE PIXEL DOWN FROM THERE, on the designer's eye (09.09.2026: "текст в
+          * кнопке явно выше визуально, не отцентрирован по высоте"). The board centres the
+          * CAP BAND — cap centre on the pill's centre line, which is what the geometry
+          * measures and what shipped — but a lowercase word read against a pill's rounded
+          * shape looks high there, because the eye weighs the x-height mass and not the cap.
+          * Filmed as a ladder (up 1 · up .5 · as shipped · down .5 · down 1 · down 1.5,
+          * scratchpad/mode/ladder-sheet.png) and 1px down is the frame that reads centred.
+          * It is a deliberate optical correction, not a geometry fix: everything else about
+          * the label still matches the board to a hundredth, so this is the one number to
+          * turn if he wants it further either way.
+          */}
+        <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both] translate-y-px text-[13px] font-medium leading-[1.2]">
+          {/*
+            * ⚠️ THE INK RIDES AN INNER SPAN, AND THE TRIM STAYS ON THE OUTER ONE. A
+            * background NEVER paints outside its element's border box, and `background-clip:
+            * text` narrows it further to the glyphs — so a gradient on the TRIMMED box was
+            * cut to the cap band: measured, the box was 9.09px tall where the glyphs need 15,
+            * and the 3px above and below it went unpainted. The designer saw "Autopilot" with
+            * its ascenders and the p's descender sliced off (09.09.2026: "что это за фигня?").
+            * The inner inline span's box is the font's own content area, which covers every
+            * glyph, while the outer box stays the cap band the board positions by — and the
+            * gradient still spans exactly the word's width, as the board paints it.
+            */}
+          <span
+            className={
+              /* Autopilot's ink is the gradient (index.css "AUTOPILOT'S GRADIENT INK");
+                 every other mode keeps the neutral label. */
+              current.id === 'autopilot'
+                ? 'mode-ink'
+                : 'text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std group-hover:text-white'
+            }
+          >
+            {t(current.name)}
+          </span>
+        </span>
+        {/* 29816:19007 — with the menu open the board FLIPS the chevron (`-scale-y-100`),
+            it does not swap in a second glyph. Flipping through the middle is also why
+            the two states can simply be animated into each other. */}
+        <span
+          className="text-[var(--white-480)] transition-transform duration-[var(--dur-fast)] ease-std"
+          style={{ transform: open ? 'scaleY(-1)' : undefined }}
+          aria-hidden
+        >
+          <IconChevronDown size={16} />
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            aria-label={t({ en: 'Chat mode', uk: 'Режим чату' })}
+            variants={popover}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            /*
+             * 29816:18942: Gray/750, radius 10, 200 wide, px 3 / py 4 (the rows are 194
+             * and sit at x=3), rim `Neutral Alpha/50` as an INSET shadow so it cannot
+             * widen the 200 the board draws, drop shadow 0 8 16 / 33%.
+             */
+            className="absolute bottom-[calc(100%+8px)] right-0 z-30 w-[200px] origin-bottom-right rounded-[10px] bg-[var(--gray-750)] px-[3px] py-1"
+            style={{ boxShadow: 'inset 0 0 0 1px #ffffff0a, 0 8px 16px rgba(0,0,0,0.33)' }}
+          >
+            {/* Autopilot's gradient, defined once for the check below: an SVG stroke cannot
+                take `background-clip: text`, so the tick wears the same two colours as a
+                real gradient paint (`stroke: url(...)` from index.css). The stops read the
+                tokens, so the label and the tick can never drift apart. */}
+            <svg className="absolute h-0 w-0" aria-hidden>
+              <defs>
+                <linearGradient id="chat-mode-ink" x1="0" y1="0" x2="1" y2="0.17">
+                  <stop offset="0" stopColor="var(--ai-ink-from)" />
+                  <stop offset="1" stopColor="var(--ai-ink-to)" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="flex flex-col gap-px">
+              {MODES.map((m) => (
+                <button
+                  key={m.id}
+                  role="menuitemradio"
+                  aria-checked={m.id === world.mode}
+                  onClick={() => { set({ mode: m.id }); setOpen(false) }}
+                  /* `press-bloom`, not `glass-interactive`: the row's hover plate is the
+                     board's own `Neutral Alpha/50` (above), so it takes the house bloom alone
+                     — the designer's order for these rows, 09.09.2026 ("на кнопки в этом меню
+                     тоже эффект клика добавь такой же"). */
+                  className="press-bloom group flex h-[52px] w-full items-center text-left"
+                >
+                  {/*
+                    * 29816:18945 — the state layer is `flex-1` in the 52px row, so THE
+                    * HOVER PLATE FILLS THE WHOLE ROW (194 × 52, radius 8), and its paint is
+                    * `Neutral Alpha/50` = 4% white. The board the switcher was first built
+                    * from drew a 40px plate inset in the row at 8% — this one is the
+                    * designer's hover state (09.09.2026, "вот тут ты можешь увидеть как
+                    * выглядит ховер"), and it supersedes it.
+                    */}
+                  <span className="flex h-full w-full items-center gap-3 rounded-[8px] px-3 transition-colors duration-[var(--dur-fast)] ease-std group-hover:bg-[var(--white-050)]">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] font-medium leading-[22px] text-white">{t(m.name)}</span>
+                      <span className="mt-0.5 block text-[12px] leading-[1.4] text-[#ffffff8f]">{t(m.detail)}</span>
+                    </span>
+                    {m.id === world.mode && (
+                      /* 29697:55611 — a 24 frame with the glyph filling it (the old 16px
+                         tick inked barely half the box), and its paint is Autopilot's
+                         gradient: the board binds this frame to NO variable, which is what
+                         a raw gradient paint looks like in the export, and the designer
+                         asked for it by name (09.09.2026: "цвет текста и галочки не белый,
+                         а градиентный"). Not `--action` blue. */
+                      <span className="flex h-6 w-6 flex-none items-center justify-center" aria-hidden>
+                        <IconCheck size={24} className="mode-check" />
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -179,6 +539,12 @@ export function ChatPanel() {
   const spacer = useRef<HTMLDivElement>(null)
   const list = useRef<HTMLDivElement>(null)
   const parked = useRef<number | null>(null)
+  /* The park owns the scroll for the length of its choreography; the follower below must
+     not race it to the same pixels. */
+  const parking = useRef(false)
+  /* Is the reader at the end of the thread? Set from the scroller itself, because only it
+     knows whether the last move was the follower's or a hand on the wheel. */
+  const atEnd = useRef(true)
   /*
    * Which messages have already been on screen. Animation is per message, not a
    * global "have we mounted yet" flag: with a flag, every send re-rendered the
@@ -194,6 +560,19 @@ export function ChatPanel() {
   const live = world.sent.length > 0
   const thread = live ? world.sent : baselineThread(world.chat)
   const working = world.chat === 'working'
+  /* The questions are open: the composer becomes the escape hatch ("Tell Remixer
+     what to do instead…") and the thread shows the agent holding. */
+  const asking = world.brief.status === 'asking'
+  const planning = world.brief.status === 'planning'
+  /* Autopilot's proposal shares the dock with those two and never argues with them: the
+     brief and the plan are work the customer is in the middle of, a proposal is Remixer
+     asking for the next piece of work, and there is no moment when both are true. */
+  const suggesting = world.suggest.show === 'proposal' && !asking && !planning
+  /* The satisfaction card is the dock's third sheet, and it shares the slot: Autopilot puts
+     up either a proposal or this, never both (see `offerSuggestion`). */
+  const rating = world.suggest.show === 'rating' && !asking && !planning
+  /** Anything docked above the composer — the questions, the plan, a proposal, the rating. */
+  const dockUp = asking || planning || suggesting || rating
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
@@ -254,6 +633,7 @@ export function ChatPanel() {
     // One frame later: the bubble is in the DOM and laid out, so the numbers
     // below are the ones the user will actually see.
     let park = 0
+    let done = 0
     const raf = requestAnimationFrame(() => {
       // Measure WITHOUT touching the spacer — subtract it instead of collapsing
       // it. Collapsing shortened the scrollable range mid-measurement, so the
@@ -274,8 +654,12 @@ export function ChatPanel() {
        * the spring's own length — cut it shorter and the scroll starts while the
        * bubble is still growing, which is what hid it in the first place.
        */
+      parking.current = true
       park = window.setTimeout(() => {
         vp.scrollTo({ top: Math.max(0, an.offsetTop - TOP_INSET), behavior: 'smooth' })
+        /* Hand the scroll back once the smooth run is over, so the follower above takes it
+           from where the park left it rather than fighting it there. */
+        done = window.setTimeout(() => { parking.current = false; atEnd.current = true }, 700)
       }, 620)
     })
     /* Cancel the rAF too, not only the timer. In a hidden tab rAF callbacks
@@ -283,8 +667,95 @@ export function ChatPanel() {
        the cleanup used to run with `park` still 0, leaving the frozen callback
        to fire on return and scroll the thread against layout that no longer
        exists. */
-    return () => { cancelAnimationFrame(raf); window.clearTimeout(park) }
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(park); window.clearTimeout(done); parking.current = false }
   }, [thread])
+
+  /*
+   * THE THREAD FOLLOWS ITS OWN CONTENT — the autoscroll (designer, 09.09.2026: "нужно
+   * добавить автоскрол чата точно так же как у lovable.dev, потому что сейчас новые
+   * сообщения и контент что в чате появляется может быть обрезан и нужно вручную скролить").
+   *
+   * ⚠️ IT IS NOT "STICK TO THE BOTTOM", and the difference is the whole design. The send
+   * above parks your message at the top of the view and RESERVES the rest of the panel as
+   * empty room for the answer (the spacer). A scroller that simply stayed at the bottom
+   * would scroll to the end of that reserved emptiness — pushing your own message off the
+   * top by the height of every word as it arrived, which is exactly what the park exists to
+   * prevent, and leaving a screenful of nothing under the answer.
+   *
+   * So the room GIVES WAY instead. Whenever the content below the parked message changes
+   * height, the reserve is recomputed as what is left of the panel — the answer grows down
+   * into it, the spacer shrinks by the same amount, the total does not move and neither does
+   * anything on screen. Only when the reserve is spent (`want === 0`) is the content taller
+   * than the room it was given, and only then does the thread follow its own end. That is
+   * the point at which the parked message scrolling away is correct rather than a bug, and
+   * it is the case the designer hit: a generation card that grows for a minute, and a plan
+   * that arrives taller than the panel, both used to finish underneath the composer.
+   *
+   * ⚠️ A HAND ON THE WHEEL WINS. `atEnd` is false the moment the reader scrolls up to look
+   * at something, and the follower does nothing until they come back to the end. Yanking
+   * somebody back to the bottom while they are reading is worse than a card cut off.
+   *
+   * Cost: the observer fires on layout changes, not per frame, and it writes only when the
+   * number actually changes — so it cannot loop against its own write (the spacer it sets is
+   * inside the box it watches, and the second pass computes the same value and stops).
+   */
+  useEffect(() => {
+    const vp = viewport.current
+    const sp = spacer.current
+    const ls = list.current
+    if (!vp || !sp || !ls) return
+
+    /*
+     * ⚠️ ONLY THE READER MAY TURN THE FOLLOWING OFF, and a scroll event is not proof that
+     * the reader did anything. Re-wrapping the thread into a narrower column — which is what
+     * the canvas opening does the moment the first page lands — grows the content under a
+     * fixed `scrollTop` and the browser fires `scroll` all the same. Read naively, that is
+     * indistinguishable from a hand on the wheel, and the first build measured it exactly
+     * so: the follower switched itself off at 60s and the thread sat 666px short of its own
+     * end for the rest of the session.
+     *
+     * So a scroll only counts while the reader is actually driving: a wheel, a touch or a
+     * key opens a window, and each scroll inside it keeps the window open (momentum is still
+     * the reader). Anything outside it — our own write, a re-wrap, a clamp — has no opinion
+     * about where they want to be.
+     */
+    let driving = 0
+    const mark = () => { driving = performance.now() }
+    const onScroll = () => {
+      if (performance.now() - driving > DRIVE_WINDOW) return
+      driving = performance.now()
+      atEnd.current = vp.scrollHeight - vp.scrollTop - vp.clientHeight <= END_SLACK
+    }
+    vp.addEventListener('scroll', onScroll, { passive: true })
+    vp.addEventListener('wheel', mark, { passive: true })
+    vp.addEventListener('touchstart', mark, { passive: true })
+    vp.addEventListener('keydown', mark)
+
+    const follow = () => {
+      const an = anchor.current
+      if (parking.current || !an) return
+      /* Same measurement the park makes, and for the same reason it subtracts the spacer
+         rather than collapsing it: a collapsed spacer shortens the range mid-read and the
+         browser clamps `scrollTop` under us. */
+      const below = ls.offsetTop + ls.offsetHeight - sp.offsetHeight - an.offsetTop
+      const want = Math.max(0, vp.clientHeight - TOP_INSET - below)
+      if (Math.abs(want - sp.offsetHeight) >= 1) sp.style.height = `${want}px`
+      if (want === 0 && atEnd.current) { vp.scrollTop = vp.scrollHeight; atEnd.current = true }
+    }
+
+    /* Both boxes: the content grows, and the viewport shrinks under it when the dock puts
+       up a panel — either one can leave the newest thing off screen. */
+    const ro = new ResizeObserver(follow)
+    ro.observe(ls)
+    ro.observe(vp)
+    return () => {
+      ro.disconnect()
+      vp.removeEventListener('scroll', onScroll)
+      vp.removeEventListener('wheel', mark)
+      vp.removeEventListener('touchstart', mark)
+      vp.removeEventListener('keydown', mark)
+    }
+  }, [])
 
   const composerBox = useRef<HTMLDivElement>(null)
 
@@ -304,9 +775,25 @@ export function ChatPanel() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="arrive-chat flex min-h-0 flex-1 flex-col">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
-      <ScrollArea className="min-h-0 flex-1" innerClassName="pl-4 pr-2" viewportRef={viewport}>
+      {/* chat-col: the thread measures itself (max 600px) and centres in whatever
+          width the column has — in the 432px column that is the full width, in a
+          collapsed-preview shell it is a centred column, no special mode needed.
+          This is exactly how Lovable's chat reads at any width (recording, 06.09). */}
+      <ScrollArea
+        /* THE THREAD STEPS BACK WHILE A FORM IS UP (designer, 09.09.2026: "когда открыта форма
+           типа как «What should I do next?» содержимое переписки/чата должно становится
+           прозрачным на 50%… она не будет сливаться с содержимым переписки"). The panel and the
+           thread are the same material — glass cards on the same ground — so a docked question
+           reads as one more turn unless the turns give way. Half is his number.
+           ⚠️ Opacity on an ancestor kills `backdrop-filter` in the subtree, and the bubbles are
+           glass — but what is behind them is the chat's own flat ground, so the blur has nothing
+           to blur and the loss is zero (the same test the dock's own shell had to pass). */
+        className={`chat-dim min-h-0 flex-1${dockUp ? ' chat-dim--on' : ''}`}
+        innerClassName="chat-col pl-4 pr-2"
+        viewportRef={viewport}
+      >
         {/*
          * The fade under the chat toolbar — Figma "BG Gradient" (28016:43309):
          * 48px, solid #09090b straight to transparent with NO flat head. The
@@ -334,25 +821,48 @@ export function ChatPanel() {
           ) : (
             thread.map((m, i) => {
               const body = typeof m.text === 'string' ? m.text : t(m.text)
-              return m.who === 'user' ? (
-                <UserBubble
-                  key={m.id}
-                  animate={isFresh(m.id)}
-                  anchorRef={i === lastUserIndex ? anchor : undefined}
-                >
-                  {body}
-                </UserBubble>
-              ) : (
-                <AiMessage key={m.id} text={body} actions animate={isFresh(m.id)} />
+              return (
+                /* `arrive-msg`: on the Home → builder arrival the turns cascade in from the
+                   top, one after another (`--i` is the stagger step; index.css "THE
+                   ARRIVAL"). At any other time the wrapper is inert. */
+                <div key={m.id} className="arrive-msg" style={arriveStep(i)}>
+                  {m.who === 'user' ? (
+                    <UserBubble
+                      animate={isFresh(m.id)}
+                      anchorRef={i === lastUserIndex ? anchor : undefined}
+                    >
+                      {body}
+                    </UserBubble>
+                  ) : m.kind === 'brief' ? (
+                    <BriefSummary animate={isFresh(m.id)} />
+                  ) : m.kind === 'build' ? (
+                    <BuildProgress animate={isFresh(m.id)} />
+                  ) : (
+                    <AiMessage
+                      text={body}
+                      thought={m.thought}
+                      /* a clarifying turn and the hand-over line are not answers to rate */
+                      actions={m.kind !== 'clarify' && m.kind !== 'ack'}
+                      animate={isFresh(m.id)}
+                    />
+                  )}
+                </div>
               )
             })
           )}
 
-          {working && (
-            <div className="pr-8">
-              <p className="thinking text-[15px] leading-[25px]">
-                {t({ en: 'Thinking', uk: 'Думаю' })}
-              </p>
+          {asking && <div className="arrive-msg" style={arriveStep(thread.length)}><Waiting label={t(BRIEF_STATUS)} arrow /></div>}
+
+          {/* While the brief card is settling its own title carries the shimmer —
+              a second "Thinking" under it would be two spinners for one wait. The
+              generation outline is the same case for a whole minute: it names the
+              section in hand and shimmers the line under it, so a "Thinking" below it
+              would be a second, vaguer answer to a question already answered. */}
+          {working
+            && thread[thread.length - 1]?.kind !== 'brief'
+            && thread[thread.length - 1]?.kind !== 'build' && (
+            <div className="arrive-msg" style={arriveStep(thread.length)}>
+              <Waiting label={t({ en: 'Thinking', uk: 'Думаю' })} />
             </div>
           )}
           {world.chat === 'error' && (
@@ -362,7 +872,7 @@ export function ChatPanel() {
               </p>
             </div>
           )}
-          {thread.length > 0 && !working && <Disclaimer />}
+          {thread.length > 0 && !working && !asking && <Disclaimer />}
           {/* grown on send so the newest message can reach the top of the view */}
           <div ref={spacer} aria-hidden />
         </div>
@@ -379,6 +889,53 @@ export function ChatPanel() {
 
       {/* ------------------------------------------------------------ composer */}
       <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
+        {/*
+          * `brief-dock`: while the questions are up, the panel and the composer are ONE
+          * glass object — Figma 29464:34334, and the board's own structural call. Lovable
+          * floats its panel 8px above a separate composer; the drawn Remixer version puts
+          * a single 7%-white shell with a 15% rim around both, 2px between them, radius 24
+          * on top and 28 at the bottom. Without the questions the composer stands alone,
+          * the way its own board (28016:43526) draws it, so the shell is conditional.
+          */}
+        <div
+          className={`chat-col dock${dockUp ? ' brief-dock' : ''}`}
+          /* The dock's rise, morph and fall are CSS on these classes, started by the sheet
+             (dock.ts); once the piston has landed the classes go. */
+          onAnimationEnd={endDockMotion}
+        >
+        {/*
+          * The shell's paint — index.css "THE BUBBLE". A static cylinder (`.dock-shell`,
+          * overflow hidden), the piston that carries the shell's top edge and rim up out of
+          * the collar, and the collar itself around the field, painted over the piston.
+          * Decorative and below everything; the sheet and the composer are the content.
+          */}
+        <div className="dock-shell" aria-hidden>
+          {/* `.dock-swell` lets the piston's sides breathe with the collar at the peak of
+              the bounce; the piston's own transform is the ride, so the swell needs a
+              wrapper of its own (two transforms on one element would not compose). */}
+          <i className="dock-swell">
+            <i className="dock-piston" />
+          </i>
+          <i className="dock-base" />
+        </div>
+        {/*
+          * ONE presence for both sheets, mode="wait": the questions fold fully into the
+          * collar before the plan rises out of it. Overlapping them put both in the dock
+          * at once for the length of an exit, and the shell's top edge jumped by a card's
+          * height. The plan takes the questions' place in the same shell — same object,
+          * next step — and gates the build: nothing generates until Start Building.
+          */}
+        <AnimatePresence mode="wait">
+          {asking ? (
+            <BriefPanel key="brief" />
+          ) : planning ? (
+            <PlanCard key="plan" />
+          ) : suggesting ? (
+            <SuggestPanel key="suggest" />
+          ) : rating ? (
+            <RatingPanel key="rating" />
+          ) : null}
+        </AnimatePresence>
         <div ref={composerBox} className="relative z-20">
           {/* light runs the rim once on send — Google's AI Mode flash */}
           {flash > 0 && (
@@ -403,6 +960,14 @@ export function ChatPanel() {
             </span>
           )}
         <div className="composer-field relative rounded-[24px] pb-2 pr-2">
+          {/* The charge — a soft light that spreads from the centre of the field and thins
+              out across it as the bubble forms (designer, 08.09.2026: "как заряд энергии,
+              который плавно рассеивается… эффект лёгкий"). Driven by the dock's `.dock-rise`
+              (index.css "THE CHARGE"); at rest invisible and inert. */}
+          <span className="dock-splash" aria-hidden>
+            <i className="dock-splash-bloom" />
+            <i className="dock-splash-rim" />
+          </span>
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
             <textarea
               ref={field}
@@ -417,9 +982,11 @@ export function ChatPanel() {
               }}
               disabled={!canUseAI(world)}
               placeholder={
-                canUseAI(world)
-                  ? t({ en: 'Ask Remixer...', uk: 'Запитайте Remixer...' })
-                  : t({ en: 'AI is off — a plan is required', uk: 'AI вимкнено — потрібен план' })
+                !canUseAI(world)
+                  ? t({ en: 'AI is off — a plan is required', uk: 'AI вимкнено — потрібен план' })
+                  : asking
+                    ? t({ en: 'Tell Remixer what to do instead...', uk: 'Скажіть Remixer, що зробити замість цього...' })
+                    : t({ en: 'Ask Remixer...', uk: 'Запитайте Remixer...' })
               }
               aria-label={t({ en: 'Message Remixer', uk: 'Повідомлення для Remixer' })}
               className="block w-full resize-none bg-transparent text-[16px] leading-[26px] text-[var(--white-900)] outline-none placeholder:text-[var(--gray-400,#a1a1aa)] disabled:cursor-not-allowed"
@@ -428,14 +995,22 @@ export function ChatPanel() {
           <div className="flex items-center justify-between pl-2">
             <button
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
-              className="liquid-glass grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+              /* the designer's own inspector on this button (09.09.2026): 32×32, Black/700
+                 under blur 16, radius 999, and a rim of 24 → 4 → 20 % white top-left to
+                 bottom-right — index.css "THE BUILDER COMPOSER'S GLASS CIRCLES".
+                 `glass-interactive` is the house gesture (design-system §5): the 8 % hover
+                 wash and the press bloom that opens FROM the click point — one class, the
+                 delegation in ui/ripple.ts does the rest. */
+              className="liquid-glass liquid-glass--composer glass-interactive grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
             >
               <IconPlus size={13} />
             </button>
             <div className="flex items-center gap-2">
+              {/* the mode switcher, once there is a site to lead — see ModeSwitch above */}
+              {world.project === 'built' && <ModeSwitch />}
               <button
                 aria-label={t({ en: 'Voice input', uk: 'Голосове введення' })}
-                className="liquid-glass grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+                className="liquid-glass liquid-glass--composer glass-interactive grid h-8 w-8 place-items-center rounded-full bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
               >
                 <IconMic size={15} />
               </button>
@@ -443,7 +1018,10 @@ export function ChatPanel() {
                 onClick={submit}
                 disabled={!armed}
                 aria-label={t({ en: 'Send', uk: 'Надіслати' })}
-                className={`grid h-8 w-8 place-items-center rounded-full border transition-colors duration-[var(--dur-fast)] ease-std ${
+                /* `press-bloom`, not `glass-interactive`: a filled button already owns its
+                   hover and pressed paint (--action-hover / --action-pressed), so it takes the
+                   bloom alone — the split the canon draws (ui/ripple.ts, "TWO HOSTS"). */
+                className={`press-bloom grid h-8 w-8 place-items-center rounded-full border transition-colors duration-[var(--dur-fast)] ease-std ${
                   armed
                     ? 'border-[var(--action)] bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
                     : /* Figma 28016:43545 — outlined, no fill, Neutral Alpha/100 rim */
@@ -454,6 +1032,7 @@ export function ChatPanel() {
               </button>
             </div>
           </div>
+        </div>
         </div>
         </div>
       </div>

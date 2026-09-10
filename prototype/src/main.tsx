@@ -1,8 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MotionConfig } from 'motion/react'
-import App from './App'
+import Root from './Root'
+import { installGlassInteractions } from './ui/ripple'
 import './index.css'
+
+/* Press ripples for the Liquid Glass controls: one document-level delegation,
+   zero per-button wiring — a control opts in with `glass-interactive`. */
+installGlassInteractions()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,7 +18,7 @@ createRoot(document.getElementById('root')!).render(
         dead, which reads as "animations are broken", not as an accessibility
         setting being honoured. */}
     <MotionConfig reducedMotion="user">
-      <App />
+      <Root />
     </MotionConfig>
   </StrictMode>,
 )
