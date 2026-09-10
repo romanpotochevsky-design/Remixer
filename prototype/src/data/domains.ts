@@ -7,6 +7,13 @@
  *
  * DreamHost sells no premium domains and has no brokerage — a taken name pivots
  * straight to alternatives. There is no "Make an offer" state, by design.
+ *
+ * ⚠️ No row carries a description any more. Per-name rationales ("Short and
+ * brandable", "Describes what you do") were a deliberate differentiator — the
+ * research across ten competitors found nobody ships them — but the designer
+ * removed them from every board on 10 Sep 2026 and stated it as a requirement.
+ * The knowledge stays in docs/research/domain-search-research.md; the UI does not
+ * render it. Do not reintroduce reason lines without being asked.
  */
 
 export interface TldPrice {
@@ -18,12 +25,18 @@ export interface TldPrice {
   note?: { en: string; uk: string }
 }
 
+/**
+ * Every ending we can price from the verified table — and nothing else.
+ * A search result with an invented price would be worse than a shorter list.
+ */
 export const TLD_PRICES: TldPrice[] = [
   { tld: '.com', register: 9.99, renew: 19.99 },
   { tld: '.net', register: 4.99, renew: 19.99 },
   { tld: '.org', register: 7.99, renew: 21.99 },
   { tld: '.shop', register: 0.99, renew: 34.99 },
+  { tld: '.store', register: 2.99, renew: 49.95 },
   { tld: '.online', register: 1.99, renew: 29.95 },
+  { tld: '.co', register: 34.99, renew: 34.99 },
   { tld: '.me', register: 2.99, renew: 32.95 },
   { tld: '.io', register: 34.99, renew: 59.99 },
   {
@@ -35,111 +48,80 @@ export const TLD_PRICES: TldPrice[] = [
 export const priceFor = (tld: string) => TLD_PRICES.find((p) => p.tld === tld)
 
 /**
- * AI name suggestions — the default empty state of the domain search.
- * In the real product these come from the site's own content (the prompt, the pages);
- * the prototype hardcodes the fit-ration demo project's set. Each row carries a short
- * reason: the research found per-name rationales are rare in the field — that gap is
- * ours to take.
- */
-export interface Suggestion {
-  domain: string
-  tld: string
-  reason: { en: string; uk: string }
-}
-
-export const AI_SUGGESTIONS: Suggestion[] = [
-  {
-    domain: 'fit-ration.com', tld: '.com',
-    reason: { en: 'Exact brand match · the .com people try first', uk: 'Точний збіг із брендом · .com пробують першим' },
-  },
-  {
-    domain: 'fit-ration.net', tld: '.net',
-    reason: { en: 'A trusted and established extension', uk: 'Перевірена і давно знайома зона' },
-  },
-  {
-    domain: 'fitration.shop', tld: '.shop',
-    reason: { en: 'Signals ordering right in the address', uk: 'Адреса одразу каже, що тут замовляють' },
-  },
-  {
-    domain: 'getfitration.com', tld: '.com',
-    reason: { en: 'Strong call-to-action, easy to remember', uk: 'Сильний заклик до дії, легко запамʼятати' },
-  },
-  {
-    domain: 'fitration.online', tld: '.online',
-    reason: { en: 'Short and available almost everywhere', uk: 'Коротко і майже завжди вільно' },
-  },
-  {
-    domain: 'fitration.me', tld: '.me',
-    reason: { en: 'Creates a personal connection with customers', uk: 'Створює особистий звʼязок із клієнтами' },
-  },
-  {
-    domain: 'shopfitration.com', tld: '.com',
-    reason: { en: 'Ideal for your online storefront', uk: 'Ідеально для онлайн-вітрини' },
-  },
-  {
-    domain: 'fit-ration.org', tld: '.org',
-    reason: { en: 'Reads as an organisation people trust', uk: 'Читається як організація, якій довіряють' },
-  },
-]
-
-/**
- * Search results (Figma 27729:14650) — built from whatever the user typed.
- *
- * Two lists, and the split is meaningful rather than cosmetic. The classic block
- * is the SAME NAME in other endings, which is why its footer reads "Show more
- * endings"; the AI block is other NAMES, each with the reason it was suggested.
- * Per-name rationales are rare in the field — the research called that gap ours
- * to take, so no row ever ships without one.
- *
- * The mockup's rows are placeholder copy (three identical `gettrulieve.com`
- * entries) and its renewal figure — $11.86 — appears nowhere in DreamHost's
- * verified price table. Prices here come from TLD_PRICES; the layout is the
- * mockup's, the numbers are the real ones.
+ * One row of any domain list — a name and the ending it prices off. That is the
+ * whole model: name, price, verb.
  */
 export interface ResultRow {
   domain: string
   tld: string
-  reason: { en: string; uk: string }
 }
+
+const row = (domain: string): ResultRow => ({
+  domain,
+  tld: domain.slice(domain.lastIndexOf('.')),
+})
+
+/**
+ * AI name suggestions — the default empty state of the domain dashboard.
+ * In the real product these come from the site's own content (the prompt, the
+ * pages); the prototype hardcodes the fit-ration demo project's set.
+ */
+export const AI_SUGGESTIONS: ResultRow[] = [
+  row('fit-ration.com'),
+  row('fit-ration.net'),
+  row('fitration.shop'),
+  row('getfitration.com'),
+  row('fitration.online'),
+  row('fitration.me'),
+  row('shopfitration.com'),
+  row('fit-ration.org'),
+]
+
+/* ------------------------------------------------------------------ search */
 
 /** Strip whatever ending the user typed — we are about to offer our own. */
 const stem = (q: string) => {
-  const clean = q.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+  const clean = q.trim().toLowerCase().split('.')[0].replace(/[^a-z0-9-]/g, '')
   return clean || 'yourbrand'
 }
 
 /** The exact match, shown as the hero: the name they asked for, in .com. */
-export const exactMatch = (q: string): ResultRow => ({
-  domain: `${stem(q.split('.')[0])}.com`,
-  tld: '.com',
-  reason: {
-    en: 'Exact brand match · the .com people try first',
-    uk: 'Точний збіг із брендом · .com пробують першим',
-  },
-})
+export const exactMatch = (q: string): ResultRow => row(`${stem(q)}.com`)
 
-/** Same name, other endings — the classic registrar list. */
-export const otherEndings = (q: string): ResultRow[] => {
-  const s = stem(q.split('.')[0])
-  return [
-    { domain: `${s}.net`, tld: '.net', reason: { en: 'A trusted and established extension', uk: 'Перевірена і давно знайома зона' } },
-    { domain: `${s}.shop`, tld: '.shop', reason: { en: 'Perfect for e-commerce and retail', uk: 'Ідеально для торгівлі та e-commerce' } },
-    { domain: `${s}.org`, tld: '.org', reason: { en: 'Reads as an organisation people trust', uk: 'Читається як організація, якій довіряють' } },
-    { domain: `${s}.online`, tld: '.online', reason: { en: 'Short and available almost everywhere', uk: 'Коротко і майже завжди вільно' } },
-    { domain: `${s}.io`, tld: '.io', reason: { en: 'Favoured by software and product teams', uk: 'Улюблена зона софтверних і продуктових команд' } },
-  ]
+/**
+ * Search results — Figma 27729:14650, reworked Sep 2026.
+ *
+ * The screen now carries THREE lists (Featured · Popular · Suggested), which the
+ * designer set as a requirement. The mockup's rows are placeholder copy (three
+ * identical `gettrulieve.com` entries in every list), so the split of meaning is
+ * ours, and it keeps the ordering principle the research argued for: a person who
+ * typed a name is asking about THAT name first, other names come last.
+ *
+ *  - Featured  — the exact name in the endings we lead with.
+ *  - Popular   — the exact name in the endings people pick for a brand, plus the
+ *                hyphen-free spelling, which is the most-bought variant of a
+ *                hyphenated name.
+ *  - Suggested — other names entirely, generated from the site description.
+ */
+export const featuredEndings = (q: string): ResultRow[] => {
+  const s = stem(q)
+  return ['.net', '.org', '.shop', '.store', '.online'].map((t) => row(`${s}${t}`))
 }
 
-/** Other names entirely — the AI block, each with the reason it was picked. */
+export const popularEndings = (q: string): ResultRow[] => {
+  const s = stem(q)
+  const plain = s.replace(/-/g, '')
+  /* A hyphenated brand's plain spelling is the row people actually want; when the
+     name has no hyphen there is nothing to unhyphenate, so the classic "…co.com"
+     brandable takes the slot. Either way the list is five rows, all priced from
+     the verified table. */
+  const variant = plain !== s ? `${plain}.com` : `${s}co.com`
+  return [`${s}.co`, `${s}.io`, `${s}.me`, `${s}.ai`, variant].map(row)
+}
+
 export const nameIdeas = (q: string): ResultRow[] => {
-  const s = stem(q.split('.')[0])
-  return [
-    { domain: `get${s}.com`, tld: '.com', reason: { en: 'Strong call-to-action, easy to remember', uk: 'Сильний заклик до дії, легко запамʼятати' } },
-    { domain: `try${s}.com`, tld: '.com', reason: { en: 'Invites people to start right away', uk: 'Запрошує почати просто зараз' } },
-    { domain: `shop${s}.com`, tld: '.com', reason: { en: 'Ideal for your online storefront', uk: 'Ідеально для онлайн-вітрини' } },
-    { domain: `my${s}.com`, tld: '.com', reason: { en: 'Creates a personal connection with customers', uk: 'Створює особистий звʼязок із клієнтами' } },
-    { domain: `${s}hq.com`, tld: '.com', reason: { en: 'Reads as the official home of the brand', uk: 'Читається як офіційний дім бренду' } },
-  ]
+  const s = stem(q)
+  return [`get${s}.com`, `try${s}.com`, `shop${s}.com`, `my${s}.com`, `${s}hq.com`].map(row)
 }
 
 /** Domains already sitting in the customer's DreamHost account, per inventory axis. */

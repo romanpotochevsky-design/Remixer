@@ -13,18 +13,18 @@
  *  - no DNS jargon on primary paths; the canonical success checklist is fixed.
  */
 import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useWorld } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
   AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, priceFor,
-  exactMatch, otherEndings, nameIdeas, type ResultRow,
+  exactMatch, featuredEndings, popularEndings, nameIdeas, type ResultRow,
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
   IconSearch, IconArrowRight, IconGlobe, IconClose, IconSparkleAI,
-  IconAIMark, IconChevronDown,
+  IconChevronDown,
 } from '@/ui/icons'
 import { surface, listSwap, listSwapItem } from '@/ui/motion'
 
@@ -67,7 +67,7 @@ function RowButton({ label, onClick }: { label: Text; onClick?: () => void }) {
 function PriceStack({ register, renew, strike }: { register: number; renew: number; strike?: boolean }) {
   const { t } = useT()
   return (
-    <div className="flex flex-col items-end gap-[5px]">
+    <div className="flex flex-col items-end gap-1.5">
       <p className="flex items-baseline gap-1 leading-none">
         {strike && (
           <span className="font-display text-[15px] text-[#ffffff7a] line-through">${renew.toFixed(2)}</span>
@@ -78,6 +78,157 @@ function PriceStack({ register, renew, strike }: { register: number; renew: numb
         {t({ en: `Renews at $${renew.toFixed(2)}`, uk: `Продовження $${renew.toFixed(2)}` })}
       </p>
     </div>
+  )
+}
+
+/**
+ * The Best-match hero (Figma 27729:15439 / 27085:107276).
+ *
+ * A gradient wash carrying the eyebrow, with the domain sitting on an opaque
+ * gray-850 card inside it. Since the descriptions came out, the card is 88px and
+ * the name centres on its own — nothing else changed. One component serves both
+ * boards; the dashboard draws its fill #1d1d1f against the results screen's
+ * #1f1f22, so the token (gray-850) wins over a two-unit difference.
+ *
+ * ⚠️ The rim is a ring MASK (`.bestmatch-rim`), not a second background layer:
+ * the wash is 10% alpha, so an opaque gradient behind it shows through whole.
+ */
+function BestMatchCard({ row, onBuy }: { row: ResultRow; onBuy: () => void }) {
+  const { t } = useT()
+  const price = priceFor(row.tld) ?? priceFor('.com')!
+  return (
+    <div
+      className="relative rounded-[16px] px-1 pb-1"
+      style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
+    >
+      <i className="bestmatch-rim" aria-hidden />
+      <div className="flex h-10 items-center pl-6 pr-4">
+        <span
+          className="font-display text-[14px] font-semibold"
+          style={{
+            backgroundImage: 'linear-gradient(81deg, #cb79ff 31%, #66a6ff 118%)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+          }}
+        >
+          {t({ en: 'Best match', uk: 'Найкращий збіг' })}
+        </span>
+      </div>
+      <div className="flex h-[88px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[var(--gray-850)] px-6 py-4">
+        <p className="min-w-0 flex-1 truncate text-[22px] font-medium leading-normal text-white">{row.domain}</p>
+        <div className="flex h-10 flex-none items-center gap-8">
+          {/* the promo says itself: list price struck, first year large */}
+          <PriceStack register={price.register} renew={price.renew} strike />
+          <button
+            onClick={onBuy}
+            className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+          >
+            {t({ en: 'Buy', uk: 'Купити' })}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * One list row — 72px, name left, price and one verb right (Figma 27257:14000).
+ * No second line: the descriptions are gone from every board by request.
+ *
+ * `size` exists because the two boards disagree by a point: the results lists draw
+ * the name at 16 (27729:15575), the dashboard's suggestion list at 17
+ * (27085:107303). Both are as-drawn rather than harmonised behind the designer's back.
+ */
+function DomainRow({ row, onBuy, size = 16 }: { row: ResultRow; onBuy: () => void; size?: 16 | 17 }) {
+  const price = priceFor(row.tld) ?? priceFor('.com')!
+  return (
+    <div className="flex h-[72px] items-center justify-between gap-6 rounded-[16px] px-5 py-4 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
+      <p
+        className="min-w-0 flex-1 truncate font-medium leading-normal text-white"
+        style={{ fontSize: size }}
+      >
+        {row.domain}
+      </p>
+      <div className="flex h-10 flex-none items-center gap-8">
+        <PriceStack register={price.register} renew={price.renew} />
+        <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={onBuy} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Section title over a list — 61px tall: 20px of air, a 21px line, 20px again.
+ * The line height is pinned at 21px, not 1.2: rounded up to 22 the block came out
+ * a pixel tall and every list below it inherited the drift.
+ */
+function SectionTitle({ label }: { label: Text }) {
+  const { t } = useT()
+  return (
+    <div className="flex items-center justify-between px-2 py-5">
+      <h3 className="font-display text-[18px] font-semibold leading-[21px] text-[#f5f5fa]">{t(label)}</h3>
+    </div>
+  )
+}
+
+/**
+ * The footer bar under every result list — redesigned Sep 2026 (Figma 27729:16043).
+ *
+ * "Show more" is CENTRED in the bar while "400+ more available" sits on the left.
+ * The mockup centres it the honest way — with a second, invisible copy of the
+ * left label balancing the row — and so does this: `justify-between` plus a
+ * hidden twin keeps the button on the bar's true centre at any width, which a
+ * flex-1 spacer would not do once the left label changes length in another
+ * language.
+ */
+function ListFooter({ onShowMore }: { onShowMore?: () => void }) {
+  const { t } = useT()
+  const more = t({ en: '400+ more available', uk: 'Ще 400+ вільних' })
+  return (
+    <div className="flex items-center justify-between px-6 py-3">
+      <p className="whitespace-nowrap text-[15px] leading-normal text-[#ffffff7a]">{more}</p>
+      <button
+        onClick={onShowMore}
+        className="flex h-10 items-center justify-center gap-1 rounded-[10px] py-2.5 pl-6 pr-2 text-[15px] font-medium leading-none text-[#ffffffb8] opacity-80 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:opacity-100"
+      >
+        {t({ en: 'Show more', uk: 'Показати ще' })}
+        <span className="grid h-6 w-6 flex-none place-items-center">
+          <IconChevronDown size={20} />
+        </span>
+      </button>
+      <p aria-hidden className="pointer-events-none select-none whitespace-nowrap text-[15px] leading-normal opacity-0">
+        {more}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * A titled result list: header, then a double-rimmed card — the outer rim (NA/100)
+ * wraps the rows AND the footer, the inner one (#2a2a2d, 3% white fill) wraps just
+ * the rows. Rows are 2px apart with a hairline between them.
+ */
+function ResultBlock({
+  label, rows, onBuy,
+}: { label: Text; rows: ResultRow[]; onBuy: (domain: string) => void }) {
+  return (
+    <motion.div variants={listSwapItem} className="flex flex-col">
+      <SectionTitle label={label} />
+      <div className="rounded-[16px] border border-[var(--white-100)]">
+        {/* rows sit 2px apart with the hairline as its own item between them —
+            2 + 1 + 2, exactly the mockup's list gap */}
+        <div className="flex flex-col gap-0.5 overflow-hidden rounded-[16px] border border-[#2a2a2d] bg-[#ffffff08] py-2 pl-2 pr-[9px]">
+          {rows.map((r, i) => (
+            <Fragment key={r.domain}>
+              {i > 0 && <div className="h-px w-full bg-[#ffffff0a]" aria-hidden />}
+              <DomainRow row={r} onBuy={() => onBuy(r.domain)} />
+            </Fragment>
+          ))}
+        </div>
+        <ListFooter />
+      </div>
+    </motion.div>
   )
 }
 
@@ -184,7 +335,6 @@ function HomeScreen() {
 
   const owned = OWNED_DOMAINS[world.inventory] ?? []
   const [best, ...rest] = AI_SUGGESTIONS
-  const bestPrice = priceFor(best.tld)!
 
   return (
     <motion.div
@@ -234,63 +384,21 @@ function HomeScreen() {
           </div>
 
           {/* Best-match hero (27085:107276): purple tint, gradient rim fading out */}
-          <div
-            className="relative flex-none rounded-[16px] px-1 pb-1"
-            style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
-          >
-            <i className="bestmatch-rim" aria-hidden />
-            <div className="flex h-10 items-center pl-6 pr-4">
-              <span
-                className="font-display text-[14px] font-semibold"
-                style={{
-                  backgroundImage: 'linear-gradient(81deg, #cb79ff 31%, #66a6ff 118%)',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                }}
-              >
-                {t({ en: 'Best match', uk: 'Найкращий збіг' })}
-              </span>
-            </div>
-            <div className="flex h-[94px] items-center justify-between rounded-[14px] border border-[#ffffff0a] bg-[#1d1d1f] px-6">
-              <div className="min-w-0 pb-1">
-                <p className="truncate text-[22px] font-medium leading-normal text-white">{best.domain}</p>
-                <p className="mt-[7px] truncate text-[13px] leading-normal text-[#ffffff7a]">{t(best.reason)}</p>
-              </div>
-              <div className="flex flex-none items-center gap-8">
-                {/* honest promo: first-year price big, regular price struck */}
-                <PriceStack register={bestPrice.register} renew={bestPrice.renew} strike />
-                <button
-                  onClick={() => openDomainModal('buy', best.domain)}
-                  className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-                >
-                  {t({ en: 'Buy', uk: 'Купити' })}
-                </button>
-              </div>
-            </div>
+          <div className="flex-none">
+            <BestMatchCard row={best} onBuy={() => openDomainModal('buy', best.domain)} />
           </div>
 
           {/* suggestion list (27085:107303): one card, hairline dividers, own scroll */}
           <div className="mt-4 min-h-0 flex-1 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] py-2 pl-2 pr-3">
             <ScrollArea className="h-full">
-              {rest.map((sg, i) => {
-                const price = priceFor(sg.tld)!
-                return (
-                  <div key={sg.domain}>
-                    {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
-                    <div className="flex h-[72px] items-center justify-between gap-6 rounded-[16px] px-5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
-                      <div className="min-w-0 pb-0.5">
-                        <p className="truncate text-[17px] font-medium leading-normal text-white">{sg.domain}</p>
-                        <p className="mt-1 truncate text-[13px] leading-normal text-[#ffffff7a]">{t(sg.reason)}</p>
-                      </div>
-                      <div className="flex flex-none items-center gap-8">
-                        <PriceStack register={price.register} renew={price.renew} />
-                        <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={() => openDomainModal('buy', sg.domain)} />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+              {/* the dashboard board insets its dividers by 20; the results lists
+                  run them full-width — kept apart on purpose */}
+              {rest.map((sg, i) => (
+                <Fragment key={sg.domain}>
+                  {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
+                  <DomainRow row={sg} size={17} onBuy={() => openDomainModal('buy', sg.domain)} />
+                </Fragment>
+              ))}
             </ScrollArea>
           </div>
         </motion.div>
@@ -300,69 +408,26 @@ function HomeScreen() {
 }
 
 /**
- * One result row — the same 72px component in both lists (Figma 27257:14000).
- * Name, the reason it is here, both prices, one outlined verb.
- */
-function ResultRowItem({ row, onBuy }: { row: ResultRow; onBuy: () => void }) {
-  const { t } = useT()
-  const price = priceFor(row.tld) ?? priceFor('.com')!
-  return (
-    <div className="flex h-[72px] items-center justify-between gap-6 rounded-[16px] px-5 py-4 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
-      <div className="min-w-0 flex-1 pb-0.5">
-        <p className="truncate text-[16px] font-medium leading-none text-white">{row.domain}</p>
-        <p className="mt-1 truncate text-[13px] leading-none text-[#ffffff52]">{t(row.reason)}</p>
-      </div>
-      <div className="flex h-10 flex-none items-center gap-8">
-        <div className="flex flex-col items-end gap-1.5">
-          <p className="font-display text-[18px] font-medium leading-none text-[#f5f5fa]">
-            ${price.register.toFixed(2)}
-          </p>
-          <p className="font-display text-[12px] font-medium leading-none text-[#ffffff7a]">
-            {t({ en: `Renews at $${price.renew.toFixed(2)}`, uk: `Продовження $${price.renew.toFixed(2)}` })}
-          </p>
-        </div>
-        <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={onBuy} />
-      </div>
-    </div>
-  )
-}
-
-/** Rows separated by a hairline with 2px of air either side, none after the last. */
-function RowList({ rows, onBuy, border }: { rows: ResultRow[]; onBuy: (d: string) => void; border: string }) {
-  return (
-    <div className={`rounded-[16px] border bg-[#ffffff08] p-2 ${border}`}>
-      {rows.map((r, i) => (
-        <div key={r.domain}>
-          {i > 0 && <div className="my-0.5 h-px bg-[#ffffff0a]" aria-hidden />}
-          <ResultRowItem row={r} onBuy={() => onBuy(r.domain)} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/**
- * Search results — Figma 27729:14650.
+ * Search results — Figma 27729:14650, reworked by the designer in Sep 2026.
  *
- * Two blocks, and the order is the point. First the CLASSIC registrar answer: the
- * exact name as a hero, then the same name in other endings — that is what a
- * person who typed a name is actually asking for, and burying it under AI output
- * would be a category error. Only then the AI block, which offers other NAMES,
- * each carrying the reason it was picked.
+ * The exact name still opens the screen as the hero — a person who typed a name
+ * is asking about THAT name — and under it now sit THREE lists instead of two:
+ * Featured · Popular · Suggested. The split is the designer's requirement; what
+ * goes in each list is ours (see data/domains.ts), and it keeps the old ordering
+ * logic: the same name in other endings first, other names last.
  *
- * Every row is available in the mockup — there is no taken state drawn anywhere
- * in the file, which is the biggest gap in this screen and is raised with the
- * designer rather than invented here.
+ * Two things the mockup settled and this follows to the pixel:
+ *  - no row carries a description any more, in any list;
+ *  - the footer bar is new — "400+ more available" on the left, "Show more" on
+ *    the bar's centre (see ListFooter).
+ *
+ * Still true, still raised with the designer: there is no "taken" state drawn
+ * anywhere in the file, and that is the biggest hole left in this screen.
  */
 function ResultsScreen() {
   const { activeDomain, openDomainModal } = useUI()
-  const { t } = useT()
   const term = activeDomain ?? 'fit-ration'
-
-  const hero = exactMatch(term)
-  const heroPrice = priceFor(hero.tld)!
-  const endings = otherEndings(term)
-  const ideas = nameIdeas(term)
+  const buy = (domain: string) => openDomainModal('buy', domain)
 
   return (
     <motion.div
@@ -378,83 +443,29 @@ function ResultsScreen() {
               wide and centred — the padding must sit OUTSIDE the max-width or
               the column comes out 64px narrow. */}
           <div className="px-8 pb-2 pt-8">
-          <div className="mx-auto w-full max-w-[1200px]">
-            {/* ------------------------------------- classic results (27729:15438) */}
-            <div className="flex flex-col gap-4">
-              {/* exact-match hero: gradient wash under a ring-masked gradient rim */}
-              <motion.div
-                variants={listSwapItem}
-                className="relative rounded-[16px] px-1 pb-1"
-                style={{ background: 'linear-gradient(90deg, rgba(174,93,255,0.10), rgba(77,114,255,0.02))' }}
-              >
-                <i className="bestmatch-rim" aria-hidden />
-                <div className="flex h-10 items-center pl-6 pr-4">
-                  <span
-                    className="font-display text-[14px] font-semibold"
-                    style={{
-                      backgroundImage: 'linear-gradient(81deg, #cb79ff 31%, #66a6ff 118%)',
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      color: 'transparent',
-                    }}
-                  >
-                    {t({ en: 'Best match', uk: 'Найкращий збіг' })}
-                  </span>
-                </div>
-                <div className="flex h-[94px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[#1f1f22] px-6">
-                  <div className="min-w-0 flex-1 pb-1">
-                    <p className="truncate text-[22px] font-medium leading-none text-white">{hero.domain}</p>
-                    <p className="mt-[7px] truncate text-[13px] leading-none text-[#ffffff7a]">{t(hero.reason)}</p>
-                  </div>
-                  <div className="flex h-10 flex-none items-center gap-8">
-                    {/* the promo says itself: list price struck, first year large */}
-                    <PriceStack register={heroPrice.register} renew={heroPrice.renew} strike />
-                    <button
-                      onClick={() => openDomainModal('buy', hero.domain)}
-                      className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-                    >
-                      {t({ en: 'Buy', uk: 'Купити' })}
-                    </button>
-                  </div>
-                </div>
+            {/* 8px between the hero and each titled block: the section titles
+                carry their own 20px of air, which is where the rest comes from */}
+            <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2">
+              <motion.div variants={listSwapItem}>
+                <BestMatchCard row={exactMatch(term)} onBuy={() => buy(exactMatch(term).domain)} />
               </motion.div>
 
-              {/* the same name in other endings, plus the "there are more" footer */}
-              <motion.div variants={listSwapItem} className="rounded-[16px] border border-[#ffffff14]">
-                <RowList rows={endings} border="border-[#2a2a2d]" onBuy={(d) => openDomainModal('buy', d)} />
-                <div className="flex h-16 items-center justify-between pb-2 pl-2 pr-5 pt-4">
-                  <button className="flex h-10 items-center gap-2 rounded-[10px] py-2.5 pl-3 pr-2 text-[15px] font-semibold text-[#ffffff7a] opacity-80 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:opacity-100">
-                    {t({ en: 'Show more endings', uk: 'Більше закінчень' })}
-                    <IconChevronDown size={20} />
-                  </button>
-                  <p className="text-[15px] text-[#ffffff52]">
-                    {t({ en: '400+ more available', uk: 'Ще 400+ вільних' })}
-                  </p>
-                </div>
-              </motion.div>
+              <ResultBlock
+                label={{ en: 'Featured', uk: 'Обране' }}
+                rows={featuredEndings(term)}
+                onBuy={buy}
+              />
+              <ResultBlock
+                label={{ en: 'Popular', uk: 'Популярні' }}
+                rows={popularEndings(term)}
+                onBuy={buy}
+              />
+              <ResultBlock
+                label={{ en: 'Suggested', uk: 'Пропозиції' }}
+                rows={nameIdeas(term)}
+                onBuy={buy}
+              />
             </div>
-
-            {/* ---------------------------------- AI name ideas (27729:15591).
-                Butts straight against the block above — the air comes from this
-                header's own 31px top padding, exactly as drawn. */}
-            <motion.div variants={listSwapItem} className="flex items-center justify-between px-2 pb-[22px] pt-[31px]">
-              <div className="flex items-center gap-2.5">
-                <IconAIMark size={24} />
-                <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
-                  {t({ en: 'Name ideas for your site', uk: 'Ідеї назв для вашого сайту' })}
-                </h3>
-              </div>
-              <p className="text-[13px] text-[#ffffff7a]">
-                {t({
-                  en: `Generated from “${term}” and your site description.`,
-                  uk: `Згенеровано з «${term}» та опису вашого сайту.`,
-                })}
-              </p>
-            </motion.div>
-            <motion.div variants={listSwapItem}>
-              <RowList rows={ideas} border="border-[#ffffff0a]" onBuy={(d) => openDomainModal('buy', d)} />
-            </motion.div>
-          </div>
           </div>
         </ScrollArea>
       </div>
