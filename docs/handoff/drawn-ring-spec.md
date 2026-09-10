@@ -62,7 +62,7 @@ Colour of an unlit dash (`--ring-ground`): `rgb(16 16 18)` — the answers card
 
 ## The model — a schedule of fades, not a travelling light
 
-The ring is **64 equal dashes of ONE rounded rectangle**. Each dash fades in on
+The ring is **96 equal dashes of ONE rounded rectangle**. Each dash fades in on
 its own clock, from nothing to the ring's colour, starting a little later than
 the dash before it. Nothing moves. What the eye sees is the contour
 materialising — and, because later dashes are still faint while earlier ones
@@ -70,25 +70,43 @@ are full, a soft gradient that sweeps round the row as they catch up.
 
 | parameter | value | note |
 |---|---|---|
-| `SEG_N` | 64 | ~27px per dash on the 800px row, ~15px in the 432px split |
+| `SEG_N` | 96 | ~18px per dash on the 800px row, ~10px in the 432px split |
 | `SEG_LAP` | 0.003 of the perimeter | each dash overlaps the next by ~5px (~3px in the split) — see seams |
-| `SPREAD` | 0.55 of the lap | the start times are spread over this much of the duration |
-| fade of one dash | 0.45 of the lap, `cubic-bezier(0.4, 0, 0.2, 1)`, fill-mode both | `1 − SPREAD`: the last dash to start ends exactly with the lap |
-| schedule | `startOf(p) = min(p, 4·(1 − p)) / 0.8` for the dash at clockwise position p (0…1 from the top-left corner); delay = `startOf · SPREAD · duration`, inline per dash | |
+| `SPREAD` | 0.35 of the lap | the start times are spread over this much of the duration |
+| fade of one dash | 0.65 of the lap, `cubic-bezier(0.25, 0, 0.75, 1)`, fill-mode both | `1 − SPREAD`: the last dash to start ends exactly with the lap |
+| schedule | `startOf(p) = BLOOM(min(p, 1 − p) / 0.5)` for the dash at clockwise position p (0…1 from the top-left corner); delay = `startOf · SPREAD · duration`, inline per dash | |
+| `BLOOM` | the integral of a velocity that rises from nothing over the first 0.2 of an arm, holds, and falls to nothing over the last 0.3 | sampled once at module load; the same curve for every ring |
 | "drawn" signal | a no-op animation on the group, the length of the lap; its `animationend` swaps the dashes for one solid stroke | |
 
-The schedule has one deliberate asymmetry: the last fifth of the perimeter
-COUNTER-clockwise from the corner (the left side and the start of the bottom
-edge) starts as early as the first fifth clockwise, mirrored. The light
-scatters BOTH ways from where it ignites — that is what the board's corner
-shows — and the two schedules meet at p = 0.8 with the same start time, so the
-clockwise sweep coming round the bottom arrives where the corner's scatter left
-off with no seam.
+The light scatters BOTH ways from where it ignites — that is what the board's
+corner shows — and the two arms are **halves of the perimeter**, so p and 1 − p
+always start together and the schedule is symmetric about the corner by
+construction. Inside an arm the front is not launched at full speed and does not
+arrive at full speed: it accelerates out of the ignition corner and decelerates
+into the far one, where the two fronts fade into each other instead of meeting.
 
-Measured at real speed (rAF sampling of every dash's computed `stroke`): every
-dash monotonic, no position ever dims, the faint front (>5%) advances ≤ 9
-dashes a frame behind a ~20-dash ramp, worst frame 20ms, the row's box identical
-in every sample, frame zero empty.
+**The quantity being minimised is CURVATURE, not slope.** The eye reads a bend in
+a gradient as an edge (Mach banding) however gentle the slope beside it, so the
+softest ramp is not the flattest one: a linear per-dash rise measures the lowest
+slope of anything tried and still reads harder, because it has two corners — where
+a dash starts brightening and where it stops — and the sweep drags both round the
+ring. Hence the eased ends of `BLOOM` (no bend where the front starts or stops)
+and a per-dash curve with zero slope at both ends (no bend where a dash starts or
+stops).
+
+Measured over the whole draw, on the model and again on the live build by pausing
+every dash's animation and stepping `currentTime`:
+
+| | before 10.09.2026 | now |
+|---|---|---|
+| worst curvature | 4.28 | **0.00** |
+| worst slope (%full per 1% of perimeter) | 16.7 | **1.9** |
+| banding between neighbouring dashes | 24.6% | **2.1%** |
+| one point of the border, invisible → full | 45 ms | **94 ms** (same 220 ms clock) |
+
+Also still true at real speed (rAF sampling of every dash's computed `stroke`):
+every dash monotonic, no position ever dims, worst frame 20ms, the row's box
+identical in every sample, frame zero empty.
 
 **Why not a dash that grows** (the four versions before this one, all rejected
 by the designer on screen recordings). A growing dash has a TIP, and at the
@@ -109,7 +127,7 @@ light.
     <g class="ink">                                   ← carries the ring's translucency
       <g class="is-drawing">  (while drawing)         ← no-op lap animation → animationend
         <rect class="seg" pathLength="1" stroke-dasharray="{SEG_S+SEG_LAP} 2"
-              stroke-dashoffset="-{k·SEG_S}" style="animation-delay: …" /> × 64
+              stroke-dashoffset="-{k·SEG_S}" style="animation-delay: …" /> × 96
       </g>
       <g> <rect class="body" pathLength="1" /> </g>   (at rest — one solid stroke)
     </g>
@@ -204,7 +222,7 @@ for an `animationend` that will not come.
 <DrawRing kind="hover" | "pick" drawKey={number} onDrawn={() => void} />
 ```
 
-- `drawKey > 0` mounts the 64 dashes drawing (a new value restarts the draw);
+- `drawKey > 0` mounts the 96 dashes drawing (a new value restarts the draw);
   `0` mounts the resting solid stroke.
 - `kind` selects the geometry, clock and translucency (`--dur`, `.ink` opacity
   or mask) in CSS; the component itself knows nothing about widths or colours.
@@ -270,8 +288,14 @@ small mask raster per frame while drawing; at rest nothing animates.
 | one lap, short stepped head | "a strip with no gradient" | 100px of tail at 2.5px/ms is two or three frames |
 | long feather .36 + burst .22 behind the corner + group fade-in | "hard and wooden" → then "a hover on a hover" | 58% of the ring faintly lit in frame zero, then the bright body ran over it |
 | light growing out of the corner, twice as fast | "glitchy… no softness… from full transparency" | tip at 140px/frame; left side 68 → 48 → 95 |
-| **schedule of fades** (this) | — | monotonic everywhere, no seams, 60fps |
+| schedule of fades, arms 80/20 | accepted 08.09, then **"слишком грубо… поломанные бордеры с обрывами"** (10.09.2026) | the arms carried the same range of start times over 80% and 20% of the perimeter: the gradient ran 0.65 of the ring on one side and 0.16 on the other, and the fronts collided a third of the way along the bottom edge — 25% brightness step between neighbouring dashes, measured on his own recording |
+| **schedule of fades, symmetric arms with eased ends** (this) | chosen by the designer on 10.09.2026 from a bench of six recipes: "я тоже почему то F посчитал самым мягким и приятным" | curvature 0.00, slope 1.9, banding 2.1%, a point rises in 94ms |
 
-Two lessons from the rejected versions survive in the model: **one clockwise
-lap** (the direction is part of the meaning) and **light scattering both ways
-from the corner** (the counter-clockwise start).
+Two lessons from the rejected versions survive in the model: **light scattering
+both ways from the corner**, and **one value per position, rising once**.
+
+⚠️ The third lesson used to read "one CLOCKWISE lap — the direction is part of
+the meaning". It is gone: the 80/20 split existed to keep most of the ring
+sweeping clockwise, and that is exactly what made one side four times harder
+than the other. The direction survives as a bias, not as a rule — the ring still
+ignites at the top-left corner, but both arms are equal now.

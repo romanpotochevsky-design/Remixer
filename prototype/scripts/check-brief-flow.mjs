@@ -328,8 +328,15 @@ const ring = (sel, kind) => p.$eval(sel, (el, kind) => {
     /* how far the draw has got: the dashes' mean lightness, ground 0 → white 1; 1 once
        the lap is done and the stroke stands solid */
     l: body ? 1 : +mean(segs).toFixed(3),
-    /* the gradient of the moment: the corner's first dashes against the far side (p ≈ .5) */
-    corner: +mean(segs.slice(0, 4)).toFixed(3), far: +mean(segs.slice(30, 34)).toFixed(3),
+    /* The gradient of the moment: the corner's first dashes against the ANTIPODE — derived
+       from the dash count, never a literal index. It was `slice(30, 34)`, which was p ≈ .5
+       while there were 64 dashes and quietly became p ≈ .33 when there were 96. */
+    corner: +mean(segs.slice(0, 4)).toFixed(3),
+    far: +mean(segs.slice(Math.round(segs.length / 2) - 2, Math.round(segs.length / 2) + 2)).toFixed(3),
+    /* The largest RISE walking from the ignition corner to the antipode. The ring is a
+       gradient falling away from where it lit, so this is ~0; a travelling strip, or a
+       schedule with a seam in it, would show a step here. */
+    climb: +Math.max(0, ...segs.slice(0, Math.round(segs.length / 2)).map((v, i, a) => (i ? v - a[i - 1] : 0))).toFixed(3),
     solid: !!body && geo.strokeDasharray === 'none',
     white: body ? +lit(body).toFixed(3) : null, width: geo.strokeWidth, rx: geo.rx,
     /* the ring's translucency lives on `.ink`: the hover's 32%, the pick's gradient mask */
@@ -410,8 +417,14 @@ const pixelAt = async (x, y) => {
   const mid = await ring('.brief-opt:nth-of-type(2)', 'hover')
   check('the hover ring DRAWS itself: part-way in, the ring is part-way lit',
     mid.drawing && mid.op === 1 && mid.vis === 'visible' && mid.l > 0.05 && mid.l < 0.9, `l=${mid.l} drawing=${mid.drawing} op=${mid.op}`)
-  check('…as a gradient that appears, brightest at the corner it grew from, thinning toward the far side',
-    mid.corner > 0.5 && mid.far < mid.corner * 0.85, `corner=${mid.corner} far=${mid.far}`)
+  /* The corner is the brightest place and the ring only DIMS from there to the antipode —
+     that is what makes it a gradient appearing rather than a strip arriving. The old form of
+     this check also demanded `corner > 0.5` at the sampled instant; the softened schedule
+     (10.09.2026) raises the corner more gently, so the threshold measured the easing rather
+     than the shape. Monotonicity is the property that actually matters and it is stricter. */
+  check('…as a gradient that appears, brightest at the corner it grew from, only dimming toward the far side',
+    mid.corner > 0.15 && mid.far < mid.corner * 0.85 && mid.climb <= 0.02,
+    `corner=${mid.corner} far=${mid.far} climb=${mid.climb}`)
   await p.waitForTimeout(800)
   const done = await ring('.brief-opt:nth-of-type(2)', 'hover')
   check('…and closes into a full 1px ring at radius 16, 32% white (white strokes, the alpha on the group), nothing left animating',
@@ -432,6 +445,88 @@ const pixelAt = async (x, y) => {
       px.every((v, i) => Math.abs(v - want[i]) <= 2), `pixel ${px.join(',')} vs --ring-ground ${done.ground}`)
   }
   check('the ring is a stroke, not a fill and not a box-shadow', done.fill === 'rgba(0, 0, 0, 0)' && done.shadow === 'none', `${done.fill} / ${done.shadow}`)
+  /*
+   * ─── HOW SOFT THE DRAW ACTUALLY IS ───────────────────────────────────────────────────
+   * The designer's whole complaint on 10.09.2026 was that the ring looked "слишком грубо",
+   * and the cure was a schedule, so the schedule is what has to be held. Not by screenshot:
+   * pause every dash's animation and step its `currentTime`, which reads alpha(position,
+   * time) straight out of the engine at any resolution.
+   *
+   * Three quantities, and the third is the one that decides. SLOPE is how fast brightness
+   * changes along the ring. BANDING is the step between neighbouring dashes — the ring is a
+   * sampled gradient and too few dashes show as stripes. CURVATURE is where the gradient
+   * BENDS, and the eye reads a bend as an edge however gentle the slope beside it (Mach
+   * banding): the schedule that lost to this one had the flattest slope of all and two hard
+   * bends. Measured on the build this replaced: slope 16.7, banding 24.6%, curvature 4.28.
+   */
+  {
+    await p.mouse.move(4, 4)
+    await p.waitForTimeout(260)
+    await (await p.$('.brief-opt:nth-of-type(3)')).hover()
+    await p.waitForTimeout(50)
+    const m = await p.evaluate(() => {
+      const g = document.querySelector('.brief-opt[data-hov] .brief-draw--hover .is-drawing')
+      if (!g) return null
+      const segs = [...g.querySelectorAll('.seg')]
+      const anims = segs.map((r) => r.getAnimations()[0]).filter(Boolean)
+      if (anims.length !== segs.length) return null
+      const cs = getComputedStyle(g)
+      const num = (st) => { const v = st.match(/[\d.]+/g); return v ? v.slice(0, 3).map(Number) : [0, 0, 0] }
+      const g0 = num(cs.getPropertyValue('--ring-ground'))[0]
+      const lit = (r) => (num(getComputedStyle(r).stroke)[0] - g0) / (255 - g0)
+      const dur = parseFloat(cs.animationDuration) * 1000
+      anims.forEach((a) => a.pause())
+      const n = segs.length
+      let slope = 0, band = 0, kink = 0
+      for (let i = 0; i <= 80; i++) {
+        anims.forEach((a) => { a.currentTime = (i / 80) * dur })
+        const a = segs.map(lit)
+        for (let k = 0; k < n; k++) {
+          const d1 = Math.abs(a[(k + 1) % n] - a[k])
+          const d2 = Math.abs(a[(k + 1) % n] - 2 * a[k] + a[(k + n - 1) % n])
+          if (d1 > band) band = d1
+          if (d1 * n / 100 > slope) slope = d1 * n / 100
+          if (d2 * (n / 100) ** 2 > kink) kink = d2 * (n / 100) ** 2
+        }
+      }
+      anims.forEach((a) => a.play())
+      /* the schedule itself: delays must mirror about the corner and ease in and out */
+      const d = segs.map((r) => parseFloat(getComputedStyle(r).animationDelay) * 1000)
+      const mirror = Math.max(...d.map((v, k) => Math.abs(v - d[n - 1 - k])))
+      const step = d.slice(1).map((v, k) => v - d[k])
+      const half = step.slice(0, Math.round(n / 2) - 1)
+      return {
+        n, dur,
+        slope: +(slope * 100).toFixed(1), band: +(band * 100).toFixed(1), kink: +kink.toFixed(2),
+        mirror: +mirror.toFixed(2),
+        stepFirst: +half[0].toFixed(2), stepMid: +half[Math.floor(half.length / 2)].toFixed(2),
+        stepLast: +half[half.length - 1].toFixed(2),
+        head: +Math.max(...d).toFixed(1),
+      }
+    })
+    check('the draw is measurable at all — the dashes are real animations that can be stepped',
+      !!m, JSON.stringify(m))
+    if (m) {
+      check('no hard edge anywhere on the ring: the gradient never bends',
+        m.kink <= 0.15, `curvature ${m.kink} (was 4.28)`)
+      check('…and never steepens into one: brightness changes gently all the way round',
+        m.slope <= 4, `slope ${m.slope} (was 16.7)`)
+      check('…and the dashes are fine enough that the gradient is not stripes',
+        m.band <= 4 && m.n >= 96, `${m.band}% across ${m.n} dashes (was 24.6% across 64)`)
+      check('the two arms are mirror images — neither side is harder than the other',
+        m.mirror <= 1, `worst mismatch ${m.mirror}ms`)
+      check('the front eases out of the corner and decelerates into the far one',
+        m.stepFirst < m.stepMid && m.stepLast < m.stepMid && m.head > 40,
+        `steps ${m.stepFirst} → ${m.stepMid} → ${m.stepLast} ms, head ${m.head}ms`)
+    }
+    /* Hand the pointer back where the checks around this block left it: row 2, hovered and
+       settled. This measurement borrows row 3 for a fresh draw, and the first version of it
+       parked the pointer in the corner afterwards — which un-hovered row 2 and cost the next
+       check its ring ("the hairlines on both sides of the ring go — [1,1,null]"). */
+    await (await p.$('.brief-opt:nth-of-type(2)')).hover()
+    await p.waitForTimeout(800)
+  }
+
   check('the hairlines on both sides of the ring go', (await dividers()).slice(0, 2).every((o) => o === 0), JSON.stringify(await dividers()))
   check('the rows sit apart, so two rings can never meet', done.gap === '6px', done.gap)
   const after = await rowBoxes()
@@ -458,7 +553,9 @@ const pixelAt = async (x, y) => {
   check('a press starts the 2px ring drawing round the row',
     mid.drawing && mid.press && mid.op === 1 && mid.l > 0.05 && mid.l < 0.9 && mid.width === '2px', `l=${mid.l} drawing=${mid.drawing} press=${mid.press} w=${mid.width}`)
   check('…in the house gradient, worn as a luminance mask over white strokes, not a flat token', mid.masked && mid.alpha === 1, `masked=${mid.masked} alpha=${mid.alpha}`)
-  check('…appearing as a gradient round the row, not arriving as a strip', mid.corner > 0.5 && mid.far < mid.corner * 0.85, `corner=${mid.corner} far=${mid.far}`)
+  check('…appearing as a gradient round the row, not arriving as a strip',
+    mid.corner > 0.15 && mid.far < mid.corner * 0.85 && mid.climb <= 0.02,
+    `corner=${mid.corner} far=${mid.far} climb=${mid.climb}`)
   await p.waitForTimeout(900)
   const done = await ring('.brief-opt:nth-of-type(2)', 'pick')
   check('the lap closes into the resting ring, nothing left animating',

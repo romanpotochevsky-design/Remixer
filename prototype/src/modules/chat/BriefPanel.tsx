@@ -263,14 +263,13 @@ export function Row({ name, detail, on, onPick }: {
  * dip: each dash rises once, monotonically, and there is no tip because there is nothing
  * moving, only a schedule.
  *
- * THE SCHEDULE (`startOf`). Position p runs clockwise from the top-left corner. The first
- * fifth of the perimeter COUNTER-clockwise from the corner (the left side and the start of
- * the bottom edge) starts as early as the first fifth clockwise, mirrored — so the light
- * scatters both ways from where it ignites, as the board's corner shows and the third
- * recording asked for. The two schedules meet at p = 0.8 with the same start time, so the
- * clockwise sweep, coming round along the bottom, arrives where the corner's scatter left
- * off with no seam and no second layer. Starts are spread over `SPREAD` of the lap; each
- * dash fades over the rest.
+ * THE SCHEDULE (`startOf`). Position p runs clockwise from the top-left corner, and the
+ * light scatters BOTH ways from it — as the board's corner shows and the third recording
+ * asked for. Both arms are half the perimeter and share one curve, so p and 1−p always
+ * start together; the front eases out of the ignition corner and eases back to nothing at
+ * the far one. Starts are spread over `SPREAD` of the lap; each dash fades over the rest.
+ * The full reasoning, and what the 80/20 schedule this replaced got wrong, is in the block
+ * over `BLOOM` below.
  *
  * ⚠️ THE FADE IS A COLOUR, NOT AN OPACITY, AND THE DASHES OVERLAP. Sixty-four anti-aliased
  * dashes butted end to end seam: where a boundary falls inside a device pixel the two
@@ -295,21 +294,92 @@ export function Row({ name, detail, on, onPick }: {
  * Geometry (inset, radius, width) and translucency are CSS per `kind`, so the hover's 1px
  * and the pick's 2px are one component.
  */
-/** Dashes round the ring: 64 is ~27px each on the wide row, ~15px in the split — the
- *  steps between neighbours' clocks are far below what the eye can pick out. */
-const SEG_N = 64
+/** Dashes round the ring: 96 is ~18px each on the wide row, ~10px in the split. It was 64
+ *  until the schedule below stopped hiding behind its own hard edge — with a gradient this
+ *  long the sampling IS what you see, and 64 showed as bands (below). */
+const SEG_N = 96
 const SEG_S = 1 / SEG_N
 /** Each dash runs this much of the perimeter past its slot into the next dash's: ~5px on
  *  the wide row, ~3px in the split, always more than the anti-aliased edge it has to bury. */
 const SEG_LAP = 0.003
 /** How much of the lap the start times are spread over; the rest is each dash's own fade.
  *  (The CSS fade duration is `1 − SPREAD` of `--dur` — keep the two in step.) */
-const SPREAD = 0.55
-/** When a dash at clockwise position p (0…1 from the top-left corner) starts, as a share
- *  of SPREAD: clockwise the share is p itself; the last fifth before the corner mirrors the
- *  first fifth after it (4 × the distance back to the corner), so both schedules read 0.8
- *  at p = 0.8 and hand over without a seam. */
-const startOf = (p: number) => Math.min(p, 4 * (1 - p)) / 0.8
+const SPREAD = 0.35
+
+/*
+ * THE LIGHT BLOOMS OUT OF THE CORNER AND DECELERATES INTO THE FAR ONE — the schedule the
+ * designer picked on 10.09.2026 ("я тоже почему то F посчитал самым мягким и приятным"),
+ * off a bench that put six recipes side by side. It replaces the 80/20 schedule, which he
+ * had reported as "какие то поломанные бордеры с обрывами… слишком грубо".
+ *
+ * ⚠️ WHAT WAS WRONG WITH 80/20, measured frame by frame off his own recording (57.9 fps)
+ * and reproduced by an analytic model of the schedule to within 2%: the clockwise arm
+ * spread the whole range of start times over 80% of the perimeter and the counter-clockwise
+ * arm compressed the same range into 20%. Same time, a quarter of the distance — so the
+ * spatial gradient ran 0.65 of the perimeter on one side and 0.16 on the other, and the two
+ * fronts collided head-on a third of the way along the bottom edge. Worst brightness step
+ * between neighbouring 64ths there: 25% of full. (The same measurement on a settled ring
+ * reads 1–2%, so that was the animation, not the sampling.)
+ *
+ * ⚠️ AND WHY THE FLATTEST RAMP IS NOT THE SOFTEST ONE. The obvious cure — symmetric arms,
+ * a long fade and a LINEAR per-dash rise — gives the gentlest slope of anything measured
+ * (1.1 %full per 1% of perimeter against today's 16.7). It still reads harder than this,
+ * because a linear rise has two CORNERS: the point where a dash starts brightening and the
+ * point where it stops. The eye reads a corner as an edge even when the slope either side
+ * of it is gentle (Mach banding), and those two corners are dragged round the ring by the
+ * sweep. So the quantity to minimise is not the slope but the CURVATURE, and this schedule
+ * takes it to zero:
+ *
+ *   · SYMMETRIC ARMS. Both halves of the perimeter get the same time, so neither side is
+ *     four times harder than the other and the fronts meet at the diagonally opposite
+ *     corner — where a seam belongs — instead of in the middle of an edge.
+ *   · THE START TIMES EASE IN AND OUT ALONG THE ARM (`BLOOM`). The front is not launched at
+ *     full speed and does not arrive at full speed: it accelerates out of the ignition
+ *     corner over the first fifth of the arm and decelerates into the far corner over the
+ *     last third. Near the corner many dashes therefore start almost together — the light
+ *     BLOOMS there rather than setting off — and at the meeting the two fronts fade into
+ *     each other instead of colliding. Those two places were the only kinks the symmetric
+ *     schedule still had.
+ *   · A PER-DASH EASE WITH ZERO SLOPE AT BOTH ENDS (`cubic-bezier(.25,0,.75,1)`, in the CSS).
+ *     No corner where a dash begins, none where it finishes.
+ *
+ * Measured on the model, worst curvature over the whole draw: 4.28 → 0.00. Slope
+ * 16.7 → 1.9, banding across the dashes 24.6% → 2.0%, and one point of the border now takes
+ * 94 ms to go from invisible to full instead of 45 — twice as long inside the SAME 220 ms
+ * clock. Verified on the live build: the delays run 0 → 77 ms → 0 with at most 2.2 ms
+ * between neighbours, and every dash is above the ground colour by mid-draw, i.e. the ramp
+ * covers the whole ring and there is no unlit arc for an edge to live on.
+ *
+ * ⚠️ It is NOT rejection (c), the two rays from the corner. That had two travelling tips
+ * with hard heads; here there is no tip at all — at every instant the ring is one monotone
+ * falloff from the ignition corner, which is the reading he has accepted since August.
+ */
+/** Where the front eases in and out along each arm, as a share of the arm. */
+const BLOOM_IN = 0.2
+const BLOOM_OUT = 0.3
+/** start(u) for u = distance along the arm, 0…1: the integral of a velocity that rises from
+ *  nothing over the first `BLOOM_IN`, holds, then falls back to nothing over the last
+ *  `BLOOM_OUT`. Sampled once at module load — it is the same curve for every ring. */
+const BLOOM = (() => {
+  const N = 2048
+  const s = new Float64Array(N)
+  let sum = 0
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1)
+    const v =
+      u < BLOOM_IN ? 0.5 - 0.5 * Math.cos((Math.PI * u) / BLOOM_IN)
+      : u > 1 - BLOOM_OUT ? 0.5 + 0.5 * Math.cos((Math.PI * (u - (1 - BLOOM_OUT))) / BLOOM_OUT)
+      : 1
+    sum += v
+    s[i] = sum
+  }
+  for (let i = 0; i < N; i++) s[i] /= sum
+  return s
+})()
+/** When a dash at clockwise position p (0…1 from the top-left corner) starts, as a share of
+ *  SPREAD. Both arms are half the perimeter and share one curve, so p and 1−p start together
+ *  and the schedule is symmetric about the corner by construction. */
+const startOf = (p: number) => BLOOM[Math.round((Math.min(p, 1 - p) / 0.5) * (BLOOM.length - 1))]
 const SEGS = Array.from({ length: SEG_N }, (_, k) => ({
   k,
   /* dash k covers [k·s, (k+1)·s + lap]: a single dash `s+lap 2` pushed forward by k·s */

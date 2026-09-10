@@ -3848,10 +3848,13 @@ html[data-drag] .shell-aside { transition: none; }
      animate — the fill, the rim on its way out and the ink turning over — and it is a
      40px box on a gesture the customer made, which is the same allowance `.thinking` and
      the drawn rings have. */
+  /* ⚠️ Its OWN 280ms, not the ring's `--draw-pick`. The two rode one variable until the
+     pick's draw was slowed to 380 (10.09.2026); the plate's 280 was measured and accepted
+     on its own board a day earlier, and a shared variable would have dragged it along. */
   transition:
-    background-color var(--draw-pick, 280ms) var(--ease-std),
-    box-shadow var(--draw-pick, 280ms) var(--ease-std),
-    color var(--draw-pick, 280ms) var(--ease-std);
+    background-color 280ms var(--ease-std),
+    box-shadow 280ms var(--ease-std),
+    color 280ms var(--ease-std);
 }
 /*
  * THE CHOSEN SCORE IS A WHITE PLATE WITH BLACK FIGURES — Figma 25744:139649 (designer,
@@ -3962,9 +3965,13 @@ html[data-drag] .shell-aside { transition: none; }
 .brief-pick {
   /* the third speed (designer, 08.09.2026): 700 / 880 → "в 2 раза ускорить" → 350 / 440 →
      "ускорим ещё, чтобы быстрее было и не так надоедало" → 220 / 280. A hover fires on every
-     row the pointer crosses, so its draw has to be over before the eye tires of it. */
+     row the pointer crosses, so its draw has to be over before the eye tires of it.
+     ⚠️ THE PICK IS 380 SINCE 10.09.2026 — the hover is not. Softening the schedule bought
+     the hover a rise of 94ms inside the same 220 (see BriefPanel's BLOOM block), so the
+     clock he twice asked to shorten stays where he put it; the pick happens once, on a
+     deliberate act, and is the one worth watching, so it got the extra 100ms instead. */
   --draw-hover: 220ms;
-  --draw-pick: 280ms;
+  --draw-pick: 380ms;
   /* The ring's box. Its radius and which side of the box the stroke sits on come from
      the SHAPE's own class, and their defaults live in the `var()` fallbacks below —
      never as declarations here: `.brief-pick` and `.brief-tile` land on the same element
@@ -4028,15 +4035,24 @@ html[data-drag] .shell-aside { transition: none; }
 .brief-draw--pick .ink { mask: url(#brief-pick-mask); }
 /* at rest: one solid stroke — the last frame of the draw */
 .brief-draw .body { stroke-dasharray: none; }
-/* drawing: 64 overlapping opaque dashes (dasharray set inline, gap longer than the path so
+/* drawing: 96 overlapping opaque dashes (dasharray set inline, gap longer than the path so
    no second copy lands), each fading ground → white on its own inline delay over the last
-   45% of the lap; the group's no-op lap animation ends when the ring is drawn */
+   65% of the lap; the group's no-op lap animation ends when the ring is drawn */
 .brief-draw .seg { stroke: var(--ring-ground); }
 .brief-draw .is-drawing { animation: brief-draw-lap var(--dur) linear both; }
 .brief-draw .is-drawing .seg {
   animation-name: brief-seg-in;
-  animation-duration: calc(var(--dur) * 0.45);
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 0.65 of the lap, against SPREAD 0.35 in BriefPanel — keep the two in step. The ramp is
+     now longer than the perimeter, so no part of the ring is ever a hard edge: by mid-draw
+     every dash is somewhere on its rise. */
+  animation-duration: calc(var(--dur) * 0.65);
+  /* ⚠️ ZERO SLOPE AT BOTH ENDS, and that is the whole point of this curve rather than a
+     flatter one. A linear rise has the gentlest slope of anything measured but two CORNERS
+     — where a dash starts brightening and where it stops — and the eye reads a corner as an
+     edge however soft the slope beside it. Curvature over the whole draw, on the model that
+     reproduces the designer's recording: 4.28 with the old pair, 0.66 with a linear rise,
+     0.00 with this one. */
+  animation-timing-function: cubic-bezier(0.25, 0, 0.75, 1);
   animation-fill-mode: both;
 }
 @keyframes brief-seg-in {
