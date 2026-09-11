@@ -226,8 +226,33 @@ export const EMPTY_SUGGEST: Suggest = { show: 'none', pick: '', started: [], tak
 export interface PlanEdits {
   text: Record<string, string>
   items: Record<string, string[]>
+  /** The structure the customer drew — see `OutlineEdits`. */
+  outline: OutlineEdits
 }
-export const EMPTY_PLAN_EDITS: PlanEdits = { text: {}, items: {} }
+
+/**
+ * THE ONE EDIT THAT REACHES THE BUILD (Figma 30115:55247; designer, 11.09.2026, on the
+ * stack drawn in the plan: "как удалить страницу или секцию? как поменять местами?").
+ *
+ * Rewriting the plan's PROSE does not change what gets generated — the document is the
+ * record of what was agreed, and `buildPlan` compiles it from the brief's answers. The
+ * STRUCTURE is different: page and section names compile into `buildOutline`, which the
+ * generation card and the Autopilot proposals already read. So renaming "Services" to
+ * "Menu" here renames it in the card that builds it and in the proposal that offers it.
+ *
+ * A layer, like the rest of `PlanEdits`: absent means "as compiled", present means "the
+ * customer drew this list". Present ENTIRE for the same reason the bullets are — a list
+ * you can add to and reorder cannot be described by an override map keyed by position.
+ */
+export interface OutlineEdits {
+  /** The page this pass builds, renamed. */
+  home?: string
+  /** Its sections, entire, once any one was touched. */
+  sections?: string[]
+  /** The pages waiting under it, entire. */
+  rest?: string[]
+}
+export const EMPTY_PLAN_EDITS: PlanEdits = { text: {}, items: {}, outline: {} }
 
 export interface World {
   /** Which language the simulated product renders in. */
@@ -469,7 +494,10 @@ interface Store {
  * behind), which is the only way a changed default reaches somebody who has already opened
  * the prototype.
  */
-const STORAGE_KEY = 'remixer-prototype/world/v2'
+/* v3: `planEdits` grew an `outline` layer (11.09.2026). A snapshot from v2 has no such
+   key, and every reader of it would have to guard — the version is cheaper and is the
+   rule this project already follows when a stored shape changes. */
+const STORAGE_KEY = 'remixer-prototype/world/v3'
 
 function initialWorld(): World {
   const fromUrl = paramsToWorld(window.location.search)

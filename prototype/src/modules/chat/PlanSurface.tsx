@@ -26,6 +26,8 @@ import { IconClose } from '@/ui/icons'
 import { SPRING_SOFT, EXIT } from '@/ui/motion'
 import { buildPlan, PLAN_LABEL, PLAN_START } from './plan'
 import { PlanEditable, focusPlanBlock } from './PlanEditable'
+import { PlanOutline } from './PlanOutline'
+import { PlanDecisions } from './PlanDecision'
 import { editPlanItems, editPlanText } from './send'
 import { approvePlan, closePlanReview } from './send'
 
@@ -81,7 +83,13 @@ export function PlanSurface() {
           read, and prose at canvas width would be unreadable at 1600px. */}
       <div className="min-h-0 flex-1 rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)]">
         <ScrollArea className="h-full" thumb="light">
-          <div className="mx-auto w-full max-w-[640px] px-8 pb-16 pt-10">
+          {/* 30107:53167 — the document is 800 wide, centred in whatever the canvas gives it.
+                Its prose sits at x=8 inside that; the blocks run the full width. */}
+          <div className="px-8 pb-16 pt-10">
+            {/* 30107:53167 — prose sits at x=8 of the 800, the blocks run its full width.
+                  The inset is the COLUMN's: `.plan-edit` already owns a margin of
+                  its own (its hover surface) and would beat a utility on the line. */}
+            <div className="plan-doc mx-auto w-full max-w-[800px] px-2">
             {/*
               * THE DOCUMENT IS THE CUSTOMER'S TO REWRITE. Every line here is editable in place
               * — the heading, the goal, a paragraph, a bullet — and the bullets behave like a
@@ -101,10 +109,10 @@ export function PlanSurface() {
               value={read('title', t(plan.title))}
               onCommit={(v) => editPlanText('title', v, t(plan.title))}
               label={t({ en: 'Plan title', uk: 'Заголовок плану' })}
-              className="font-display text-[28px] font-semibold leading-[1.25] text-white"
+              className="font-display text-[48px] font-medium leading-[1.1] text-white"
             />
 
-            <h2 className="mt-8 text-[15px] font-semibold leading-[1.4] text-white">
+            <h2 className="mt-4 text-[20px] font-semibold leading-[25px] text-white">
               {t({ en: 'Goal', uk: 'Мета' })}
             </h2>
             <PlanEditable
@@ -112,7 +120,7 @@ export function PlanSurface() {
               value={read('goal', t(plan.goal))}
               onCommit={(v) => editPlanText('goal', v, t(plan.goal))}
               label={t({ en: 'The goal, in a paragraph', uk: 'Мета, одним абзацом' })}
-              className="mt-2 text-[15px] leading-[1.6] text-[#ffffffd9]"
+              className="mt-[9px] text-[16px] leading-[1.4] text-[var(--white-720)]"
             />
 
             {plan.sections.map((section, i) => {
@@ -129,7 +137,7 @@ export function PlanSurface() {
                   value={read(`s${i}:h`, t(section.heading))}
                   onCommit={(v) => editPlanText(`s${i}:h`, v, t(section.heading))}
                   label={t({ en: 'Section heading', uk: 'Заголовок розділу' })}
-                  className="mt-8 text-[15px] font-semibold leading-[1.4] text-white"
+                  className="mt-8 text-[20px] font-semibold leading-[25px] text-white"
                 />
                 {body !== null && (
                   <PlanEditable
@@ -137,13 +145,19 @@ export function PlanSurface() {
                     value={read(`s${i}:b`, body)}
                     onCommit={(v) => editPlanText(`s${i}:b`, v, body)}
                     label={t({ en: 'Section text', uk: 'Текст розділу' })}
-                    className="mt-2 text-[15px] leading-[1.6] text-[#ffffffd9]"
+                    className="mt-[9px] text-[16px] leading-[1.4] text-[var(--white-720)]"
                   />
                 )}
-                {items.length > 0 && (
+                {/* WHAT THIS SECTION DRAWS (plan.ts `draws`). The stack goes between the
+                    section's lede and its bullets — the sentence introduces it, the bullets
+                    describe what lands on the page it names. The decision cards REPLACE
+                    their section's prose: the same two facts, as controls. */}
+                {section.draws === 'outline' && <PlanOutline />}
+                {section.draws === 'decisions' && <PlanDecisions />}
+                {section.draws !== 'decisions' && items.length > 0 && (
                   <ul className="mt-3 flex flex-col gap-2.5">
                     {items.map((item, j) => (
-                      <li key={`${i}:${j}`} className="flex gap-3 text-[15px] leading-[1.6] text-[#ffffffd9]">
+                      <li key={`${i}:${j}`} className="flex gap-3 text-[16px] leading-[1.4] text-[var(--white-720)]">
                         {/* a dot rather than a list-style marker: it stays aligned with the
                             first line when an item wraps to three */}
                         <span aria-hidden className="mt-[9px] h-1 w-1 flex-none rounded-full bg-[#ffffff7a]" />
@@ -169,10 +183,20 @@ export function PlanSurface() {
                     ))}
                   </ul>
                 )}
+                {/* the closing paragraph, under whatever the section drew */}
+                {section.after && (
+                  <PlanEditable
+                    path={`s${i}:after`}
+                    value={read(`s${i}:after`, t(section.after))}
+                    onCommit={(v) => editPlanText(`s${i}:after`, v, t(section.after!))}
+                    label={t({ en: 'Section text', uk: 'Текст розділу' })}
+                    className="mt-3 text-[16px] leading-[1.4] text-[var(--white-720)]"
+                  />
+                )}
               </div>
               )
             })}
-
+            </div>
           </div>
         </ScrollArea>
       </div>

@@ -89,8 +89,9 @@ export function BuildProgress({ animate }: { animate: boolean }) {
      come up one after another down the outline. */
   const reduce = useReducedMotion()
   const [glass, body, row] = reduce ? [cardInFade, cardInBodyFade, cardInRowFade] : [cardIn, cardInBody, cardInRow]
-  const { brief, build } = useWorld((s) => s.world)
-  const pages = buildOutline(brief.answers)
+  const { brief, build, planEdits } = useWorld((s) => s.world)
+  /* the customer's own structure, drawn in the plan — the card names what they drew */
+  const pages = buildOutline(brief.answers, planEdits.outline)
   const [home, ...rest] = pages
   const sections = home.sections ?? []
   const last = sections.length - 1

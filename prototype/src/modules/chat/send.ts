@@ -12,7 +12,7 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest, type OutlineEdits } from '@/state/world'
 import type { Text } from '@/i18n'
 import { useUI } from '@/state/ui'
 import { baselineThread, replyTo, streamDuration } from './thread'
@@ -92,7 +92,7 @@ function stopBuildClock() {
  */
 function runBuild(answers: BriefAnswers, from = 0) {
   stopBuildClock()
-  const list = buildBeats(answers)
+  const list = buildBeats(answers, useWorld.getState().world.planEdits.outline)
   const step = (i: number) => {
     const now = useWorld.getState()
     if (now.world.project !== 'generating') { stopBuildClock(); return }
@@ -106,7 +106,7 @@ function runBuild(answers: BriefAnswers, from = 0) {
 
 /** Where in the schedule a restored `world.build` sits. -1 → start from the top. */
 function beatIndex(answers: BriefAnswers, at: number, line: number) {
-  return buildBeats(answers).findIndex((b) => b.at === at && b.line === line)
+  return buildBeats(answers, useWorld.getState().world.planEdits.outline).findIndex((b) => b.at === at && b.line === line)
 }
 
 /**
@@ -428,7 +428,7 @@ function finishBuild(answers: BriefAnswers) {
   const now = useWorld.getState()
   /* Leading changes what this line has to do: the proposal that follows it owns the list of
      what to do next, so the line stops naming one (see `leadingDone`). */
-  const text = now.world.mode === 'autopilot' ? leadingDone(answers) : briefDone(answers)
+  const text = now.world.mode === 'autopilot' ? leadingDone(answers, now.world.planEdits.outline) : briefDone(answers)
   const done: Message = { id: nextId(now.world.sent), who: 'ai', text }
   now.set(
     {
@@ -492,7 +492,7 @@ function offerSuggestion() {
     return
   }
 
-  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published)
+  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published, w.planEdits.outline)
   if (!proposal) return
   now.set({ suggest: { ...w.suggest, show: 'proposal', pick: recommended(proposal) } }, now.preset)
 }
@@ -515,7 +515,7 @@ export function pickSuggest(value: string) {
 export function acceptSuggest() {
   const now = useWorld.getState()
   const w = now.world
-  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published)
+  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published, w.planEdits.outline)
   if (!proposal) return
 
   // The escape hatch: whatever was typed into "Something else — tell me…" is just a message.
@@ -614,6 +614,19 @@ export function editPlanText(path: string, value: string, was: string) {
   set({ planEdits: { ...world.planEdits, text } }, preset)
 }
 
+/**
+ * Redraw the plan's STRUCTURE — the page being built, its sections, the pages waiting.
+ *
+ * ⚠️ THIS IS THE EDIT THAT REACHES THE BUILD. Prose in this document is a record and
+ * changes nothing (see `editPlanText`); the outline compiles into `buildOutline`, which
+ * the generation card and the Autopilot proposals read, so a rename here renames the
+ * section the card builds and the page the proposal offers.
+ */
+export function editPlanOutline(patch: Partial<OutlineEdits>) {
+  const { world, set, preset } = useWorld.getState()
+  set({ planEdits: { ...world.planEdits, outline: { ...world.planEdits.outline, ...patch } } }, preset)
+}
+
 /** Rewrite one section's bullets, entire — see `PlanEdits.items` for why entire. */
 export function editPlanItems(section: number, items: string[]) {
   const { world, set, preset } = useWorld.getState()
@@ -677,6 +690,12 @@ export function startBuild(prompt: string) {
        * `suggest` rides along for the reason `finishBuild` states about `build`: the staged
        * `chat` axis would clear it anyway, and saying so is the difference between a decision
        * and an accident.
+       *
+       * ⚠️ And `planEdits` matters MORE since 11.09.2026 than when it was added. It used to
+       * hold only prose, which changes nothing; it now carries `outline` — the page and
+       * section names the customer drew, which `buildOutline` compiles and the generation
+       * card builds. Left behind, the last site's "Menu" would be the next site's Home
+       * section. Same trap the mode fell into, one axis over.
        */
       mode: 'autopilot',
       suggest: EMPTY_SUGGEST,

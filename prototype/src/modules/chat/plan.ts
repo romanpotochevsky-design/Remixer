@@ -34,6 +34,20 @@ export interface PlanSection {
   body?: Text
   /** Bullets, for sections that read as a list. Either or both. */
   items?: Text[]
+  /** A closing paragraph, under whatever the section draws. */
+  after?: Text
+  /**
+   * What the full-screen document draws INSTEAD of, or around, the prose (Figma
+   * 30115:55247 / 30121:59891). The card in the dock ignores these and renders the
+   * section's text — it is a 194px window with a fade over its last 152, which is no
+   * place for a control; the document is where a decision is made.
+   *
+   *  · `outline`   the page stack: the page this pass builds with its sections, the
+   *                pages waiting under it. Editable, and the ONE edit that reaches the
+   *                build (`OutlineEdits`).
+   *  · `decisions` the palette and the lettering as cards you can re-pick in place.
+   */
+  draws?: 'outline' | 'decisions'
 }
 
 export interface Plan {
@@ -44,6 +58,9 @@ export interface Plan {
 }
 
 const q = (key: BriefKey) => BRIEF_QUESTIONS.find((x) => x.key === key)!
+
+/** How many pages wait under the landing page, by answer — mirrors `REST` in build.ts. */
+const REST_COUNT: Record<string, number> = { few: 3, one: 0, catalogue: 2 }
 
 /** The free text behind an answer, or undefined when it was a pick (or a skip). */
 const typed = (v: string | undefined) => (v && v.startsWith(OTHER) ? v.slice(OTHER.length).trim() : undefined)
@@ -106,21 +123,6 @@ const GOAL_CHECK: Record<string, Text> = {
   work: { en: 'Every image loads at full size without stretching or cropping the subject.', uk: 'Кожне зображення відкривається на повний розмір без розтягування й обрізання.' },
 }
 
-const PAGES_STRUCTURE: Record<string, Text> = {
-  one: {
-    en: 'One page, top to bottom, with the menu jumping to sections instead of loading new pages.',
-    uk: 'Одна сторінка згори донизу, меню стрибає по розділах, а не вантажить нові сторінки.',
-  },
-  few: {
-    en: 'Four pages — Home, About, Services and Contact — sharing one header and one footer.',
-    uk: 'Чотири сторінки — Головна, Про нас, Послуги, Контакти — зі спільною шапкою і футером.',
-  },
-  catalogue: {
-    en: 'A list page plus a page per item, built from one template so new items need no new design.',
-    uk: 'Сторінка-список плюс сторінка на позицію, з одного шаблону — нові позиції не вимагають нового дизайну.',
-  },
-}
-
 /* ------------------------------------------------------------------- the plan */
 
 export function buildPlan(a: BriefAnswers): Plan {
@@ -146,12 +148,46 @@ export function buildPlan(a: BriefAnswers): Plan {
     ? { en: `In your words: “${goal.own}”. The whole page is arranged around that.`, uk: `Вашими словами: «${goal.own}». Уся сторінка вибудувана навколо цього.` }
     : GOAL_PITCH[goal.id ?? 'enquiries']
 
-  /* ---- structure ---- */
-  const structure: Text = pages.own
-    ? { en: `As you described it: “${pages.own}”.`, uk: `Як ви описали: «${pages.own}».` }
-    : pages.picked
-      ? PAGES_STRUCTURE[pages.id ?? 'one']
-      : pick(PAGES_STRUCTURE[pages.id ?? 'one'])
+  /*
+   * ---- structure ----
+   *
+   * ⚠️ THE PLAN USED TO PROMISE FOUR PAGES AND THE BUILD DELIVERS ONE (designer,
+   * 11.09.2026: "мы всегда будем генерировать только одну основную страницу… вот это
+   * должно как то быть учтено в плане"). The generation card has told that truth since
+   * 07.09 — Home with its sections open, the rest named and closed — while the document
+   * the customer APPROVES said "Four pages — Home, About, Services and Contact". So the
+   * prose stops describing the site's shape (the stack draws it now, from the same
+   * `buildOutline`, one beat earlier) and says what the button does instead.
+   *
+   * In minutes and in control, not in credits: a price line lived under this plan once and
+   * the designer cut it — beside the decision it read as a warning. Here it is the method.
+   */
+  const single = (REST_COUNT[pages.id ?? 'few'] ?? 0) === 0
+  const lede: Text = single
+    ? {
+        en: 'One page, top to bottom — about a minute, and that is the whole site.',
+        uk: 'Одна сторінка згори донизу — близько хвилини, і це весь сайт.',
+      }
+    : {
+        en: 'Home first, and only Home — about a minute. You see it finished before anything else gets built.',
+        uk: 'Спершу головна, і тільки вона — близько хвилини. Ви побачите її готовою, перш ніж збиратиметься решта.',
+      }
+  /* ⚠️ The honesty rule survives the redraw: a page count nobody chose still says so. The
+     board draws no such tag on the stack, and the stack is not where it belongs — this is
+     the sentence that introduces the stack, so the clause goes here. */
+  const ledeText: Text = pages.picked ? lede : pick(lede)
+
+  /* What happens after — and it names the window that already exists (autopilot.ts).
+     True on a first build by construction: `startBuild` puts every new site in Autopilot. */
+  const after: Text = single
+    ? {
+        en: 'When it’s ready I’ll ask what to change next, or whether to publish.',
+        uk: 'Коли буде готово, запитаю, що змінити далі — або чи публікувати.',
+      }
+    : {
+        en: 'When Home looks right I’ll ask what’s next — keep working on this page, or start the next one. One page at a time, so a change of mind costs one page and not the whole site.',
+        uk: 'Коли головна буде такою, як треба, запитаю, що далі — доробляти цю сторінку чи починати наступну. По сторінці за раз: передумали — це коштує однієї сторінки, а не всього сайту.',
+      }
 
   /* ---- look: the palette's own hexes, so the plan is checkable rather than vague ---- */
   const paletteOpt = palette.option
@@ -186,11 +222,15 @@ export function buildPlan(a: BriefAnswers): Plan {
     sections: [
       {
         heading: { en: 'What we’ll build', uk: 'Що зберемо' },
-        items: [structure, ...blocks],
+        body: ledeText,
+        items: blocks,
+        after,
+        draws: 'outline',
       },
       {
         heading: { en: 'How it will look', uk: 'Як це виглядатиме' },
         items: [paletteLine, typeLine],
+        draws: 'decisions',
       },
       {
         heading: { en: 'What we’ll check before handing it back', uk: 'Що перевіримо, перш ніж віддати' },

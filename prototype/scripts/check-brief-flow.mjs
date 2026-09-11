@@ -898,9 +898,15 @@ check('the plan is docked where the questions were', await planUp())
 }
 {
   const body = await text()
+  /* ⚠️ The structure stopped being a sentence on 11.09.2026: the plan draws the stack the
+     generation card draws, so "Four pages — Home, About…" is gone and the pages are NAMED in
+     it instead. The compiled-not-canned claim is the same one, read off the new drawing. */
+  /* ⚠️ Read off the CARD, which is what is on screen here — the stack with the page names
+     is drawn only by the full document. The title follows `goal`, and the lede follows
+     `pages`: with "one page" it would read "One page, top to bottom" instead. Both compiled. */
   check('the plan is compiled from the answers, not canned',
-    body.includes('A site that sells') && body.includes('Four pages'),
-    'title and structure should follow goal=sell, pages=few')
+    body.includes('A site that sells') && body.includes('Home first, and only Home'),
+    'title should follow goal=sell and the lede pages=few')
   /* The status line must not name a button by a label the button does not wear: the board
      renamed `Approve` to `Start Building`, so the line moved with it. */
   check('the waiting line points at the verb the card actually carries',
@@ -918,8 +924,8 @@ check('Review opens the canvas on the plan', (await previewState()) === 'open')
   /* THE PLAN IS A DOCUMENT YOU CAN TYPE IN (designer, 09.09.2026: "возможность редактировать
      Build Plan текст как в обычном ворд документе"). The edits are a layer over the compiled
      plan, so the card in the dock has to come back saying the same thing. */
-  const before = await p.$$eval('[data-plan-path^="s1:"]', (els) =>
-    els.filter((e) => /s1:\d+$/.test(e.dataset.planPath)).length)
+  const before = await p.$$eval('[data-plan-path^="s2:"]', (els) =>
+    els.filter((e) => /s2:\d+$/.test(e.dataset.planPath)).length)
   await p.click('[data-plan-path="title"]')
   await p.keyboard.press('Control+a')
   await p.keyboard.type('Our studio, on one page')
@@ -928,18 +934,18 @@ check('Review opens the canvas on the plan', (await previewState()) === 'open')
   check('the plan’s own words can be rewritten in place',
     (await p.$eval('[data-plan-path="title"]', (e) => e.textContent)) === 'Our studio, on one page')
   /* Enter opens the next bullet — the first thing anybody tries in a list. */
-  await p.click('[data-plan-path="s1:0"]')
+  await p.click('[data-plan-path="s2:0"]')
   await p.keyboard.press('End'); await p.keyboard.press('Enter')
   await p.waitForTimeout(300)
-  const after = await p.$$eval('[data-plan-path^="s1:"]', (els) =>
-    els.filter((e) => /s1:\d+$/.test(e.dataset.planPath)).length)
+  const after = await p.$$eval('[data-plan-path^="s2:"]', (els) =>
+    els.filter((e) => /s2:\d+$/.test(e.dataset.planPath)).length)
   check('…and Enter in a bullet opens the next one', after === before + 1, `${before} → ${after}`)
   /* Backspace closes an empty one again, so the document goes back as it was. */
   await p.keyboard.press('Backspace')
   await p.waitForTimeout(300)
   check('…and Backspace on an empty bullet closes it',
-    (await p.$$eval('[data-plan-path^="s1:"]', (els) =>
-      els.filter((e) => /s1:\d+$/.test(e.dataset.planPath)).length)) === before)
+    (await p.$$eval('[data-plan-path^="s2:"]', (els) =>
+      els.filter((e) => /s2:\d+$/.test(e.dataset.planPath)).length)) === before)
 }
 check('…with the chat back at its split width', (await asideWidth()) < 480, `aside=${Math.round(await asideWidth())}px`)
 {
@@ -2085,6 +2091,125 @@ check('…and the typed prompt is built as given', await cardUp())
   await buildFromHome('website')
   await p.waitForTimeout(1200)
   check('there is no switcher before the first site exists', !(await pill()))
+}
+
+/* =========================== G. the Build Plan by its own board (Figma 30115:55247 /
+ * 30121:59891, designer 11.09.2026: "тебе нужно перфект пиксель сделать вот эти компоненты").
+ *
+ * The document draws two things the prose used to describe: the page stack — one page is
+ * generated in a pass, the rest are named and wait — and the palette and lettering as
+ * controls. The measurements here are the board's numbers; the last two checks are the ones
+ * that matter, because they say which of those edits reaches the build and which does not. */
+
+await buildFromHome('website')
+await p.click('.dock-foot button:has-text("Skip all")')
+await p.waitForTimeout(2600)
+await p.click('button:has-text("Review")')
+await p.waitForTimeout(900)
+await shot('30-plan-review')
+{
+  const box = (sel) => p.$eval(sel, (n) => { const r = n.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 100) / 100) })
+  const doc = await p.evaluate(() => {
+    const h1 = document.querySelector('h1')
+    const c = getComputedStyle(h1)
+    const col = h1.parentElement.getBoundingClientRect()
+    return { col: Math.round(col.width), size: c.fontSize, weight: c.fontWeight }
+  })
+  /* 30107:53167 — the document is 800 wide; 30107:53245 — Gilroy Medium 48. */
+  check('the plan document is the board’s 800 measure', doc.col === 800, `${doc.col}px`)
+  check('…and its title is 48 medium', doc.size === '48px' && doc.weight === '500', `${doc.size}/${doc.weight}`)
+
+  const stack = await p.evaluate(() => {
+    const pill = document.querySelector('[data-plan-pill]')
+    const head = pill?.closest('div')
+    const page = [...document.querySelectorAll('[data-plan-path]')].filter((n) => n.getAttribute('data-plan-path')?.startsWith('outline:page:'))
+    const rows = [...document.querySelectorAll('.plan-row')]
+    const seam = page.map((n) => getComputedStyle(n.closest('.plan-row')).borderBottomWidth)
+    const c = getComputedStyle(pill)
+    return {
+      head: head ? [Math.round(head.getBoundingClientRect().width), Math.round(head.getBoundingClientRect().height)] : null,
+      pillInk: c.color,
+      pillPlate: getComputedStyle(pill.parentElement).backgroundColor,
+      seam,
+      rows: rows.length,
+    }
+  })
+  /* 30107:53402 — 48 tall and 796 wide: the card's stroke and the page block's each take a
+     pixel, and the board's `px-px` IS that stroke, not padding on top of it. */
+  check('the page block’s header is the board’s 796 × 48', stack.head?.[0] === 796 && stack.head?.[1] === 48, JSON.stringify(stack.head))
+  /* 30121:60003 — `Neutral Alpha/1000` is #ffffff in the dark theme and the label is
+     `Text/default/on-default` #09090b. The light export prints both inverted. */
+  check('…and "In this build" is a WHITE plate with dark ink, as the dark theme resolves it',
+    stack.pillPlate === 'rgb(255, 255, 255)' && stack.pillInk === 'rgb(9, 9, 11)',
+    `${stack.pillPlate} / ${stack.pillInk}`)
+  /* 30107:53498 / 30107:53507 — every waiting page seals its bottom EXCEPT the last, whose
+     corner is the card's own. The same rule the generation card already follows. */
+  check('every waiting page seals its bottom except the last',
+    stack.seam.length > 1 && stack.seam.slice(0, -1).every((w) => w === '1px') && stack.seam.at(-1) === '0px',
+    stack.seam.join(' · '))
+
+  const cards = await p.evaluate(() => {
+    const c = [...document.querySelectorAll('div')].filter((n) => getComputedStyle(n).backgroundColor === 'rgb(35, 35, 37)')
+    const pencil = document.querySelector('button[aria-label="Choose another palette"]')
+    const pc = pencil ? getComputedStyle(pencil) : null
+    return {
+      palette: c[0] ? [Math.round(c[0].getBoundingClientRect().width), Math.round(c[0].getBoundingClientRect().height)] : null,
+      n: c.length,
+      pencil: pencil ? [Math.round(pencil.getBoundingClientRect().width), pc.borderRadius] : null,
+    }
+  })
+  /* 30121:55288 — 800 × 74 on `#232325`, and the rim is an inset shadow: a border would add
+     the 2px that measured 76. 30121:59085 — the pencil is 40 at radius 10. */
+  check('the palette decision is the board’s 800 × 74 card', cards.palette?.[0] === 800 && cards.palette?.[1] === 74, JSON.stringify(cards.palette))
+  check('…there are two of them, and the pencil is 40 at radius 10',
+    cards.n === 2 && cards.pencil?.[0] === 40 && cards.pencil?.[1] === '10px', JSON.stringify(cards))
+
+  /* The pencil opens the question's own grid, and picking there recompiles the document. */
+  await p.click('button[aria-label="Choose another palette"]')
+  await p.waitForTimeout(500)
+  await shot('31-plan-decision-open')
+  const tiles = await p.$$('.brief-tile--swatch')
+  check('the pencil opens the question’s own grid', tiles.length === 4, String(tiles.length))
+  await tiles[1].click()
+  await p.waitForTimeout(600)
+  const body = await text()
+  /* the palette stops being a pick; the other three questions are still unanswered, so the
+     tag is still on them — the claim is about THIS decision, not the document */
+  const swatchTag = await p.evaluate(() => {
+    const hex = [...document.querySelectorAll('span')].find((n) => n.textContent?.startsWith('#'))
+    return hex?.closest('div')?.parentElement?.innerText ?? ''
+  })
+  check('…and picking there recompiles the plan',
+    body.includes('Sea Glass') && !swatchTag.includes('Remixer’s pick'), swatchTag.replace(/\n/g, ' · ').slice(0, 60))
+}
+{
+  /* ⚠️ THE ONE EDIT THAT REACHES THE BUILD. The stack's names compile into `buildOutline`,
+     which the generation card reads — so a rename here has to come out of the other end. */
+  await p.click('[data-plan-path="outline:page:1"]')
+  await p.keyboard.press('Control+a')
+  await p.keyboard.type('Menu')
+  await p.click('h1')
+  await p.waitForTimeout(400)
+  const named = await p.$eval('[data-plan-path="outline:page:1"]', (n) => n.textContent)
+  check('a page renames in place in the plan', named === 'Menu', String(named))
+
+  /* and the prose beside it does NOT: the document is a record, not a command line */
+  const goalWas = await p.$eval('[data-plan-path="goal"]', (n) => n.textContent)
+  await p.click('[data-plan-path="goal"]')
+  await p.keyboard.press('Control+a')
+  await p.keyboard.type('Build me a spaceship instead.')
+  await p.click('h1')
+  await p.waitForTimeout(300)
+
+  await p.click('button:has-text("Start Building")')
+  /* wait for the card rather than a stopwatch: the ack lands first, the outline after it */
+  await p.waitForFunction(() => document.body.innerText.includes('Layout & navigation'), null, { timeout: 15000 })
+  await p.waitForTimeout(400)
+  await shot('32-plan-build-started')
+  const card = await text()
+  check('…and the generation card builds the page the customer named', card.includes('Menu'), card.includes('Menu') ? 'Menu' : 'not carried')
+  check('…while the rewritten prose changed nothing about the build',
+    !card.includes('spaceship') && goalWas.length > 0)
 }
 
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))

@@ -3824,6 +3824,76 @@ html[data-drag] .shell-aside { transition: none; }
 .plan-edit:empty::before { content: ''; display: inline-block; min-height: 1em; }
 
 /* ------------------------------------------------------------------------
+ * A ROW OF THE PLAN'S STACK IS AN OBJECT — Figma 30115:55247 (designer,
+ * 11.09.2026, on the first version of it: "бред какой то как удалить страницу
+ * или секцию? как поменять местами?").
+ *
+ * The document's Enter/Backspace idiom is right for a bullet and wrong here:
+ * a bullet is nothing but text, so select-all-and-delete IS how you remove one,
+ * but nobody guesses that on something drawn as a row — and it offers no way to
+ * reorder at all. So each row reveals the two controls a list of objects has
+ * always had: the row's own mark becomes a grip, and an ✕ appears at its right.
+ *
+ * ⚠️ SPACE FOR BOTH IS RESERVED AT REST, so nothing moves when they appear. The
+ * grip is a swap inside the mark's OWN box rather than a column of its own —
+ * that is what keeps the row pixel-identical to the generation card's, which is
+ * the whole point of drawing the plan as that card at rest.
+ * ---------------------------------------------------------------------- */
+.plan-row { position: relative; padding-right: 32px; }
+.plan-grip {
+  position: relative;
+  display: block;
+  width: var(--grip, 20px);
+  height: var(--grip, 20px);
+  cursor: grab;
+  touch-action: none;
+}
+.plan-grip:active { cursor: grabbing; }
+.plan-grip > * {
+  position: absolute;
+  inset: 0;
+  transition: opacity var(--dur-fast) var(--ease-std);
+}
+.plan-grip-dots { opacity: 0; }
+.plan-row:hover .plan-grip-dots { opacity: 1; }
+.plan-row:hover .plan-grip-mark { opacity: 0; }
+.plan-row-x {
+  position: absolute;
+  right: 0;
+  top: 12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: #ffffff7a;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-std), background-color var(--dur-fast) var(--ease-std),
+    color var(--dur-fast) var(--ease-std);
+}
+.plan-row:hover .plan-row-x,
+.plan-row-x:focus-visible { opacity: 1; pointer-events: auto; }
+.plan-row-x:hover { background: var(--white-100); color: #fff; }
+/* the section rows put the ✕ on the icon's line, not in the middle of the spine gap */
+.plan-row.plan-row--step .plan-row-x { top: 0; }
+/* a row being carried to a new slot */
+.plan-row[data-dragging] { opacity: .45; }
+@media (hover: none) {
+  .plan-grip-dots { opacity: 1; }
+  .plan-grip-mark { opacity: 0; }
+  .plan-row-x { opacity: 1; pointer-events: auto; }
+}
+/* "Add a section" / "Add a page": an action in a list of things that are only named */
+.plan-add {
+  border-radius: 8px;
+  transition: background-color var(--dur-fast) var(--ease-std);
+}
+@media (hover: hover) {
+  .plan-add:hover { background: var(--white-050); }
+}
+
+/* ------------------------------------------------------------------------
  * THE THREAD STEPS BACK FOR A DOCKED FORM (designer, 09.09.2026).
  *
  * The question panel, the plan, an Autopilot proposal and the satisfaction card

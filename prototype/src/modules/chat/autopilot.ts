@@ -35,6 +35,7 @@
 import type { Text } from '@/i18n'
 import { BRIEF_QUESTIONS, optionById, type BriefAnswers } from './brief'
 import { buildOutline } from './build'
+import type { OutlineEdits } from '@/state/world'
 
 /** What accepting an option does. */
 export type SuggestAct =
@@ -193,8 +194,8 @@ function pageOption(name: Text): SuggestOption {
  * it already is. A panel that offers the thing you can do without it is worse than no panel,
  * so this returns null and nothing docks.
  */
-export function nextProposal(answers: BriefAnswers, started: string[], published: boolean): Proposal | null {
-  const waiting = buildOutline(answers)
+export function nextProposal(answers: BriefAnswers, started: string[], published: boolean, outline?: OutlineEdits): Proposal | null {
+  const waiting = buildOutline(answers, outline)
     .slice(1)
     .filter((p) => !started.includes(p.name.en))
 
@@ -253,11 +254,11 @@ const PAGES_UK = ['сторінок', 'сторінка', 'сторінки', '�
  * So this states the fact, says how much of the plan is still outstanding — the one thing
  * the panel cannot say, because a panel shows at most two pages of it — and hands over.
  */
-export function leadingDone(a: BriefAnswers): Text {
+export function leadingDone(a: BriefAnswers, outline?: OutlineEdits): Text {
   const goal = optionById(BRIEF_QUESTIONS.find((q) => q.key === 'goal')!, a.goal)
   const gEn = goal ? `, ${goal.ack!.en}` : ''
   const gUk = goal ? `, ${goal.ack!.uk}` : ''
-  const n = Math.max(0, buildOutline(a).length - 1)
+  const n = Math.max(0, buildOutline(a, outline).length - 1)
 
   /* ⚠️ CAPITALISED at the use site, not in the table: this word opens a SENTENCE. The first
      build of it read "…built to sell. three more pages are waiting", which `check:brief`
