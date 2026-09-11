@@ -455,6 +455,45 @@ body {
 .stack-add-sec { margin-top: 14px; margin-left: 48px; }
 .stack-add-page { margin-top: 10px; }
 
+/* ----------------------------------------------------------------------
+   A ROW IN THE STACK IS AN OBJECT, NOT A LINE OF TEXT — and objects carry
+   visible handles (designer, 11.09.2026: "бред какой то как удалить страницу
+   или секцию? как поменять местами?"). The document's Enter/Backspace idiom
+   is right for a bullet and wrong here: nobody discovers "select all, delete,
+   delete again" on something drawn as a row, and it offers no way to reorder
+   at all. So each row reveals, on hover, the two controls a list of objects
+   has always had: grab to move, ✕ to remove. Space for both is reserved at
+   rest, so nothing shifts when they appear.
+   ---------------------------------------------------------------------- */
+.row-grip { position: relative; width: var(--grip, 20px); height: var(--grip, 20px); flex: none; cursor: grab; touch-action: none; }
+.row-grip > * { position: absolute; inset: 0; transition: opacity var(--dur-fast) var(--ease-std); }
+.row-grip .grip { opacity: 0; }
+.stack-row:hover .row-grip .grip, .stack-wait:hover .row-grip .grip { opacity: 1; }
+.stack-row:hover .row-grip .mark, .stack-wait:hover .row-grip .mark { opacity: 0; }
+.row-grip:active { cursor: grabbing; }
+
+.row-x {
+  position: absolute; right: 0; top: 0;
+  display: grid; place-items: center; width: 24px; height: 24px;
+  border: 0; border-radius: 6px; background: none; color: #ffffff7a; cursor: pointer;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-std), background-color var(--dur-fast) var(--ease-std), color var(--dur-fast) var(--ease-std);
+}
+.stack-row:hover .row-x, .stack-wait:hover .row-x, .row-x:focus-visible { opacity: 1; pointer-events: auto; }
+.row-x:hover { background: var(--white-100); color: #fff; }
+@media (hover: none) {
+  .row-grip .grip { opacity: 1; }
+  .row-grip .mark { opacity: 0; }
+  .row-x { opacity: 1; pointer-events: auto; }
+}
+/* room for ✕ so it never lands on a name, reserved whether or not it is showing */
+.stack-row { padding-right: 32px; }
+.stack-wait { padding-right: 36px; }
+.stack-wait { position: relative; }
+/* the row under the pointer while another is being dragged over it */
+.dragging { opacity: .45; }
+.stack-row.dragging, .stack-wait.dragging { transition: none; }
+
 .lede { margin-top: 12px !important; }
 .after { margin-top: 14px !important; }
 </style>
@@ -830,6 +869,96 @@ body {
     return s
   }
 
+  /** six dots — the universal "grab me", shown in place of the row's own mark */
+  function gripGlyph() {
+    const s = document.createElementNS(SVGNS, 'svg')
+    s.setAttribute('width', '20'); s.setAttribute('height', '20')
+    s.setAttribute('viewBox', '0 0 20 20'); s.setAttribute('class', 'grip')
+    s.setAttribute('aria-hidden', 'true')
+    for (const [x, y] of [[7,5],[13,5],[7,10],[13,10],[7,15],[13,15]]) {
+      const c = document.createElementNS(SVGNS, 'circle')
+      c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', '1.4')
+      c.setAttribute('fill', '#ffffff8f')
+      s.appendChild(c)
+    }
+    return s
+  }
+  /** the row's own mark, with the grip waiting under the pointer in the same box */
+  function grip(mark, size) {
+    const w = el('span', 'row-grip')
+    if (size) w.style.setProperty('--grip', size + 'px')
+    mark.classList.add('mark')
+    w.append(mark, gripGlyph())
+    return w
+  }
+  function removeBtn(label, onClick) {
+    const b = el('button', 'row-x')
+    b.type = 'button'
+    b.setAttribute('aria-label', label)
+    const s = document.createElementNS(SVGNS, 'svg')
+    s.setAttribute('width', '10'); s.setAttribute('height', '10')
+    s.setAttribute('viewBox', '0 0 10 10'); s.setAttribute('fill', 'none'); s.setAttribute('aria-hidden', 'true')
+    const p = document.createElementNS(SVGNS, 'path')
+    p.setAttribute('d', 'M1 1l8 8M9 1l-8 8')
+    p.setAttribute('stroke', 'currentColor'); p.setAttribute('stroke-width', '1.5'); p.setAttribute('stroke-linecap', 'round')
+    s.appendChild(p)
+    b.appendChild(s)
+    b.addEventListener('click', onClick)
+    return b
+  }
+
+  /**
+   * DRAG TO REORDER, by the grip only.
+   *
+   * The rows are moved in the DOM as the pointer crosses their midpoints and the new
+   * order is written to state on release — the list is never re-rendered mid-drag,
+   * because rebuilding it would throw away the node under the pointer.
+   */
+  function wireDrag(handle, row, container, arr, onDone) {
+    handle.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return
+      e.preventDefault()
+      row.classList.add('dragging')
+
+      /* ⚠️ PLACE BY POSITION, NOT BY STEPS. Swapping with one neighbour per pointermove
+         only reaches the far end if the moves are fine-grained — measured: dragging a
+         section from third to first landed it second, because the layout shifted under
+         the next move and the row had already passed the test. The pointer's y decides
+         the slot outright: the first row whose middle is below it. And the middle is of
+         the row's CONTENT — a section row carries the spine gap as padding-bottom, which
+         would otherwise drag its midpoint well below what the eye calls the row. */
+      const move = (ev) => {
+        const rows = [...container.children].filter((n) => n !== row && n.dataset.row !== undefined)
+        let target = null
+        for (const other of rows) {
+          const r = other.getBoundingClientRect()
+          const pb = parseFloat(getComputedStyle(other).paddingBottom) || 0
+          if (ev.clientY < r.top + (r.height - pb) / 2) { target = other; break }
+        }
+        /* never touch the DOM for a move that changes nothing — every reinsertion is a
+           layout, and on the last slot this would fire on every single pointermove */
+        if (target) { if (row.nextSibling !== target) container.insertBefore(row, target) }
+        else if (container.lastElementChild !== row) container.appendChild(row)
+      }
+      const up = () => {
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        window.removeEventListener('pointercancel', up)
+        row.classList.remove('dragging')
+        const order = [...container.children].filter((n) => n.dataset.row !== undefined).map((n) => +n.dataset.row)
+        onDone(order.map((i) => arr[i]))
+      }
+      /* ⚠️ THE LISTENERS LIVE ON THE WINDOW, NOT ON THE HANDLE, AND THERE IS NO POINTER
+         CAPTURE. Moving a node in the DOM RELEASES the capture it holds — so the first
+         reinsertion silently ended the drag and every later pointermove went to whatever
+         was under the cursor. Measured: one move event after pointerdown, then nothing,
+         and no pointerup at all. The window sees them all whatever the row does. */
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', up)
+    })
+  }
+
   /* ------------------------------------------------- the editable line
    * ⚠️ NOTHING BUT THE USER OWNS THE TEXT while the caret is in it. Re-rendering a
    * contentEditable's children under the caret throws it to the front on every
@@ -916,10 +1045,13 @@ body {
     const list = el('ol', 'stack-list')
     o.sections.forEach((name, i) => {
       const li = el('li', 'stack-row')
+      li.dataset.row = i
       const elbow = el('span', 'stack-elbow'); elbow.appendChild(el('i'))
       const run = el('span', 'stack-run')
       const rowBody = el('span', 'stack-row-body')
-      rowBody.append(queuedIcon(), editable(name, 'stack-row-name', {
+      const handle = grip(queuedIcon(), 24)
+      wireDrag(handle, li, list, o.sections, (next) => { o.sections = next; render() })
+      rowBody.append(handle, editable(name, 'stack-row-name', {
         key: 'sec:' + i,
         onCommit: (v) => { if (v) { o.sections[i] = v } else if (o.sections.length > 1) { o.sections.splice(i, 1); render() } },
         onEnter: () => { o.sections.splice(i + 1, 0, ''); pendingFocus = 'sec:' + (i + 1); render() },
@@ -928,6 +1060,11 @@ body {
           o.sections.splice(i, 1); pendingFocus = 'sec:' + Math.max(0, i - 1); render()
         },
       }))
+      if (o.sections.length > 1) {
+        li.appendChild(removeBtn('Remove ' + (name || 'this section'), () => {
+          o.sections.splice(i, 1); render()
+        }))
+      }
       li.append(elbow, run, rowBody)
       list.appendChild(li)
     })
@@ -946,12 +1083,16 @@ body {
 
     o.rest.forEach((name, i) => {
       const r = el('div', 'stack-wait')
-      r.append(pageIcon(true), editable(name, 'stack-wait-name', {
+      r.dataset.row = i
+      const handle = grip(pageIcon(true))
+      wireDrag(handle, r, stack, o.rest, (next) => { o.rest = next; render() })
+      r.append(handle, editable(name, 'stack-wait-name', {
         key: 'page:' + i,
         onCommit: (v) => { if (v) { o.rest[i] = v } else { o.rest.splice(i, 1); render() } },
         onEnter: () => { o.rest.splice(i + 1, 0, ''); pendingFocus = 'page:' + (i + 1); render() },
         onEmptyBackspace: () => { o.rest.splice(i, 1); pendingFocus = i > 0 ? 'page:' + (i - 1) : 'home'; render() },
       }))
+      r.appendChild(removeBtn('Remove ' + (name || 'this page'), () => { o.rest.splice(i, 1); render() }))
       stack.appendChild(r)
     })
     w.appendChild(stack)
