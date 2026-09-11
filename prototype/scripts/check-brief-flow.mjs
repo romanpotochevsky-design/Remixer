@@ -970,7 +970,13 @@ check('Review opens the canvas on the plan', (await previewState()) === 'open')
     (await p.$$eval('[data-plan-path^="s2:"]', (els) =>
       els.filter((e) => /s2:\d+$/.test(e.dataset.planPath)).length)) === before)
 }
-check('…with the chat back at its split width', (await asideWidth()) < 480, `aside=${Math.round(await asideWidth())}px`)
+/* ⚠️ REVIEW SPLITS A WIDE SHELL IN HALF (designer, 11.09.2026). The plan is a document and
+   the thread beside it is the conversation that wrote it — neither previews the other, so on
+   a monitor with room they are two equal columns. The half is taken only when the canvas
+   half still holds the document's own 800 measure plus its padding; the checker's viewport
+   is 1440, where it does not, so the split stays where the board puts it. */
+check('…with the chat back at its split width on a laptop-sized shell',
+  (await asideWidth()) < 480, `aside=${Math.round(await asideWidth())}px`)
 {
   const doc = await text()
   check('the document carries what the card could only start',

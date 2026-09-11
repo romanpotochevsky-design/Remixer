@@ -14,7 +14,7 @@
  */
 import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest, type OutlineEdits } from '@/state/world'
 import type { Text } from '@/i18n'
-import { useUI } from '@/state/ui'
+import { useUI, CHAT_MAX } from '@/state/ui'
 import { baselineThread, replyTo, streamDuration } from './thread'
 import {
   isWeakPrompt, BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS, briefAck, briefDone, OTHER,
@@ -372,17 +372,48 @@ function offerPlan() {
  * is free; the chat narrows back to its split width and the document takes the rest.
  * Exactly the shape the designer asked for (07.09.2026).
  */
+/**
+ * ⚠️ ON A WIDE SCREEN, REVIEW SPLITS THE SHELL IN HALF (designer, 11.09.2026: "когда
+ * нажимаешь на «посмотреть план», открывало детали плана вот так — 50% на 50%… но это
+ * касается десктопных больших мониторов, на ноутбуках места по ширине мало и чат будет
+ * значительно меньше").
+ *
+ * Why half rather than the shell's usual 432 split: the plan is a DOCUMENT, and the thread
+ * beside it is the conversation that wrote it. Neither is a preview of the other, so on a
+ * monitor with room to spare they are two equal columns. The 432 split exists because a
+ * SITE preview wants every pixel it can get; a document that measures 800 does not.
+ *
+ * ⚠️ AND IT NEVER TAKES ROOM AWAY. The half is applied only when the canvas half can still
+ * hold the document at its own measure — 800 plus its 32 of padding each side — otherwise
+ * the width stays exactly as it was. On a laptop that leaves the split alone, which is the
+ * case the designer named; and a chat somebody has already dragged WIDER than half is not
+ * dragged back. A default, not a lock: the resizer still owns the width afterwards.
+ */
+const PLAN_MEASURE = 864
+
 export function reviewPlan() {
   const ui = useUI.getState()
   ui.setPreviewOpen(true)
   ui.openSurface('plan')
+  /* the rail's width is a token, so it is read rather than restated here */
+  const rail = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail-w')) || 56
+  const shell = typeof window === 'undefined' ? 0 : window.innerWidth - rail
+  const half = Math.round(shell / 2)
+  if (shell - half >= PLAN_MEASURE && half > ui.chatWidth) {
+    planWidthWas = ui.chatWidth
+    ui.setChatWidth(Math.min(half, CHAT_MAX))
+  }
 }
+
+/** What the chat was before Review widened it, so ✕ gives the canvas its room back. */
+let planWidthWas: number | null = null
 
 /** ✕ in the plan surface — back to the dock card, canvas out of the way again. */
 export function closePlanReview() {
   const ui = useUI.getState()
   ui.closeSurface()
   ui.setPreviewOpen(false)
+  if (planWidthWas !== null) { ui.setChatWidth(planWidthWas); planWidthWas = null }
 }
 
 /**
