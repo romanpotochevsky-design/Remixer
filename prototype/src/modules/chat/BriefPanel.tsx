@@ -230,6 +230,25 @@ export function Pick({ className, on, label, title, onPick, children }: {
  */
 const RECOMMENDED: Text = { en: 'Recommended', uk: 'Рекомендовано' }
 
+/**
+ * THE CHIP ITSELF — glass at the size of a word (`liquid-glass--chip` in index.css;
+ * designer, 11.09.2026: "ты можешь эту пилюлю сделать дизайн пилюли в стиле Apple liquid
+ * glass?" and "сделай ее скругленной полностью").
+ *
+ * ⚠️ EXPORTED, because the plan wears the same object one moment later — there it reads
+ * "Remixer's pick" over a decision the customer left alone, here "Recommended" over one
+ * they are about to make. They were two copies for a day; a copy of a plate diverges on
+ * the first change to its rim, which is exactly the change this is.
+ */
+export function Chip({ label }: { label: Text }) {
+  const { t } = useT()
+  return (
+    <span className="liquid-glass liquid-glass--chip flex h-6 flex-none items-center whitespace-nowrap rounded-full px-2.5 text-[13px] font-medium leading-none text-[var(--white-720)]">
+      {t(label)}
+    </span>
+  )
+}
+
 export function Row({ name, detail, on, recommended, onPick }: {
   name: Text
   detail?: Text
@@ -252,11 +271,7 @@ export function Row({ name, detail, on, recommended, onPick }: {
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-[15px] font-medium leading-[1.4] text-white">{t(name)}</span>
-          {recommended && (
-            <span className="flex h-6 flex-none items-center whitespace-nowrap rounded-[8px] bg-[var(--white-100)] px-2.5 text-[13px] font-medium leading-none text-[var(--white-720)]">
-              {t(RECOMMENDED)}
-            </span>
-          )}
+          {recommended && <Chip label={RECOMMENDED} />}
         </span>
         {/* the consequence — what changes on the page if this is picked (29464:34362) */}
         <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">{detail ? t(detail) : null}</span>

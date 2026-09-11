@@ -954,6 +954,37 @@
     background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
   }
   /*
+   * THE CHIP — glass at the size of a word (designer, 11.09.2026, on the Recommended
+   * plate: "ты можешь эту пилюлю сделать дизайн пилюли в стиле Apple liquid glass?",
+   * and "сделай ее скругленной полностью").
+   *
+   * It is the `--pill` member with two changes, and both are forced by where it sits.
+   *
+   * ⚠️ THE FILL IS LIGHT, NOT `Black/700`. Every other glass control in this product
+   * floats over the shell's own ground; this one sits INSIDE an answer row, on a card
+   * that is already `#09090b` at 56% over a near-black dock — measured, rgb(16 16 18).
+   * A dark fill there reads as a hole punched in the row rather than a chip lying on
+   * it. The wash stays the house 8%; what carries the glass is the rim.
+   *
+   * ⚠️ AND NO BLUR. The canon's base carries `backdrop-filter: blur(16px)`, which here
+   * would buy a compositing layer and change nothing: what is behind this chip is a
+   * FLAT colour in every one of its homes — the answers card over the dock's baked
+   * `#1a1a1c` (the dock's own blur was baked out for the Chromium resize bug), and the
+   * plan's decision card at a solid `#232325`. CLAUDE.md's rule verbatim: before you
+   * reach for `backdrop-filter`, look at what is behind the element.
+   *
+   * The rim is the `--pill`'s own diagonal, unchanged — a fifth set of numbers would be
+   * a fifth glass, and the point of the canon is that there is one.
+   */
+  .liquid-glass--chip {
+    background: var(--white-100);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .liquid-glass--chip::before {
+    background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
+  }
+  /*
  * THE BUILDER COMPOSER'S GLASS CIRCLES — the "+" and the mic beside the mode pill, from
  * the designer's own Figma inspector on the "+" (09.09.2026: "у кнопок этих в стиле Apple
  * liquid glass вот такие параметры, у тебя в вёрстке они не такие"):

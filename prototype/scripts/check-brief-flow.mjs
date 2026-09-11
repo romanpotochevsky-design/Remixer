@@ -398,6 +398,48 @@ const pixelAt = async (x, y) => {
 }
 {
   const before = await rowBoxes()
+/* The recommendation lives on `pages`, one step in — so step there to look at it. */
+await p.click('.dock-foot button:has-text("Next")')
+await p.waitForTimeout(800)
+/* ⚠️ RECOMMENDED — one option in a question can wear Remixer's own suggestion (designer,
+   11.09.2026). It is the plate the plan already carries as "Remixer's pick", one moment
+   earlier: there it says "you left this to me", here "take this one". `pages` is the only
+   question in the brief that carries it, and not as a preference — it is the option every
+   unanswered `pages` already falls to, said before the skip instead of apologised for
+   after. `goal` carries none: only the customer knows what their site is for. */
+{
+  const tags = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('.brief-opt')]
+    return rows.map((r) => [r.innerText.split('\n')[0], r.innerText.includes('Recommended')])
+  })
+  check('at most one option in a question is recommended', tags.filter(([, r]) => r).length <= 1,
+    JSON.stringify(tags))
+}
+{
+  /* ⚠️ THE CHIP IS THE HOUSE GLASS AT THE SIZE OF A WORD (designer, 11.09.2026), and its
+     two departures from `--pill` are the point: a LIGHT fill, because it sits inside a row
+     on a near-black card where `Black/700` would read as a hole; and NO blur, because what
+     is behind it is flat in both of its homes. The rim is `--pill`'s own diagonal. */
+  const chip = await p.evaluate(() => {
+    const n = [...document.querySelectorAll('span')].find((x) => x.textContent === 'Recommended')
+    if (!n) return null
+    const c = getComputedStyle(n)
+    const rim = getComputedStyle(n, '::before').background
+    return {
+      round: c.borderRadius, fill: c.backgroundColor, blur: c.backdropFilter,
+      diagonal: /to right bottom/.test(rim) && /0\.2\)/.test(rim),
+    }
+  })
+  check('Recommended is a fully round chip of the house glass',
+    chip?.round === '9999px' && chip?.fill === 'rgba(255, 255, 255, 0.08)' && chip?.diagonal === true,
+    JSON.stringify(chip))
+  check('…and it does not buy a blur for a flat ground', chip?.blur === 'none', chip?.blur)
+}
+
+/* back to the first question for what follows */
+await p.click('.dock-foot button >> nth=0')  /* ‹ — back to the question the block measures */
+await p.waitForTimeout(700)
+
   await p.hover('.brief-opt:nth-of-type(2)')
   /* ⚠️ WAIT FOR THE DRAW TO HAVE STARTED, not for a fixed 90ms. A flat pause makes this
      check depend on how loaded the machine is: on a busy run the animation's first frame
@@ -912,21 +954,6 @@ check('the plan is docked where the questions were', await planUp())
   check('the waiting line points at the verb the card actually carries',
     body.includes('start the build when it looks right') && !body.toLowerCase().includes('approve it'))
 }
-/* ⚠️ RECOMMENDED — one option in a question can wear Remixer's own suggestion (designer,
-   11.09.2026). It is the plate the plan already carries as "Remixer's pick", one moment
-   earlier: there it says "you left this to me", here "take this one". `pages` is the only
-   question in the brief that carries it, and not as a preference — it is the option every
-   unanswered `pages` already falls to, said before the skip instead of apologised for
-   after. `goal` carries none: only the customer knows what their site is for. */
-{
-  const tags = await p.evaluate(() => {
-    const rows = [...document.querySelectorAll('.brief-opt')]
-    return rows.map((r) => [r.innerText.split('\n')[0], r.innerText.includes('Recommended')])
-  })
-  check('at most one option in a question is recommended', tags.filter(([, r]) => r).length <= 1,
-    JSON.stringify(tags))
-}
-
 check('NOTHING is generated while the plan waits', (await previewState()) === 'closed')
 /* ⚠️ PUBLISH IS NOT DEAD ANY MORE — IT IS ABSENT, and so is the whole canvas toolbar
    (designer, 11.09.2026, off the Build Plan board: "эти кнопки пока сайт не сгенерирован нам

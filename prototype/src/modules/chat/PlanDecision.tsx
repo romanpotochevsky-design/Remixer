@@ -46,7 +46,7 @@ import { useWorld } from '@/state/world'
 import { useT, type Text } from '@/i18n'
 import { BRIEF_QUESTIONS, OTHER, optionById, type BriefKey, type BriefOption } from './brief'
 import { answerBrief } from './send'
-import { Pick, PickDefs } from './BriefPanel'
+import { Pick, PickDefs, Chip } from './BriefPanel'
 import { IconPencil } from '@/ui/icons'
 
 const q = (key: BriefKey) => BRIEF_QUESTIONS.find((x) => x.key === key)!
@@ -147,15 +147,8 @@ function Grid({ k, onDone }: { k: BriefKey; onDone: () => void }) {
   )
 }
 
-/** "Chosen for you" — a state of the control rather than an apology in the prose. */
-function Tag({ label }: { label: Text }) {
-  const { t } = useT()
-  return (
-    <span className="flex h-5 flex-none items-center whitespace-nowrap rounded-full px-2 text-[11.5px] font-semibold text-[#ffffff7a] shadow-[inset_0_0_0_1px_var(--white-100)]">
-      {t(label)}
-    </span>
-  )
-}
+/* "Chosen for you" — a state of the control rather than an apology in the prose, and the
+   same plate the questions wear as "Recommended" (BriefPanel's `Plate`). */
 
 const PICKED_FOR_YOU: Text = { en: 'Remixer’s pick', uk: 'На розсуд Remixer' }
 
@@ -183,8 +176,12 @@ export function PlanDecisions() {
       <PickDefs />
 
       {/* 30121:55288 — the palette */}
+      {/* ⚠️ 74 is the board's own FIXED height (30121:55288 exports `h-[74px]`), not a
+          consequence of the content — and it has to be fixed, or the chip beside the
+          name pushes the card: the shared `Chip` is 24 tall against the name line's
+          22.4, which measured 76. */}
       <div className="w-full overflow-hidden rounded-[16px] bg-[#232325] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]">
-        <div className="flex items-center justify-between p-4">
+        <div className="flex h-[74px] items-center justify-between p-4">
           {palette.option ? (
             <Plate swatches={palette.option.swatches!} className="h-10 w-[200px] flex-none" />
           ) : (
@@ -195,7 +192,7 @@ export function PlanDecisions() {
               <span className="truncate text-[16px] font-semibold leading-[1.4] text-white">
                 {palette.own || (palette.option ? t(palette.option.name) : '')}
               </span>
-              {!palette.picked && <Tag label={PICKED_FOR_YOU} />}
+              {!palette.picked && <Chip label={PICKED_FOR_YOU} />}
             </span>
             <span className="truncate text-[12px] leading-[1.4] text-[#ffffff7a]">
               {palette.option?.swatches?.join(' ') ?? t({ en: 'Colours you named', uk: 'Кольори, які ви назвали' })}
@@ -237,7 +234,7 @@ export function PlanDecisions() {
                 <span className="truncate text-[16px] font-semibold leading-none text-white [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">
                   {type.own || (type.option ? t(type.option.name) : '')}
                 </span>
-                {!type.picked && <Tag label={PICKED_FOR_YOU} />}
+                {!type.picked && <Chip label={PICKED_FOR_YOU} />}
               </span>
               <span className="line-clamp-2 text-[12px] leading-[1.4] text-[#ffffff7a]">
                 {type.option?.detail ? t(type.option.detail) : null}
