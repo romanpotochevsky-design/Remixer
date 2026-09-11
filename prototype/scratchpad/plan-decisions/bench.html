@@ -150,9 +150,9 @@ body {
 }
 .doc h2 { font-size: 15px; font-weight: 600; line-height: 1.4; margin: 32px 0 0; }
 .doc p { font-size: 15px; line-height: 1.6; color: #ffffffd9; margin: 8px 0 0; }
-.doc ul { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
-.doc li { display: flex; gap: 12px; font-size: 15px; line-height: 1.6; color: #ffffffd9; }
-.doc li::before {
+.doc ul.bullets { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
+.doc ul.bullets > li { display: flex; gap: 12px; font-size: 15px; line-height: 1.6; color: #ffffffd9; }
+.doc ul.bullets > li::before {
   content: ''; flex: none;
   margin-top: 9px; height: 4px; width: 4px; border-radius: 999px; background: #ffffff7a;
 }
@@ -371,28 +371,116 @@ body {
 
 :focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
 </style>
+<style>
+/* ======================================================================
+   THE PAGE STACK — the plan showing the build card in its zero state.
+   Geometry from BuildProgress.tsx: the built page is the one LIGHT surface,
+   every waiting row seals its bottom except the last, which draws nothing,
+   and the rail is the card's own stroke with the children pulled onto it.
+   ====================================================================== */
+
+.stack { margin-top: 14px; border-radius: 24px; border: 1px solid #272728; }
+.stack-page {
+  margin-inline: -1px; margin-top: -1px; width: calc(100% + 2px);
+  border-radius: 24px; border: 1px solid #272728; background: #ffffff0a;
+  padding: 0 1px 1px;
+}
+.stack-head { display: flex; align-items: center; gap: 8px; height: 56px; padding-left: 14px; padding-right: 12px; }
+.stack-head-name { font-size: 16px; font-weight: 600; line-height: 1.2; color: #fff; }
+/* OURS, not the card's: a static picture has no motion to explain which surface is
+   the live one, so one label does it. In the card the animation says it instead. */
+.stack-now { margin-left: auto; font-size: 12px; font-weight: 600; color: #ffffff7a; white-space: nowrap; }
+
+.stack-sheet {
+  border-radius: 20px 20px 22px 22px; border: 1px solid var(--white-100);
+  background: var(--gray-950); padding: 16px 16px 16px 13px;
+}
+.stack-list { list-style: none; margin: 0; padding: 0; }
+.stack-row { position: relative; display: flex; align-items: flex-start; padding-bottom: 16px; }
+.stack-row:last-child { padding-bottom: 0; }
+.stack-elbow { position: relative; width: 16px; flex: none; }
+.stack-elbow i {
+  position: absolute; left: 0; width: 16px; border-left: 1px solid #27272a; display: block;
+}
+.stack-row:first-child .stack-elbow i { top: 12px; height: 8px; border-top: 1px solid #27272a; border-radius: 8px 0 0 0; }
+.stack-row:not(:first-child) .stack-elbow i { top: 0; height: 12px; border-bottom: 1px solid #27272a; border-radius: 0 0 0 8px; }
+/* the line onward is a child of the ROW, so it reaches across the row's own gap */
+.stack-run { position: absolute; left: 0; bottom: 0; width: 1px; background: #27272a; }
+.stack-row:first-child .stack-run { top: 20px; }
+.stack-row:not(:first-child) .stack-run { top: 12px; }
+.stack-row:last-child .stack-run { display: none; }
+.stack-row-body { display: flex; align-items: flex-start; gap: 12px; padding-left: 4px; min-width: 0; flex: 1; }
+.stack-row-name { font-size: 14px; font-weight: 500; line-height: 1.4; color: #ffffff7a; padding-top: 3px; }
+
+.stack-wait {
+  display: flex; align-items: center; gap: 8px; height: 48px; padding-left: 12px; padding-right: 8px;
+  margin-inline: -1px; width: calc(100% + 2px);
+  border-radius: 0 0 16px 16px;
+  border-bottom: 1px solid #272728; border-left: 1px solid #272728; border-right: 1px solid #272728;
+}
+/* the last waiting row draws NOTHING — the card's own bottom corner closes the stack */
+.stack-wait:last-child { margin-inline: 0; width: 100%; border: 0; border-radius: 0; }
+.stack-wait-name { font-size: 13px; font-weight: 500; line-height: 1; color: #ffffff7a; }
+
+
+/* ----------------------------------------------------------------------
+   THE STACK IS EDITABLE — and it is the ONLY part of the plan whose edits
+   reach the build. Page and section names compile into `buildOutline`, which
+   the generation card and the Autopilot proposals already read, so renaming
+   "Services" to "Menu" here renames it everywhere downstream.
+
+   The affordance is the document's own (`.plan-edit` in index.css): nothing at
+   rest — a page covered in boxes is a form, not a plan — a quiet surface under
+   the pointer, a real ring once the caret is in. Enter opens the next line,
+   Backspace on an empty one closes it: the same idiom the plan's bullets have
+   had since 09.09, so the stack introduces no new vocabulary.
+   ---------------------------------------------------------------------- */
+.plan-edit {
+  margin-inline: -6px; padding-inline: 6px; border-radius: 6px;
+  white-space: pre-wrap; overflow-wrap: anywhere; outline: none; cursor: text;
+  transition: background-color var(--dur-fast) var(--ease-std);
+}
+@media (hover: hover) { .plan-edit:hover { background: var(--white-050); } }
+.plan-edit:focus { background: var(--white-050); box-shadow: inset 0 0 0 1px var(--action); }
+.plan-edit:empty::before { content: ''; display: inline-block; min-height: 1em; min-width: 1px; }
+
+.stack-add {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 4px 8px; margin-left: -8px;
+  border-radius: 6px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 500; color: #ffffff7a;
+  transition: color var(--dur-fast) var(--ease-std), background-color var(--dur-fast) var(--ease-std);
+}
+.stack-add:hover { color: #fff; background: var(--white-050); }
+.stack-add-sec { margin-top: 14px; margin-left: 48px; }
+.stack-add-page { margin-top: 10px; }
+
+.lede { margin-top: 12px !important; }
+.after { margin-top: 14px !important; }
+</style>
 
 <div class="wrap">
   <div class="bench-head">
     <div>
       <h1 class="bench-title">Build Plan — решения внутри документа</h1>
       <p class="bench-sub">
-        Три способа показать палитру и шрифты в плане. Всё живое: наводи, кликай, перевыбирай —
-        выбор общий для всех трёх вариантов, так что переключение показывает одно и то же решение
-        в трёх подачах. Кольца, ховер и клик — те же, что в панели вопросов.
+        План говорит правду про одну страницу и несёт живые решения. Палитра и шрифты
+        кликабельны — наводи, открывай, перевыбирай. Переключатель справа меняет ответ на
+        вопрос «сколько надо рассказать»: план пересобирается, и видно, что на одностраничнике
+        стек исчезает сам.
       </p>
     </div>
-    <div class="switch" role="group" aria-label="Вариант подачи">
-      <button type="button" data-v="A" aria-pressed="false">A · строка</button>
-      <button type="button" data-v="B" aria-pressed="true">B · карточка</button>
-      <button type="button" data-v="C" aria-pressed="false">C · открытая сетка</button>
+    <div class="switch" role="group" aria-label="Ответ на вопрос о страницах">
+      <button type="button" data-p="few" aria-pressed="true">A few pages</button>
+      <button type="button" data-p="one" aria-pressed="false">One page</button>
+      <button type="button" data-p="catalogue" aria-pressed="false">A page per item</button>
     </div>
   </div>
 
   <ul class="legend">
-    <li><b>A</b> — пункт остаётся фразой, образец стоит в ней</li>
-    <li><b>B</b> — <span class="rec">рекомендую</span> · решение это объект, альтернативы в один клик</li>
-    <li><b>C</b> — все варианты всегда открыты</li>
+    <li><b>Решение</b> — объект с рамкой, кликается, меняет билд</li>
+    <li><b>Стек страниц</b> — имена правятся на месте: Enter — следующая строка, Backspace в пустой — убрать</li>
+    <li><b>Проза</b> — ничего в покое, подсветка под курсором</li>
     <li>Палитра выбрана человеком · шрифты остались на Remixer — видно оба состояния</li>
   </ul>
 
@@ -417,18 +505,13 @@ body {
         <p class="prose-line">Turn visitors into messages. Every screen keeps a way to reach you within arm’s length, and the form is short enough that people finish it.</p>
 
         <h2>What we’ll build</h2>
-        <ul>
-          <li><span class="prose-line">Four pages — Home, About, Services and Contact — sharing one header and one footer. <span class="note">(Remixer’s pick)</span></span></li>
-          <li><span class="prose-line">A contact block — name, email, message — with one obvious Send.</span></li>
-          <li><span class="prose-line">Your phone number and email in the header, repeated in the footer.</span></li>
-          <li><span class="prose-line">A thank-you state after sending, so nobody wonders whether it went through.</span></li>
-        </ul>
+        <div id="structure"></div>
 
         <h2>How it will look</h2>
         <div class="decide" id="decide"></div>
 
         <h2>What we’ll check before handing it back</h2>
-        <ul>
+        <ul class="bullets">
           <li><span class="prose-line">Opens at 390, 768 and 1280 with no sideways scrolling at any width.</span></li>
           <li><span class="prose-line">Every link and button reachable from the keyboard, with a focus ring you can see.</span></li>
           <li><span class="prose-line">Text over images stays readable — contrast 4.5:1 or better.</span></li>
@@ -436,7 +519,7 @@ body {
         </ul>
 
         <h2>Not in this pass</h2>
-        <ul>
+        <ul class="bullets">
           <li><span class="prose-line">It publishes to your free remixer.site preview first — hidden from Google, so you can look before anyone else does. A custom domain is a separate step.</span></li>
           <li><span class="prose-line">The words on the page are placeholders written to fit. Edit any of them in place, or ask me to rewrite a section.</span></li>
         </ul>
@@ -464,7 +547,7 @@ body {
   const SVGNS = 'http://www.w3.org/2000/svg'
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  /* ============================================ the answers, as the brief holds them */
+  /* ================================== the answers, as brief.ts and build.ts hold them */
 
   const PALETTES = [
     { id: 'ink-amber',   name: 'Ink & Amber',  swatches: ['#191a1e', '#2f3237', '#585c63', '#e0a94a'] },
@@ -483,9 +566,23 @@ body {
       detail: 'Big display headlines, quiet text. One idea per screen.' },
   ]
 
-  /* A skipped question falls to the FIRST option and the plan says so, rather than
-     pretending it was chosen — the same rule plan.ts already follows. */
-  const state = { variant: 'B', palette: 'ink-amber', type: null, open: null }
+  /* The landing page's sections and the pages under it — build.ts, `buildOutline`. The
+     plan and the generation card read ONE structure, so the plan cannot promise a page
+     the card will not name. */
+  const SECTIONS = ['Layout & navigation', 'Hero', 'What you offer', 'Enquiry form', 'Footer']
+  const REST = {
+    few: ['About', 'Services', 'Contact'],
+    one: [],
+    catalogue: ['Catalogue', 'Item page'],
+  }
+  /* What goes ON the page this pass builds — GOAL_BLOCKS.enquiries, unchanged. */
+  const BLOCKS = [
+    'A contact block — name, email, message — with one obvious Send.',
+    'Your phone number and email in the header, repeated in the footer.',
+    'A thank-you state after sending, so nobody wonders whether it went through.',
+  ]
+
+  const state = { pages: 'few', palette: 'ink-amber', type: null, open: null }
   const chosen = (list, id) => list.find((o) => o.id === id) || list[0]
 
   /* ================================================== THE BORDER THAT DRAWS ITSELF
@@ -559,27 +656,20 @@ body {
    * the ring is driven by JS rather than `:hover` — Chromium drops a removed animation
    * straight to its base value, and a half-drawn ring would vanish in a frame.
    */
-  function pick({ cls, on, label, onPick, child, ring = true }) {
+  function pick({ cls, on, label, onPick, child }) {
     const b = document.createElement('button')
     b.type = 'button'
     b.className = 'brief-pick press-bloom ' + cls
     b.setAttribute('aria-label', label)
     b.setAttribute('aria-pressed', String(!!on))
     if (on) b.dataset.on = ''
-    const hov = ring ? ringSvg('hover') : null
-    const prs = ring ? ringSvg('pick') : null
-    if (hov) b.appendChild(hov)
-    if (prs) b.appendChild(prs)
-    b.appendChild(child)
-    if (ring) {
-      b.addEventListener('pointerenter', () => { b.dataset.hov = ''; draw(hov) })
-      b.addEventListener('pointerleave', () => { delete b.dataset.hov })
-    }
-    b.addEventListener('click', () => { if (prs) draw(prs); onPick() })
+    const hov = ringSvg('hover'), prs = ringSvg('pick')
+    b.append(hov, prs, child)
+    b.addEventListener('pointerenter', () => { b.dataset.hov = ''; draw(hov) })
+    b.addEventListener('pointerleave', () => { delete b.dataset.hov })
+    b.addEventListener('click', () => { draw(prs); onPick() })
     return b
   }
-
-  /* ============================================================ the two option grids */
 
   const el = (tag, cls, text) => {
     const n = document.createElement(tag)
@@ -588,23 +678,21 @@ body {
     return n
   }
 
+  /* ============================================================ the two option grids */
+
   function plate(swatches, cls) {
     const p = el('span', cls || 'plate')
-    for (const c of swatches) {
-      const s = el('span')
-      s.style.background = c
-      p.appendChild(s)
-    }
+    for (const c of swatches) { const s = el('span'); s.style.background = c; p.appendChild(s) }
     return p
   }
-
-  function specimen(o, cls) {
-    const w = el('span', cls || 'spec')
-    const h = el('span', 'spec-h', 'Title - ' + o.heading)
-    h.style.fontFamily = "'" + o.heading + " Specimen', '" + o.heading + "', serif"
-    const b = el('span', 'spec-b', 'Body - ' + o.body)
-    b.style.fontFamily = "'" + o.body + " Specimen', '" + o.body + "', sans-serif"
-    w.append(h, b)
+  const face = (name, cls, text) => {
+    const s = el('span', cls, text)
+    s.style.fontFamily = "'" + name + " Specimen', '" + name + "', sans-serif"
+    return s
+  }
+  function specimen(o) {
+    const w = el('span', 'spec')
+    w.append(face(o.heading, 'spec-h', 'Title - ' + o.heading), face(o.body, 'spec-b', 'Body - ' + o.body))
     return w
   }
 
@@ -612,64 +700,51 @@ body {
     const g = el('div', 'grid2')
     for (const o of PALETTES) {
       g.appendChild(pick({
-        cls: 'brief-tile brief-tile--swatch',
-        on: chosen(PALETTES, state.palette).id === o.id,
-        label: o.name,
-        child: plate(o.swatches, 'tile-plate'),
+        cls: 'brief-tile brief-tile--swatch', on: chosen(PALETTES, state.palette).id === o.id,
+        label: o.name, child: plate(o.swatches, 'tile-plate'),
         onPick: () => { state.palette = o.id; render() },
       }))
     }
     return g
   }
-
   function typeGrid() {
     const g = el('div', 'grid2')
     for (const o of TYPES) {
       const card = el('span', 'tile-card')
       const top = el('span', 'tile-card-spec')
-      const h = el('span', 'spec-h', 'Title - ' + o.heading)
-      h.style.fontFamily = "'" + o.heading + " Specimen', '" + o.heading + "', serif"
-      const b = el('span', 'spec-b', 'Body - ' + o.body)
-      b.style.fontFamily = "'" + o.body + " Specimen', '" + o.body + "', sans-serif"
-      top.append(h, b)
+      top.append(face(o.heading, 'spec-h', 'Title - ' + o.heading), face(o.body, 'spec-b', 'Body - ' + o.body))
       const meta = el('span', 'tile-card-meta')
       meta.append(el('span', 'tile-card-name', o.name), el('span', 'tile-card-detail', o.detail))
       card.append(top, meta)
       g.appendChild(pick({
-        cls: 'brief-tile brief-tile--card',
-        on: chosen(TYPES, state.type).id === o.id,
-        label: o.name,
-        child: card,
+        cls: 'brief-tile brief-tile--card', on: chosen(TYPES, state.type).id === o.id,
+        label: o.name, child: card,
         onPick: () => { state.type = o.id; render() },
       }))
     }
     return g
   }
-
-  /** the escape hatch the question offers — carried into the document unchanged */
-  function ownField(placeholder) {
+  function ownField(placeholder, id) {
     const i = el('input', 'own')
-    i.type = 'text'
-    i.id = 'own-' + placeholder.slice(0, 4).toLowerCase().replace(/\W/g, '')
-    i.placeholder = placeholder
+    i.type = 'text'; i.id = id; i.placeholder = placeholder
     i.setAttribute('aria-label', placeholder)
     return i
   }
-
   function grid(kind) {
-    const wrap = el('div')
-    wrap.appendChild(kind === 'palette' ? paletteGrid() : typeGrid())
-    wrap.appendChild(ownField(kind === 'palette' ? 'Name a colour, or paste a brand hex…' : 'Name a typeface you like…'))
-    return wrap
+    const w = el('div')
+    w.append(kind === 'palette' ? paletteGrid() : typeGrid(),
+      kind === 'palette'
+        ? ownField('Name a colour, or paste a brand hex…', 'own-colour')
+        : ownField('Name a typeface you like…', 'own-type'))
+    return w
   }
 
-  /* ================================================================ variant B — cards */
+  /* =============================================== the decision card (the chosen form) */
 
   const chev = () => {
     const s = document.createElementNS(SVGNS, 'svg')
     s.setAttribute('width', '14'); s.setAttribute('height', '14')
-    s.setAttribute('viewBox', '0 0 14 14'); s.setAttribute('fill', 'none')
-    s.setAttribute('aria-hidden', 'true')
+    s.setAttribute('viewBox', '0 0 14 14'); s.setAttribute('fill', 'none'); s.setAttribute('aria-hidden', 'true')
     const p = document.createElementNS(SVGNS, 'path')
     p.setAttribute('d', 'M3.5 5.5L7 9l3.5-3.5')
     p.setAttribute('stroke', 'currentColor'); p.setAttribute('stroke-width', '1.5')
@@ -686,26 +761,22 @@ body {
 
     const card = el('div', 'dcard')
     if (open) card.dataset.open = ''
-
     const head = el('button', 'dhead press-bloom')
     head.type = 'button'
     head.setAttribute('aria-expanded', String(open))
-
     head.appendChild(isPal ? plate(o.swatches) : specimen(o))
 
     const body = el('div', 'dhead-body')
     const title = el('div', 'dhead-title')
     title.appendChild(el('span', 'dhead-name', o.name))
     if (!picked) title.appendChild(el('span', 'tag', 'Remixer’s pick'))
-    body.appendChild(title)
-    body.appendChild(el('div', 'dhead-meta',
+    body.append(title, el('div', 'dhead-meta',
       isPal ? o.swatches.join(' · ') : o.heading + ' · ' + o.body))
     head.appendChild(body)
 
     const cta = el('span', 'dhead-cta')
     cta.append(document.createTextNode(open ? 'Done' : 'Change'), chev())
     head.appendChild(cta)
-
     head.addEventListener('click', () => { state.open = open ? null : kind; render() })
     card.appendChild(head)
 
@@ -719,107 +790,215 @@ body {
     return card
   }
 
-  /* ================================================================ variant A — inline */
+  /* ====================================================== the page stack — one page now
+   *
+   * ⚠️ THE PLAN SHOWS THE BUILD CARD IN ITS ZERO STATE. Only the first page is generated
+   * in a pass (credits, and a minute rather than four); the rest are named and wait for
+   * the customer to ask. The generation card has said so since 07.09.2026 — the PLAN
+   * said "Four pages — Home, About, Services and Contact", which is a promise the build
+   * does not keep. Same drawing, same source (`buildOutline`), one beat earlier.
+   */
 
-  function inlineLine(kind) {
-    const isPal = kind === 'palette'
-    const o = isPal ? chosen(PALETTES, state.palette) : chosen(TYPES, state.type)
-    const picked = isPal ? state.palette !== null : state.type !== null
-    const open = state.open === kind
-
-    const li = el('div')
-    const line = el('div')
-    line.style.cssText = 'display:flex;gap:12px;font-size:15px;line-height:1.6;color:#ffffffd9'
-    const dot = el('span')
-    dot.style.cssText = 'flex:none;margin-top:9px;height:4px;width:4px;border-radius:999px;background:#ffffff7a'
-    line.appendChild(dot)
-
-    const btn = el('button', 'inline-pick')
-    btn.type = 'button'
-    btn.setAttribute('aria-expanded', String(open))
-
-    if (isPal) {
-      btn.append(document.createTextNode('Palette '))
-      const u = el('u', null, o.name); btn.appendChild(u)
-      const strip = el('span', 'inline-strip')
-      for (const c of o.swatches) { const s = el('span'); s.style.background = c; strip.appendChild(s) }
-      btn.appendChild(strip)
-      btn.append(document.createTextNode('— ' + o.swatches.join(', ') + '.'))
-    } else {
-      const h = el('u', null, o.heading); h.style.fontFamily = "'" + o.heading + " Specimen', '" + o.heading + "', serif"
-      const b = el('u', null, o.body); b.style.fontFamily = "'" + o.body + " Specimen', '" + o.body + "', sans-serif"
-      btn.appendChild(h)
-      btn.append(document.createTextNode(' for headlines, '))
-      btn.appendChild(b)
-      btn.append(document.createTextNode(' for text — the ' + o.name.toLowerCase() + ' pairing.'))
+  function pageIcon(dim) {
+    const s = document.createElementNS(SVGNS, 'svg')
+    s.setAttribute('width', '20'); s.setAttribute('height', '20')
+    s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none')
+    s.setAttribute('aria-hidden', 'true')
+    s.style.flex = 'none'
+    s.style.color = dim ? '#ffffff3d' : '#ffffff7a'
+    for (const d of ['M13.5 3.5H7A2 2 0 0 0 5 5.5v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z',
+                     'M13.5 3.5V7a2 2 0 0 0 2 2H19']) {
+      const p = document.createElementNS(SVGNS, 'path')
+      p.setAttribute('d', d); p.setAttribute('stroke', 'currentColor')
+      p.setAttribute('stroke-width', '1.6'); p.setAttribute('stroke-linecap', 'round')
+      p.setAttribute('stroke-linejoin', 'round')
+      s.appendChild(p)
     }
-    if (!picked) {
-      const note = el('span', null, ' (Remixer’s pick.)')
-      note.style.color = '#ffffff7a'
-      btn.appendChild(note)
-    }
-    btn.addEventListener('click', () => { state.open = open ? null : kind; render() })
-    line.appendChild(btn)
-    li.appendChild(line)
-
-    if (open) {
-      const pop = el('div', 'pop')
-      pop.appendChild(grid(kind))
-      li.appendChild(pop)
-    }
-    return li
+    return s
+  }
+  /** the queued section ring — IconStepQueued's ink, measured off the board's render */
+  function queuedIcon() {
+    const s = document.createElementNS(SVGNS, 'svg')
+    s.setAttribute('width', '24'); s.setAttribute('height', '24')
+    s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none')
+    s.setAttribute('aria-hidden', 'true')
+    s.style.flex = 'none'
+    const c = document.createElementNS(SVGNS, 'circle')
+    c.setAttribute('cx', '12'); c.setAttribute('cy', '12'); c.setAttribute('r', '7.25')
+    c.setAttribute('stroke', '#ffffff3d'); c.setAttribute('stroke-width', '1.5')
+    s.appendChild(c)
+    return s
   }
 
-  /* ================================================================ variant C — open */
+  /* ------------------------------------------------- the editable line
+   * ⚠️ NOTHING BUT THE USER OWNS THE TEXT while the caret is in it. Re-rendering a
+   * contentEditable's children under the caret throws it to the front on every
+   * keystroke — the lesson `PlanEditable` already carries. So the DOM holds the
+   * text, state is written on commit, and the stack is rebuilt only when its SHAPE
+   * changes (a line opened, a line closed) — never on typing.
+   */
+  let pendingFocus = null
+  /* ⚠️ Removing the focused node fires `blur`, so a rebuild would commit the dying
+     line's text into whatever now sits at its index. Measured: deleting page 2 wrote
+     '' over 'Contact'. Commits are ignored while the rebuild is in flight. */
+  let tearingDown = false
 
-  function openBlock(kind) {
-    const isPal = kind === 'palette'
-    const o = isPal ? chosen(PALETTES, state.palette) : chosen(TYPES, state.type)
-    const picked = isPal ? state.palette !== null : state.type !== null
+  function editable(text, cls, { key, onCommit, onEnter, onEmptyBackspace }) {
+    const n = el('span', 'plan-edit ' + cls, text)
+    n.contentEditable = 'plaintext-only'
+    n.spellcheck = false
+    n.dataset.edit = key
+    n.addEventListener('blur', () => { if (!tearingDown) onCommit(n.textContent.trim()) })
+    n.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && onEnter) { e.preventDefault(); onCommit(n.textContent.trim()); onEnter() }
+      else if (e.key === 'Escape') { e.preventDefault(); n.textContent = text; n.blur() }
+      else if (e.key === 'Backspace' && !n.textContent.trim() && onEmptyBackspace) { e.preventDefault(); onEmptyBackspace() }
+    })
+    return n
+  }
 
-    const w = el('div', 'open-block')
-    const lab = el('div', 'open-label')
-    lab.appendChild(el('span', null, isPal ? 'Palette — ' + o.name : 'Lettering — ' + o.name))
-    if (!picked) lab.appendChild(el('span', 'tag', 'Remixer’s pick'))
-    w.appendChild(lab)
-    const card = el('div', 'dcard')
-    card.appendChild(grid(kind))
-    w.appendChild(card)
+  /** put the caret at the end of the line the last structural edit opened */
+  function restoreFocus() {
+    if (!pendingFocus) return
+    const n = document.querySelector('[data-edit="' + pendingFocus + '"]')
+    pendingFocus = null
+    if (!n) return
+    n.focus()
+    const r = document.createRange()
+    r.selectNodeContents(n); r.collapse(false)
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r)
+  }
+
+  /* ------------------------------------------------------------- the outline
+   * `buildOutline`'s shape, with the customer's edits as a LAYER over it — the
+   * pattern `planEdits` already uses for prose. Changing the pages answer is a
+   * different structure, so it rebuilds; renaming inside one does not.
+   */
+  const ledeText = (o) => o.rest.length
+    ? o.home + ' first, and only ' + o.home + ' \u2014 about a minute. You see it finished before anything else gets built.'
+    : 'One page, top to bottom \u2014 about a minute, and that is the whole site.'
+  const afterText = (o) => o.rest.length
+    ? 'When ' + o.home + ' looks right I\u2019ll ask what\u2019s next \u2014 keep working on this page, or start the next one. One page at a time, so a change of mind costs one page and not the whole site.'
+    : 'When it\u2019s ready I\u2019ll ask what to change next, or whether to publish.'
+  function retitle() {
+    const l = document.querySelector('.lede'), a = document.querySelector('.after')
+    if (l) l.textContent = ledeText(state.outline)
+    if (a) a.textContent = afterText(state.outline)
+  }
+
+  function freshOutline() {
+    return { home: 'Home', sections: SECTIONS.slice(), rest: REST[state.pages].slice() }
+  }
+  state.outline = freshOutline()
+
+  function structure() {
+    const o = state.outline
+    const w = el('div')
+
+    /* The lede states what the button actually does — in minutes and in control, not
+       in credits. A price line lived under this plan once and the designer cut it:
+       attached to the decision it read as a warning. Here it is the method, not the
+       bill. And it follows the STACK, not the answer: remove every page below Home
+       and this is a one-page site, whatever the brief said. */
+    w.appendChild(el('p', 'prose-line lede', ledeText(o)))
+
+    const stack = el('div', 'stack')
+    const page = el('div', 'stack-page')
+    const head = el('div', 'stack-head')
+    head.append(pageIcon(false), editable(o.home, 'stack-head-name', {
+      key: 'home',
+      onCommit: (v) => { o.home = v || 'Home'; retitle() },
+    }))
+    if (o.rest.length) head.appendChild(el('span', 'stack-now', 'In this build'))
+    page.appendChild(head)
+
+    const sheet = el('div', 'stack-sheet')
+    const list = el('ol', 'stack-list')
+    o.sections.forEach((name, i) => {
+      const li = el('li', 'stack-row')
+      const elbow = el('span', 'stack-elbow'); elbow.appendChild(el('i'))
+      const run = el('span', 'stack-run')
+      const rowBody = el('span', 'stack-row-body')
+      rowBody.append(queuedIcon(), editable(name, 'stack-row-name', {
+        key: 'sec:' + i,
+        onCommit: (v) => { if (v) { o.sections[i] = v } else if (o.sections.length > 1) { o.sections.splice(i, 1); render() } },
+        onEnter: () => { o.sections.splice(i + 1, 0, ''); pendingFocus = 'sec:' + (i + 1); render() },
+        onEmptyBackspace: () => {
+          if (o.sections.length === 1) return
+          o.sections.splice(i, 1); pendingFocus = 'sec:' + Math.max(0, i - 1); render()
+        },
+      }))
+      li.append(elbow, run, rowBody)
+      list.appendChild(li)
+    })
+    sheet.appendChild(list)
+
+    const addSec = el('button', 'stack-add stack-add-sec')
+    addSec.type = 'button'
+    addSec.append(el('span', null, '+'), el('span', null, 'Add a section'))
+    addSec.addEventListener('click', () => {
+      o.sections.push(''); pendingFocus = 'sec:' + (o.sections.length - 1); render()
+    })
+    sheet.appendChild(addSec)
+
+    page.appendChild(sheet)
+    stack.appendChild(page)
+
+    o.rest.forEach((name, i) => {
+      const r = el('div', 'stack-wait')
+      r.append(pageIcon(true), editable(name, 'stack-wait-name', {
+        key: 'page:' + i,
+        onCommit: (v) => { if (v) { o.rest[i] = v } else { o.rest.splice(i, 1); render() } },
+        onEnter: () => { o.rest.splice(i + 1, 0, ''); pendingFocus = 'page:' + (i + 1); render() },
+        onEmptyBackspace: () => { o.rest.splice(i, 1); pendingFocus = i > 0 ? 'page:' + (i - 1) : 'home'; render() },
+      }))
+      stack.appendChild(r)
+    })
+    w.appendChild(stack)
+
+    const addPage = el('button', 'stack-add stack-add-page')
+    addPage.type = 'button'
+    addPage.append(el('span', null, '+'), el('span', null, 'Add a page'))
+    addPage.addEventListener('click', () => {
+      o.rest.push(''); pendingFocus = 'page:' + (o.rest.length - 1); render()
+    })
+    w.appendChild(addPage)
+
+    const ul = el('ul', 'bullets')
+    for (const b of BLOCKS) {
+      const li = el('li')
+      li.appendChild(el('span', 'prose-line', b))
+      ul.appendChild(li)
+    }
+    w.appendChild(ul)
+
+    /* What happens after — and it names the window that already exists (autopilot.ts).
+       True on a first build by construction: `startBuild` puts every new site in
+       Autopilot, so the proposal is guaranteed to come. */
+    w.appendChild(el('p', 'prose-line after', afterText(o)))
     return w
   }
 
   /* ================================================================== render */
 
-  const host = document.getElementById('decide')
+  const hostDecide = document.getElementById('decide')
+  const hostStruct = document.getElementById('structure')
 
   function render() {
-    host.textContent = ''
-    if (state.variant === 'A') {
-      host.style.gap = '10px'
-      host.appendChild(inlineLine('palette'))
-      host.appendChild(inlineLine('type'))
-    } else if (state.variant === 'B') {
-      host.style.gap = '12px'
-      host.appendChild(decisionCard('palette'))
-      host.appendChild(decisionCard('type'))
-    } else {
-      host.style.gap = '20px'
-      host.appendChild(openBlock('palette'))
-      host.appendChild(openBlock('type'))
-    }
+    tearingDown = true
+    hostStruct.textContent = ''
+    hostStruct.appendChild(structure())
+    hostDecide.textContent = ''
+    hostDecide.append(decisionCard('palette'), decisionCard('type'))
     for (const b of document.querySelectorAll('.switch button')) {
-      b.setAttribute('aria-pressed', String(b.dataset.v === state.variant))
+      b.setAttribute('aria-pressed', String(b.dataset.p === state.pages))
     }
+    tearingDown = false
+    restoreFocus()
   }
 
   for (const b of document.querySelectorAll('.switch button')) {
-    b.addEventListener('click', () => {
-      state.variant = b.dataset.v
-      /* C has nothing to open, and a drawer left open in A would follow the pointer
-         into B as a surprise — the variant switch resets the disclosure. */
-      state.open = null
-      render()
-    })
+    b.addEventListener('click', () => { state.pages = b.dataset.p; state.open = null; state.outline = freshOutline(); render() })
   }
 
   /* ------------------------------------------------- the house click, delegated
