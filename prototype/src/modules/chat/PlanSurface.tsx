@@ -57,22 +57,32 @@ export function PlanSurface() {
         boxShadow: '0px 8px 8px rgba(0,0,0,0.12), 0px 56px 72px rgba(0,0,0,0.12)',
       }}
     >
-      {/* the bar: close · title · Start Building — the same 48px the domains surface uses */}
-      <div className="grid h-12 flex-none grid-cols-[1fr_auto_1fr] items-center px-2">
+      {/*
+        * The bar — Figma 30115:53842, and since 11.09.2026 this IS the top of the canvas:
+        * the shell's toolbar is absent until a site exists, so nothing sits above it.
+        * 64 tall on a 12 inset, not the domains surface's 48: ✕ 40 at radius 10 on
+        * `Black/500` under an 8% rim and a 16 blur, the title 18 MEDIUM `Gray/200`, and
+        * `Start Building` 40 tall at radius 10, px 20, 14 semibold.
+        *
+        * ⚠️ The board paints the button `Background/Blue/Default` #0073ec, which is that
+        * token's LIGHT fallback — in the dark theme it resolves to #1587ff, our `--action`.
+        * Settled once already on the Publish board; the same trap, the same answer.
+        */}
+      <div className="grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center p-3">
         <div>
           <button
             onClick={closePlanReview}
             aria-label={t({ en: 'Close the plan', uk: 'Закрити план' })}
-            className="grid h-8 w-8 place-items-center rounded-[8px] bg-[var(--white-100)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+            className="grid h-10 w-10 place-items-center rounded-[10px] border border-[var(--white-100)] bg-[var(--black-700)] text-white backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
           >
-            <IconClose size={11} />
+            <IconClose size={12} />
           </button>
         </div>
-        <span className="pb-px text-[13px] font-medium text-[#e4e4e7]">{t(PLAN_LABEL)}</span>
+        <span className="pb-px text-[18px] font-medium leading-none text-[#e4e4e7]">{t(PLAN_LABEL)}</span>
         <div className="flex justify-end">
           <button
             onClick={approvePlan}
-            className="h-8 rounded-[8px] bg-[var(--action)] px-3.5 text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+            className="press-bloom h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
           >
             {t(PLAN_START)}
           </button>

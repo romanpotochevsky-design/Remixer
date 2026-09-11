@@ -81,6 +81,8 @@ export interface BriefOption {
   body?: string
   /** The fragment this answer contributes to the "Got it — …" sentence. */
   ack?: Text
+  /** Remixer suggests this one — a plate beside the name (`Row`). At most one per question. */
+  recommended?: boolean
 }
 
 export interface BriefQuestion {
@@ -165,6 +167,13 @@ export const BRIEF_QUESTIONS: BriefQuestion[] = [
        */
       {
         id: 'few',
+        /* ⚠️ The one recommendation in the brief, and it is not a preference: this is the
+           option every unanswered `pages` question already falls to, in the plan and in the
+           generation outline alike. The plate says so BEFORE the skip instead of the plan
+           apologising for it after. `goal` carries none on purpose — only the customer
+           knows what their site is for, and a recommendation there would be a guess wearing
+           a badge. */
+        recommended: true,
         name: { en: 'A few pages', uk: 'Кілька сторінок' },
         detail: {
           en: 'Home, About, Services and Contact, with a menu across the top.',

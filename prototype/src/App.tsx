@@ -271,7 +271,20 @@ export default function App() {
           clipped, so that while the aside grows this column shrinks to nothing
           instead of re-flowing its toolbar into a heap. */}
       <div className="arrive-canvas flex min-w-0 flex-1 flex-col overflow-hidden" aria-hidden={!previewOpen}>
-        {/* canvas top toolbar (Figma 25819:143717) */}
+        {/*
+          * ⚠️ THE CANVAS TOOLBAR IS ABSENT UNTIL THERE IS A SITE (designer, 11.09.2026,
+          * on the Build Plan board: "эти кнопки пока сайт не сгенерирован нам не нужны,
+          * потому их нет в макете"). Figma 29816:21115 draws this screen with NO canvas
+          * toolbar at all — the surface's own bar is the top of the canvas — and hides
+          * the balance group in the chat's toolbar with it.
+          *
+          * The reasoning is the one the right rail already follows, one control further:
+          * Visual Editor, the reload, the device toggle, the address and Publish all act
+          * ON a site, and through the brief, the plan and the whole build there is none.
+          * A control with nothing to do is better absent than dead — the same sentence
+          * that greys out Publish, taken to its end. It arrives when the site does.
+          */}
+        {world.project === 'built' && (
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           {/* left: Visual Editor + device preview */}
           <div className="flex items-center gap-2 pl-2">
@@ -388,6 +401,7 @@ export default function App() {
             </button>
           </div>
         </header>
+        )}
 
         {/* canvas — 8px gutter, the preview floats on the ground.
             While the agent works, the frame lights up with the Siri-style edge glow.

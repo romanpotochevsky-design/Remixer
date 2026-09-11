@@ -85,11 +85,16 @@ export function SuggestPanel() {
             {t(proposal.question)}
           </p>
           <div className="overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
-            {proposal.options.map((o) => (
+            {/* ⚠️ The FIRST row is the recommendation, and the panel already arrives with it
+                chosen — "recommended" and "selected" have been one state here since 09.09,
+                because the blue button does exactly that row. The plate makes the claim
+                readable instead of leaving it to the ring. */}
+            {proposal.options.map((o, i) => (
               <Row
                 key={o.id}
                 name={o.name}
                 detail={o.detail}
+                recommended={i === 0}
                 on={picked === o.id}
                 onPick={() => pickSuggest(o.id)}
               />

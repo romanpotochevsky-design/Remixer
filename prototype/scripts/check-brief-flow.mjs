@@ -912,10 +912,33 @@ check('the plan is docked where the questions were', await planUp())
   check('the waiting line points at the verb the card actually carries',
     body.includes('start the build when it looks right') && !body.toLowerCase().includes('approve it'))
 }
+/* ⚠️ RECOMMENDED — one option in a question can wear Remixer's own suggestion (designer,
+   11.09.2026). It is the plate the plan already carries as "Remixer's pick", one moment
+   earlier: there it says "you left this to me", here "take this one". `pages` is the only
+   question in the brief that carries it, and not as a preference — it is the option every
+   unanswered `pages` already falls to, said before the skip instead of apologised for
+   after. `goal` carries none: only the customer knows what their site is for. */
+{
+  const tags = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('.brief-opt')]
+    return rows.map((r) => [r.innerText.split('\n')[0], r.innerText.includes('Recommended')])
+  })
+  check('at most one option in a question is recommended', tags.filter(([, r]) => r).length <= 1,
+    JSON.stringify(tags))
+}
+
 check('NOTHING is generated while the plan waits', (await previewState()) === 'closed')
-check('Publish is dead while there is nothing to publish',
-  await p.$eval('button:has-text("Publish")', (el) => el.disabled))
-check('the questions and the plan cost nothing', (await text()).includes('2 000'))
+/* ⚠️ PUBLISH IS NOT DEAD ANY MORE — IT IS ABSENT, and so is the whole canvas toolbar
+   (designer, 11.09.2026, off the Build Plan board: "эти кнопки пока сайт не сгенерирован нам
+   не нужны, потому их нет в макете"). Same sentence as the right rail's, one control
+   further: Visual Editor, the reload, the device toggle, the address and Publish all act ON
+   a site, and through the brief, the plan and the build there is none. */
+check('the canvas carries no site controls before there is a site',
+  !(await p.$('button:has-text("Publish")')) && !(await p.$('text=Visual Editor')))
+/* ⚠️ …which costs the counter its place on screen, so the claim is read off the WORLD.
+   The questions and the plan are free; only `Start Building` spends. */
+check('the questions and the plan cost nothing',
+  (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v3') || '{}').credits)) === 2000)
 
 /* Review: the chat narrows back to the split and the document takes the canvas. */
 await p.click('text=Review'); await p.waitForTimeout(900); await shot('10-plan-review')
@@ -1125,8 +1148,9 @@ check('the growing card stays inside the panel instead of finishing under the co
   check('sections finish as the minute runs', done >= 1 && done < 5, `${done} done after ~24s`)
   check('…and still exactly one is in hand', o?.rows.filter((r) => r.state === 'active').length === 1)
   check('the site has still not appeared', !(await siteUp()))
-  check('Publish stays dead while the page is being written',
-    await p.$eval('button:has-text("Publish")', (el) => el.disabled))
+  /* ⚠️ ABSENT, not dead, since 11.09.2026 — the canvas carries no site controls while the
+     page it would act on is still being written. */
+  check('Publish stays away while the page is being written', !(await p.$('button:has-text("Publish")')))
 }
 
 /* Out to the far side of the hardcoded minute (5 sections + the assembling beat). */
@@ -1151,6 +1175,7 @@ check('…and is still at its end after the canvas opens and re-wraps it',
   check('the acknowledgement reads as one sentence',
     body.includes('a site built to sell, across a few pages, in Warm Clay with friendly lettering'))
   check('the brief is still readable after the build', body.includes('Warm Clay') && body.includes('Friendly'))
+  /* the toolbar is back, because the site is — and the balance is on it again */
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
   check('Publish comes alive once the site exists',
     !(await p.$eval('button:has-text("Update"), button:has-text("Publish")', (el) => el.disabled)))
@@ -1293,7 +1318,10 @@ const suggest = () => p.evaluate(() => {
     question: sec.querySelector('p').innerText,
     rows: head,
     picked: rows.filter((r) => r.getAttribute('aria-pressed') === 'true').map((r) => r.innerText.split('\n')[0]),
-    detail: rows.map((r) => r.innerText.split('\n')[1] ?? ''),
+    /* ⚠️ The consequence is the row's LAST line, not its second: since 11.09.2026 a
+       recommended row carries its plate on the title's own line, so `innerText` puts
+       "Recommended" between the name and the consequence. */
+    detail: rows.map((r) => r.innerText.trim().split('\n').at(-1) ?? ''),
     buttons: [...foot.querySelectorAll('button')].map((x) => x.innerText.trim()),
     arrows: foot.querySelectorAll('button[aria-label]').length,
     shell: !!document.querySelector('.dock.brief-dock'),
