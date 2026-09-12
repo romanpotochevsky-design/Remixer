@@ -43,10 +43,14 @@
  *                20 top / 22 bottom, pr 16 / pb 16
  *   rows         gap 8, pt 16; elbow column 16 (`Gray/750` #33333a), icon box 24, text 14
  *                MEDIUM at 48% white with pt 3
- *   add          pt 8 above it, a 24 disc, label 14 medium WHITE
+ *   add          16 of air above it, a 24 disc at x=36 and a 14 medium WHITE label at
+ *                x=72 — the section columns exactly, not a column of its own
  *   waiting      48 tall, pl 12 / pr 8, icon 20, name 13 medium 48% white; every one seals
  *                its bottom with b/l/r + radius 16 EXCEPT the last, which draws nothing —
- *                the card's own corner closes it, exactly as in the generation card
+ *                the card's own corner closes it, exactly as in the generation card.
+ *                The sealed ones are pulled a pixel out so their sides ride the card's rail;
+ *                the last is not, because with no stroke the pull would only move its icon
+ *                off x=13
  *   add a page   48 tall, a 24 disc, label 13 medium white, bottom hairline, radius 24
  */
 import { useLayoutEffect, useRef, useState } from 'react'
@@ -209,15 +213,24 @@ export function PlanOutline() {
   const dragRest = useDrag((order) => { setRest(order.map((i) => restNames[i])); setDrawer((n) => n + 1) })
 
   return (
-    <div className="-mx-2 mt-3 rounded-[24px] bg-[var(--black-200)]">
+    <div data-plan-stack className="-mx-2 mt-3 rounded-[24px] bg-[var(--black-200)]">
       {/* 30107:53395 — the card the stack is drawn on */}
       <div className="w-full rounded-[24px] border border-[#353537] bg-[#1a1a1c]">
         {/* 30107:53401 — the page this pass builds: the one lit surface in the stack */}
-        {/* ⚠️ NO PADDING OF ITS OWN. The export writes `px-px pb-px` here because the board's
-            children sit 1px in from this frame — which is the STROKE, sitting inside the
-            geometry as Figma's always does. A CSS border has already taken that pixel, so
-            padding on top of it would push the header to 794 where the board draws 796. */}
-        <div className="w-full rounded-[24px] border border-[#353537] bg-[var(--white-050)]">
+        {/* ⚠️ PULLED A PIXEL OUT, so its stroke lands ON the card's instead of beside it
+            (designer, 12.09.2026, on the first version: "у тебя тут двойные бордеры снова").
+            Figma's stroke sits INSIDE the geometry, so on the board this ring and the card's
+            are ONE line; a CSS border adds, and a plain child put them a pixel apart — a 2px
+            rail down both sides and two arcs at every corner. The repo's rule names two
+            cures, and the arcs here say which: there are rounded seams inside, so the CHILD
+            is pulled (`-mx-px`, `-mt-px`), exactly as the generation card does it.
+            The `px-px pb-px` is the board's own inset and comes back with the pull: the
+            header still measures 796 at x=2, only now over one rail instead of two.
+            `-mb-px` is the same rule at the seam BELOW it: on the board the block's bottom
+            stroke IS the first waiting page's top edge (the row's frame starts at y=275,
+            the last pixel of the block's own 275), so the row rides up onto it and the card
+            comes out at the board's height instead of a pixel taller. */}
+        <div className="-mx-px -mb-px -mt-px w-[calc(100%+2px)] rounded-[24px] border border-[#353537] bg-[var(--white-050)] px-px pb-px">
           {/* 30107:53402 — 48 tall, the name on its cap band, the pill at the far end */}
           <div className="flex h-12 items-center justify-between pl-[14px] pr-3">
             <span className="flex min-w-0 items-center gap-2">
@@ -298,10 +311,16 @@ export function PlanOutline() {
                 </li>
               ))}
             </ol>
-            {/* 30107:53487 — pt 8 above it, the disc in the icon's column, the label white */}
+            {/* 30107:53487 — the add row stands in the SAME two columns as a section: the
+                board gives it its own (empty) elbow frame at x=0 w=16, so its disc lands at
+                x=36 and its label at x=72, dead under the circles and their names. Read off
+                the board's metadata, 12.09.2026 — the first version hung it off the sheet's
+                own padding at x=20, a column of its own that nothing else stands in.
+                And the air above it is 16, not 8: the board's Step 8 is a 32-tall frame
+                whose icon sits at y=8 inside it, on top of the list's own 8px pitch. */}
             <button
               type="button"
-              className="plan-add mt-2 flex items-start gap-3 pl-[17px]"
+              className="plan-add mt-4 flex items-start gap-3 pl-[33px]"
               onClick={() => { setSections([...names, '']); focusRow(`outline:sec:${names.length}`) }}
             >
               <IconPlusDisc size={24} className="flex-none text-white" />
@@ -320,7 +339,9 @@ export function PlanOutline() {
             key={`${drawer}:p:${i}`}
             data-row={i}
             className={`plan-row flex h-12 items-center gap-2 pl-3 pr-2 ${
-              i === restNames.length - 1 ? '' : 'rounded-b-[16px] border-b border-l border-r border-[#353537]'
+              i === restNames.length - 1
+                ? ''
+                : '-mx-px w-[calc(100%+2px)] rounded-b-[16px] border-b border-l border-r border-[#353537]'
             }`}
           >
             <span className="flex-none" onPointerDown={dragRest}>

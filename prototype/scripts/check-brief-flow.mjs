@@ -2209,6 +2209,58 @@ await shot('30-plan-review')
     stack.seam.length > 1 && stack.seam.slice(0, -1).every((w) => w === '1px') && stack.seam.at(-1) === '0px',
     stack.seam.join(' · '))
 
+  /* ⚠️ ONE RAIL, NOT TWO (designer, 12.09.2026, with a photo of the seam: "у тебя тут
+     двойные бордеры снова"). Figma's stroke sits INSIDE the geometry, so on the board the
+     card's ring and every seam inside it are ONE line; a CSS border adds, and children left
+     where they fell drew a second rail a pixel in — measured at 2 CSS px down both sides,
+     and 3 where the sheet's own hairline joined the pile. The cure is the repo's rule and
+     the generation card's own anatomy: pull the children out onto the card's stroke.
+     Asserted on EDGES, so a restyled border cannot slip past this. */
+  const rails = await p.evaluate(() => {
+    const stack = document.querySelector('[data-plan-stack]')
+    const card = stack.firstElementChild
+    const block = card.firstElementChild
+    const waits = [...card.children].slice(1)
+    const e = (n) => { const r = n.getBoundingClientRect(); return [+r.left.toFixed(2), +r.right.toFixed(2)] }
+    const sealed = waits.filter((n) => getComputedStyle(n).borderBottomWidth === '1px')
+    return { card: e(card), block: e(block), sealed: sealed.map(e), n: waits.length,
+      h: +card.getBoundingClientRect().height.toFixed(2) }
+  })
+  check('one rail, not two: the page block rides ON the card\u2019s stroke',
+    rails.block[0] === rails.card[0] && rails.block[1] === rails.card[1],
+    `${rails.block} vs ${rails.card}`)
+  check('…and so does every sealed waiting page',
+    rails.sealed.length > 0 && rails.sealed.every((r) => r[0] === rails.card[0] && r[1] === rails.card[1]),
+    JSON.stringify(rails.sealed))
+  /* 30107:53395 — the board's card is 1 + 275 + 48·pages + 1, and it lands there only
+     because the seam BELOW the block is shared too: on the board the block's bottom stroke
+     is the first waiting page's top edge. */
+  check('…so the card comes out at the board\u2019s own height',
+    rails.h === 277 + 48 * rails.n, `${rails.h} vs ${277 + 48 * rails.n}`)
+
+  /* 30107:53487 — on the board the add row carries its own (empty) elbow frame, so its disc
+     stands in the sections' icon column at x=36 and its label under their names at x=72,
+     with 16 of air above it. The first version hung it off the sheet's own padding at x=20,
+     a column nothing else stands in. */
+  const addRow = await p.evaluate(() => {
+    const stack = document.querySelector('[data-plan-stack]')
+    const S = stack.getBoundingClientRect().left
+    const sheet = stack.firstElementChild.firstElementChild.children[1]
+    const rows = [...sheet.querySelectorAll('li[data-row]')]
+    const add = sheet.querySelector('button.plan-add')
+    const x = (n) => +(n.getBoundingClientRect().left - S).toFixed(2)
+    return {
+      icon: x(rows[0].querySelector('svg')),
+      name: x(rows[0].querySelector('[contenteditable]').parentElement),
+      disc: x(add.querySelector('svg')), label: x(add.querySelector('span')),
+      air: +(add.querySelector('svg').getBoundingClientRect().top - rows.at(-1).getBoundingClientRect().bottom).toFixed(2),
+    }
+  })
+  check('the section columns are the board\u2019s: icon 36, name 72',
+    addRow.icon === 36 && addRow.name === 72, JSON.stringify(addRow))
+  check('…and "Add a section" stands in them, with 16 of air above',
+    addRow.disc === 36 && addRow.label === 72 && addRow.air === 16, JSON.stringify(addRow))
+
   const cards = await p.evaluate(() => {
     const c = [...document.querySelectorAll('div')].filter((n) => getComputedStyle(n).backgroundColor === 'rgb(35, 35, 37)')
     const pencil = document.querySelector('button[aria-label="Choose another palette"]')
