@@ -13,8 +13,8 @@
  *  - no DNS jargon on primary paths; the canonical success checklist is fixed.
  */
 import { AnimatePresence, motion } from 'motion/react'
-import { Fragment, useState } from 'react'
-import { useWorld } from '@/state/world'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useWorld, isCustomDomainActive } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
@@ -24,7 +24,7 @@ import {
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
-  IconSearch, IconArrowRight, IconGlobe, IconClose, IconSparkleAI,
+  IconSearch, IconArrowRight, IconArrowLeft, IconGlobe, IconClose, IconSparkleAI,
   IconChevronDown,
 } from '@/ui/icons'
 import { surface, listSwap, listSwapItem } from '@/ui/motion'
@@ -60,7 +60,8 @@ function Screen({ children }: { children: React.ReactNode }) {
  * The page pads 32 all round; the column inside is a flat 1200 wide and centred —
  * the padding must sit OUTSIDE the max-width or the column comes out 64px narrow.
  */
-function ResultsSheet({ children }: { children: React.ReactNode }) {
+function ResultsSheet({ children, onBack }: { children: React.ReactNode; onBack?: () => void }) {
+  const { t } = useT()
   return (
     <motion.div
       variants={listSwap}
@@ -74,12 +75,63 @@ function ResultsSheet({ children }: { children: React.ReactNode }) {
           <div className="px-8 pb-2 pt-8">
             {/* 8px between blocks: the section titles carry their own 20px of air,
                 which is where the rest of the spacing comes from */}
-            <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2">{children}</div>
+            <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2">
+              {/*
+               * THE WAY BACK — ours, not drawn on any board, and reported as a defect
+               * before it existed: once a search had answered, the dashboard's
+               * "Existing domains" column could not be reached again without closing
+               * the whole window and reopening it. That hurts the connect-what-you-own
+               * path most, since those domains live on the screen you could no longer
+               * get to.
+               *
+               * It sits INSIDE the swapped content on purpose. The search field must
+               * not gain a control: `SearchHeader` is mounted once for the life of the
+               * window precisely so typing survives every answer, and putting a button
+               * in it would be the remount that reads as a page reload.
+               * Escape and an empty submit do the same thing (see DomainsSurface).
+               */}
+              {onBack && (
+                <motion.div variants={listSwapItem}>
+                  <button
+                    onClick={onBack}
+                    className="-ml-1 flex h-8 items-center gap-1 rounded-full pl-1.5 pr-3 text-[13px] leading-none text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a] hover:text-[var(--white-700)]"
+                  >
+                    <span className="grid h-5 w-5 flex-none place-items-center"><IconArrowLeft size={18} /></span>
+                    {t({ en: 'All domains', uk: 'Усі домени' })}
+                  </button>
+                </motion.div>
+              )}
+              {children}
+            </div>
           </div>
         </ScrollArea>
       </div>
     </motion.div>
   )
+}
+
+/**
+ * The domains this customer already holds — inventory plus whatever is attached to
+ * the project right now.
+ *
+ * Nothing in this set may ever carry a price or a Buy button. Offering somebody
+ * their own domain (QA, 13.09.2026: `fit-ration.com` stood in the Existing-domains
+ * column with `Connect` AND in the Best-match hero with `Buy $9.99`, and stayed on
+ * sale after it went live) is the one mistake on this screen that reads as the
+ * product not knowing who the customer is. When one of them turns up in a search it
+ * is not a result at all — it is the in-account state (Figma 27271:5564).
+ */
+function useMyDomains() {
+  const { world } = useWorld()
+  const inventory = world.inventory
+  /* Only a domain that is actually attached counts: `customDomain` keeps its name
+     for the panel's sake long before anything is connected. */
+  const attached = isCustomDomainActive(world) ? world.customDomain : null
+  return useMemo(() => {
+    const mine = new Set((OWNED_DOMAINS[inventory] ?? []).map((o) => o.domain))
+    if (attached) mine.add(attached)
+    return mine
+  }, [inventory, attached])
 }
 
 /* --------------------------------------------------- dashboard building blocks */
@@ -97,8 +149,19 @@ function RowButton({ label, onClick }: { label: Text; onClick?: () => void }) {
   )
 }
 
-/** Price stack: big figure + honest renewal line (never hidden — audit rule). */
-function PriceStack({ register, renew, strike }: { register: number; renew: number; strike?: boolean }) {
+/**
+ * Price stack: big figure + honest renewal line (never hidden — audit rule).
+ *
+ * `note` is the rest of that honesty. `.ai` is sold in TWO-YEAR blocks and nothing
+ * rendered its `TLD_PRICES.note` until now, so the row read "$89.99 · Renews at
+ * $89.99" as if a single year were on offer — an incomplete price claim about a
+ * name that costs $179.98 to register. It rides the renewal line rather than a
+ * line of its own: the two belong to one sentence about what this actually costs,
+ * and a third line would push the 72px row out of shape.
+ */
+function PriceStack({
+  register, renew, strike, note,
+}: { register: number; renew: number; strike?: boolean; note?: Text }) {
   const { t } = useT()
   return (
     <div className="flex flex-col items-end gap-1.5">
@@ -108,8 +171,9 @@ function PriceStack({ register, renew, strike }: { register: number; renew: numb
         )}
         <span className="font-display text-[18px] font-medium text-[#f5f5fa]">${register.toFixed(2)}</span>
       </p>
-      <p className="font-display text-[12px] font-medium leading-none text-[#ffffff7a]">
+      <p className="whitespace-nowrap font-display text-[12px] font-medium leading-none text-[#ffffff7a]">
         {t({ en: `Renews at $${renew.toFixed(2)}`, uk: `Продовження $${renew.toFixed(2)}` })}
+        {note && ` · ${t(note)}`}
       </p>
     </div>
   )
@@ -153,7 +217,7 @@ function BestMatchCard({ row, onBuy }: { row: ResultRow; onBuy: () => void }) {
         <p className="min-w-0 flex-1 truncate text-[22px] font-medium leading-normal text-white">{row.domain}</p>
         <div className="flex h-10 flex-none items-center gap-8">
           {/* the promo says itself: list price struck, first year large */}
-          <PriceStack register={price.register} renew={price.renew} strike />
+          <PriceStack register={price.register} renew={price.renew} note={price.note} strike />
           <button
             onClick={onBuy}
             className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
@@ -185,7 +249,7 @@ function DomainRow({ row, onBuy, size = 16 }: { row: ResultRow; onBuy: () => voi
         {row.domain}
       </p>
       <div className="flex h-10 flex-none items-center gap-8">
-        <PriceStack register={price.register} renew={price.renew} />
+        <PriceStack register={price.register} renew={price.renew} note={price.note} />
         <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={onBuy} />
       </div>
     </div>

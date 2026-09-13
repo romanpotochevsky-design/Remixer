@@ -1,0 +1,642 @@
+# Подключение домена у DreamHost — сводный ресёрч (13.09.2026)
+
+> **Назначение:** одна запись о том, что за вечер 13.09.2026 выяснили десять агентов о
+> реальной механике DreamHost вокруг двух путей итерации 1 — **CONNECT OWNED** (домен уже
+> в аккаунте DreamHost) и **BUY NEW** (покупка нового имени). Здесь сырьё и доказательная
+> база; **состояния и копирайт живут в `docs/features/domains/states.md`, каталог сбоев — в
+> `failures.md`**, и этот документ их не переписывает, а дополняет и поправляет по местам,
+> где ресёрч сказал новое.
+> **Дата:** 13.09.2026. **Ни одна строка не перепроверена человеком.**
+>
+> **Два прохода, десять агентов:**
+> `wf_b3aee696-e95` — 4 агента по первоисточникам DreamHost (KB-раздел Domains · KB-статьи
+> про Remixer · продуктовая страница доменов · блог DreamHost).
+> `wf_06dc84c6-655` — 6 исследователей механики подключения (BUY NEW · CONNECT OWNED ·
+> ICANN-верификация · SSL и последняя миля · словарь панели и ошибки · паттерны статуса у
+> конкурентов) + критик полноты, **который на момент записи ещё не закончил — его строки в
+> этом документе нет.**
+
+---
+
+## 1. Метод и его граница — читать до всего остального
+
+**Ни один агент не открыл ни одной страницы DreamHost.** Egress-прокси сессии блокирует
+`help.dreamhost.com` и `www.dreamhost.com` для обоих каналов: `WebFetch` отдаёт
+`EGRESS_BLOCKED`, `curl` — `CONNECT tunnel failed, response 403`. Это политика нашей же
+организации, а не капча и не сбой; по `/root/.ccr/README.md` такой отказ полагается
+сообщать, а не обходить, поэтому зеркала, кэши и text-extraction-прокси не использовались
+(публичное GitHub-зеркало KB, `web.archive.org` и `r.jina.ai` тоже проверены и недоступны).
+
+Единственный работавший канал — **WebSearch**, чей суммаризатор читает те же
+первоисточники и возвращает их фразы близко к тексту.
+
+**Отсюда единственное правило, которое нельзя обойти:**
+
+> **Источник первичен, последний шаг — нет.** Между страницей DreamHost и этим документом
+> стоит суммирующая модель. Любая строка отсюда, предназначенная **в отгружаемый UI**,
+> требует, чтобы **один человек открыл URL и сверил формулировку глазами.** Пока этого не
+> произошло, строка годится для проектирования и не годится для печати.
+
+Что означают статусы в этом документе:
+
+| Статус | Значит здесь |
+|---|---|
+| `verified` | Формулировка вернулась в кавычках и воспроизвелась в ≥2 независимых запросах. Это максимум, доступный этому проходу, — **не эквивалент «прочитано глазами»**. |
+| `likely` | Одно извлечение, или суммаризатор вернул прозой, а не цитатой. |
+| `unconfirmed` | Правдоподобно, слабый источник, вывод или конфликт источников. Не цитировать. |
+
+### 1.1 Статьи, которым нужны глаза (worklist для одного человека с доступом)
+
+Приоритет сверху вниз: первые четыре несут строки, которые мы собираемся печатать.
+
+| # | Статья | URL |
+|---|---|---|
+| 1 | Create a Site with Remixer | `https://help.dreamhost.com/hc/en-us/articles/45943689634196-Create-a-Site-with-Remixer` |
+| 2 | Remixer overview | `https://help.dreamhost.com/hc/en-us/articles/46355723313812-Remixer-overview` |
+| 3 | Understanding Remixer credits | `https://help.dreamhost.com/hc/en-us/articles/44981865908884-Understanding-Remixer-credits` |
+| 4 | Remixer Trial Terms | `https://www.dreamhost.com/legal/remixer-trial/` |
+| 5 | Branded Staging URLs Come to Remixer | `https://www.dreamhost.com/news/announcements/branded-staging-urls-come-to-remixer/` |
+| 6 | Adding a website troubleshooting (все строки ошибок) | `https://help.dreamhost.com/hc/en-us/articles/12073416679828-Adding-a-website-troubleshooting` |
+| 7 | How to purchase a domain registration (глаголы покупки) | `https://help.dreamhost.com/hc/en-us/articles/224220668-How-to-purchase-a-domain-registration` |
+| 8 | Domain hosting FAQs (4–8 часов) | `https://help.dreamhost.com/hc/en-us/articles/215571907-Domain-hosting-FAQs` |
+| 9 | Adding a website and hosting | `https://help.dreamhost.com/hc/en-us/articles/360049378932-Adding-a-website-and-hosting` |
+| 10 | Domain verification policy (ICANN) | `https://help.dreamhost.com/hc/en-us/articles/217083957-Domain-verification-policy` |
+| 11 | Adding a free Let's Encrypt certificate | `https://help.dreamhost.com/hc/en-us/articles/216539548-Adding-a-free-Let-s-Encrypt-certificate` |
+| 12 | Let's Encrypt SSL certificate overview | `https://help.dreamhost.com/hc/en-us/articles/216539558-Let-s-Encrypt-SSL-certificate-overview` |
+| 13 | Troubleshooting a Let's Encrypt SSL certificate | `https://help.dreamhost.com/hc/en-us/articles/39972665748116-Troubleshooting-a-Let-s-Encrypt-SSL-certificate` |
+| 14 | DreamHost DNS overview (основание zero-record) | `https://help.dreamhost.com/hc/en-us/articles/215413857-DreamHost-DNS-overview` |
+| 15 | Setting your domain to 'DNS Only' | `https://help.dreamhost.com/hc/en-us/articles/360056398191-Setting-your-domain-to-DNS-Only` |
+| 16 | Website settings overview (типы хостинга) | `https://help.dreamhost.com/hc/en-us/articles/360043889332-Website-settings-overview` |
+| 17 | Domain registration privacy (исключения TLD) | `https://help.dreamhost.com/hc/en-us/articles/115004549487-Domain-registration-privacy` |
+| 18 | Billing DomReg FAQs (возвраты, 5 дней) | `https://help.dreamhost.com/hc/en-us/articles/360003330492-Billing-DomReg-FAQs` |
+| 19 | Site not found | `https://help.dreamhost.com/hc/en-us/articles/215613517-Site-not-found` |
+| 20 | Remixer Visual Editor overview | `https://help.dreamhost.com/hc/en-us/articles/50653967848468-Remixer-Visual-Editor-overview` |
+
+### 1.2 ⚠️ Ловушка поиска: в KB живут ДВА Remixer одновременно
+
+Старый drag-and-drop-билдер назывался так же, его статьи живы и ранжируются выше нового
+продукта. **Факт, взятый из статьи с id вида `1150xxxxx` / `3600xxxxx`, — про СТАРЫЙ
+продукт и не может цитироваться как отгруженное поведение.** Помеченные ловушки: категория
+`204017167` «Remixer», секции `115001604027` «Previewing and Publishing», `206262227`,
+`115001616268`, `203812347`; статьи `360001149886` «Creating a trial website in Remixer»,
+`115000468691` «Remixer plans», `115005607468`.
+**Нынешний продукт документирован под длинными id:** `44981865908884`, `45943689634196`,
+`46355723313812`, `50653967848468`. *(verified · 13.09.2026)*
+
+Проверка на заражение по адресу стейджинга: легаси-Remixer превьюшился на
+`dreamhosters.com`, а не на `remixer.*`, — значит находка `remixer.ai` не может быть
+протёкшим старым текстом. *(verified · 13.09.2026)*
+
+---
+
+## 2. Что теперь установлено про два пути итерации 1
+
+### 2.1 У DreamHost УЖЕ отгружен свой publish-флоу, и он говорит нашими словами
+
+Это главная находка для дизайна: мы не проектируем в пустоте, мы переписываем
+существующий экран.
+
+> **"In the top menu, click the Publish button. In the pop-up, under Production, select a
+> domain from the dropdown. Click Connect. Your site is immediately published to your live
+> website."**
+> *verified · 13.09.2026 · Create a Site with Remixer (45943689634196), подтверждено тремя
+> агентами независимо.*
+
+Разбор по частям:
+
+- Вход — **одна кнопка `Publish` в верхнем меню**, открывающая поп-ап. Не страница, не
+  отдельный раздел.
+- В поп-апе **две назначения**: `Publish to Staging` (бесплатно, мгновенно) и секция
+  **`Production`**.
+- На production-пути **выпадающий список доменов аккаунта** и кнопка **`Connect`**.
+  Живое действие называется **Connect**, не Publish.
+- Рядом с каждой кнопкой — **стрелка, открывающая сайт в новой вкладке**:
+  *"You can view your new temporary domain by clicking the arrow icon next to the Publish to
+  Staging button"*, и симметрично `Publish to Production`. *(verified · 13.09.2026)*
+
+**Что это меняет у нас.** Панель Publish («Launchpad») обязана либо повторить эти слова,
+либо сознательно их заменить — но не изобретать третий словарь молча. Глагол `Connect` на
+домене, уже лежащем в аккаунте, — **отгруженное слово DreamHost**, а не наша догадка.
+⚠️ Тонкость: словарь аудита определяет `Connect` как «подключить СВОЁ, лежащее у другого
+регистратора». Продукт использует то же слово для «привязать проект к домену в аккаунте» —
+то есть ровно для нашего CONNECT OWNED. Расходится **словарь аудита**, а не наше
+именование пути.
+
+### 2.2 Хост стейджинга — `remixer.ai`. Пять независимых источников
+
+| Источник | Что даёт |
+|---|---|
+| KB «Create a Site with Remixer» | *"A new tab opens, displaying your temporary website ending in remixer.ai."* |
+| Remixer Trial Terms (юридический документ) | *"Your free trial site previews on a remixer.ai subdomain."* |
+| Анонс «Branded Staging URLs Come to Remixer» | обе формы адреса: старая `3dd84657c34fad43.remixer.ai` и новая `my-business.remixer.ai` |
+| Продуктовая страница `/remixer-website-builder/` | превью на `remixer.ai`-поддомене, 30 дней без карты |
+| Собственный фактологический реестр августовской ветки | тот же вывод, независимо |
+
+*verified · 13.09.2026.* Наш репозиторий печатает `*.remixer.site`, борды Figma —
+`.remixer.app`; **опровергнуты обе**. Подробности конфликта и его история —
+`docs/knowledge/product-facts.md`, «Спорные факты», п. 1 и п. 13.
+
+**Второе следствие анонса важнее первого:** левая часть адреса **выбирается пользователем и
+переименовывается, и делается это из самой панели Publish**. Значит в панели есть
+редактируемое поле имени стейджинга, а не read-only-адрес. Внутренний постоянный адрес
+сохраняется за сайтом, поэтому переименование ничего не ломает. *(verified · 13.09.2026)*
+⚠️ Точная **подпись** этого поля неизвестна, как и поведение при занятом имени.
+
+### 2.3 Zero-record connect существует и он реально нулевой
+
+> *"If you purchased your domain at DreamHost and want to host your website at DreamHost,
+> all of your DNS records are already configured to host your website, and you do not need
+> to make any changes."* — *verified · 13.09.2026 · DreamHost DNS overview (215413857).*
+
+> *"When your domain is managed by DreamHost, Remixer adds DNS records automatically and
+> shows external DNS records only when you need to add them manually."* — *likely ·
+> 13.09.2026 · Remixer overview (46355723313812).*
+
+Механика под этим: домен, зарегистрированный у DreamHost и без хостинга, лежит в статусе
+**`DNS Only`** на `ns1/ns2/ns3.dreamhost.com`, проставленных автоматически; при добавлении
+хостинга DreamHost **сам создаёт записи и для корня (`@`), и для `www`**, а у Fully Hosted
+домена не даёт добавить конфликтующие записи. *(verified · 13.09.2026)*
+
+**Три следствия для экрана CONNECT OWNED:**
+1. Ни одного слова про DNS, nameservers и записи. Только прогресс.
+2. Вопроса «www или без www» не существует — отвечают оба адреса.
+3. Наш конкурентный отрыв на этом пути — **реальный и уже поддержан инфраструктурой**, его
+   не надо строить, его надо не испортить лишними успокоениями.
+
+⚠️ **Но «zero-record» ≠ «мгновенно».** См. §3.
+
+### 2.4 …и ровно здесь же лежит дыра итерации 1: внешний домен уже существует в продукте
+
+Отгруженная панель Publish **умеет** внешние домены: та же строка KB говорит, что записи
+для ручного ввода показываются, «when you need to add them manually». То есть наша граница
+итерации 1 проходит **сквозь уже существующее поведение**, а не вокруг него: пользователь,
+открывший дропдаун в надежде найти свой домен с GoDaddy, попадёт в продуктовое поведение,
+которого наш прототип не моделирует. *(likely · 13.09.2026)*
+Решение по границе принято (см. `decisions.md`, 13.09.2026) — но **отсутствие третьего
+пути обязано быть видимым**, а не молчаливым: все конкуренты (GoDaddy, Shopify, Squarespace,
+Framer, Wix, Vercel) называют три пути явно.
+
+### 2.5 BUY NEW — не одно событие, а конвейер из пяти стадий
+
+Покупка у DreamHost распадается так *(verified · 13.09.2026, кроме отмеченного)*:
+
+1. **Оплата** — только кредитная карта или существующий кредит на аккаунте.
+   *"payment must be made via credit card only. This is so the request can be sent
+   immediately to the registry on your behalf."* PayPal работает только как предоплаченный
+   кредит.
+2. **Отправка в реестр** — *"Domains purchased are registered within 15 minutes of
+   completing the purchase form."*
+3. **Домен появляется в панели** — со статусом **`DNS Only`** и нашими nameservers.
+   > *"Registering a domain does not mean you can publish your site right away. You must
+   > purchase a hosting plan, add the domain to the hosting plan, and upload your website
+   > content."*
+4. **Хостинг привязывается отдельным действием** — *"it can take anywhere from 4–8 hours to
+   resolve online once hosting is added"*.
+5. **Сертификат** — 10–30 минут после того, как домен уже резолвится.
+
+⚠️ **Самое важное здесь — пункт 3.** На уровне панели DreamHost привязка хостинга это
+**отдельный акт**. Если бэкенд Remixer не делает его молча за пользователя, человек покупает
+домен и получает мёртвый адрес. **Делает ли Remixer это сам — не документировано нигде**, и
+это главный открытый вопрос пути BUY NEW (см. §6).
+
+### 2.6 Триал, кредиты, план — что подтвердилось и что поехало
+
+| Утверждение | Результат |
+|---|---|
+| 1 000 кредитов/мес + 1 000 бонусом в первый месяц | **подтверждено дословно** *(verified · 13.09.2026)* |
+| Публикация не тратит кредиты | **Отгруженная KB говорит, что НЕ тратит** — *"Manual edits, hosting, and publishing never use credits."* Это спорит с выводом аудита №1. См. `product-facts.md`, п. 14 |
+| Триал 30 дней без карты | подтверждено *(verified)* |
+| Триал стартует после первой генерации | **опровергнуто** Trial Terms: *"30 days starting from the day you sign up for the offer"* *(verified)* |
+| Публикация на кастомный домен = платный план | подтверждено дословно *(verified)* |
+| План называется «Remixer Build» | KB пишет **«the paid Build plan»**: продукт Remixer, план Build. И нигде в публичной KB нет ни `$9.99`, ни `$14.99`, ни `$119.88` — только «a paid Remixer plan» *(verified для формулировки, цены — `unconfirmed` по этому источнику)* |
+| Классов плана два (trial / paid) | **третий существует:** Visual Editor доступен «on all Remixer plans, including **Legacy**, Trial, and paid plans» *(likely)* |
+| Докупка кредитов +1 000/$14.99, +2 500/$34.99 | **не подтверждено ничем**: KB документирует контрол **`Add Credits +`**, срок жизни пакета 6 месяцев и порядок списания (сначала месячные), но **сумм не называет** *(unconfirmed)* |
+| Кредиты сгорают | *"Credit allotments reset on your billing cycle anniversary each month… Unused credits at the end of your billing cycle will expire and not roll over."* Триальные — **разовые, без месячного сброса, не переносятся в план** *(verified)* |
+| Нулевой баланс | *"If your balance reaches zero, AI features pause until you add additional Remixer Credits… or your credits reset."* Ручное редактирование и публикация продолжают работать. **Мира с нулём кредитов у нас в `world.ts` нет** *(likely)* |
+
+---
+
+## 3. Полный список состояний с честными сроками
+
+> **Не дублирует `states.md`.** Там — имена состояний, дословный EN-копирайт и глаголы;
+> здесь — **механика и сроки под ними**, с указанием, где ресёрч 13.09 меняет или дополняет
+> запись `states.md`.
+
+### 3.1 Четыре разных часов, которые нельзя смешивать в один спиннер
+
+Это, возможно, главный практический вывод вечера. У нас в фактах жило «~15 минут» и
+«4–72 часа», и обе цифры относились не к тому, к чему их прикладывали.
+
+| Часы | Сколько | Когда идут | Источник |
+|---|---|---|---|
+| Регистрация в реестре | **до 15 минут** | только BUY NEW | *verified · 224220668* |
+| Привязка сайта к серверу | **до 15 минут** | оба пути | *"Allow up to 15 minutes for your website to be added to the server"* — *verified · 215571907* |
+| Резолв после добавления хостинга | **4–8 часов** (заявленный максимум) | оба пути | *"If you recently added hosting to the domain, it can take anywhere from 4–8 hours to resolve online."* — *verified · 215571907* |
+| Nameservers нового домена расходятся по миру | **24–72 часа** | только BUY NEW | *"New domain registrations typically take 24–72 hours to be viewable online"* — *verified · 214878558 / 224220668* |
+| Смена nameservers на существующем домене | **4–72 часа** | только внешний путь / домен, уведённый на чужие NS | *verified · 216385467* |
+| Выпуск Let's Encrypt | **10–30 минут**, после того как домен уже резолвится | оба пути | *verified · 216539548* |
+
+⚠️ **Внутреннее противоречие самой KB, которое надо знать.** TTL у DreamHost заявлен
+**5 минут**, и отдельная статья обещает при переносе домена между аккаунтами простой
+«usually less than 5 minutes» «due to DreamHost's ultrafast TTL settings»; при этом
+Domain hosting FAQs говорят 4–8 часов, а старая FAQ — 4 часа TTL (SOA minimum 14400).
+*(unconfirmed — источники спорят · 13.09.2026)* Практический вывод: для домена, уже
+стоящего на наших nameservers, реальное время скорее минуты, а 4–8 часов — заявленный
+потолок. **Проектировать под «минуты, иногда часы» с живой перепроверкой, а не под
+обратный отсчёт.** Закрывается одним замером на тестовом домене.
+
+### 3.2 CONNECT OWNED — цепочка состояний
+
+| # | Состояние | Срок | Что под ним |
+|---|---|---|---|
+| 1 | **READY** — домен в аккаунте, `DNS Only`, на наших NS | стабильно | Единственное действие — подтвердить. Никакого ввода DNS |
+| 1а | **SETTLING** — куплен в последние 72 ч | до 72 ч | ⚠️ **Ловушка:** домен УЖЕ в аккаунте и УЖЕ показывается в списке как подключаемый, но делегирование может быть ещё не живым. Отдельное состояние, не общий `ready` |
+| 2 | **PRE-FLIGHT: custom-записи** | блокирует | У `DNS Only`-домена могут быть свои A/CNAME. KB требует их снять «to avoid conflicts». Нужен экран согласия, **отдельно называющий почту (MX)** |
+| 3 | **PRE-FLIGHT: NS уведены наружу** | 4–72 ч после исправления | Домен наш, настройки у Cloudflare/другого. Это `connecting · B managed-elsewhere` из `states.md` §4 — и ресёрч подтвердил, что случай достижим в два клика из панели |
+| 4 | **PRE-FLIGHT: домен уже занят внутри аккаунта** | блокирует | Перепривязка внутри одного аккаунта — поддерживаемая операция с коротким простоем («usually less than 5 minutes»), то есть это **confirm, а не тупик** |
+| 5 | **PROVISIONING** — сайт добавляется на сервер | до 15 мин | Место для Remixer glow |
+| 6 | **CONNECTING** — записи созданы, резолвится не везде | минуты … до 4–8 ч | Обязано переживать закрытие вкладки и иметь живую перепроверку, а не таймер |
+| 6а | **PLACEHOLDER LEAK** | минуты | DNS приземлился раньше контента → посетитель видит чужую страницу. **Предотвращается порядком операций**, а не копирайтом |
+| 7 | **LIVE ON HTTP, SSL PENDING** | 10–30 мин | Сайт работает, замочка нет. Замочек показывать нельзя |
+| 8 | **LIVE & SECURE** | терминальное | Автопродление каждые 60 дней, невидимо |
+| 9 | **DISCONNECTED** | — | Обратный путь непdestructивен: файлы и сайт сохраняются, свои DNS-записи тоже |
+
+### 3.3 BUY NEW — цепочка состояний
+
+Сверх цепочки CONNECT OWNED появляются:
+
+| # | Состояние | Срок | Что под ним |
+|---|---|---|---|
+| 0а | **CHECKOUT BLOCKED — неоплаченный баланс** | до оплаты | *"You must resolve any outstanding account balance before you can purchase…"* Это не отказ карты, ему нужен свой копирайт |
+| 0б | **CHECKOUT BLOCKED — аккаунт на ручной проверке** | ~24 ч, без выходных | Статус `Pending` у новой регистрации аккаунта. **Ровно наша персона.** Без этого состояния человек прочитает паузу как поломку Remixer |
+| 0в | **TERM CONSTRAINED** | мгновенно | `.ai` — минимум 2 года ($179.98). Контрол срока не универсально «1 год» |
+| 1 | **REGISTERING** | до 15 мин | Не блокирующая модалка: человек должен продолжать строить |
+| 1а | **REGISTRATION FAILED / TAKEN AT COMMIT** | в пределах тех же 15 мин | ⚠️ **Деньги не возвращаются автоматически:** *"the balance paid is applied to the account as a credit."* Копирайт обязан сказать, где деньги, иначе это читается как кража |
+| 1б | **MORE INFO NEEDED** | открытый | `.ca` требует данных после покупки письмом, `.us` — Nexus-сертификации. Итерация 1 может просто не предлагать такие TLD |
+| 2 | **PROPAGATING** | 24–72 ч | Единственное честное объяснение суток ожидания |
+| 3 | **ICANN VERIFICATION** | 15 дней, **параллельно всему** | См. §3.4 |
+| 4 | **AUTO-RENEW ON** | постоянно | Включён по умолчанию для новых регистраций; карта списывается **за 31 день** до окончания, и в эти 31 день переключатель в панели недоступен |
+| 5 | **TRANSFER-LOCKED** | 60 дней | Одна тихая строка при покупке снимает злой тикет на десятый день |
+
+### 3.4 ICANN-верификация — часы, которые идут ПАРАЛЛЕЛЬНО публикации
+
+Это не шаг флоу. Это независимый пятнадцатидневный таймер, который может погасить уже
+работающий сайт. *(verified · 13.09.2026 · 217083957 + `/legal/icann-domain-verification-policy/`)*
+
+- **15 календарных дней**, письма на дни **1, 5, 10, 15**.
+- **На 16-й день домен приостанавливают**, ICANN забирает DNS и на сайте показывается
+  **`You have reached a domain that is pending ICANN verification.`**
+- Технически это `clientHold`: **падает и сайт, и почта**, но **владение не теряется**.
+- После подтверждения — *"it may then take 24 to 48 hours for DNS changes to propagate
+  before the site is restored"*, то есть нужно состояние **restoring**, а не мгновенный
+  флип в Live.
+- **Верификация привязана к EMAIL регистранта, а не к домену.** Вернувшийся клиент, уже
+  подтвердивший адрес однажды, **этого экрана не увидит никогда**. Значит состояние
+  условное и серверное, а не обязательный шаг покупки.
+- Отправитель — **`do-not-reply@dreamhostregistry.com`**; фактически письмо уходит с
+  инфраструктуры `name-services.com` (DreamHost работает на платформе eNom/Tucows), тема
+  вида **«IMMEDIATE VERIFICATION required for [domain]»**. *(likely)*
+  Печатать адрес отправителя прямо в UI — самая полезная строка на этом экране: она бьёт
+  спам-папку. Есть публичная жалоба клиента DreamHost, что письмо **неотличимо от фишинга**
+  *(likely)* — то есть наш экран работает якорем доверия.
+- **`⚠️ Кнопка `Resend`, нарисованная на борде `28206:66756`, ничем не подтверждена.**
+  Задокументированы только три механизма: автоматическая рассылка 1/5/10/15, reCAPTCHA на
+  припаркованной странице **уже после** приостановки, и поддержка. API платформы
+  (OpenSRS `send_registrant_verification_email`) такой вызов имеет, так что кнопка,
+  вероятно, реализуема — но это **решение продукта и инженерии, а не дизайн-допущение.**
+  *(unconfirmed)*
+- ⚠️ **Смена адреса регистранта — не безобидный «исправить почту»:** она запускает новый
+  15-дневный цикл **и** накладывает 60-дневный лок трансфера. Любая ссылка «wrong email?»
+  обязана это сказать.
+
+**Это закрывает открытый вопрос `states.md` §5 и `failures.md` №14** («⚠️ Число не
+проверено — не отгружать цифру»): число **15 дней** теперь прослеживается до собственной
+страницы DreamHost и до ICANN, а не до правила Squarespace. *(verified · 13.09.2026,
+через суммаризатор — глазами не прочитано.)* Расхождение, о котором надо знать: KB eNom
+цитируется как «14 дней для новых, 7 для существующих» — **это число не использовать**,
+оно спорит с опубликованным DreamHost. *(unconfirmed)*
+
+### 3.5 SSL — где на самом деле начинаются 10–30 минут
+
+- **Выпуск сертификата в панели — ОПТ-ИН, а не автомат:** `Secure Certificates` → `Add`
+  справа от домена → `Select this Certificate`. **Ни один источник не говорит, что
+  сертификат выпускается сам при добавлении сайта.** *(verified)*
+  ⚠️ Значит publish Remixer обязан заказывать сертификат сам, одним актом с привязкой
+  домена. Если этого не делает — сайт уходит в мир по http с бейджем «Not secure», и никто
+  об этом не сообщает.
+- **Порядок жёсткий и необсуждаемый:** хостинг → DNS резолвится → только потом сертификат.
+  Предусловия дословно: домен *"must be fully hosted, redirected, or parked"* И
+  *"your domain's DNS is currently pointing to DreamHost"*, потому что Let's Encrypt
+  находит домен через DNS и кладёт `.well-known/`. *(verified)*
+- **DreamHost сам ждёт и продолжает:** *"you may see an Order Processing message in your
+  panel. When your DNS fully propagates, DreamHost will continue to install the new
+  certificate."* *(verified)* → правильное состояние — **терпеливое «Securing»**, а не
+  ошибка с кнопкой Retry.
+- ⚠️ **Кнопка Retry здесь — активно вредна.** Let's Encrypt разрешает **5 неудачных
+  авторизаций на хост на аккаунт в час**, восполняется по 1 за 12 минут. Пять нажатий
+  превращают 20-минутное ожидание в часовое. Любой Retry — с видимым кулдауном.
+  *(verified · letsencrypt.org/docs/rate-limits)*
+- **После установки HTTP→HTTPS редиректится автоматически**, «nothing on your end you must
+  do». Никакого тумблера «force HTTPS» у нас быть не должно. *(verified)*
+- **Wildcard-сертификатов у DreamHost нет:** каждый домен и поддомен требует своего.
+  ⚠️ Покрывает ли выпущенный сертификат `www.` — **не установлено**, а это решает, работает
+  ли `www.клиент.com` в первый день.
+- ⚠️ **`.dev` и `.app` — особый случай:** HSTS preload на уровне браузера, отключить нельзя,
+  **промежуточного http-состояния не существует вовсе** — сайт просто недоступен, пока нет
+  сертификата. Общая формулировка «live, finishing security» на этих зонах — ложь.
+- **Инженерный флаг, не UI:** лимит Let's Encrypt «50 сертификатов на registered domain за
+  7 дней» считается по eTLD+1 через Public Suffix List. Если зона превью не внесена в PSL,
+  все превью делят одно ведро. *(likely)*
+
+### 3.6 Что говорят конкуренты про сам показ статуса
+
+Сжато; полный разбор — в журнале прохода `wf_06dc84c6-655`, агент `competitor-connect-status-ux`.
+
+- **Эталон — Lovable:** три названных состояния, опрашиваемых самим продуктом:
+  `Verifying` (DNS) → `Setting up` (сертификат) → `Live`. Пользователь не нажимает ничего.
+  ⚠️ Форма машины подтверждена хорошо, **среднее СЛОВО — нет** (сторонний источник даёт
+  `Configuring` / `Pending DNS`). *(likely)*
+  **Наша поправка к эталону:** на CONNECT OWNED стадии DNS не существует — значит машина
+  должна быть **двухсоставной, а не трёхсоставной**.
+- **Lovable ставит срок сдачи:** нет сертификата за 72 часа — писать в поддержку. Копировать
+  надо **наличие числа**, а не само число: у нас окно 10–30 минут.
+- **Ярлыки путей совпадают у всех:** Shopify `Buy new domain / Connect existing domain /
+  Transfer domain`; GoDaddy `Buy and connect a new GoDaddy domain / Connect a GoDaddy domain
+  you already own / Connect a non-GoDaddy domain that you bought elsewhere`; Squarespace
+  `Get a domain / Use a domain I own`; Framer `Connect a domain you own`; Vercel `buy / add /
+  transfer`. Никто не произносит «DNS» в самом выборе.
+- **Лучший паттерн сбоя — Shopify:** два глагола сразу, `Verify connection` **и**
+  `Add domain anyway`. Retry плюс выход. Никогда не тупик.
+- **Анти-паттерн — Vercel `Invalid Configuration`:** приговор без глагола.
+- **Squarespace показывает доказательство, а не спиннер:** колонка `Current Data` с
+  per-record значением `Record found`, глагол перепроверки `Refresh records`.
+- **Wix — единственный, кто подтверждённо шлёт письмо о готовности.** Наше ожидание может
+  пережить сессию, значит уведомление — не украшение.
+- **Framer про коллизию:** `This domain is already connected to another project`, и
+  отдельно предупреждает, что домен может держать **архивный** проект. Наш экран коллизии
+  обязан **называть, какой сайт держит домен**, а не просто отказывать.
+- **GoDaddy прямо рекламирует разницу скоростей** между «свой у нас» и «чужой»: «usually
+  takes a few minutes but can take up to 72 hours, especially when connecting… to a
+  non-GoDaddy domain». Наш двойник уже продаёт ровно ту вещь, которую мы собираемся
+  выиграть.
+- **Hostinger Horizons — предостережение:** статус выражен уведомлением, которое «goes away
+  after some time», названных состояний, похоже, нет вообще.
+
+---
+
+## 4. Поверхность сбоев — что добавилось к `failures.md`
+
+> Каталог из 15 сбоев — в `docs/features/domains/failures.md`. Ниже только то, что ресёрч
+> 13.09 **добавил или переоценил**.
+
+### 4.1 Главный сбой CONNECT OWNED оказался не про DNS, а про хостинг
+
+> *"The domain you publish to must be associated with a clean hosting environment, as the
+> tool is not compatible with existing sites (e.g., WordPress or other types of
+> installations)."* *(verified · 13.09.2026 · 45943689634196)*
+> *"If a domain was previously used for a WordPress site and those files aren't cleared out,
+> publishing to production will fail."* *(likely)*
+> Рядом — второе предупреждение: *"If there are currently website files in your domain's
+> directory, this option may replace the current site, so make sure to back up any website
+> data before publishing, if applicable."* *(verified)*
+
+**База DreamHost — это WordPress.** Значит самый вероятный реальный исход CONNECT OWNED —
+человек выбирает домен, на котором стоит его WordPress. Это подтверждает и уточняет
+`failures.md` №15 («дырки нет даже на бумаге»): сбой **не DNS-класса**, а класса состояния
+хостинга, и ни один экран домен-флоу его не ловит.
+
+Документированные лекарства DreamHost — **удалить файлы по SFTP**, **перенести старый сайт
+на другой домен**, либо **поддержка**. Все три нарушают правило де-жаргона (аудит, правило 4).
+**Копирайт восстановления придётся писать нам: у первоисточника его нет.**
+
+Отгруженное поведение — **падение в момент публикации**. Лучшее поведение — **поймать до
+клика `Connect`** и пометить строку в дропдауне. Это осознанное улучшение, а не тихое
+расхождение, и его надо показать дизайнеру именно так.
+⚠️ **Точной строки ошибки не существует ни в одном источнике.** KB формулирует правило, не
+цитирует диалог. Это самая ценная недостающая строка всего ресёрча.
+
+### 4.2 Дословные строки ошибок, которые продукт уже отдаёт
+
+Все из «Adding a website troubleshooting» (`12073416679828`, обновлена 15.07.2026),
+*verified · 13.09.2026*:
+
+| Строка DreamHost | Наш случай |
+|---|---|
+| `Sorry, this domain is already in our system on another account. Please contact support if you feel this is a mistake.` | Домен в **другом** аккаунте DreamHost. Самообслуживаемого выхода нет: только поддержка или освобождение из старого аккаунта. **Кнопки Retry быть не должно** |
+| `The domain looks like a subdomain.` + `Did you want to create a subdomain instead?` (кнопка `Continue with Subdomain`) | Валидация ввода. Ловить `shop.example.com` **до** запроса |
+| `The system detected that the domain name is registered with another provider and may require its DNS to be pointed to DreamHost.` | Внешний регистратор — итерация 2, но панель **уже** это детектирует |
+| `The system detected that the domain name is not yet registered and would need to be purchased before it can be used.` | Естественный мост из CONNECT OWNED в BUY NEW в одном поле |
+| `Unfortunately, DreamHost cannot register or transfer that type of domain. You can still add DreamHost hosting to this domain, but will need to keep the registration somewhere else and point it to our nameservers to work.` | Неподдерживаемый TLD |
+| `You already have a record for this name. You can't have a CNAME and any other record on the same name.` | Чистый жаргон, до пользователя доходить не должен |
+| `The DNS records shown in your DreamHost panel may be different than your domain's current DNS settings since they could still be pointing to a different company.` | ⚠️ Панель **сама признаётся**, что может показывать неправду про домен с уведёнными NS |
+
+Плюс публичные страницы, которые увидит **посетитель**, а не наш пользователь:
+
+- `Site not found` — *"Well, this is awkward. The site you're looking for is not here."* /
+  *"Is this your site?"* — пять задокументированных причин, включая приостановку аккаунта за
+  неоплату, при которой **DreamHost перестаёт отдавать DNS для всех доменов аккаунта**.
+  *(verified)*
+- `You have reached a domain that is pending ICANN verification.` — страница, которую мы не
+  контролируем и не можем стилизовать. *(verified)*
+
+### 4.3 Причины провала выпуска сертификата
+
+*verified · 13.09.2026 · 39972665748116 + 360029281672:*
+(a) домен не Fully Hosted / Redirect / Parked — при `DNS Only` выпуск падает сразу;
+(b) **CAA-запись**, не содержащая `letsencrypt.org` — при нашем DNS DreamHost создаёт её
+сам (`@` / flag 0 / tag `issue` / value `"letsencrypt.org"`), при чужом это ручная работа;
+(c) **AAAA (IPv6)**, указывающая наружу, валит выпуск даже при идеальной A-записи, потому
+что *"Let's Encrypt validates both record types"*;
+(d) домен проксирован через Cloudflare;
+(e) правила `.htaccess` — блокировка по IP, rewrite, парольная защита.
+⚠️ На обоих путях итерации 1 DNS держим мы, поэтому (b) и (c) мы можем **детектировать и
+починить одним нажатием**, ни разу не произнеся букв CAA и AAAA. Это закрывает дырку
+`failures.md` №6 («дома нет»).
+**И отдельно:** сертификат, у которого провалилось автопродление, чинится **только
+поддержкой** — терминальное состояние, у которого нет самообслуживаемого выхода.
+
+### 4.4 Регистрационные сбои, которых у нас не было в каталоге
+
+- **Опечатка в купленном имени неисправима:** *"every domain is unique, so even a
+  one-letter difference is a completely different domain"*. Отсюда требование к чек-ауту:
+  **точная строка покупаемого имени крупно и с возможностью перечитать**. *(verified)*
+- **Реестр/регистратор вправе отменить регистрацию** «in either's sole discretion» — редкое,
+  но реальное состояние, которое не должно рендериться пустым экраном. *(verified)*
+- **Лестница окончания срока:** 30 дней grace по обычной цене → 30 дней redemption с
+  дополнительным сбором → релиз. Панельные статусы под это —
+  `Active` / `Redemption` / `Hold` / `Suspended` / `Expired`. *(verified; трактовка `Hold`
+  собрана из двух статей — `likely`)*
+
+---
+
+## 5. Настоящий словарь DreamHost — дословно
+
+Это то, что уже отгружено. Любое наше слово либо совпадает с ним, либо расходится
+**осознанно и записанно**.
+
+### 5.1 Remixer
+
+| Строка | Где | Статус |
+|---|---|---|
+| `Publish` | кнопка в верхнем меню, вход в поп-ап | verified |
+| `Publish to Staging` | бесплатный путь | verified |
+| `Production` | заголовок секции живого пути | verified |
+| `Connect` | кнопка после выбора домена из дропдауна | verified |
+| `Publish to Production` | вторая форма живого пути (обе задокументированы) | verified |
+| `Build` | кнопка первого запуска у поля ввода | likely |
+| `Recent Projects` | список возврата к сайту | likely |
+| `Add Credits +` | докупка кредитов | likely |
+| `Save` · `Undo` · `Redo` · `Exit` | верхняя панель Visual Editor | verified |
+
+⚠️ Коллизия имён: **`Build` — одновременно главный глагол первого экрана и название
+платного плана.** Поднять дизайнеру.
+⚠️ Не установлено: показываются ли Staging и Production одновременно в одной панели или это
+два шага; и как соотносятся `Connect` и `Publish to Production` (до/после подключения).
+
+### 5.2 Панель DreamHost — покупка
+
+`Find New Domains` → поле → **`Search`** → **`Add For $[price]`** → выбор числа лет →
+**`Proceed to Checkout`** → личные данные → **`Continue`** → **`Proceed to Payment Entry`**
+→ **`Register now!`** *(verified · 224220668, подтверждено вторично 236186608)*
+
+⚠️ **Это прямое свидетельство в нашем открытом споре Add-vs-Buy.** Отгруженный глагол —
+**`Add For $X`**, с ценой **внутри подписи кнопки**; `Buy` в этом пути не встречается
+нигде. То есть словарь аудита («Add = купить») совпадает с продуктом, а **борд Figma с
+`Buy` — нет**. Отдельно стоит заметить: цена внутри кнопки — это и есть наше собственное
+правило «цену до корзины», уже реализованное родительским брендом; терять его нельзя.
+⚠️ Маркетинговая страница при этом использует третий глагол — **`Reserve`**. Бренд уже
+непоследователен на своих же поверхностях, что само по себе аргумент выбрать одно слово и
+записать выбор.
+
+### 5.3 Панель DreamHost — хостинг и домены
+
+| Строка | Значение |
+|---|---|
+| `Manage Websites` · `Manage Domains` · `Find New Domains` | страницы |
+| `Add Website` → `Enter Domain Name (example.com)` / `Create a Subdomain (blog.example.com)` / `Free Temporary Domain (mysite.dreamhosters.com)` → `Complete Setup` | привязка хостинга |
+| `Fully Hosted` · `Mirrored` · `Redirect` · `Parked` · `DNS Only` (группа — `Non-Hosted`) | типы хостинга домена |
+| `Active` · `Redemption` · `Hold` · `Suspended` · `Expired` | статус регистрации на Domain Dashboard |
+| `Deactivate Website` → красное `Yes, Set to DNS Only` | снятие хостинга |
+| `Permanently Delete Domain` → `Proceed with Deletion` | удаление |
+| `Auto Renew` (колонка, значения `On` / `Off`) · `Enable Auto-Renewal` (тумблер) | продление |
+| `Opt out of 60-day transfer lock` | чекбокс при смене регистранта |
+| `Enable Domain Privacy for all Eligible Domains` · `Domain Privacy Protection` | приватность |
+| `Use another host's nameservers` | увод NS наружу |
+| `Order Processing` / `Order Pending` | статусы сертификата |
+| `Secure Certificates` → `Add` → `Select this Certificate` | выпуск сертификата |
+
+⚠️ **Две вокабуляры не согласованы между собой:** регистрационная ось
+(`Active/Redemption/Hold/Suspended/Expired`) и хостинговая
+(`Fully Hosted/Mirrored/Redirect/Parked/DNS Only`) — разные оси про один и тот же домен.
+Наш `world.ts` не знает ни одной из них: у нас есть «домен в аккаунте / нет».
+**Пригодность домена для публикации почти наверняка зависит от обеих.**
+
+### 5.4 Де-жаргон: готовые формулировки самого DreamHost
+
+Блог DreamHost — лучший из найденных источников простого языка, и он наш собственный:
+
+- **Модель домена одной строкой:** *"DNS is the system, nameservers are the machines,
+  records are the entries."* *(likely · /blog/nameservers-vs-dns-guide/)*
+- **Почему не мгновенно, без слова propagation:** *"changes to DNS do not take effect all at
+  once"* *(likely)* — «не всё сразу» можно взять дословно.
+- **Метафора маршрута:** браузер спрашивает дорогу, резолвер идёт по цепочке. Годится в
+  копирайт ожидания.
+- **Что делать, когда имя занято** (редакционный ответ DreamHost): 15–20 коротких
+  брендируемых альтернатив; другие зоны (`.co`, `.io`, `.shop`, страновые); слово до или
+  после имени — *"get, try, app, HQ, shop, online, or your city name"*; выбросить длинное,
+  труднопроизносимое, с дефисами, цифрами и удвоенными буквами. *(likely)*
+  ⚠️ Это **ровно двухблочная структура нашего `ResultsScreen`** — независимое подтверждение,
+  что порядок «то же имя в других зонах, потом другие имена» правильный.
+- **Позиционирование зон** (готовые «почему» под AI-подсказки): `.com` — *"the default
+  choice of the internet"*, 43,6 % сайтов; `.net` — заслуживающий доверия запасной, когда
+  `.com` занят; `.org` — мгновенный кредит доверия для некоммерческих; `.io` —
+  технологичный, популярен у софтверных компаний. *(likely)*
+- **Google не дискриминирует новые зоны** — первопартийная строка, которой можно снять
+  страх при уводе с `.com`. *(likely)*
+
+⚠️ **Тон блога и тон KB — разные.** Блог: второе лицо, сокращения, короткие утверждения,
+готовность быть резким («technically correct but completely unsendable to a client»).
+Это ближе к нашему продукту, чем язык KB.
+
+---
+
+## 6. Что осталось неизвестным
+
+Отсортировано по цене незнания.
+
+### 6.1 Блокирующие — без ответа нельзя проектировать дальше
+
+1. **Привязывает ли Remixer хостинг к купленному домену автоматически?** На уровне панели
+   это доказуемо отдельный акт. Если бэкенд Remixer его не делает, человек покупает домен и
+   получает мёртвый адрес. **Это вопрос к инженерии, а не к KB.**
+2. **Заказывает ли publish Remixer сертификат Let's Encrypt сам?** Панельный путь — опт-ин.
+   Если решение не принято явно, сайты уходят в мир по http.
+3. **Точная строка ошибки при публикации на «грязный» домен.** Самая ценная недостающая
+   строка ресёрча — это тот сбой, который наш флоу обязан обработать и сейчас не может даже
+   сформулировать.
+4. **Фильтрует ли Production-дропдаун домены** по пригодности (пустой docroot, `Active`,
+   наши NS) или показывает все. От этого зависит, нужны ли нам отключённые строки с
+   причинами или список приходит уже очищенным.
+5. **Что показывает дропдаун, когда пригодных доменов ноль**, и можно ли купить домен
+   **изнутри** панели Publish. Это ровно шов между нашим BUY NEW и отгруженным продуктом, и
+   ни один источник его не закрывает. Утверждение суммаризатора, что покупка изнутри
+   билдера доступна, **не подкреплено цитатой — считать недоказанным.**
+
+### 6.2 Нужен один замер или один скриншот
+
+6. **Реальное время CONNECT OWNED** (`DNS Only` → `Fully Hosted` на наших NS). KB говорит
+   4–8 часов, собственные заявления про TTL подразумевают минуты. Никто не мерил. Это
+   решает, ощущается ли подключение мгновенным или как у всех.
+7. **Настоящий TTL DreamHost** — 5 минут или 4 часа (14400). Две страницы KB спорят.
+8. **Покрывает ли выпущенный сертификат `www.`** вместе с апексом. Решает, работает ли
+   `www.клиент.com` в первый день.
+9. **Что отдаётся по `https://`** на захостенном домене, у которого сертификата ещё нет.
+   Один источник утверждал про временный самоподписанный — но статья DreamHost про
+   `Temporary SSL certificates` описывает ЛЕГАСИ-механизм, который в панели больше не
+   создаётся. **Не выдумывать, проверить живьём.**
+10. **Подпись поля имени стейджинга** в панели Publish и поведение при занятом имени.
+11. **Остаётся ли стейджинг живым** после подключения production-домена, и влияет ли
+    переименование стейджинга на живой сайт.
+12. **Дословные строки состояния «домен занят»** в панели DreamHost: `taken`, `unavailable`,
+    `already registered` — не установлено ничего. Наш борд `27270:5623` рисует `Taken` chip;
+    подтверждения первопартийной формулировки нет.
+
+### 6.3 Продуктовые и юридические вопросы, не исследовательские
+
+13. **Берёт ли отгруженный Remixer кредиты за публикацию.** KB говорит «нет». Вывод аудита
+    №1 говорит «мы единственные, кто берёт». Это решается продуктом, а не ещё одним
+    поиском. См. `product-facts.md`, п. 14.
+14. **Существуют ли платные тиры выше Build.** Продуктовая страница пишет «plans start at
+    $9.99/mo» во множественном числе; KB называет только Build.
+15. **Что такое класс плана `Legacy`** и может ли такой клиент вообще дойти до нового
+    publish-флоу.
+16. **Цены**: KB намеренно не публикует таблицу («prices are displayed during the
+    registration and renewal process»), а публичная таблица **генерируется динамически по
+    ~401 зоне** в трёх колонках (registration / renewal / transfer). Первопартийно
+    подтверждены только `.com` ($9.99 / $19.99) и `.io` ($34.99 / $59.99).
+    **`TLD_PRICES` — снимок живой ленты, а не константа.**
+17. **Собирает ли панель Nexus-данные для `.us`** и какие ограниченные зоны DreamHost вообще
+    продаёт.
+18. **Реализуема ли кнопка `Resend`** на ICANN-верификации и с каким лимитом частоты.
+19. **Умеет ли Remixer читать статус домена** (`Active/Redemption/…`) через API — иначе наш
+    бейдж будет кэшированной догадкой.
+20. **Частота случая «домен в аккаунте, но NS уведены наружу»** — отвечается запросом к
+    нашим же данным (inventory / ClickHouse), а не поиском.
+
+---
+
+## 7. Ссылки
+
+- `docs/features/domains/states.md` — стейт-машина: имена, дословный EN-копирайт, глаголы.
+  Этот документ **уточняет её сроки** (§3) и **закрывает пометку «не отгружать цифру»** на
+  ICANN (§3.4).
+- `docs/features/domains/failures.md` — каталог 15 сбоев. Этот документ **добавляет** класс
+  «грязный домен» (§4.1), дословные строки панели (§4.2) и **закрывает дырку №6 CAA** (§4.3).
+- `docs/features/domains/copy.md` — словарь глаголов и запрещённые слова.
+- `docs/features/domains/figma-boards.md` — индекс бордов с node id.
+- `docs/features/domains/README.md` — экраны, геометрия, открытые вопросы.
+- `docs/knowledge/product-facts.md` — «Спорные факты, поднятые 13.09.2026», пп. 13–24 —
+  конфликты, поднятые именно этим ресёрчем.
+- `docs/knowledge/decisions.md` — решения вечера 13.09.2026 (граница итерации 1, ㉔, mid-fi,
+  описания у альтернатив, `remixer.ai`).
+- `docs/research/domain-search-research.md` — предыдущий глубокий ресёрч поиска доменов.
