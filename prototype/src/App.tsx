@@ -27,7 +27,7 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
-import { SPRING } from '@/ui/motion'
+import { SPRING, foreignPage, popoverContent } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -91,6 +91,128 @@ const RAIL = [
   { id: 'cloud', label: 'Cloud', Icon: IconCloud },
   // Domains and Email still have no home in the rail. That gap is the audit's headline.
 ]
+
+/**
+ * ─────────────────────── THE EMAIL, SIMULATED ───────────────────────
+ *
+ * ICANN's registrant-email check is the one state in the whole flow whose exit does
+ * not happen in the product. The customer leaves for their inbox, opens a message from
+ * DreamHost and clicks the link inside it — and a prototype has no inbox, so the walk
+ * could be taken up to here and never finished.
+ *
+ * It used to be answered with a dashed "Confirm email" strip inside the Publish panel,
+ * and the designer threw it out on sight (14.09.2026: "зачем ты это ставил в окно? это
+ * же не часть интерфейса?!!!!!" — then: "просто где-то всплыла эта информация и кнопка").
+ * The capability stays; its home changes.
+ *
+ * WHY A LETTER AND NOT A BUTTON. A button labelled "Confirm email" floating over the
+ * shell would still be a control, just a homeless one — and the viewer would spend the
+ * demo wondering whose control it is. A card that reads as an arriving MESSAGE — who it
+ * is from, what it asks, and its link as the action — teaches the real mechanic (you
+ * leave, you click a link in your mail) and advances the flow in the same press. And
+ * nobody mistakes it for the builder, because a website builder does not show you your
+ * inbox.
+ *
+ * HOW IT SAYS IT IS NOT THE PRODUCT, three ways at once:
+ *  · MATERIAL. Light paper on the near-black shell, in the same palette the prototype
+ *    console and the flow player already use for "not part of the product". It adopts
+ *    nothing from the Publish panel — no gray-850, no glass, no blue button.
+ *  · A TAG. Its own dashed PROTOTYPE strip, in words: this is the prototype standing in
+ *    for the email, not Remixer displaying mail.
+ *  · WHERE IT SITS. It floats above the whole shell in the bottom-left of the CANVAS —
+ *    clear of the Publish panel (fixed top-right, `right-[55px] top-2`) and clear of the
+ *    chat column, so it never covers what a presenter is pointing at. Checked at
+ *    1600×1000 and at 1280×800, which is the projector.
+ *
+ * It is up only while `world.icann` is true, and the link is the same one write the
+ * scenario console's "Email unconfirmed" toggle makes — either way out clears the state
+ * and the panel settles to "Padlock on · anyone can visit".
+ */
+const SIM_EMAIL_TO = 'roman@example.com' // the address the Publish panel's card names
+
+function SimulatedEmail() {
+  const { world, set } = useWorld()
+  const previewOpen = useUI((s) => s.previewOpen)
+  const { t } = useT()
+
+  return (
+    <AnimatePresence>
+      {world.icann && (
+        <motion.aside
+          key="sim-email"
+          /* Bottom-left of the canvas. `--chat-w` is written straight to <html> by the
+             resizer, so the letter follows a drag without a React render; with the
+             preview collapsed the chat owns the whole width and it falls back to the
+             page's own gutter. */
+          style={{ left: previewOpen ? 'calc(var(--chat-w) + 16px)' : '16px' }}
+          className="fixed bottom-4 z-[60] w-[348px] overflow-hidden rounded-[14px] bg-[#F7F7F5] text-neutral-900 shadow-[0_2px_6px_rgba(0,0,0,0.22),0_22px_48px_-12px_rgba(0,0,0,0.6)] ring-1 ring-black/15"
+          /* `foreignPage` — motion.ts's own preset for a surface that comes from OUTSIDE
+             the product: a short rise, no scale, transform and opacity only. Exactly what
+             this is. */
+          variants={foreignPage}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          /* The Publish panel closes on any mousedown outside itself. Confirming from
+             here would therefore shut the panel in the same press — and the panel is the
+             thing the presenter wants to watch change. */
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {/* the tag — dashed, mono, the console's own language for "tooling" */}
+          <div className="flex items-start gap-2 border-b border-dashed border-black/20 bg-[#ECECE7] px-3.5 py-2">
+            <span className="mt-px flex-none font-mono text-[10px] uppercase leading-[1.6] tracking-[0.14em] text-neutral-500">
+              Prototype
+            </span>
+            <span className="text-[11.5px] leading-[1.35] text-neutral-500">
+              {t({
+                en: 'the email, simulated — Remixer never shows your inbox',
+                uk: 'імітація листа — Remixer не показує вашу пошту',
+              })}
+            </span>
+          </div>
+
+          {/* the message itself. Rule 3 of the motion language: the contents arrive a
+              beat behind the surface they are in. */}
+          <motion.div className="px-3.5 pb-3 pt-3" variants={popoverContent}>
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-[var(--action)] text-white">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <rect x="1.25" y="3.25" width="13.5" height="9.5" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                  <path d="M2 5l6 4 6-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold leading-[1.3]">DreamHost</p>
+                <p className="truncate text-[11.5px] leading-[1.35] text-neutral-500">
+                  {t({ en: 'to', uk: 'кому:' })} {SIM_EMAIL_TO}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-2.5 text-[13.5px] font-semibold leading-[1.35]">
+              {t({ en: 'Confirm your email address', uk: 'Підтвердьте свою email-адресу' })}
+            </p>
+            <p className="mt-1 text-[12.5px] leading-[1.45] text-neutral-600">
+              {t({
+                en: `You registered ${CUSTOM_DOMAIN}. Confirm this address to keep the domain and its email working.`,
+                uk: `Ви зареєстрували ${CUSTOM_DOMAIN}. Підтвердьте цю адресу, щоб домен і пошта й далі працювали.`,
+              })}
+            </p>
+
+            {/* The link IS the action — the way it is in the real message. A button, not
+                an anchor: it navigates nowhere, it finishes the state. */}
+            <button
+              onClick={() => set({ icann: false })}
+              className="mt-1 inline-flex h-8 items-center text-[13px] font-semibold leading-[1.4] text-[#0b66c3] underline decoration-[1.5px] underline-offset-[3px] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[#084f99]"
+            >
+              {t({ en: 'Confirm my email address', uk: 'Підтвердити мою email-адресу' })}
+            </button>
+          </motion.div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  )
+}
 
 export default function App() {
   const { world } = useWorld()
@@ -615,6 +737,11 @@ export default function App() {
           the right rail too, so it mounts at the very top of the tree, not inside
           <main> where the domains surface lives. */}
       <DomainModal />
+
+      {/* The simulated confirmation email — above the whole shell, over the chat and the
+          rail, for the same structural reason the sheet above is here and not inside
+          <main>. See SimulatedEmail for why the stand-in is a letter and not a button. */}
+      <SimulatedEmail />
 
       {/* The hosting panel's cart — outside Remixer, so it covers the whole window
           rather than a surface inside the shell. Mounted last and above everything:

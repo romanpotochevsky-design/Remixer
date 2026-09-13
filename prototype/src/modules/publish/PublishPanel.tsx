@@ -724,32 +724,15 @@ export function PublishPanel() {
                     : { label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => setResent(true) }}
                 />
               )}
-              {/* ------------------------------------------ the prototype's stand-in
-                  The one state whose exit happens OUTSIDE the product: the customer
-                  confirms in their inbox, and a prototype has no inbox — so the flow
-                  could be walked up to here and never finished (designer, 13.09.2026).
-                  Deliberately tooling-styled — dashed, muted, its own PROTOTYPE tag —
-                  the same convention the scenario console uses, so nobody watching a
-                  demo mistakes it for a control the product ships. */}
-              {confirmEmail && (
-                <div className="mt-2 flex items-center justify-between gap-4 rounded-[12px] border border-dashed border-[var(--white-200)] px-4 py-3">
-                  <p className="min-w-0 text-[12.5px] leading-[1.45] text-[var(--white-400)]">
-                    <span className="mr-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--white-300)]">
-                      Prototype
-                    </span>
-                    {t({
-                      en: 'stands in for opening the email and clicking the link inside it',
-                      uk: 'замість того, щоб відкрити лист і натиснути посилання в ньому',
-                    })}
-                  </p>
-                  <button
-                    onClick={() => set({ icann: false })}
-                    className="h-8 flex-none rounded-[8px] border border-[var(--white-200)] px-3 text-[13px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
-                  >
-                    {t({ en: 'Confirm email', uk: 'Підтвердити лист' })}
-                  </button>
-                </div>
-              )}
+              {/* ⚠️ NO PROTOTYPE STAND-IN UNDER THIS CARD. A dashed "Confirm email" strip
+                  used to sit here, and the designer threw it out on sight (14.09.2026:
+                  "зачем ты это ставил в окно? это же не часть интерфейса?!!!!!"). He is
+                  right twice over: the panel is the PRODUCT, and the one move this state
+                  is waiting for does not happen in the product at all — it happens in the
+                  customer's inbox. The stand-in still exists, because the walk has to be
+                  finishable; it now floats ABOVE the shell as the simulated email itself
+                  (`SimulatedEmail`, App.tsx), which is where an email belongs. Do not put
+                  a confirm control back inside this panel. */}
 
               {/* ------------------------------------- the way back to the domains window
                   See `stalled` upstairs for why this is here and why it is quiet.
