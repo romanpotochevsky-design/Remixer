@@ -31,7 +31,7 @@ import { useWorld, hasPlan } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
-import { IconPlus, IconEdit, IconExternal, IconClose } from '@/ui/icons'
+import { IconPlus, IconEdit, IconClose } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
 import { popover, popoverContent } from '@/ui/motion'
 
@@ -349,28 +349,45 @@ export function PublishPanel() {
                   action={{ label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => undefined }}
                 />
               )}
+              {/* ------------------------------------------ the prototype's stand-in
+                  The one state whose exit happens OUTSIDE the product: the customer
+                  confirms in their inbox, and a prototype has no inbox — so the flow
+                  could be walked up to here and never finished (designer, 13.09.2026).
+                  Deliberately tooling-styled — dashed, muted, its own PROTOTYPE tag —
+                  the same convention the scenario console uses, so nobody watching a
+                  demo mistakes it for a control the product ships. */}
+              {confirmEmail && (
+                <div className="mt-2 flex items-center justify-between gap-4 rounded-[12px] border border-dashed border-[var(--white-200)] px-4 py-3">
+                  <p className="min-w-0 text-[12.5px] leading-[1.45] text-[var(--white-400)]">
+                    <span className="mr-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--white-300)]">
+                      Prototype
+                    </span>
+                    {t({
+                      en: 'stands in for opening the email and clicking the link inside it',
+                      uk: 'замість того, щоб відкрити лист і натиснути посилання в ньому',
+                    })}
+                  </p>
+                  <button
+                    onClick={() => set({ icann: false })}
+                    className="h-8 flex-none rounded-[8px] border border-[var(--white-200)] px-3 text-[13px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                  >
+                    {t({ en: 'Confirm email', uk: 'Підтвердити лист' })}
+                  </button>
+                </div>
+              )}
+
               {settled && (
                 <p className="mt-[19px] px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
                   {t({ en: 'Padlock on · anyone can visit', uk: 'Замок увімкнено · сайт доступний усім' })}
                 </p>
               )}
 
-              {/* ---------------- the staging address, once a domain stands in front */}
-              {attached && (
-                <div className={settled ? 'mt-2 px-0.5' : 'mt-[19px] px-0.5'}>
-                  <p className="text-[13px] leading-[1.4] text-[var(--white-400)]">
-                    {t({ en: 'Staging address', uk: 'Адреса стейджингу' })}
-                  </p>
-                  <a
-                    className="mt-0.5 inline-flex items-center gap-1 text-[13px] leading-[1.4] text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[var(--white-700)]"
-                    href="#"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    {STAGING_HOST}
-                    <IconExternal size={12} />
-                  </a>
-                </div>
-              )}
+              {/* ⚠️ NO STAGING-ADDRESS BLOCK. It used to sit here, under the card, the way
+                  the designer's states were drawn — and he took it out on sight
+                  (13.09.2026): "у нас будет только одна ссылка отображаться в этом окне".
+                  The field at the top already carries the one address the site answers to,
+                  and a second link under it made the panel answer a question nobody asked
+                  twice. Do not put it back. */}
 
               {/* connect your own domain — dashed card, the state before any of this */}
               {!attached && (
