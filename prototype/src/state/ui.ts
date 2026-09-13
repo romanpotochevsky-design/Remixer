@@ -55,11 +55,16 @@ export type DomainScreen =
  * column and the right rail too. Which body it renders is a product question answered
  * by the world (does the account hold a plan?), so only the intent lives here.
  *
- *  - `connect-existing` — a domain DreamHost already registers for this customer
+ *  - `connect-owned`    — a domain already sitting in this customer's DreamHost account
+ *                         (Figma 27071:20574 clean · 27071:20591 already-in-use). Free,
+ *                         so it carries no price and no plan gate — see DomainModal.
+ *  - `connect-existing` — the older sheet for that same case, which DID run the price/plan
+ *                         axis over it. Superseded by `connect-owned`; retained only until
+ *                         its last caller is moved across.
  *  - `buy`              — a name from search or the AI suggestions
- *  - `connect-external` — a domain registered somewhere else
+ *  - `connect-external` — a domain registered somewhere else (iteration 2, not built)
  */
-export type DomainModalKind = 'connect-existing' | 'buy' | 'connect-external'
+export type DomainModalKind = 'connect-owned' | 'connect-existing' | 'buy' | 'connect-external'
 
 /**
  * Pages that are NOT Remixer.

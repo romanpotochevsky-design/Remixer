@@ -244,9 +244,15 @@ export function buildPlan(a: BriefAnswers): Plan {
       {
         heading: { en: 'Not in this pass', uk: 'Не в цьому проході' },
         items: [
+          /* ⚠️ "keeps search engines out by default" is exactly as far as the sources go.
+             The only statement anyone could find is marketing copy on the Remixer product
+             page — preview domains "block search engines by default so half-finished sites
+             stay out of Google"; the KB and the Trial Terms say nothing about indexing at
+             all. So we promise the default, not the outcome: do NOT restore "hidden from
+             Google" — that claims a guarantee no source of ours makes. */
           {
-            en: 'It publishes to your free remixer.site preview first — hidden from Google, so you can look before anyone else does. A custom domain is a separate step.',
-            uk: 'Спершу публікується на безкоштовне прев’ю remixer.site — закрите від Google, щоб ви подивилися першим. Власний домен — окремий крок.',
+            en: 'It publishes to your free remixer.ai preview first — it keeps search engines out by default, so you can look before anyone else does. A custom domain is a separate step.',
+            uk: 'Спершу публікується на безкоштовне прев’ю remixer.ai — воно за замовчуванням не пускає пошукові системи, щоб ви подивилися першим. Власний домен — окремий крок.',
           },
           {
             en: 'The words on the page are placeholders written to fit. Edit any of them in place, or ask me to rewrite a section.',

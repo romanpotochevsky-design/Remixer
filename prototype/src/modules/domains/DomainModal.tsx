@@ -1,12 +1,19 @@
 /**
- * The checkout sheet — Figma 27058:100133 · 27254:11737 · 27275:33023.
+ * The checkout sheet — Figma 27058:100133 · 27254:11737 · 27275:33023,
+ * plus the connect-owned sheet — Figma 27071:20574 (㉖A) · 27071:20591 (㉖B).
  *
  * Three boards, six drawn states, ONE component. What the boards actually vary is
  * two independent axes, so that is how this is built:
  *
  *   axis 1 — WHAT is being done
- *     connect-existing : a domain DreamHost already registers for this customer.
- *                        No price anywhere: owned domains cost nothing to attach.
+ *     connect-owned    : a domain already sitting in this customer's DreamHost
+ *                        account. Iteration 1 ships exactly two paths and this is
+ *                        the second one. It runs NEITHER axis below: attaching a
+ *                        domain you already own is free, so there is no price, and
+ *                        the plan gate is a different question from this one — see
+ *                        `OwnedBody`, which is the whole of its body.
+ *     connect-existing : the older sheet for that same case, which DID drag the
+ *                        price/plan machinery over it. Superseded by connect-owned.
  *     buy              : a name from search or the AI suggestions. Carries the
  *                        first-year figure and the honest renewal line.
  *
@@ -145,6 +152,94 @@ function PlanCard({
   )
 }
 
+/* ------------------------------------------------- connect-owned (㉖A / ㉖B) */
+
+/**
+ * The body of the connect-owned sheet — Figma 27071:20574 and 27071:20591.
+ *
+ * Two drawn boards, one difference: whether the domain is already serving a site.
+ * That is not a new axis — the world has carried it since the beginning as
+ * `inventory: 'dh-in-use'`, and this reads it exactly the way `OwnScreen` in
+ * DomainsSurface does. Clean, the block is one row and the button says what it
+ * does; in use, the same block grows a caution under a hairline and the verb
+ * changes to name the consequence ("Replace and connect"), because a stray click
+ * here takes down a site that is live right now.
+ *
+ * NO PRICE AND NO PLAN BLOCK, deliberately. A domain already in the account costs
+ * nothing to attach, and `hasPlan` — which decides whether the buy/connect-existing
+ * sheet folds the Remixer Build chooser in — is a question about going live, not
+ * about this. Mixing the two is what made the old `connect-existing` sheet show a
+ * paywall over a free action.
+ *
+ * The boards are MID-FI (Inter, flat greys, 1px strokes on nested boxes). Structure,
+ * geometry and copy come from them; the surface, type scale, hairlines and radii come
+ * from the sheet above, so this reads as one more state of it rather than an import.
+ * Every stroke is an inset box-shadow: Figma's sit inside the geometry, a CSS `border`
+ * would push the 492px content box out to 494.
+ */
+function OwnedBody({ domain, inUse, onConfirm }: { domain: string; inUse: boolean; onConfirm: () => void }) {
+  const { t } = useT()
+  return (
+    /* 24px sides against the 540 sheet is the board's 492 content width exactly;
+       the board's own 23/25 asymmetry is mid-fi drift, not a decision. */
+    <div className="px-6 pb-6">
+      <div className="rounded-[16px] bg-[#ffffff0a] p-[18px] shadow-[inset_0_0_0_1px_#ffffff0a]">
+        {/* ------------------------------------------------ the domain itself */}
+        <div className="flex items-center gap-4">
+          <GlobeTile />
+          <div className="min-w-0 flex-1">
+            <p className="min-w-0 truncate font-display text-[24px] font-medium leading-[1.2] text-white">
+              {domain}
+            </p>
+            <p className="mt-1 truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
+              {t({ en: 'On DreamHost · connects in a few seconds', uk: 'На DreamHost · підключиться за кілька секунд' })}
+            </p>
+          </div>
+        </div>
+
+        {/* ------------------------------------------------------- the caution */}
+        {inUse && (
+          <>
+            {/* 456 wide by construction: 492 less the block's own 18px padding. */}
+            <div className="mt-[18px] h-px bg-[var(--white-100)]" />
+            {/* The module's established caution recipe (--attention at 8% under a
+                25% rim), not the board's flat #2a1d07 / #fab040 — the same one
+                DomainsSurface draws its in-use guard with. */}
+            <div className="mt-4 flex gap-[11px] rounded-[10px] bg-[#e5c35914] px-[15px] py-[13px] shadow-[inset_0_0_0_1px_#e5c35940]">
+              <span className="mt-[7px] h-[9px] w-[9px] flex-none rounded-full bg-[var(--attention)]" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold leading-[1.35] text-[var(--attention)]">
+                  {t({ en: 'This domain currently shows another site', uk: 'На цьому домені зараз інший сайт' })}
+                </p>
+                {/* The two things a beginner is actually afraid of, answered before
+                    they ask. No DNS, no records, no "zone" — house rule. */}
+                <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-400)]">
+                  {t({
+                    en: 'Your email keeps working · the old site stays on your account',
+                    uk: 'Пошта працюватиме як раніше · старий сайт залишиться у вашому акаунті',
+                  })}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Full-width, as drawn: there is exactly one thing to do on this sheet, and
+          nothing to weigh it against. 40px is the house button stop (the board's 42
+          is not one of them). */}
+      <button
+        onClick={onConfirm}
+        className="mt-4 h-10 w-full rounded-[10px] bg-[var(--action)] text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+      >
+        {inUse
+          ? t({ en: 'Replace and connect', uk: 'Замінити й підключити' })
+          : t({ en: 'Connect domain', uk: 'Підключити домен' })}
+      </button>
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------- sheet */
 
 export function DomainModal() {
@@ -163,13 +258,21 @@ export function DomainModal() {
 
   const paid = hasPlan(world)
   const buying = domainModal?.kind === 'buy'
+  /** The free path: a domain already in this customer's DreamHost account (㉖A/㉖B). */
+  const owned = domainModal?.kind === 'connect-owned'
+  /* Which of the two boards. Not a new axis: `dh-in-use` is the world's own word for
+     "this customer's domain currently serves another site" — the same read
+     DomainsSurface's OwnScreen makes. */
+  const inUse = world.inventory === 'dh-in-use'
   const domain = domainModal?.domain ?? ''
   const tld = domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '.com'
   const price = priceFor(tld) ?? priceFor('.com')!
 
   /* The plan chooser is what makes the sheet tall, and it is present exactly when
-     the account cannot go live yet. Everything else keys off these two booleans. */
-  const showPlans = !paid
+     the account cannot go live yet. Everything else keys off these two booleans.
+     `owned` is excluded outright: the plan gate is about going live on something you
+     are buying, and this sheet is about attaching something already paid for. */
+  const showPlans = !paid && !owned
 
   /*
    * What actually happens when this button is pressed.
@@ -184,6 +287,17 @@ export function DomainModal() {
    * one case with nothing to buy; that still completes in place, as before.
    */
   const confirm = () => {
+    /* Nothing to pay for, ever: skip the cart entirely and start the clock. `bought:
+       false` is what tells connect.ts this domain was not registered through us just
+       now, so it does not start the 15-day ICANN verification clock — that belongs to
+       a registration, not to an attach. */
+    if (owned) {
+      closeDomainModal()
+      closeSurface()
+      startConnect(domain, { bought: false })
+      return
+    }
+
     const lines: CartLine[] = []
     if (buying) lines.push({ kind: 'domreg', domain, years: 1 })
     if (showPlans) lines.push({ kind: 'remixer', term })
@@ -234,8 +348,10 @@ export function DomainModal() {
                a price AND a renewal note beside the sub-label and the line
                clipped; that was the system fallback face being ~10% wider than
                Proxima Nova, and it went away once real webfonts shipped. */
+            /* 540 on the connect-owned boards — the narrowest of the three, which is
+               right: it is the only sheet with nothing to weigh up. */
             className={`relative -translate-y-1 rounded-[24px] border border-[#ffffff0a] bg-[var(--gray-850)] ${
-              showPlans ? 'w-[600px]' : 'w-[560px]'
+              owned ? 'w-[540px]' : showPlans ? 'w-[600px]' : 'w-[560px]'
             }`}
             style={{ boxShadow: '0px 24px 28px rgba(0,0,0,0.33)' }}
           >
@@ -247,7 +363,11 @@ export function DomainModal() {
               <CloseButton onClick={closeDomainModal} label={t({ en: 'Close', uk: 'Закрити' })} />
             </div>
 
+            {/* The connect-owned sheet ends here: one block, one button, no cart. */}
+            {owned && <OwnedBody domain={domain} inUse={inUse} onConfirm={confirm} />}
+
             {/* --------------------------------------------------- body card */}
+            {!owned && (
             <div className="px-1.5">
               <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a]">
                 {/* -------------------------------------------- domain row */}
@@ -362,8 +482,10 @@ export function DomainModal() {
                 )}
               </div>
             </div>
+            )}
 
             {/* ----------------------------------------------- button bar, 72 */}
+            {!owned && (
             <div className="flex items-center justify-end py-4 pl-4 pr-[18px]">
               <button
                 onClick={confirm}
@@ -374,6 +496,7 @@ export function DomainModal() {
                   : t({ en: 'Connect domain', uk: 'Підключити домен' })}
               </button>
             </div>
+            )}
           </motion.div>
         </div>
       )}

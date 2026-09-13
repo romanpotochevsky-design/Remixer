@@ -20,6 +20,7 @@ import { useT, type Text } from '@/i18n'
 import {
   AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, priceFor,
   exactMatch, featuredEndings, popularEndings, nameIdeas, type ResultRow,
+  closeAlternatives, takenIdeas, registrarOf, isTaken,
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
@@ -45,6 +46,38 @@ function Screen({ children }: { children: React.ReactNode }) {
       <ScrollArea className="h-full">
         <div className="mx-auto w-full max-w-[560px] px-6 py-10">{children}</div>
       </ScrollArea>
+    </motion.div>
+  )
+}
+
+/**
+ * The WIDE sheet — the one every answer to a search renders in: the result lists,
+ * the taken state (27270:5623) and the "you own this" card (27271:5564). One
+ * wrapper for all three so they cannot drift apart in finish, and so they swap
+ * with the same conveyor (`listSwap`: the old answer leaves upward, the new one
+ * rises from below, section by section).
+ *
+ * The page pads 32 all round; the column inside is a flat 1200 wide and centred —
+ * the padding must sit OUTSIDE the max-width or the column comes out 64px narrow.
+ */
+function ResultsSheet({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      variants={listSwap}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div className="min-h-0 flex-1 rounded-t-[8px] border-r border-t border-[#ffffff0a] bg-[var(--gray-900)]">
+        <ScrollArea className="h-full">
+          <div className="px-8 pb-2 pt-8">
+            {/* 8px between blocks: the section titles carry their own 20px of air,
+                which is where the rest of the spacing comes from */}
+            <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2">{children}</div>
+          </div>
+        </ScrollArea>
+      </div>
     </motion.div>
   )
 }
@@ -235,6 +268,105 @@ function ResultBlock({
   )
 }
 
+/* ------------------------------------------------ the name is taken (27270:5623) */
+
+/**
+ * The taken card — Figma 27270:5623 (㉗ `3 занят`), the state that was missing
+ * from this screen altogether until now.
+ *
+ * ⚠️ THE VERB IS "This is my domain", NEVER "You own this". We cannot know that a
+ * stranger's registered domain belongs to the person searching; the language of
+ * ownership stays conditional everywhere except the one branch where ownership IS
+ * known — the DreamHost-account screen below.
+ * ⚠️ No price, no Buy, and above all no "Make an offer". DreamHost has no
+ * brokerage and sells no premium names (verified), so an aftermarket price here
+ * would be an offer we could not honour.
+ * The registrar, on the other hand, is fair game: RDAP returns the sponsoring
+ * registrar as registry-level data and WHOIS privacy does not hide it.
+ *
+ * Material is the results screen's, not the mid-fi board's flat greys: the taken
+ * answer and the available answer are the same screen wearing two faces.
+ */
+function TakenCard({
+  domain, registrar, onClaim,
+}: { domain: string; registrar: string; onClaim: () => void }) {
+  const { t } = useT()
+  return (
+    <div className="flex min-h-[88px] items-center justify-between gap-6 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] px-6 py-4">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-3">
+          <p className="min-w-0 truncate text-[18px] font-medium leading-normal text-white">{domain}</p>
+          {/* neutral, not red: a taken name is a fact, not an error the user made */}
+          <span className="flex h-5 flex-none items-center rounded-[10px] bg-[var(--white-100)] px-2 text-[11px] font-semibold leading-none text-[#ffffffb8]">
+            {t({ en: 'Taken', uk: 'Зайнятий' })}
+          </span>
+        </div>
+        <p className="mt-1.5 text-[13px] leading-none text-[#ffffff7a]">
+          {t({ en: `Registered at ${registrar}`, uk: `Зареєстровано на ${registrar}` })}
+        </p>
+      </div>
+      <RowButton label={{ en: 'This is my domain', uk: 'Це мій домен' }} onClick={onClaim} />
+    </div>
+  )
+}
+
+/**
+ * A card of rows with no footer bar — the dashboard's list material
+ * (27085:107303) rather than the results screen's double-rimmed block, because
+ * the taken board draws no "Show more" under either list: three close
+ * alternatives and two ideas are complete answers, not the top of a longer one.
+ *
+ * ⚠️ NO DESCRIPTION UNDER THE NAME. Board 27270:5623 carries one on every row
+ * ("A trusted, established extension", "Same name, small twist", "Made for
+ * selling online", "Your name + what you serve", "Your name + your city") — the
+ * designer's ruling of 10.09.2026 removed per-name descriptions from EVERY
+ * domain row, and the hi-fi results board has none, so they are deliberately not
+ * shipped here either. Flagged to the designer; do not "restore" them.
+ */
+function PlainList({ rows, onBuy }: { rows: ResultRow[]; onBuy: (domain: string) => void }) {
+  return (
+    <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] py-2 pl-2 pr-3">
+      {rows.map((r, i) => (
+        <Fragment key={r.domain}>
+          {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
+          <DomainRow row={r} onBuy={() => onBuy(r.domain)} />
+        </Fragment>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The AI block's header on the taken screen: sparkle, the name in curly quotes,
+ * and one line saying where the ideas came from. Same 20px-of-air rhythm as
+ * `SectionTitle` so the two blocks below them sit on the same grid.
+ */
+function IdeasTitle({ name }: { name: string }) {
+  const { t } = useT()
+  return (
+    <div className="px-2 py-5">
+      <div className="flex items-center gap-2.5">
+        <IconSparkleAI size={20} />
+        <h3 className="font-display text-[18px] font-semibold leading-[21px] text-[#f5f5fa]">
+          {t({ en: `More ideas for “${name}”`, uk: `Більше ідей для «${name}»` })}
+        </h3>
+      </div>
+      <p className="mt-1.5 text-[13px] leading-normal text-[#ffffff7a]">
+        {t({
+          en: 'From your search + what your site is about',
+          uk: 'З вашого пошуку + про що ваш сайт',
+        })}
+      </p>
+    </div>
+  )
+}
+
+/** `trulieve.com` → `Trulieve` — the board titles its idea block with the bare name. */
+const brandLabel = (domain: string) => {
+  const stem = domain.slice(0, domain.lastIndexOf('.')) || domain
+  return stem.charAt(0).toUpperCase() + stem.slice(1)
+}
+
 /**
  * The header both dashboard states share: a centred title over the search pill.
  *
@@ -365,9 +497,13 @@ function HomeScreen() {
                     {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
                     <div className="flex h-[72px] items-center justify-between rounded-[16px] px-5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
                       <p className="min-w-0 truncate text-[17px] font-medium text-white">{o.domain}</p>
+                      {/* Same sheet the search's "You own this" screen opens
+                          (`connect-owned`, 27071:20574 / 20591): both entrances to
+                          "attach a domain I already have" land in one designed
+                          modal, and the in-use warning lives there, once. */}
                       <RowButton
                         label={{ en: 'Connect', uk: 'Підключити' }}
-                        onClick={() => openDomainModal('connect-existing', o.domain)}
+                        onClick={() => openDomainModal('connect-owned', o.domain)}
                       />
                     </div>
                   </div>
@@ -424,66 +560,199 @@ function HomeScreen() {
  *  - the footer bar is new — "400+ more available" on the left, "Show more" on
  *    the bar's centre (see ListFooter).
  *
- * Still true, still raised with the designer: there is no "taken" state drawn
- * anywhere in the file, and that is the biggest hole left in this screen.
+ * The hole this screen used to have — no "taken" state anywhere — is closed: the
+ * name the user typed is the one row that can come back registered, and when it
+ * does the screen answers with `TakenResults` below instead of putting a price on
+ * somebody else's domain.
  */
 function ResultsScreen() {
   const { activeDomain, openDomainModal } = useUI()
   const term = activeDomain ?? 'fit-ration'
   const buy = (domain: string) => openDomainModal('buy', domain)
+  const exact = exactMatch(term)
+
+  /* Two answers, one screen: the search field above never moves, only what is
+     under it changes hands (see SearchHeader). */
+  if (exact.taken) return <TakenResults term={term} exact={exact} onBuy={buy} />
 
   return (
-    <motion.div
-      variants={listSwap}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      className="flex min-h-0 flex-1 flex-col"
-    >
-      <div className="min-h-0 flex-1 rounded-t-[8px] border-r border-t border-[#ffffff0a] bg-[var(--gray-900)]">
-        <ScrollArea className="h-full">
-          {/* Page pads 32 all round; the lists column inside it is a flat 1200
-              wide and centred — the padding must sit OUTSIDE the max-width or
-              the column comes out 64px narrow. */}
-          <div className="px-8 pb-2 pt-8">
-            {/* 8px between the hero and each titled block: the section titles
-                carry their own 20px of air, which is where the rest comes from */}
-            <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2">
-              <motion.div variants={listSwapItem}>
-                <BestMatchCard row={exactMatch(term)} onBuy={() => buy(exactMatch(term).domain)} />
-              </motion.div>
+    <ResultsSheet>
+      <motion.div variants={listSwapItem}>
+        <BestMatchCard row={exact} onBuy={() => buy(exact.domain)} />
+      </motion.div>
 
-              <ResultBlock
-                label={{ en: 'Featured', uk: 'Обране' }}
-                rows={featuredEndings(term)}
-                onBuy={buy}
-              />
-              <ResultBlock
-                label={{ en: 'Popular', uk: 'Популярні' }}
-                rows={popularEndings(term)}
-                onBuy={buy}
-              />
-              <ResultBlock
-                label={{ en: 'Suggested', uk: 'Пропозиції' }}
-                rows={nameIdeas(term)}
-                onBuy={buy}
-              />
-            </div>
-          </div>
-        </ScrollArea>
-      </div>
-    </motion.div>
+      <ResultBlock
+        label={{ en: 'Featured', uk: 'Обране' }}
+        rows={featuredEndings(term)}
+        onBuy={buy}
+      />
+      <ResultBlock
+        label={{ en: 'Popular', uk: 'Популярні' }}
+        rows={popularEndings(term)}
+        onBuy={buy}
+      />
+      <ResultBlock
+        label={{ en: 'Suggested', uk: 'Пропозиції' }}
+        rows={nameIdeas(term)}
+        onBuy={buy}
+      />
+    </ResultsSheet>
   )
 }
 
-/** "You own this" — the confirm for a domain already in the DreamHost account. */
+/**
+ * The name is registered — Figma 27270:5623 (㉗ `3 занят`).
+ *
+ * Order is the argument, and it is the board's: state the fact first (taken, and
+ * who holds it), give the one conditional way forward ("This is my domain"), then
+ * the SAME name still reachable (`Close alternatives`), and only last other names
+ * (`More ideas`). The person asked about one specific name; answering with a
+ * brainstorm first would be the same category error the available screen avoids.
+ *
+ * `This is my domain` goes exactly where the dashboard's owned-domain Connect
+ * goes — the connect sheet (`connect-owned`, Figma 27071:20574 / 20591) — so the
+ * two entrances to "attach a domain I already have" land in one designed modal
+ * rather than in two half-screens.
+ */
+function TakenResults({
+  term, exact, onBuy,
+}: { term: string; exact: ResultRow; onBuy: (domain: string) => void }) {
+  const { openDomainModal } = useUI()
+  /* The list is what made the row taken, so the registrar is always there; the
+     fallback only exists so a hand-set `taken` row can never render "undefined". */
+  const registrar = registrarOf(exact.domain) ?? 'GoDaddy'
+
+  return (
+    <ResultsSheet>
+      <motion.div variants={listSwapItem}>
+        <TakenCard
+          domain={exact.domain}
+          registrar={registrar}
+          onClaim={() => openDomainModal('connect-owned', exact.domain)}
+        />
+      </motion.div>
+
+      <motion.div variants={listSwapItem} className="flex flex-col">
+        <SectionTitle label={{ en: 'Close alternatives', uk: 'Близькі варіанти' }} />
+        <PlainList rows={closeAlternatives(term)} onBuy={onBuy} />
+      </motion.div>
+
+      <motion.div variants={listSwapItem} className="flex flex-col">
+        <IdeasTitle name={brandLabel(exact.domain)} />
+        <PlainList rows={takenIdeas(term)} onBuy={onBuy} />
+      </motion.div>
+    </ResultsSheet>
+  )
+}
+
+/**
+ * A 44px plate carrying a thin globe — the mark on the owned-domain card
+ * (Figma 27271:5564). Drawn by hand, like everything in ui/icons.tsx: Figma's SVG
+ * export is unreachable through our proxy.
+ *
+ * Three strokes and no more: the outline, ONE meridian ellipse and ONE equator
+ * chord. `IconGlobeLarge` next door draws two parallels because it sits at 24px
+ * inside the checkout sheet; at 22 on a dark plate that second parallel closes the
+ * upper cap into a solid band. Local to this screen while it has one caller —
+ * promote it into ui/icons.tsx the day a second screen wants it.
+ */
+function GlobePlate() {
+  return (
+    <span className="grid h-11 w-11 flex-none place-items-center rounded-[14px] bg-[#09090b8f] text-white">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle cx="12" cy="12" r="8.4" stroke="currentColor" strokeWidth="1.5" />
+        <ellipse cx="12" cy="12" rx="3.6" ry="8.4" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M3.6 12h16.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </span>
+  )
+}
+
+/**
+ * "You own this" — the domain is already in the customer's DreamHost account.
+ * Figma 27271:5564 (㉗ `4 в аккаунте`), rebuilt to that board.
+ *
+ * The designer's note on the board says what this screen is for: it is the ONLY
+ * branch where ownership is KNOWN, so it is the only place allowed to say "You
+ * own this" rather than the conditional "This is my domain" the taken card uses.
+ * There is nothing to decide here — no price, no alternatives, no plan gate — so
+ * the screen is one card and one blue verb.
+ *
+ * ⚠️ NO PRICE ANYWHERE, and that is the whole point of the state: a domain you
+ * already hold costs nothing to attach. A figure on this card would invent a
+ * charge the product does not make.
+ *
+ * ⚠️ The "this domain already shows a site" warning is NOT duplicated here. That
+ * case is drawn inside the connect sheet (㉖B, 27071:20591) and the sheet decides
+ * it itself off `world.inventory`; a second copy on this screen would be two
+ * warnings for one situation, and they would drift apart.
+ */
 function OwnScreen() {
   const { world } = useWorld()
-  const { activeDomain, goDomains, closeSurface } = useUI()
+  const { activeDomain, openDomainModal } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? CUSTOM_DOMAIN
-  const inUse = world.inventory === 'dh-in-use'
-  const externalNs = world.inventory === 'dh-external-ns'
+
+  /* ITERATION 2 — OUT OF SCOPE, left reachable exactly as it was. A domain of ours
+     whose settings are managed at another company cannot be attached by writing
+     records on our side, so it needs its own flow (㉘ A2 gives it one, and calls the
+     CTA "Show me what to change"). Not developed here, not deleted either. */
+  if (world.inventory === 'dh-external-ns') return <ExternalNsScreen domain={domain} />
+
+  return (
+    <ResultsSheet>
+      <motion.div variants={listSwapItem}>
+        <div className="flex min-h-[100px] items-center gap-4 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] px-6 py-4">
+          <GlobePlate />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <p className="min-w-0 truncate text-[18px] font-medium leading-normal text-white">{domain}</p>
+              <span className="flex h-5 flex-none items-center rounded-[10px] bg-[#48ba7926] px-2 text-[11px] font-semibold leading-none text-[var(--live)]">
+                {t({ en: 'In your account', uk: 'У вашому акаунті' })}
+              </span>
+            </div>
+            <p className="mt-1.5 text-[13px] leading-none text-[#ffffff7a]">
+              {t({
+                en: 'You own this — registered with DreamHost · free to connect',
+                uk: 'Це ваш домен — зареєстрований у DreamHost · підключення безкоштовне',
+              })}
+            </p>
+          </div>
+          {/* The one blue thing on the screen: nothing else here is an action. */}
+          <button
+            onClick={() => openDomainModal('connect-owned', domain)}
+            className="h-9 min-w-[110px] flex-none rounded-[8px] bg-[var(--action)] px-4 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+          >
+            {t({ en: 'Connect', uk: 'Підключити' })}
+          </button>
+        </div>
+      </motion.div>
+
+      {/* The way out, and it is the field above — no Back button on this screen. */}
+      <motion.div variants={listSwapItem}>
+        <p className="px-2 pt-3 text-[13px] leading-normal text-[var(--white-400)]">
+          {t({
+            en: 'Looking for a different domain? Just keep typing.',
+            uk: 'Шукаєте інший домен? Просто продовжуйте вводити.',
+          })}
+        </p>
+      </motion.div>
+    </ResultsSheet>
+  )
+}
+
+/**
+ * ITERATION 2 — our domain, but its settings are managed at another company.
+ *
+ * Untouched on purpose: this is the pre-board body this screen used to render for
+ * `dh-external-ns`, kept reachable so the knowledge and the scenario do not go
+ * missing while the state waits its turn. It does NOT follow board 27271:5564 —
+ * that board draws the clean case only. When this comes up for real, ㉘ A2
+ * (27281:5564) is the board, and the CTA there is "Show me what to change".
+ */
+function ExternalNsScreen({ domain }: { domain: string }) {
+  const { goDomains, closeSurface } = useUI()
+  const { t } = useT()
 
   /* The connection itself is READ in the Publish panel from here on (designer,
      13.09.2026), so attaching closes this window and opens that one — the clock in
@@ -508,49 +777,21 @@ function OwnScreen() {
         })}
       </p>
 
-      {/* Guards. A stray click must never take down a live site or working email. */}
-      {inUse && (
-        <div className="mt-4 rounded-control border border-[#e5c35940] bg-[#e5c35914] p-3.5">
-          <p className="text-[13px] font-semibold text-[var(--attention)]">
-            {t({ en: 'This domain already shows a website', uk: 'На цьому домені вже є сайт' })}
-          </p>
-          <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-400)]">
-            {t({
-              en: `Connecting will replace what visitors see at ${domain}. Your files stay safe and you can switch back.`,
-              uk: `Підключення замінить те, що бачать відвідувачі на ${domain}. Файли збережуться, і можна повернути як було.`,
-            })}
-          </p>
-        </div>
-      )}
-      {externalNs && (
-        <div className="mt-4 rounded-control border border-[#e5c35940] bg-[#e5c35914] p-3.5">
-          <p className="text-[13px] font-semibold text-[var(--attention)]">
-            {t({ en: 'This domain is managed at Cloudflare', uk: 'Цим доменом керує Cloudflare' })}
-          </p>
-          <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-400)]">
-            {t({
-              en: 'Its settings live there, so we’ll show you the two lines to paste at Cloudflare. About 5 minutes.',
-              uk: 'Його налаштування живуть там, тож ми покажемо два рядки, які треба вставити на Cloudflare. Приблизно 5 хвилин.',
-            })}
-          </p>
-        </div>
-      )}
+      <div className="mt-4 rounded-control border border-[#e5c35940] bg-[#e5c35914] p-3.5">
+        <p className="text-[13px] font-semibold text-[var(--attention)]">
+          {t({ en: 'This domain is managed at Cloudflare', uk: 'Цим доменом керує Cloudflare' })}
+        </p>
+        <p className="mt-1 text-[13px] leading-[1.45] text-[var(--white-400)]">
+          {t({
+            en: 'Its settings live there, so we’ll show you the two lines to paste at Cloudflare. About 5 minutes.',
+            uk: 'Його налаштування живуть там, тож ми покажемо два рядки, які треба вставити на Cloudflare. Приблизно 5 хвилин.',
+          })}
+        </p>
+      </div>
 
       <div className="mt-5">
-        <PrimaryButton
-          label={
-            inUse
-              ? { en: `Replace site at ${domain}`, uk: `Замінити сайт на ${domain}` }
-              : { en: 'Connect', uk: 'Підключити' }
-          }
-          onClick={connect}
-        />
+        <PrimaryButton label={{ en: 'Connect', uk: 'Підключити' }} onClick={connect} />
       </div>
-      {!inUse && !externalNs && (
-        <p className="mt-2 text-center text-[12.5px] text-[var(--white-300)]">
-          {t({ en: 'Under a minute · nothing to configure', uk: 'Менше хвилини · нічого не треба налаштовувати' })}
-        </p>
-      )}
     </Screen>
   )
 }
@@ -647,15 +888,30 @@ export function DomainsSurface() {
    * read as the page reloading rather than as an answer arriving.
    */
   const [query, setQuery] = useState('')
-  const searching = domainScreen === 'home' || domainScreen === 'results'
+  /* `own` joins home and results: board 27271:5564 draws the field still standing
+     over the owned-domain card, and the card's own caption ("just keep typing")
+     only means anything while it is there. */
+  const searching = domainScreen === 'home' || domainScreen === 'results' || domainScreen === 'own'
   const owned = OWNED_DOMAINS[world.inventory] ?? []
 
   const submit = () => {
     const q = query.trim().toLowerCase()
     if (!q) return
-    // Intent detection, prototype-grade: an owned domain resolves to the confirm
-    // screen, anything with a dot reads as external, a bare name is a search.
+    /*
+     * Intent detection, prototype-grade, in the order the boards answer:
+     *  - a domain sitting in the DreamHost account short-circuits to "You own
+     *    this" (㉗④ 27271:5564) — ownership known, nothing to decide;
+     *  - a name that is already registered opens the taken answer (㉗③
+     *    27270:5623), which is also where a person whose domain it IS finds
+     *    "This is my domain", so that path stays open through this branch;
+     *  - anything else with a dot reads as a domain pasted from elsewhere;
+     *  - a bare name is a plain search.
+     * The taken test runs on the exact match rather than the raw string, so
+     * "trulieve" and "trulieve.com" answer identically — the hero is .com either
+     * way (see exactMatch).
+     */
     if (owned.some((o) => o.domain === q)) goDomains('own', q)
+    else if (isTaken(exactMatch(q).domain)) goDomains('results', q)
     else if (q.includes('.') && !q.endsWith('.')) goDomains('external', q)
     else goDomains('results', q)
   }

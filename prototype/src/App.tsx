@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
+import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 import { PublishPanel } from '@/modules/publish/PublishPanel'
@@ -168,10 +169,21 @@ export default function App() {
   useEffect(() => { if (world.project === 'built') setPreviewOpen(true) }, [world.project, setPreviewOpen])
   const { t } = useT()
 
+  /*
+   * WHICH address the chip prints is world truth, exactly like the Publish panel's field.
+   * `customDomain` is what startConnect writes (state/world.ts, "WHICH domain is attached to
+   * this project"), so a customer who connected `trulieve.com` now reads `trulieve.com` here
+   * instead of the constant this used to print while the panel two clicks away said the real
+   * name. CUSTOM_DOMAIN survives only as the fallback default, for a world carrying no name.
+   *
+   * The staging half reads the same STAGING_HOST the Publish panel reads, rather than keeping
+   * a second copy of the free preview address: one literal for the whole app, so the chip can
+   * never drift from the panel. The host itself is `remixer.ai` and lives in data/domains.ts.
+   */
   const address =
     world.domain === 'live' || world.domain === 'multiple'
-      ? 'fit-ration.com'
-      : 'fit-ration.remixer.site'
+      ? world.customDomain || CUSTOM_DOMAIN
+      : STAGING_HOST
 
   /* "Update" only means something once the site is live: it is the word for pushing
      edits out to visitors who already have the old version. A site that has never been

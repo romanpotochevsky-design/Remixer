@@ -48,17 +48,60 @@ export const TLD_PRICES: TldPrice[] = [
 export const priceFor = (tld: string) => TLD_PRICES.find((p) => p.tld === tld)
 
 /**
- * One row of any domain list — a name and the ending it prices off. That is the
- * whole model: name, price, verb.
+ * One row of any domain list — a name, the ending it prices off, and whether it
+ * can still be bought. That is the whole model: name, price, verb.
  */
 export interface ResultRow {
   domain: string
   tld: string
+  /**
+   * Already registered by somebody else. A taken row carries NO price and no
+   * Buy: DreamHost has no brokerage and sells no premium names, so the only
+   * honest action left on it is the conditional "This is my domain"
+   * (Figma 27270:5623). Absent/false means available.
+   */
+  taken?: boolean
 }
+
+/**
+ * Names the prototype answers "taken" for — a fixed list, never a dice roll.
+ *
+ * The value is the registrar, which is real data in the product: RDAP returns
+ * the sponsoring registrar at registry level and WHOIS privacy does not hide it,
+ * so the board is right to name it ("Registered at GoDaddy"). It is the one thing
+ * we may state about a stranger's domain; ownership stays conditional.
+ *
+ * ⚠️ DETERMINISTIC ON PURPOSE. A prototype that randomly refuses to sell a name
+ * during a demo is worse than one that never shows the state at all. The
+ * designer demos `trulieve.com` (the board's own name); the rest are short names
+ * a CEO is likely to try on stage, and every one of them is genuinely taken in
+ * the real world. Everything else in the world is available.
+ *
+ * ⚠️ Registrar attributions beyond the board's `trulieve.com → GoDaddy` are ours
+ * (demo dressing, not researched facts) — flagged to the designer.
+ */
+export const TAKEN_DOMAINS: Record<string, string> = {
+  'trulieve.com': 'GoDaddy',
+  'coffee.com': 'GoDaddy',
+  'pizza.com': 'Network Solutions',
+  'fitness.com': 'Namecheap',
+  'shop.com': 'MarkMonitor',
+  'design.com': 'Namecheap',
+  'studio.com': 'GoDaddy',
+}
+
+const normalize = (domain: string) => domain.trim().toLowerCase()
+
+/** Who the name is registered with, or null when it is free to buy. */
+export const registrarOf = (domain: string): string | null =>
+  TAKEN_DOMAINS[normalize(domain)] ?? null
+
+export const isTaken = (domain: string) => registrarOf(domain) !== null
 
 const row = (domain: string): ResultRow => ({
   domain,
   tld: domain.slice(domain.lastIndexOf('.')),
+  ...(isTaken(domain) ? { taken: true } : {}),
 })
 
 /**
@@ -85,7 +128,12 @@ const stem = (q: string) => {
   return clean || 'yourbrand'
 }
 
-/** The exact match, shown as the hero: the name they asked for, in .com. */
+/**
+ * The exact match, shown as the hero: the name they asked for, in .com — and the
+ * one row that can come back `taken`, because it is the only one the user chose
+ * rather than us. When it does, the results screen swaps the hero for the taken
+ * card (Figma 27270:5623) instead of offering a price on somebody's domain.
+ */
 export const exactMatch = (q: string): ResultRow => row(`${stem(q)}.com`)
 
 /**
@@ -124,6 +172,41 @@ export const nameIdeas = (q: string): ResultRow[] => {
   return [`get${s}.com`, `try${s}.com`, `shop${s}.com`, `my${s}.com`, `${s}hq.com`].map(row)
 }
 
+/* ------------------------------------------------------- the name is taken */
+
+/**
+ * The taken screen's two lists — Figma 27270:5623 (㉗ `3 занят`).
+ *
+ * A taken name has no aftermarket here (no brokerage, no premium inventory), so
+ * the whole answer is "here is what you CAN have". The board splits that in two,
+ * and the split is the information:
+ *
+ *  - `closeAlternatives` — the SAME name, still reachable: another ending, or the
+ *    one small twist people actually buy (`get…`). Three rows, exactly as drawn.
+ *  - `takenIdeas` — OTHER names, generated from the site's own content. Two rows.
+ *
+ * Both are priced off TLD_PRICES like every other row; the board's numbers
+ * ($4.99 / $9.99 / $2.99 with renewals $19.99 / $19.99 / $49.95) agree with the
+ * verified table to the cent, so nothing had to be substituted.
+ */
+export const closeAlternatives = (q: string): ResultRow[] => {
+  const s = stem(q)
+  return [`${s}.net`, `get${s}.com`, `${s}.store`].map(row)
+}
+
+/**
+ * ⚠️ The two shapes are the board's own (`drinktrulieve.com`, `trulieveodesa.com`
+ * — "your name + what you serve", "your name + your city"). Generalised here as a
+ * prefix and a city suffix so any searched name produces two rows; the city is
+ * Odesa, the one the prototype's demo data already uses
+ * (`odesa-coffee-roasters.com`). In the real product both come from the site's
+ * content, which is why the board's subtitle says so.
+ */
+export const takenIdeas = (q: string): ResultRow[] => {
+  const s = stem(q)
+  return [`drink${s}.com`, `${s}odesa.com`].map(row)
+}
+
 /** Domains already sitting in the customer's DreamHost account, per inventory axis. */
 export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string; uk: string } }[]> = {
   'dh-free': [
@@ -144,5 +227,5 @@ export const OWNED_DOMAINS: Record<string, { domain: string; note: { en: string;
 }
 
 /** The staging address every project gets for free, hidden from Google. */
-export const STAGING_HOST = 'fit-ration.remixer.site'
+export const STAGING_HOST = 'fit-ration.remixer.ai'
 export const CUSTOM_DOMAIN = 'fit-ration.com'

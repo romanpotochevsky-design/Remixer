@@ -153,8 +153,8 @@ const PUBLISH: SuggestOption = {
   id: 'publish',
   name: { en: 'Put the site online', uk: 'Опублікувати сайт' },
   detail: {
-    en: 'Publish to your free remixer.site address. Editing carries on afterwards — publishing is not a lock.',
-    uk: 'Публікація на вашу безкоштовну адресу remixer.site. Редагувати можна й далі — публікація нічого не замикає.',
+    en: 'Publish to your free remixer.ai address. Editing carries on afterwards — publishing is not a lock.',
+    uk: 'Публікація на вашу безкоштовну адресу remixer.ai. Редагувати можна й далі — публікація нічого не замикає.',
   },
   verb: { en: 'Publish', uk: 'Опублікувати' },
   act: 'publish',
