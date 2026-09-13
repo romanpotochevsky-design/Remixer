@@ -437,13 +437,20 @@ export function PublishPanel() {
                 />
               )}
 
-              {/* `connecting · in-account`, states.md variant A — the one variant of three
-                  entitled to say "a few minutes", because the records are ours to write.
-                  ⚠️ A WINDOW AND A CHECK, NEVER A MOMENT. Board 27071:20574 says "connects
-                  in a few seconds"; DreamHost's own FAQ says a freshly hosted domain "can
-                  take anywhere from 4–8 hours to resolve online"; another KB page claims a
-                  five-minute TTL. Their contradiction, not ours — so the promise stays a
-                  window, and "it goes live on its own" carries the check. */}
+              {/* `connecting · in-account`, states.md variant A — the records are ours to
+                  write, so this is the fast path and the only variant of three allowed to
+                  say anything about speed at all.
+                  ⚠️ A WINDOW AND A CHECK, NEVER A MOMENT — and NOT the document's "usually
+                  a few minutes", which predates the mechanism. The zone's SOA MINIMUM is
+                  14400s and it governs NEGATIVE caching: a name parked at "DNS Only" has
+                  never resolved, so the world is holding "there is nothing here" for up to
+                  four hours. The five-minute TTL applies to updating a record that already
+                  answers — not to this. The domains our customers connect are precisely
+                  the never-used ones, so the honest shape is "usually quick, sometimes a
+                  few hours, and we are checking". "We'll keep checking" is states.md's own
+                  phrase (variant B); it replaces "it goes live on its own" because that
+                  reads as a countdown, and there is nothing to count down — we cannot know
+                  when a given visitor's cached "nothing here" expires. */}
               {connecting && (
                 <StatusCard
                   tone="amber"
@@ -452,8 +459,8 @@ export function PublishPanel() {
                     uk: `Підключаємо ${world.customDomain}`,
                   })}
                   sub={t({
-                    en: 'Usually a few minutes. Keep editing — it goes live on its own.',
-                    uk: 'Зазвичай кілька хвилин. Працюйте далі — він увімкнеться сам.',
+                    en: 'Usually quick, sometimes a few hours. Keep editing — we’ll keep checking.',
+                    uk: 'Зазвичай швидко, іноді кілька годин. Працюйте далі — ми перевіряємо.',
                   })}
                 />
               )}

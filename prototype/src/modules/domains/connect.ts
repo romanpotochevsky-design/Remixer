@@ -16,16 +16,17 @@
  *    you do not need to make any changes" — root and www alike. Nothing has to reach
  *    anybody else first. This is the fast path.
  *
- *    ⚠️ FAST, BUT WE DO NOT KNOW HOW FAST, AND THE COPY MUST NOT PROMISE A MOMENT.
- *    Three of our own sources disagree about this one state: board 27071:20574 says
- *    "On DreamHost · connects in a few seconds"; the DreamHost domain-hosting FAQ says
- *    "If you recently added hosting to the domain, it can take anywhere from 4–8 hours to
- *    resolve online" (and adding the site to the web server "may take up to 15 minutes");
- *    another KB page claims a 5-minute default TTL and "usually less than 5 minutes" of
- *    downtime. That contradiction is DreamHost's, not ours, and it is not resolvable from
- *    here. So the clock is quick — this really is the fast path — while the panel's copy
- *    promises a WINDOW and a check that runs on its own, never a moment. Do not "fix" it
- *    back into a promise.
+ *    ⚠️ FAST — BUT NOT FOR THE DOMAIN OUR CUSTOMER IS ACTUALLY CONNECTING, AND THE COPY
+ *    MUST NOT PROMISE A MOMENT. DreamHost's own pages look contradictory here — "4–8 hours
+ *    to resolve online" on one, a 5-minute TTL and "under five minutes" of downtime on
+ *    another — and both are true, about different things. The zone's SOA MINIMUM is 14400
+ *    seconds, and that value governs NEGATIVE caching: a name parked at "DNS Only" has
+ *    never resolved to anything, so resolvers around the world are holding the answer
+ *    "there is nothing here" for up to four hours. The five-minute TTL governs UPDATING a
+ *    record that already answers, which is not this case. A domain somebody registered and
+ *    parked — exactly what our customers connect — is therefore the slow half of the fast
+ *    path. So: quick clock, and copy that promises a window and a check, never a moment.
+ *    (Mechanism, not a guess: docs/research/dreamhost-domain-connect-research.md.)
  *
  *  · BUY A NEW NAME — two different clocks that our own facts kept conflating. The
  *    REGISTRY record is written "within 15 minutes of completing the purchase form"
@@ -62,7 +63,8 @@ type Leg = [from: DomainState, to: DomainState | 'finish', at: number]
 /*
  * THE TWO TIMELINES, and what each beat stands for.
  *
- *   ATTACH   connecting   2.2s   our own records, five-minute lifetime — seconds to minutes
+ *   ATTACH   connecting   2.2s   our own records — quick, but up to ~4h on a parked name
+ *                                (negative caching, see the header)
  *            verifying    6.6s   the certificate: 10–30 minutes
  *            ──────────── 8.8s total
  *
