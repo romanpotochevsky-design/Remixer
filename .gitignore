@@ -3,3 +3,6 @@
 # so committing them would nest the repo inside itself; they are also deleted the
 # moment the agent that owns one finishes. Never project content.
 .claude/worktrees/
+
+# scratch files from screenshot passes
+prototype/*.tmp.mjs
