@@ -32,6 +32,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
+import { startConnect } from '@/modules/domains/connect'
 import { cartTotal, lineCopy, money, type CartLine } from '@/data/cart'
 import { foreignPage } from '@/ui/motion'
 import {
@@ -345,7 +346,7 @@ function Summary({
 
 export function PanelCart() {
   const { world, set } = useWorld()
-  const { panel, closePanel, goDomains } = useUI()
+  const { panel, closePanel, closeSurface, togglePublish } = useUI()
   const [submitting, setSubmitting] = useState(false)
   /** Which line's select is open, by tile id — one at a time, as in the panel. */
   const [openSelect, setOpenSelect] = useState<string | null>(null)
@@ -396,12 +397,17 @@ export function PanelCart() {
       const domain = lines.find((l) => l.kind === 'domreg')?.domain
       set({
         ...(plan ? { account: 'paid' as const, billing: plan.term ?? 'yearly', credits: 1000 } : null),
-        domain: 'connecting',
         cart: [],
       })
       setSubmitting(false)
       closePanel()
-      goDomains('status', domain ?? null)
+      closeSurface()
+      /* Where the return lands is OUR decision, and it is the Publish panel: the sheet
+         promised "connects automatically after checkout", and the panel is where every
+         state of that connection is now read (designer, 13.09.2026). A domain bought
+         here is a fresh registration, so its ICANN clock starts with it. */
+      if (domain) startConnect(domain, { bought: true })
+      else togglePublish(true)
     }, 1500)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps

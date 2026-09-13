@@ -30,28 +30,90 @@ import { useEffect, useRef } from 'react'
 import { useWorld, hasPlan } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
-import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
+import { STAGING_HOST } from '@/data/domains'
 import { IconPlus, IconEdit, IconExternal, IconClose } from '@/ui/icons'
+import { retryConnect } from '@/modules/domains/connect'
 import { popover, popoverContent } from '@/ui/motion'
 
 
-/** The inset URL field: value + muted suffix, one trailing icon button. */
+/**
+ * The inset URL field.
+ *
+ * Two faces, and which one is on says what the site answers to RIGHT NOW: the staging
+ * address, editable (pencil), or the custom domain under a green "Live" pill. The pill
+ * replaces the trailing button rather than joining it — a domain that answers has
+ * nothing to edit here, and the board draws the pill in that slot.
+ */
 function UrlField({ value, suffix, live }: { value: string; suffix?: string; live?: boolean }) {
   return (
     <div className="w-full rounded-[12px] shadow-[inset_0_0_0_1px_var(--white-200)]">
       <div className="flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 pr-2">
         <p className="min-w-0 truncate text-[15px]">
-          {live && <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--live)]" aria-hidden />}
           <span className="text-[var(--white-900)]">{value}</span>
           {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
         </p>
-        <button
-          className="grid h-8 w-8 flex-none place-items-center rounded-[8px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-[var(--white-700)]"
-          aria-label={live ? 'Open site' : 'Edit address'}
-        >
-          {live ? <IconExternal size={16} /> : <IconEdit size={18} />}
-        </button>
+        {live ? (
+          <span className="flex h-6 flex-none items-center gap-1.5 rounded-full bg-[#48ba7926] pl-2 pr-2.5 text-[12px] font-medium text-[var(--live)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--live)]" aria-hidden />
+            Live
+          </span>
+        ) : (
+          <button
+            className="grid h-8 w-8 flex-none place-items-center rounded-[8px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-[var(--white-700)]"
+            aria-label="Edit address"
+          >
+            <IconEdit size={18} />
+          </button>
+        )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * One state of the connection, as a card (designer's six states, 13.09.2026).
+ *
+ * Amber is "in flight, and we are telling you so"; red is "stuck, and it needs you".
+ * ⚠️ EVERY NON-TERMINAL STATE CARRIES ITS OWN WAY OUT — his note on the failed state,
+ * and the reason the old panel's single "Refresh status" button is gone: a generic
+ * refresh cannot resend a confirmation email, and a state that needs nothing from the
+ * customer ("Connecting · nothing for you to do") must not offer a button that implies
+ * it does.
+ */
+function StatusCard({
+  tone, title, sub, action,
+}: {
+  tone: 'amber' | 'red'
+  title: string
+  sub: string
+  action?: { label: string; onClick: () => void }
+}) {
+  const amber = tone === 'amber'
+  return (
+    <div
+      className="mt-[19px] flex items-center gap-3 rounded-[12px] px-4 py-3.5"
+      style={{
+        background: amber ? '#e5c3591a' : '#ef44441a',
+        boxShadow: `inset 0 0 0 1px ${amber ? '#e5c35959' : '#ef444459'}`,
+      }}
+    >
+      <span
+        className="mt-[7px] h-2 w-2 flex-none self-start rounded-full"
+        style={{ background: amber ? 'var(--attention)' : 'var(--danger)' }}
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] font-semibold leading-[1.3] text-white">{title}</p>
+        <p className="mt-1 text-[13px] leading-[1.4] text-[#ffffffa3]">{sub}</p>
+      </div>
+      {action && (
+        <button
+          onClick={action.onClick}
+          className="h-8 flex-none rounded-[8px] border border-[var(--white-200)] bg-[#ffffff0a] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+        >
+          {action.label}
+        </button>
+      )}
     </div>
   )
 }
@@ -78,8 +140,33 @@ export function PublishPanel() {
   }, [publishOpen, togglePublish])
 
   const paid = hasPlan(world)
-  const connecting = world.domain === 'connecting' || world.domain === 'verifying'
-  const live = world.domain === 'live' || world.domain === 'multiple'
+  /*
+   * THE SIX STATES THE PANEL CARRIES (designer, 13.09.2026 — "после корзины все статусы и
+   * продолжение флоу происходят тут в окне Publish"). They are read off the world, in this
+   * order of precedence:
+   *
+   *   unreachable  red card, the domain does not answer — the only one that blames nothing
+   *                on the customer's plan ("your plan is active") and the only red
+   *   connecting   records are being written; the field still shows the staging address,
+   *                because that is what the site answers to until they land
+   *   padlock      the certificate is being issued — the domain already answers, so the
+   *                field switches to it and wears the Live pill
+   *   confirmEmail the ICANN clock on a freshly registered name (world.icann)
+   *   settled      live and nothing pending: no card at all, one line of prose
+   *
+   * The padlock beat outranks the email one when both are true: it clears in half an hour
+   * and the other has a fortnight, so the transient card gets the slot first.
+   */
+  const attached = world.domain === 'connecting' || world.domain === 'verifying' ||
+    world.domain === 'live' || world.domain === 'multiple' || world.domain === 'unreachable'
+  const liveish = world.domain === 'live' || world.domain === 'multiple'
+  const unreachable = world.domain === 'unreachable'
+  const connecting = world.domain === 'connecting'
+  const padlock = world.domain === 'verifying'
+  const confirmEmail = liveish && world.icann
+  const settled = liveish && !world.icann
+  /** Does the domain answer? That is what the field and its Live pill report. */
+  const answering = liveish || padlock
   const staging = STAGING_HOST.replace('.remixer.site', '')
 
   /*
@@ -93,14 +180,16 @@ export function PublishPanel() {
    * to live: if it is worth making, it belongs in the nudge banner's copy, not stapled to
    * the verb. Raised with the designer; do not put it back on the button.
    */
-  const primary = !world.published
-    ? { en: 'Publish', uk: 'Опублікувати' }
+  const primary = answering
+    ? world.unpublished > 0
+      ? { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
+      : { en: 'Update', uk: 'Оновити' }
     : world.unpublished > 0
-      ? live
+      ? world.published
         ? { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
         : { en: 'Publish', uk: 'Опублікувати' }
       : { en: 'Continue', uk: 'Продовжити' }
-  const publishes = !world.published || world.unpublished > 0
+  const publishes = world.unpublished > 0 || (!world.published && !attached)
 
   return (
     <AnimatePresence>
@@ -147,7 +236,10 @@ export function PublishPanel() {
           {/* -------------------------------------------------------- header, 64px */}
           <div className="flex h-16 items-center pl-6">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">
-              {world.published
+              {/* A domain standing in front of the site counts as published for both of
+                  these: "Not published" over a live custom domain would be a lie, and the
+                  nudge argues for something that has already happened. */}
+              {world.published || attached
                 ? t({ en: 'Publish', uk: 'Публікація' })
                 : t({ en: 'Not published', uk: 'Не опубліковано' })}
             </h3>
@@ -162,7 +254,7 @@ export function PublishPanel() {
             <div className="flex flex-col gap-2 rounded-[16px] bg-[#ffffff0a] shadow-[inset_0_0_0_1px_#ffffff0a]">
             {/* ------------------------------------------------ the nudge, 29697:37264 */}
             <AnimatePresence initial={false}>
-              {!world.published && publishHintOpen && (
+              {!world.published && !attached && publishHintOpen && (
                 <motion.div
                   key="hint"
                   /* Fades and lifts out, then the card tightens in one snap — the layout
@@ -203,41 +295,92 @@ export function PublishPanel() {
             {/* --------------------------------------------- the fields, 29697:37003 */}
             <div className="px-4 pb-4 pt-[19px]">
               {/* website URL */}
-              <div className="mb-[19px] flex flex-col gap-[7px]">
+              <div className="flex flex-col gap-[7px]">
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
-                  {live || connecting
-                    ? t({ en: 'Your domain', uk: 'Ваш домен' })
-                    : t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
+                  {t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
                 </p>
-                {live || connecting ? (
-                  <UrlField value={CUSTOM_DOMAIN} live={live} />
+                {answering ? (
+                  <UrlField value={world.customDomain} live />
                 ) : (
                   <UrlField value={staging} suffix=".remixer.site" />
                 )}
-                {connecting && (
-                  <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--attention)]">
-                    {t({
-                      en: 'Connecting — usually a few minutes. Keep editing, it goes live on its own.',
-                      uk: 'Підключається — зазвичай кілька хвилин. Редагуйте далі, сайт запуститься сам.',
-                    })}
-                  </p>
-                )}
-                {live && (
-                  <p className="px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
-                    {t({ en: 'Secure padlock on · anyone can visit.', uk: 'Захисний замочок увімкнено · сайт доступний усім.' })}
-                  </p>
-                )}
               </div>
 
-              {/* connect your own domain — dashed card (hidden once a domain is on) */}
-              {!live && !connecting && (
+              {/* ------------------------------------------------- the state card */}
+              {unreachable && (
+                <StatusCard
+                  tone="red"
+                  title={world.customDomain}
+                  sub={t({
+                    en: 'We can’t reach this domain yet · your plan is active',
+                    uk: 'Поки не бачимо цей домен · ваш план активний',
+                  })}
+                  action={{
+                    label: t({ en: 'Check again', uk: 'Перевірити ще' }),
+                    onClick: () => retryConnect(world.customDomain),
+                  }}
+                />
+              )}
+              {connecting && (
+                <StatusCard
+                  tone="amber"
+                  title={world.customDomain}
+                  sub={t({ en: 'Connecting · nothing for you to do', uk: 'Підключається · від вас нічого не потрібно' })}
+                />
+              )}
+              {padlock && (
+                <StatusCard
+                  tone="amber"
+                  title={t({ en: 'Secure padlock is switching on', uk: 'Вмикається захисний замок' })}
+                  sub={t({
+                    en: 'Usually within 30 minutes · the site already works',
+                    uk: 'Зазвичай протягом 30 хвилин · сайт уже працює',
+                  })}
+                />
+              )}
+              {confirmEmail && (
+                <StatusCard
+                  tone="amber"
+                  title={t({ en: 'Confirm your email to keep this domain', uk: 'Підтвердьте email, щоб зберегти домен' })}
+                  sub={t({
+                    en: 'We sent a link to roman@example.com · 14 days left',
+                    uk: 'Ми надіслали лист на roman@example.com · лишилось 14 днів',
+                  })}
+                  action={{ label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => undefined }}
+                />
+              )}
+              {settled && (
+                <p className="mt-[19px] px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
+                  {t({ en: 'Padlock on · anyone can visit', uk: 'Замок увімкнено · сайт доступний усім' })}
+                </p>
+              )}
+
+              {/* ---------------- the staging address, once a domain stands in front */}
+              {attached && (
+                <div className={settled ? 'mt-2 px-0.5' : 'mt-[19px] px-0.5'}>
+                  <p className="text-[13px] leading-[1.4] text-[var(--white-400)]">
+                    {t({ en: 'Staging address', uk: 'Адреса стейджингу' })}
+                  </p>
+                  <a
+                    className="mt-0.5 inline-flex items-center gap-1 text-[13px] leading-[1.4] text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[var(--white-700)]"
+                    href="#"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    {STAGING_HOST}
+                    <IconExternal size={12} />
+                  </a>
+                </div>
+              )}
+
+              {/* connect your own domain — dashed card, the state before any of this */}
+              {!attached && (
                 <button
                   onClick={() => openDomains('home')}
                   /* Hover per Figma 26125:3832: the dashed rim brightens (NA/200 →
                      NA/300) and the "+" disc fills WHITE with a dark plus — the
                      row itself keeps its fill. Colours ease over the base duration
                      so the state melts in rather than snapping. */
-                  className="group flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std hover:border-[var(--white-300)]"
+                  className="group mt-[19px] flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std hover:border-[var(--white-300)]"
                 >
                   {/* Figma 26125:3802: NA/100 fill + 15%-white rim, not the shell glass */}
                   <span className="grid h-8 w-8 flex-none place-items-center rounded-[12px] border border-[#ffffff26] bg-[#ffffff14] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std group-hover:border-[#ffffff40] group-hover:bg-white group-hover:text-[#09090b]">
@@ -255,32 +398,15 @@ export function PublishPanel() {
                   </span>
                 </button>
               )}
-
-              {/* private preview line under a live/connecting domain */}
-              {(live || connecting) && (
-                <div className="flex items-center justify-between gap-3 rounded-[16px] border border-dashed border-[var(--white-200)] px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] text-[var(--white-500)]">{STAGING_HOST}</p>
-                    <p className="mt-0.5 text-[12.5px] text-[var(--white-300)]">
-                      {t({ en: 'Private preview · always free · hidden from Google', uk: 'Приватне прев’ю · завжди безкоштовно · приховано від Google' })}
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
             </div>
           </div>
 
           {/* ---------------------------------------------------------- button bar */}
-          <div className="flex items-center justify-end gap-2 px-4 py-4">
-            {connecting && (
-              <button
-                onClick={() => set({ domain: world.domain === 'connecting' ? 'verifying' : 'live' })}
-                className="h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
-              >
-                {t({ en: 'Refresh status', uk: 'Оновити статус' })}
-              </button>
-            )}
+          {/* One button. The old "Refresh status" lived here because the panel had no
+              way to say what a connection was doing; now each state says it, and the two
+              that need the customer carry their own action inside the card. */}
+          <div className="flex items-center justify-end px-4 py-4">
             <button
               onClick={() => (publishes ? set({ unpublished: 0, published: true }) : togglePublish(false))}
               className="h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"

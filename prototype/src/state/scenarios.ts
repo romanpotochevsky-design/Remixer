@@ -9,7 +9,7 @@
  * Ukrainian is the second language.
  */
 import type { World } from './world'
-import { DEFAULT_WORLD, DEMO_PROJECTS } from './world'
+import { DEFAULT_WORLD, DEMO_PROJECTS, isCustomDomainActive } from './world'
 import type { Text } from '../i18n'
 import { leadingDone } from '../modules/chat/autopilot'
 
@@ -339,6 +339,14 @@ export const AXES: Axis[] = [
        edits pending". Only meaningful once there is a site at all. */
     key: 'published', group: G.project, label: { en: 'Ever published', uk: 'Публікувався' }, kind: 'toggle',
     appliesWhen: (w) => w.project !== 'empty',
+  },
+  {
+    /* The ICANN clock on a freshly REGISTERED domain (designer's state ⑤): the panel
+       carries it in its own amber card until the registrant confirms the email. Only
+       reachable once a domain is actually attached — a staging site has nothing to
+       confirm. */
+    key: 'icann', group: G.domain, label: { en: 'Email unconfirmed', uk: 'Email не підтверджено' }, kind: 'toggle',
+    appliesWhen: (w) => isCustomDomainActive(w),
   },
   {
     /* The composer's mode switcher (Figma 29697:54553). Autopilot is the default from

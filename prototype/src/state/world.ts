@@ -9,6 +9,7 @@ import { create } from 'zustand'
 import type { ThumbId } from '@/modules/home/thumbs'
 import type { BriefKey } from '@/modules/chat/brief'
 import type { CartLine } from '@/data/cart'
+import { CUSTOM_DOMAIN } from '@/data/domains'
 
 /* ------------------------------------------------------------------ axes */
 
@@ -269,6 +270,30 @@ export interface World {
    * moment somebody edited a live site.
    */
   published: boolean
+  /**
+   * A newly REGISTERED domain whose registrant email is still unconfirmed.
+   *
+   * Its own axis rather than a `domain` value, because it is orthogonal to everything
+   * that axis tracks: the site can be connecting, switching its padlock on or fully live
+   * and still be sitting on this clock. ICANN gives 15 days; miss it and the registrar
+   * suspends the domain — the site and its email both stop. That is why the Publish
+   * panel carries it in an amber card with its own way out (Resend) rather than as a
+   * line of prose (designer's state ⑤, 13.09.2026).
+   *
+   * Only a domain bought THROUGH us can be in this state; connecting one you already own
+   * never sets it.
+   */
+  icann: boolean
+  /**
+   * WHICH domain is attached to this project.
+   *
+   * The name has to be world truth and not navigation, because the panel outlives every
+   * screen that knew it: the cart empties on checkout, the domains surface closes, and
+   * the Publish panel still has to name the domain it is connecting. Before the cart
+   * existed the panel read a constant, so a customer who bought `trulieve.com` was told
+   * `fit-ration.com` was connecting.
+   */
+  customDomain: string
   chat: Chat
   /** Every site this customer has generated. Empty = the first-run Home page. */
   projects: HomeProject[]
@@ -324,6 +349,8 @@ export const DEFAULT_WORLD: World = {
    * now belongs to the presets that actually put a domain in front of the site.
    */
   published: false,
+  icann: false,
+  customDomain: CUSTOM_DOMAIN,
   chat: 'long',
   projects: DEMO_PROJECTS,
   cart: [],
@@ -419,7 +446,7 @@ export function violations(w: World): Violation[] {
 const KEYS: Record<string, keyof World> = {
   l: 'lang', a: 'account', t: 'trialDay', b: 'billing', c: 'credits', z: 'bonus',
   i: 'inventory', d: 'domain', p: 'project', u: 'unpublished', v: 'published', h: 'chat',
-  m: 'mode',
+  m: 'mode', k: 'icann',
 }
 
 /**

@@ -27,6 +27,7 @@ import {
   IconChevronDown,
 } from '@/ui/icons'
 import { surface, listSwap, listSwapItem } from '@/ui/motion'
+import { startConnect } from './connect'
 
 
 /* ------------------------------------------------------------------ shared bits */
@@ -477,16 +478,19 @@ function ResultsScreen() {
 
 /** "You own this" — the confirm for a domain already in the DreamHost account. */
 function OwnScreen() {
-  const { world, set } = useWorld()
-  const { activeDomain, goDomains } = useUI()
+  const { world } = useWorld()
+  const { activeDomain, goDomains, closeSurface } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? CUSTOM_DOMAIN
   const inUse = world.inventory === 'dh-in-use'
   const externalNs = world.inventory === 'dh-external-ns'
 
+  /* The connection itself is READ in the Publish panel from here on (designer,
+     13.09.2026), so attaching closes this window and opens that one — the clock in
+     modules/domains/connect.ts walks the states it shows. */
   const connect = () => {
-    set({ domain: 'connecting' })
-    goDomains('status', domain)
+    closeSurface()
+    startConnect(domain)
   }
 
   return (
@@ -554,13 +558,14 @@ function OwnScreen() {
 /** External domain: registrar detected, guided manual path. No Domain Connect promises. */
 function ExternalScreen() {
   const { set } = useWorld()
-  const { activeDomain, goDomains } = useUI()
+  const { activeDomain, goDomains, closeSurface } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? 'emberandoak.com'
 
   const start = () => {
-    set({ domain: 'connecting', inventory: 'external-manual' })
-    goDomains('status', domain)
+    set({ inventory: 'external-manual' })
+    closeSurface()
+    startConnect(domain)
   }
 
   return (
@@ -619,101 +624,6 @@ function ExternalScreen() {
   )
 }
 
-/** Status: the named state machine — connecting → verifying → live, one verb per stop. */
-function StatusScreen() {
-  const { world, set } = useWorld()
-  const { activeDomain, closeSurface } = useUI()
-  const { t } = useT()
-  const domain = activeDomain ?? CUSTOM_DOMAIN
-
-  const stage = world.domain === 'live' || world.domain === 'multiple' ? 2
-    : world.domain === 'verifying' ? 1
-    : 0
-
-  // The canonical success checklist — one fixed order on every success screen.
-  const checklist = [
-    { label: { en: 'Domain settings updated', uk: 'Налаштування домену оновлено' }, done: stage >= 1 },
-    { label: { en: 'Connected to your site', uk: 'Під’єднано до вашого сайту' }, done: stage >= 2 },
-    { label: { en: 'Security (SSL) on', uk: 'Захист (SSL) увімкнено' }, done: stage >= 2 },
-  ]
-
-  return (
-    <Screen>
-      <Eyebrow>
-        {stage === 2
-          ? t({ en: 'Live', uk: 'Працює' })
-          : t({ en: 'Connecting', uk: 'Підключення' })}
-      </Eyebrow>
-      <h2 className="flex items-center gap-3 font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">
-        {stage === 2 ? (
-          <span className="h-2.5 w-2.5 flex-none rounded-full bg-[var(--live)]" aria-hidden />
-        ) : (
-          <span className="relative flex h-2.5 w-2.5 flex-none" aria-hidden>
-            <span className="absolute h-full w-full animate-ping rounded-full bg-[var(--attention)] opacity-60" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--attention)]" />
-          </span>
-        )}
-        {domain}
-      </h2>
-      <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
-        {stage === 2
-          ? t({ en: 'Secure padlock on · anyone can visit.', uk: 'Захисний замочок увімкнено · сайт доступний усім.' })
-          : t({
-              en: 'Usually a few minutes — keep editing, it goes live on its own.',
-              uk: 'Зазвичай кілька хвилин — редагуйте далі, сайт запуститься сам.',
-            })}
-      </p>
-
-      <div className="mt-5 space-y-2.5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
-        {checklist.map((c) => (
-          <div key={c.label.en} className="flex items-center gap-2.5 text-[14px]">
-            <span
-              className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[11px] ${
-                c.done ? 'bg-[#48ba7933] text-[var(--live)]' : 'border border-[var(--gray-700)] text-transparent'
-              }`}
-              aria-hidden
-            >
-              ✓
-            </span>
-            <span className={c.done ? 'text-[var(--white-700)]' : 'text-[var(--white-400)]'}>{t(c.label)}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 flex gap-2">
-        {stage === 2 ? (
-          <>
-            <button
-              onClick={closeSurface}
-              className="h-11 flex-1 rounded-control bg-[var(--action)] text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-            >
-              {t({ en: 'Back to editing', uk: 'Назад до редагування' })}
-            </button>
-            <button className="h-11 flex-1 rounded-control border border-[var(--white-200)] text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]">
-              {t({ en: 'Visit site ↗', uk: 'Відкрити сайт ↗' })}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => set({ domain: world.domain === 'connecting' ? 'verifying' : 'live' })}
-              className="h-11 flex-1 rounded-control border border-[var(--white-200)] text-[14px] font-medium text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)]"
-            >
-              {t({ en: 'Refresh status', uk: 'Оновити статус' })}
-            </button>
-            <button
-              onClick={closeSurface}
-              className="h-11 flex-1 rounded-control text-[14px] font-medium text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--gray-800)] hover:text-[var(--white-700)]"
-            >
-              {t({ en: 'Keep editing', uk: 'Редагувати далі' })}
-            </button>
-          </>
-        )}
-      </div>
-    </Screen>
-  )
-}
-
 /* ------------------------------------------------------------------ surface */
 
 const SCREENS: Record<DomainScreen, () => JSX.Element> = {
@@ -721,7 +631,6 @@ const SCREENS: Record<DomainScreen, () => JSX.Element> = {
   results: ResultsScreen,
   own: OwnScreen,
   external: ExternalScreen,
-  status: StatusScreen,
 }
 
 export function DomainsSurface() {

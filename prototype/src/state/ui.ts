@@ -47,7 +47,6 @@ export type DomainScreen =
   | 'results'   // search results: exact-match hero + alternatives
   | 'own'       // "You own this" confirm for a domain already in the account
   | 'external'  // external domain: registrar detected, guided manual records
-  | 'status'    // connecting / verifying / live status page
 
 /**
  * The checkout sheet that sits on top of everything (Figma 27275:33023 and siblings).

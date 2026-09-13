@@ -33,6 +33,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useWorld, hasPlan } from '@/state/world'
 import { useUI } from '@/state/ui'
+import { startConnect } from './connect'
 import { useT, type Text } from '@/i18n'
 import { priceFor } from '@/data/domains'
 import type { CartLine } from '@/data/cart'
@@ -148,7 +149,7 @@ function PlanCard({
 
 export function DomainModal() {
   const { world, set } = useWorld()
-  const { domainModal, closeDomainModal, goDomains, openPanel } = useUI()
+  const { domainModal, closeDomainModal, closeSurface, openPanel } = useUI()
   const { t } = useT()
   const [term, setTerm] = useState<Term>('yearly')
 
@@ -188,9 +189,11 @@ export function DomainModal() {
     if (showPlans) lines.push({ kind: 'remixer', term })
 
     if (lines.length === 0) {
-      set({ domain: 'connecting' })
+      // Nothing to pay for: no cart, straight to connecting — and the Publish panel,
+      // which is where every state of that connection is read.
       closeDomainModal()
-      goDomains('status', domain)
+      closeSurface()
+      startConnect(domain)
       return
     }
 

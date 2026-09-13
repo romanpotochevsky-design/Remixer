@@ -322,7 +322,11 @@ export default function App() {
 
           {/* center: project button, 280×40 — the live address in permanent chrome */}
           <button
-            onClick={() => openDomains(world.domain === 'connecting' || world.domain === 'verifying' ? 'status' : 'home')}
+            onClick={() => (world.domain === 'connecting' || world.domain === 'verifying'
+              /* mid-connection the chip opens the panel that reports it, not the
+                 domains window — there is no status page any more */
+              ? togglePublish(true)
+              : openDomains('home'))}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
             <span className="flex min-w-0 items-center gap-2">
