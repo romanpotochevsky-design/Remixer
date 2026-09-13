@@ -323,8 +323,38 @@ function ConnectBody({
                 </span>
               </p>
             ) : (
+              /*
+               * ⚠️ THE BOARD SAYS SECONDS. WE DO NOT — flagged to the designer.
+               *
+               * 27071:20574 reads "On DreamHost · connects in a few seconds", and the
+               * panel this sheet hands the customer to thirty seconds later reads
+               * "Usually quick, sometimes a few hours" (PublishPanel, states.md variant
+               * A). Two promises about one event, and the sheet's is the one the product
+               * cannot keep: a domain parked at DNS Only has never resolved to anything,
+               * so resolvers are holding the answer "there is nothing here" under the
+               * zone's SOA MINIMUM — 14400s, four hours. DreamHost's five-minute TTL
+               * governs UPDATING a record that already answers and does nothing here, and
+               * a registered-and-parked name is exactly what customers connect. So
+               * "seconds" is not merely optimistic, it is false in the common case.
+               * (Mechanism: connect.ts:19-31 and the domain-connect research.)
+               *
+               * What survives is the better half, and it is a fact rather than a
+               * forecast: DreamHost's own KB says a domain registered with them already
+               * carries every record it needs, root and www alike. Nothing to paste,
+               * nothing to change at another company — the product's real advantage, and
+               * it does not depend on a clock. The timing belongs to the panel, which is
+               * where the connecting state is actually read and which says it in the
+               * researched shape: a window and a check, never a moment.
+               *
+               * Wording is OwnScreen's ("nothing to change anywhere else") — same fact,
+               * same module, already in the product's voice. The designer may prefer to
+               * change the board instead; that is his call, not a silent fix.
+               */
               <p className="mt-1 truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
-                {t({ en: 'On DreamHost · connects in a few seconds', uk: 'На DreamHost · підключиться за кілька секунд' })}
+                {t({
+                  en: 'On DreamHost · nothing to change anywhere else',
+                  uk: 'На DreamHost · нічого не треба змінювати деінде',
+                })}
               </p>
             )}
           </div>
@@ -653,8 +683,15 @@ export function DomainModal() {
                           </span>
                         </p>
                       ) : (
+                        /* Same correction as ConnectBody's — see the comment there.
+                           This body is unreachable today (connect-existing has no
+                           callers), but a dead branch is exactly where a retired
+                           promise comes back to life. */
                         <p className="truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
-                          {t({ en: 'On DreamHost · connects in a few seconds', uk: 'На DreamHost · підключиться за кілька секунд' })}
+                          {t({
+                            en: 'On DreamHost · nothing to change anywhere else',
+                            uk: 'На DreamHost · нічого не треба змінювати деінде',
+                          })}
                         </p>
                       )}
 
