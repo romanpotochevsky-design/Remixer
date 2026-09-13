@@ -530,3 +530,32 @@ export const IconStepQueued = ({ size = 24, className }: IconProps) => (
     <circle cx="12" cy="12" r="7.25" />
   </svg>
 )
+
+/**
+ * The pencil on a decision in the build plan (Figma 30121:59085 / 30121:59966 — the board's
+ * "Icon button", tonal, square, medium). Redrawn by hand: figma.com refuses the proxy on
+ * every asset URL, which is why every icon in this file is drawn rather than exported.
+ *
+ * A 24 box: the nib runs corner to corner, the body is a single stroked quad, and the short
+ * cross-stroke is the ferrule. Nothing else — at 24px a pencil with an eraser reads as noise.
+ */
+export const IconPencil = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth="1.6">
+    <path d="M4 20h3.2l9.9-9.9a2.26 2.26 0 0 0-3.2-3.2L4 16.8z" />
+    <path d="M13.9 6.9l3.2 3.2" />
+  </svg>
+)
+
+/**
+ * The "add" mark on the plan's stack (Figma 30107:53493 / 30115:55258) — a SOLID disc with
+ * the plus cut out of it, not an outlined circle. The board draws it filled white, which is
+ * what makes "Add a section" read as an action in a list of things that are only named.
+ *
+ * `currentColor` fills the disc, so a row that dims dims the mark with it.
+ */
+export const IconPlusDisc = ({ size = 24, className }: IconProps) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden className={className}>
+    <circle cx="12" cy="12" r="10" fill="currentColor" />
+    <path d="M12 7.6v8.8M7.6 12h8.8" stroke="var(--gray-950)" strokeWidth="1.9" strokeLinecap="round" />
+  </svg>
+)

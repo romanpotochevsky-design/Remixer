@@ -43,8 +43,10 @@ export function SuggestPanel() {
   const answers = useWorld((s) => s.world.brief.answers)
   const suggest = useWorld((s) => s.world.suggest)
   const published = useWorld((s) => s.world.published)
+  /* the structure the customer drew in the plan — a proposal offers the page they named */
+  const planEdits = useWorld((s) => s.world.planEdits)
 
-  const proposal = nextProposal(answers, suggest.started, published)
+  const proposal = nextProposal(answers, suggest.started, published, planEdits.outline)
   /* The dock morphs when the sheet's height changes; a proposal shrinks by a row each time
      a page is started, so the count is what identifies "a different sheet" here. */
   const sheet = useDockSheet<HTMLElement>(proposal?.options.length ?? 0)
@@ -83,11 +85,16 @@ export function SuggestPanel() {
             {t(proposal.question)}
           </p>
           <div className="overflow-hidden rounded-[16px] border border-[#ffffff14] bg-[#09090b8f]">
-            {proposal.options.map((o) => (
+            {/* ⚠️ The FIRST row is the recommendation, and the panel already arrives with it
+                chosen — "recommended" and "selected" have been one state here since 09.09,
+                because the blue button does exactly that row. The plate makes the claim
+                readable instead of leaving it to the ring. */}
+            {proposal.options.map((o, i) => (
               <Row
                 key={o.id}
                 name={o.name}
                 detail={o.detail}
+                recommended={i === 0}
                 on={picked === o.id}
                 onPick={() => pickSuggest(o.id)}
               />

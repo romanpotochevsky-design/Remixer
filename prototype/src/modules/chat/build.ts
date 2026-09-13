@@ -31,6 +31,7 @@
  */
 import type { Text } from '@/i18n'
 import { BRIEF_QUESTIONS, OTHER, optionById, type BriefAnswers, type BriefKey } from './brief'
+import type { OutlineEdits } from '@/state/world'
 
 export interface BuildSection {
   id: string
@@ -200,23 +201,42 @@ function chose(key: BriefKey, a: BriefAnswers): string {
   return question.options?.[0]?.id ?? ''
 }
 
-/** The whole outline: the page being built, then the pages waiting. */
-export function buildOutline(a: BriefAnswers): BuildPage[] {
+/**
+ * The whole outline: the page being built, then the pages waiting.
+ *
+ * ⚠️ AND THE CUSTOMER'S OWN STRUCTURE WINS OVER THE COMPILED ONE. The plan draws this list
+ * and lets it be renamed, reordered, added to and cut (Figma 30115:55247), and those edits
+ * are the ONE thing in that document that changes what gets built — so they have to land
+ * here, where the generation card and the Autopilot proposals both read. A section the
+ * customer added has no duration of its own; it inherits the one at its position, and the
+ * last section's beyond that, so a longer list still plays a plausible minute.
+ */
+export function buildOutline(a: BriefAnswers, edit?: OutlineEdits): BuildPage[] {
   const goal = chose('goal', a)
   const pages = chose('pages', a)
   const [first, second] = MIDDLE[goal] ?? MIDDLE.enquiries
+  const base = [NAV, HERO, first, second, FOOTER]
+  const sections: BuildSection[] = edit?.sections
+    ? edit.sections.map((name, i) => {
+        const src = base[Math.min(i, base.length - 1)]
+        return { ...src, id: `sec-${i}`, name: { en: name, uk: name } }
+      })
+    : base
+  const rest: Text[] = edit?.rest
+    ? edit.rest.map((name) => ({ en: name, uk: name }))
+    : (REST[pages] ?? [])
   return [
     {
       id: 'home',
-      name: { en: 'Home', uk: 'Головна' },
-      sections: [NAV, HERO, first, second, FOOTER],
+      name: edit?.home ? { en: edit.home, uk: edit.home } : { en: 'Home', uk: 'Головна' },
+      sections,
     },
-    ...(REST[pages] ?? []).map((name, i) => ({ id: `page-${i}`, name })),
+    ...rest.map((name, i) => ({ id: `page-${i}`, name })),
   ]
 }
 
 /** The sections of the page this pass builds. */
-export const buildSections = (a: BriefAnswers) => buildOutline(a)[0].sections ?? []
+export const buildSections = (a: BriefAnswers, edit?: OutlineEdits) => buildOutline(a, edit)[0].sections ?? []
 
 /* ---------------------------------------------------------------- the beats */
 
@@ -235,8 +255,8 @@ export interface Beat {
   hold: number
 }
 
-export function buildBeats(a: BriefAnswers): Beat[] {
-  const sections = buildSections(a)
+export function buildBeats(a: BriefAnswers, edit?: OutlineEdits): Beat[] {
+  const sections = buildSections(a, edit)
   const beats: Beat[] = []
   sections.forEach((section, at) => {
     const lines = Math.max(1, section.work.length)

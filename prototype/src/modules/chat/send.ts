@@ -12,9 +12,9 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest, type OutlineEdits } from '@/state/world'
 import type { Text } from '@/i18n'
-import { useUI } from '@/state/ui'
+import { useUI, CHAT_MAX } from '@/state/ui'
 import { baselineThread, replyTo, streamDuration } from './thread'
 import {
   isWeakPrompt, BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS, briefAck, briefDone, OTHER,
@@ -92,7 +92,7 @@ function stopBuildClock() {
  */
 function runBuild(answers: BriefAnswers, from = 0) {
   stopBuildClock()
-  const list = buildBeats(answers)
+  const list = buildBeats(answers, useWorld.getState().world.planEdits.outline)
   const step = (i: number) => {
     const now = useWorld.getState()
     if (now.world.project !== 'generating') { stopBuildClock(); return }
@@ -106,7 +106,7 @@ function runBuild(answers: BriefAnswers, from = 0) {
 
 /** Where in the schedule a restored `world.build` sits. -1 → start from the top. */
 function beatIndex(answers: BriefAnswers, at: number, line: number) {
-  return buildBeats(answers).findIndex((b) => b.at === at && b.line === line)
+  return buildBeats(answers, useWorld.getState().world.planEdits.outline).findIndex((b) => b.at === at && b.line === line)
 }
 
 /**
@@ -372,17 +372,48 @@ function offerPlan() {
  * is free; the chat narrows back to its split width and the document takes the rest.
  * Exactly the shape the designer asked for (07.09.2026).
  */
+/**
+ * ⚠️ ON A WIDE SCREEN, REVIEW SPLITS THE SHELL IN HALF (designer, 11.09.2026: "когда
+ * нажимаешь на «посмотреть план», открывало детали плана вот так — 50% на 50%… но это
+ * касается десктопных больших мониторов, на ноутбуках места по ширине мало и чат будет
+ * значительно меньше").
+ *
+ * Why half rather than the shell's usual 432 split: the plan is a DOCUMENT, and the thread
+ * beside it is the conversation that wrote it. Neither is a preview of the other, so on a
+ * monitor with room to spare they are two equal columns. The 432 split exists because a
+ * SITE preview wants every pixel it can get; a document that measures 800 does not.
+ *
+ * ⚠️ AND IT NEVER TAKES ROOM AWAY. The half is applied only when the canvas half can still
+ * hold the document at its own measure — 800 plus its 32 of padding each side — otherwise
+ * the width stays exactly as it was. On a laptop that leaves the split alone, which is the
+ * case the designer named; and a chat somebody has already dragged WIDER than half is not
+ * dragged back. A default, not a lock: the resizer still owns the width afterwards.
+ */
+const PLAN_MEASURE = 864
+
 export function reviewPlan() {
   const ui = useUI.getState()
   ui.setPreviewOpen(true)
   ui.openSurface('plan')
+  /* the rail's width is a token, so it is read rather than restated here */
+  const rail = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail-w')) || 56
+  const shell = typeof window === 'undefined' ? 0 : window.innerWidth - rail
+  const half = Math.round(shell / 2)
+  if (shell - half >= PLAN_MEASURE && half > ui.chatWidth) {
+    planWidthWas = ui.chatWidth
+    ui.setChatWidth(Math.min(half, CHAT_MAX))
+  }
 }
+
+/** What the chat was before Review widened it, so ✕ gives the canvas its room back. */
+let planWidthWas: number | null = null
 
 /** ✕ in the plan surface — back to the dock card, canvas out of the way again. */
 export function closePlanReview() {
   const ui = useUI.getState()
   ui.closeSurface()
   ui.setPreviewOpen(false)
+  if (planWidthWas !== null) { ui.setChatWidth(planWidthWas); planWidthWas = null }
 }
 
 /**
@@ -428,7 +459,7 @@ function finishBuild(answers: BriefAnswers) {
   const now = useWorld.getState()
   /* Leading changes what this line has to do: the proposal that follows it owns the list of
      what to do next, so the line stops naming one (see `leadingDone`). */
-  const text = now.world.mode === 'autopilot' ? leadingDone(answers) : briefDone(answers)
+  const text = now.world.mode === 'autopilot' ? leadingDone(answers, now.world.planEdits.outline) : briefDone(answers)
   const done: Message = { id: nextId(now.world.sent), who: 'ai', text }
   now.set(
     {
@@ -492,7 +523,7 @@ function offerSuggestion() {
     return
   }
 
-  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published)
+  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published, w.planEdits.outline)
   if (!proposal) return
   now.set({ suggest: { ...w.suggest, show: 'proposal', pick: recommended(proposal) } }, now.preset)
 }
@@ -515,7 +546,7 @@ export function pickSuggest(value: string) {
 export function acceptSuggest() {
   const now = useWorld.getState()
   const w = now.world
-  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published)
+  const proposal = nextProposal(w.brief.answers, w.suggest.started, w.published, w.planEdits.outline)
   if (!proposal) return
 
   // The escape hatch: whatever was typed into "Something else — tell me…" is just a message.
@@ -614,6 +645,19 @@ export function editPlanText(path: string, value: string, was: string) {
   set({ planEdits: { ...world.planEdits, text } }, preset)
 }
 
+/**
+ * Redraw the plan's STRUCTURE — the page being built, its sections, the pages waiting.
+ *
+ * ⚠️ THIS IS THE EDIT THAT REACHES THE BUILD. Prose in this document is a record and
+ * changes nothing (see `editPlanText`); the outline compiles into `buildOutline`, which
+ * the generation card and the Autopilot proposals read, so a rename here renames the
+ * section the card builds and the page the proposal offers.
+ */
+export function editPlanOutline(patch: Partial<OutlineEdits>) {
+  const { world, set, preset } = useWorld.getState()
+  set({ planEdits: { ...world.planEdits, outline: { ...world.planEdits.outline, ...patch } } }, preset)
+}
+
 /** Rewrite one section's bullets, entire — see `PlanEdits.items` for why entire. */
 export function editPlanItems(section: number, items: string[]) {
   const { world, set, preset } = useWorld.getState()
@@ -677,6 +721,12 @@ export function startBuild(prompt: string) {
        * `suggest` rides along for the reason `finishBuild` states about `build`: the staged
        * `chat` axis would clear it anyway, and saying so is the difference between a decision
        * and an accident.
+       *
+       * ⚠️ And `planEdits` matters MORE since 11.09.2026 than when it was added. It used to
+       * hold only prose, which changes nothing; it now carries `outline` — the page and
+       * section names the customer drew, which `buildOutline` compiles and the generation
+       * card builds. Left behind, the last site's "Menu" would be the next site's Home
+       * section. Same trap the mode fell into, one axis over.
        */
       mode: 'autopilot',
       suggest: EMPTY_SUGGEST,

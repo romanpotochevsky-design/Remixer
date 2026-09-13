@@ -106,6 +106,13 @@ export function PlanCard() {
               {first && (
                 <div className="flex flex-col gap-2.5">
                   <p className="text-[15px] font-medium leading-[1.4] text-white">{read('s0:h', t(first.heading))}</p>
+                  {/* ⚠️ The section's lede, which the full document draws above the stack, is
+                      the sentence that says what the button actually does — "Home first, and
+                      only Home". The card is the first thing read and the stack is below its
+                      fold, so without this the teaser would drop the one new fact. */}
+                  {first.body && (
+                    <p className="text-[14px] leading-[1.4] text-[#ffffffa3]">{read('s0:b', t(first.body))}</p>
+                  )}
                   {/* the board sets the section's lines as one text block, so they share the
                       10px gap with the heading and sit on consecutive leading-1.4 lines */}
                   <div className="text-[14px] leading-[1.4] text-[#ffffffa3]">

@@ -215,10 +215,46 @@ export function Pick({ className, on, label, title, onPick, children }: {
  * pixel on row 1 was the divider's own weight, and the divider has moved out of the row's
  * box into the gap.
  */
-export function Row({ name, detail, on, onPick }: {
+/**
+ * RECOMMENDED — the plate beside an option's name (designer, 11.09.2026: "нам нужно еще
+ * добавить Recomended при выборе варианта… в некоторых вопросах может быть вверху один
+ * вариант который рекомендует ремиксер").
+ *
+ * ⚠️ IT IS THE SAME OBJECT AS THE PLAN'S "Remixer's pick", one moment earlier. There it
+ * says "you left this to me and here is what I took"; here it says "take this one". Both
+ * are Remixer's own choice named beside a name, so they are one plate rather than two
+ * inventions — and the plan already carries it, so the customer meets the shape twice.
+ *
+ * ⚠️ The board writes "Recomended". Shipped spelled — the fourth of these after
+ * `Add Promt`, `Not Publisher` and `Exellent`, flagged rather than reproduced.
+ */
+const RECOMMENDED: Text = { en: 'Recommended', uk: 'Рекомендовано' }
+
+/**
+ * THE CHIP ITSELF — glass at the size of a word (`liquid-glass--chip` in index.css;
+ * designer, 11.09.2026: "ты можешь эту пилюлю сделать дизайн пилюли в стиле Apple liquid
+ * glass?" and "сделай ее скругленной полностью").
+ *
+ * ⚠️ EXPORTED, because the plan wears the same object one moment later — there it reads
+ * "Remixer's pick" over a decision the customer left alone, here "Recommended" over one
+ * they are about to make. They were two copies for a day; a copy of a plate diverges on
+ * the first change to its rim, which is exactly the change this is.
+ */
+export function Chip({ label }: { label: Text }) {
+  const { t } = useT()
+  return (
+    <span className="liquid-glass liquid-glass--chip flex h-6 flex-none items-center whitespace-nowrap rounded-full px-2.5 text-[13px] font-medium leading-none text-[var(--white-720)]">
+      {t(label)}
+    </span>
+  )
+}
+
+export function Row({ name, detail, on, recommended, onPick }: {
   name: Text
   detail?: Text
   on: boolean
+  /** Remixer suggests this one. At most one row in a question carries it. */
+  recommended?: boolean
   onPick: () => void
 }) {
   const { t } = useT()
@@ -233,7 +269,10 @@ export function Row({ name, detail, on, onPick }: {
         <Radio on={on} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[15px] font-medium leading-[1.4] text-white">{t(name)}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[15px] font-medium leading-[1.4] text-white">{t(name)}</span>
+          {recommended && <Chip label={RECOMMENDED} />}
+        </span>
         {/* the consequence — what changes on the page if this is picked (29464:34362) */}
         <span className="text-[14px] leading-[1.4] text-[#ffffffa3]">{detail ? t(detail) : null}</span>
       </span>
@@ -535,6 +574,7 @@ function Body({ q }: { q: BriefQuestion }) {
             key={o.id}
             name={o.name}
             detail={o.detail}
+            recommended={o.recommended}
             on={picked === o.id}
             onPick={() => answerBrief(q.key, o.id)}
           />
