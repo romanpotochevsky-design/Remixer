@@ -39,6 +39,29 @@ Nobody leads on email. Nobody has designed the registrar moment. Nobody owns the
 
 **1. Unmeter the finish line.** Publishing must cost zero credits, and the free-action list must be published *inside the product*, not in a KB article. We are, as far as this audit could establish, the only major builder charging for the moment of success (verified as our ground truth; competitor exemptions verified individually). This is simultaneously our most attackable line in any comparison page, a suppressor of republish frequency (which drives retention and domain attach), and a double-charge when the agent's own error must be fixed and then re-shipped.
 
+
+> ### ⚠️ ПОПРАВКА 13.09.2026 к выводу №1 — дописана позже, аргумент выше не переписан
+>
+> Собственная KB DreamHost говорит прямым текстом: *"Manual edits, hosting, and publishing
+> never use credits."* **13.09.2026 дизайнер подтвердил это напрямую: «публикация сайта не
+> тратит кредиты».**
+>
+> Поэтому рекомендация выше **описывает статус-кво, а не изменение, которое нужно внести в
+> продукт**. Что стало неверным: рамка «мы должны это починить», утверждение «мы единственные
+> в категории, кто берёт за момент успеха», и вывод, что это наша самая атакуемая строка —
+> **уязвимости в сравнительной таблице, о которой предупреждает вывод, скорее всего не
+> существует**. Что остаётся верным: **коммуникационная** половина. Если публикация у нас уже
+> бесплатна, а часть категории за неё берёт, то это сообщение, которого мы **не делаем** —
+> ни внутри продукта (список бесплатных действий по-прежнему живёт только в KB-статье), ни в
+> материалах.
+>
+> Та же опровергнутая посылка встречается ещё в §5.1 (строка 11 таблицы table stakes) и §6
+> («Publishing economics — Behind, worst in field»); они оставлены как есть — это исторический
+> документ. Подробности и доказательная база: `docs/knowledge/product-facts.md` п. 14
+> (RESOLVED), решение — `docs/knowledge/decisions.md`, секция «2026-09-13 (ответы дизайнера)».
+> Мораторий на цитирование вывода №1, действовавший несколько часов 13.09.2026, **снят**:
+> вывод можно обсуждать снова — в исправленном здесь виде.
+
 **2. Own the sixty seconds around go-live.** Not "sell a domain" — everyone does that now. Specifically: (a) zero-record connect for domains already in the user's DreamHost account, resolving in seconds with no record table ever shown; (b) Entri or Domain Connect for external domains so we stop being the last builder handing out a CNAME; (c) a named domain state machine where every terminal state carries a verb; (d) a **real mailbox** provisioned in the same transaction — `hello@theirdomain.com`, MX/SPF/DKIM/DMARC correct by construction. Lovable sends 50,000 authenticated emails a month from your domain and its docs state explicitly that it does not provide mailboxes (verified). Base44: "Custom email domains are for sending only" (verified). Bolt's complete domains documentation set never mentions a mailbox (verified). v0 has no email product at any tier (verified). This is the last thing that is structurally uncopyable.
 
 **3. Stop wearing the costume of the thing we generate.** The documented AI-slop fingerprint of 2026 is "the Inter typeface, an indigo-to-purple gradient, three rounded cards in a row." Remixer's stated design language is Inter/Gilroy/Proxima Nova, an indigo/purple gradient as the AI brand mark, a cool-leaning near-black (#18181B is R24 G24 B27), and an action blue (#1587FF) within three points of Bolt's #1488FC (all verified from our own spec and Bolt's live CSS). We also have no anti-generic mechanism at generation time, while Lovable renders three design directions before writing code, Base44 returns four, and Google AI Studio returns five for free.
