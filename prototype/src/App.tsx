@@ -17,7 +17,9 @@ import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
-import { PublishPanel } from '@/modules/publish/PublishPanel'
+/* `domainAnswers` rides along with the panel deliberately: it is the panel's own reading
+   of "does this address answer with the site", and the chip must not grow a second one. */
+import { PublishPanel, domainAnswers } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
@@ -48,7 +50,8 @@ function Glass({ children, className = '' }: { children: React.ReactNode; classN
  * (`StatusCard`, modules/publish/PublishPanel.tsx), so the two never say different things
  * about the same domain: amber while something is running and there is nothing for the
  * customer to do, red when it is stuck and needs them, blue when nothing is wrong and
- * nothing is in flight and the next move is theirs, green when the address answers.
+ * nothing is in flight and the next move is theirs, green once it is live — secured and
+ * published, which is later than "the address answers" by exactly the padlock beat (D5).
  *
  * The chip is the one piece of chrome on screen for the whole set-up, so every state the
  * panel paints has to reach it. Keyed on `connecting`/`verifying` alone it went blank
@@ -217,11 +220,17 @@ export default function App() {
    * The staging half reads the same STAGING_HOST the Publish panel reads, rather than keeping
    * a second copy of the free preview address: one literal for the whole app, so the chip can
    * never drift from the panel. The host itself is `remixer.ai` and lives in data/domains.ts.
+   *
+   * ⚠️ WHEN IT SWITCHES IS NOT A SECOND OPINION EITHER, AS OF TONIGHT (D5, 14.09.2026).
+   * The test used to be spelled out here as live-or-multiple, and the panel's was written
+   * separately one file away — so through the whole padlock beat the panel printed the
+   * custom domain and this chip printed the staging one: two addresses on screen at once,
+   * for the ~6.6 seconds `verifying` lasts. Both now ask `domainAnswers`, which is the
+   * panel's own function. Swapping the branches here would be the same bug mirrored: the
+   * domain DOES answer by this beat (a certificate cannot be issued before it does), it
+   * simply is not secured yet — and the amber dot beside it is what says so.
    */
-  const address =
-    world.domain === 'live' || world.domain === 'multiple'
-      ? world.customDomain || CUSTOM_DOMAIN
-      : STAGING_HOST
+  const address = domainAnswers(world) ? world.customDomain || CUSTOM_DOMAIN : STAGING_HOST
 
   /** …and HOW that address is doing, in the Publish panel's tones. See DOMAIN_STATUS. */
   const status = domainStatus(world.domain)

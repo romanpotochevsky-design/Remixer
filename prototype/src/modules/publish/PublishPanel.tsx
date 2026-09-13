@@ -27,7 +27,7 @@
  */
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { useWorld, hasPlan, isCustomDomainActive } from '@/state/world'
+import { useWorld, hasPlan, isCustomDomainActive, type World } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
@@ -59,14 +59,70 @@ const RESEND_COOLDOWN_MS = 9000
 
 
 /**
+ * DOES THE ADDRESS ANSWER WITH THE SITE? — the one reading, for the whole shell.
+ *
+ * Exported because the topbar chip prints an address too (App.tsx), and until tonight
+ * the two derived it separately: the panel counted the padlock beat as answering, the
+ * chip did not, so for the ~6.6 seconds of `verifying` the window held the custom domain
+ * and the topbar the staging one — two addresses and two statuses at once, which is the
+ * same failure as the second link the designer struck out of this panel (13.09.2026:
+ * "у нас будет только одна ссылка отображаться в этом окне"). One function, both readers.
+ *
+ * `verifying` qualifies ONLY on a published site, and the asymmetry is the mechanism: a
+ * certificate cannot be issued until the address already answers here, so by this beat
+ * the domain does resolve — but if nobody ever pressed Publish it resolves to an empty
+ * site, and printing it as "your website URL" would be the one outright lie in the panel.
+ */
+export const domainAnswers = (w: World) =>
+  w.domain === 'live' || w.domain === 'multiple' || (w.domain === 'verifying' && w.published)
+
+/**
+ * A hostname never breaks mid-word.
+ *
+ * `fit-ration.remixer.ai` was wrapping as `fit-` / `ration.remixer.ai`: a hyphen is a
+ * break opportunity to every browser, and half an address reads as a different address.
+ * (The brand faces are absent — Figtree stands in for Proxima Nova and runs wider — so
+ * these cards wrap a word earlier here than they will in the product. That is a reason
+ * the break SHOWS, not the reason it is wrong: it would be wrong at any width.)
+ *
+ * Done here rather than inside the strings so every card gets it — six of the seven print
+ * a domain — and so the copy stays the plain sentence the deliverable quotes.
+ */
+const HOSTISH = /([A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)*\.[A-Za-z]{2,})/
+const keepHostsWhole = (text: string) =>
+  /* split() with one capture group hands back [text, host, text, host, …] — the odd
+     slots are the matches, and only those get the nowrap. */
+  text.split(HOSTISH).map((part, i) =>
+    i % 2 ? <span key={i} className="whitespace-nowrap">{part}</span> : part,
+  )
+
+/**
+ * …and a card title never ends on a one-word line. `{domain} still has an older website
+ * on it` was leaving "it" alone under two full lines; binding the last word to the one
+ * before it moves the pair down together. Titles only: they are the sentence-sized,
+ * semibold line where a widow is loud, and the 13px subs below are prose.
+ */
+const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
+
+/**
  * The inset URL field.
  *
- * Two faces, and which one is on says what the site answers to RIGHT NOW: the staging
- * address, editable (pencil), or the custom domain under a green "Live" pill. The pill
- * replaces the trailing button rather than joining it — a domain that answers has
- * nothing to edit here, and the board draws the pill in that slot.
+ * Three faces, and which one is on says what the site answers to RIGHT NOW:
+ *  · `edit` — the staging address, with the pencil: nothing else answers yet.
+ *  · `bare` — the custom domain, and no trailing control at all. The address resolves,
+ *    the site is published behind it, and the padlock is still switching on. There is
+ *    nothing to edit (it is not our subdomain) and nothing to claim: the amber card
+ *    directly beneath already says where this has got to, and a pill repeating it would
+ *    be the panel talking about one thing twice.
+ *  · `live` — the custom domain under the green pill. The pill replaces the trailing
+ *    button rather than joining it, and the board draws it in that slot.
+ *
+ * ⚠️ THE GREEN PILL IS NOT PAINTED BY "there is a domain in the field" (D5, 14.09.2026).
+ * It used to be, so during `verifying` the field said Live directly above a card saying
+ * the padlock was still switching on. Live in this product means the checklist's third
+ * line is closed; while it is not, the address answers and that is a different claim.
  */
-function UrlField({ value, suffix, live }: { value: string; suffix?: string; live?: boolean }) {
+function UrlField({ value, suffix, slot }: { value: string; suffix?: string; slot: 'edit' | 'bare' | 'live' }) {
   return (
     <div className="w-full rounded-[12px] shadow-[inset_0_0_0_1px_var(--white-200)]">
       <div className="flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 pr-2">
@@ -74,7 +130,7 @@ function UrlField({ value, suffix, live }: { value: string; suffix?: string; liv
           <span className="text-[var(--white-900)]">{value}</span>
           {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
         </p>
-        {live ? (
+        {slot === 'bare' ? null : slot === 'live' ? (
           <span className="flex h-6 flex-none items-center gap-1.5 rounded-full bg-[#48ba7926] pl-2 pr-2.5 text-[12px] font-medium text-[var(--live)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--live)]" aria-hidden />
             Live
@@ -138,8 +194,12 @@ function StatusCard({
         aria-hidden
       />
       <div className="min-w-0 flex-1">
-        <p className="break-words text-[15px] font-semibold leading-[1.3] text-white">{title}</p>
-        <p className="mt-1 text-[13px] leading-[1.4] text-[#ffffffa3]">{sub}</p>
+        {/* Hostnames stay whole and the title keeps its last two words together —
+            see keepHostsWhole / bindWidow above. */}
+        <p className="break-words text-[15px] font-semibold leading-[1.3] text-white">
+          {keepHostsWhole(bindWidow(title))}
+        </p>
+        <p className="mt-1 text-[13px] leading-[1.4] text-[#ffffffa3]">{keepHostsWhole(sub)}</p>
       </div>
       {action && (
         <button
@@ -229,14 +289,31 @@ export function PublishPanel() {
   const cartDomain = world.cart.find((l) => l.kind === 'domreg')?.domain
   const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
   /**
-   * Does the domain answer WITH THE SITE? That is what the field and its Live pill report,
-   * and the padlock beat only qualifies if the site was ever published — on the way to
-   * `ready` the certificate goes on in front of a site nobody has put out yet, and a green
-   * "Live" pill over that address would be the one outright lie in the panel.
+   * Does the domain answer WITH THE SITE? That is which ADDRESS the field prints — and
+   * the topbar chip prints the same one, off the same function (see `domainAnswers`).
+   * It is NOT what paints the green pill: answering and Live are two different claims,
+   * and the padlock beat sits between them (D5).
    */
-  const answering = liveish || (padlock && world.published)
+  const answering = domainAnswers(world)
   /** Is a connection state showing? The email card stacks under it when so. */
   const stageCard = unreachable || connecting || registering || propagating || padlock || ready || oldSite
+  /**
+   * …and while one is up, THIS PANEL IS THE ONLY DOOR IN THE SHELL (D3, 14.09.2026).
+   *
+   * The topbar chip routes every one of these states here rather than to the domains
+   * window (App.tsx: "the chip opens that panel, not the domains window"), and the dashed
+   * "Connect your own domain" card below is gone the moment a domain is attached — so
+   * from `ready`, `old-site` or `propagating` there was no way back to the dashboard at
+   * all: press the chip, get this panel, close it, press again, get this panel.
+   *
+   * The way out is a quiet one, on purpose. Every non-terminal state already carries its
+   * own verb inside its card, and a second button of equal weight would compete with it;
+   * this is a text row under the card, in the kit's own small text button (`Text / Small
+   * / Dark`, 32px, 56% white, no fill and no rim). It is NOT the shared footer button
+   * that was removed — it belongs to the card above it, it appears only while that card
+   * is up, and a state that needs nothing from the customer still asks for nothing.
+   */
+  const stalled = ready || oldSite || unreachable
 
   /*
    * Our own KB, on publishing to a domain that already serves something: the target "must
@@ -399,9 +476,9 @@ export function PublishPanel() {
                   {t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
                 </p>
                 {answering ? (
-                  <UrlField value={world.customDomain} live />
+                  <UrlField value={world.customDomain} slot={liveish ? 'live' : 'bare'} />
                 ) : (
-                  <UrlField value={STAGING_NAME} suffix={STAGING_SUFFIX} />
+                  <UrlField value={STAGING_NAME} suffix={STAGING_SUFFIX} slot="edit" />
                 )}
               </div>
 
@@ -566,10 +643,27 @@ export function PublishPanel() {
                     en: `${world.customDomain} still has an older website on it`,
                     uk: `На ${world.customDomain} досі стоїть старіший сайт`,
                   })}
-                  sub={t({
-                    en: `It has to come off before your site can go on — support can clear it for you. Your site is safe at ${STAGING_HOST} meanwhile.`,
-                    uk: `Його треба прибрати, перш ніж стане ваш — підтримка може це зробити. Тим часом ваш сайт живий за адресою ${STAGING_HOST}.`,
-                  })}
+                  /* ⚠️ THE REASSURANCE HAS TO BE TRUE ON THE PATH THAT REACHES THIS CARD
+                     (D9, 14.09.2026). It read "your site is safe at {staging} meanwhile"
+                     inside a panel titled "Not published" — and the organic route here is
+                     `dh-in-use` → Replace and connect → `ready` → Publish, where the site
+                     has never been published and therefore is not at the free address
+                     either: the panel's own nudge says so in as many words ("they never
+                     see the changes you make until you publish them").
+                     So the clause splits on the one fact it depends on. Published: the
+                     free address really is still serving, and this says it in the words
+                     states.md already approved for `needs-attention`. Never published:
+                     the true reassurance is about the WORK, not an address — rule 4 asks
+                     the state to say the site is intact, not to name a URL. */
+                  sub={world.published
+                    ? t({
+                        en: `It has to come off before your site can go on — support can clear it for you. Your site is safe meanwhile — it’s still at ${STAGING_HOST}.`,
+                        uk: `Його треба прибрати, перш ніж стане ваш — підтримка може це зробити. Ваш сайт тим часом цілий — він і далі за адресою ${STAGING_HOST}.`,
+                      })
+                    : t({
+                        en: 'It has to come off before your site can go on — support can clear it for you. Nothing you’ve built is lost — it’s all still here.',
+                        uk: 'Його треба прибрати, перш ніж стане ваш — підтримка може це зробити. Нічого зі зробленого не втрачено — усе лишається тут.',
+                      })}
                   action={{
                     label: t({ en: 'Try again', uk: 'Спробувати ще' }),
                     onClick: retryPublish,
@@ -655,6 +749,28 @@ export function PublishPanel() {
                     {t({ en: 'Confirm email', uk: 'Підтвердити лист' })}
                   </button>
                 </div>
+              )}
+
+              {/* ------------------------------------- the way back to the domains window
+                  See `stalled` upstairs for why this is here and why it is quiet.
+                  Two labels, because the honest offer is not the same in both halves:
+                   · stalled — `ready`, `old-site`, `unreachable`. Nothing is moving and
+                     the hold-up is this NAME (at `old-site` a website they have to clear
+                     first), so the escape is the one a person actually wants: another one.
+                   · in flight — `connecting`, `registering`, `propagating`, `verifying`.
+                     Offering a different domain there would read as "abandon this", over a
+                     card that just said there is nothing to do, and on the bought path over
+                     a name they have already paid for. So it is plain navigation.
+                  `openDomains` closes this panel on its way (state/ui.ts) — one write. */}
+              {stageCard && (
+                <button
+                  onClick={() => openDomains('home')}
+                  className="mt-2 flex h-8 items-center rounded-[8px] px-0.5 text-[13px] font-semibold leading-[1.4] text-[var(--white-560)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
+                >
+                  {stalled
+                    ? t({ en: 'Use a different domain', uk: 'Використати інший домен' })
+                    : t({ en: 'See all your domains', uk: 'Переглянути всі ваші домени' })}
+                </button>
               )}
 
               {settled && (

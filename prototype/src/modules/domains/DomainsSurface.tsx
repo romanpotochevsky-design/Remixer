@@ -20,7 +20,7 @@ import { useT, type Text } from '@/i18n'
 import {
   AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, priceFor,
   exactMatch, featuredEndings, popularEndings, nameIdeas, type ResultRow,
-  closeAlternatives, takenIdeas, registrarOf, isTaken,
+  closeAlternatives, takenIdeas, registrarOf,
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
@@ -28,7 +28,6 @@ import {
   IconChevronDown,
 } from '@/ui/icons'
 import { surface, listSwap, listSwapItem } from '@/ui/motion'
-import { startConnect } from './connect'
 
 
 /* ------------------------------------------------------------------ shared bits */
@@ -642,8 +641,13 @@ function ResultsScreen() {
   const buy = (domain: string) => openDomainModal('buy', domain)
   const mine = useMyDomains()
   const exact = exactMatch(term)
-  /* No list may quote a price on a domain this customer already holds. */
-  const forSale = (rows: ResultRow[]) => rows.filter((r) => !mine.has(r.domain))
+  /* No list may quote a price on a domain this customer already holds — and none
+     may repeat the hero, which the lists can now collide with: the hero carries
+     the ending the customer typed (`fitration.shop`), and `.shop` is also one of
+     the endings the Featured list offers. The same row twice, once large and once
+     small, reads as a bug rather than as a second offer. */
+  const forSale = (rows: ResultRow[]) =>
+    rows.filter((r) => !mine.has(r.domain) && r.domain !== exact.domain)
 
   /* THREE answers, one screen — the search field above never moves, only what is
      under it changes hands (see SearchHeader):
@@ -695,7 +699,11 @@ function TakenResults({
 }: { term: string; exact: ResultRow; onBuy: (domain: string) => void }) {
   const { goDomains } = useUI()
   const mine = useMyDomains()
-  const forSale = (rows: ResultRow[]) => rows.filter((r) => !mine.has(r.domain))
+  /* Same two rules as the available screen: nothing the customer owns, and never
+     the name on the card above — an alternative to a taken name cannot be that
+     name. */
+  const forSale = (rows: ResultRow[]) =>
+    rows.filter((r) => !mine.has(r.domain) && r.domain !== exact.domain)
   /* The list is what made the row taken, so the registrar is always there; the
      fallback only exists so a hand-set `taken` row can never render "undefined". */
   const registrar = registrarOf(exact.domain) ?? 'GoDaddy'
@@ -817,6 +825,21 @@ function OwnedAnswer({ domain }: { domain: string }) {
                 {t({ en: 'In your account', uk: 'У вашому акаунті' })}
               </span>
             </div>
+            {/*
+              * NO CLOCK ON THIS LINE, ON PURPOSE. Board 27071:20574 says "connects in
+              * a few seconds" and this screen deliberately says nothing of the kind:
+              * a parked domain has never resolved, so the negative answer is cached
+              * under SOA MINIMUM (14400s) and "seconds" is false in the common case.
+              * Full mechanism and the flag to the designer — he may prefer to change
+              * the board rather than the copy — live once, in DomainModal.tsx around
+              * :326-347 ("THE BOARD SAYS SECONDS"). What this line carries instead is
+              * a fact: the name is ours and attaching it costs nothing. The timing
+              * story belongs to the Publish panel, where the connecting state is read.
+              *
+              * (The older duration promise this screen used to print — "Under a
+              * minute · nothing to configure" — went out with the pre-redesign
+              * OwnScreen body on 18.08.2026, commit 4059a41.)
+              */}
             <p className="mt-1.5 text-[13px] leading-none text-[#ffffff7a]">
               {t({
                 en: 'You own this — registered with DreamHost · free to connect',
@@ -857,16 +880,39 @@ function OwnedAnswer({ domain }: { domain: string }) {
  * (27281:5564) is the board, and the CTA there is "Show me what to change".
  */
 function ExternalNsScreen({ domain }: { domain: string }) {
-  const { goDomains, closeSurface } = useUI()
+  const { goDomains, openDomainModal } = useUI()
   const { t } = useT()
 
-  /* The connection itself is READ in the Publish panel from here on (designer,
-     13.09.2026), so attaching closes this window and opens that one — the clock in
-     modules/domains/connect.ts walks the states it shows. */
-  const connect = () => {
-    closeSurface()
-    startConnect(domain)
-  }
+  /*
+   * THE PLAN GATE — AND WHY THIS BUTTON DECIDES NOTHING ITSELF.
+   *
+   * It used to call `startConnect(domain)` from here, which is the same defect
+   * ExternalScreen was fixed for earlier tonight (see the note on that component):
+   * a trial account walked connecting → verifying → ready → Publish → live on a
+   * custom domain, the one combination `world.violations()` declares impossible
+   * ("A custom domain needs a paid plan — checkout comes first"). QA reproduced it
+   * on `?a=trial&i=dh-external-ns`. Two copies of one mistake, because this screen
+   * and that one were written a day apart; going live is a paid act whichever door
+   * it comes through, so the decision belongs to the sheet that owns it everywhere
+   * else in this module.
+   *
+   * THE KIND IS `connect-owned`, NOT `connect-external`, and the kind is a claim
+   * about the customer's situation rather than about this screen's layout: the name
+   * IS in their DreamHost account — only its settings are managed at another company
+   * — which is exactly what `connect-owned` means. `connect-external` would have the
+   * sheet read "At {registrar} · you'll add two records there", and `registrarOf`
+   * knows nothing about this name, so it would print the `?? 'GoDaddy'` fallback over
+   * a domain the card above just named as managed at Cloudflare — the same invented
+   * registrar this pass is removing from the router. No new kind and no new screen:
+   * the whole state is iteration 2 (㉘ A2, 27281:5564).
+   *
+   * ⚠️ FOR THE SHEET'S OWNER, NOT FOR HERE: on a PAID account `connect-owned` reads
+   * "On DreamHost · nothing to change anywhere else", which is true of the clean case
+   * (㉖A) and not of this one — the customer does have to move the settings at the
+   * other company. The trial path, which is the reproduction above, reads correctly
+   * ("connects as soon as you add a plan"). Whoever builds ㉘ A2 owns that line.
+   */
+  const connect = () => openDomainModal('connect-owned', domain)
 
   return (
     <Screen>
@@ -1004,7 +1050,6 @@ const SCREENS: Record<DomainScreen, () => JSX.Element> = {
 
 export function DomainsSurface() {
   const { domainScreen, closeSurface, goDomains } = useUI()
-  const { world } = useWorld()
   const { t } = useT()
   const Current = SCREENS[domainScreen]
 
@@ -1020,7 +1065,10 @@ export function DomainsSurface() {
      over the owned-domain card, and the card's own caption ("just keep typing")
      only means anything while it is there. */
   const searching = domainScreen === 'home' || domainScreen === 'results' || domainScreen === 'own'
-  const owned = OWNED_DOMAINS[world.inventory] ?? []
+  /* The customer's own names — inventory AND whatever is attached to the project
+     right now. The router below is the only thing that reads it here; see `submit`
+     for why it cannot be left to the results screen. */
+  const mine = useMyDomains()
 
   /*
    * Escape steps back one level and only then closes the window — the same shape
@@ -1049,21 +1097,37 @@ export function DomainsSurface() {
       return
     }
     /*
-     * Intent detection, prototype-grade, in the order the boards answer:
-     *  - a domain sitting in the DreamHost account short-circuits to "You own
-     *    this" (㉗④ 27271:5564) — ownership known, nothing to decide;
-     *  - a name that is already registered opens the taken answer (㉗③
-     *    27270:5623), which is also where a person whose domain it IS finds
-     *    "This is my domain", so that path stays open through this branch;
-     *  - anything else with a dot reads as a domain pasted from elsewhere;
-     *  - a bare name is a plain search.
-     * The taken test runs on the exact match rather than the raw string, so
-     * "trulieve" and "trulieve.com" answer identically — the hero is .com either
-     * way (see exactMatch).
+     * Intent detection, prototype-grade — and it is ONE question, not four.
+     *
+     * IS THIS NAME ALREADY THE CUSTOMER'S? (㉗④ 27271:5564, "You own this".) It is
+     * the only thing the router has to answer, because it is the only one the
+     * results screen cannot: that screen tests its exact match, which is always the
+     * `.com` (see exactMatch), while the field carries whatever ending was typed —
+     * `design-portfolio.net` would have sailed past it. `useMyDomains` is the whole
+     * set, the DreamHost inventory AND the domain attached to the project right now,
+     * so typing your own LIVE domain lands on the in-account state instead of being
+     * handled as a stranger's.
+     *
+     * Everything else is a search, and the results screen already answers it with
+     * the right one of its two faces: the taken card (㉗③ 27270:5623) when the name
+     * is registered, prices when it is not.
+     *
+     * ⚠️ A DOT IS NOT A CLAIM OF OWNERSHIP — THAT INFERENCE WAS THE BUG, AND IT WILL
+     * LOOK REASONABLE TO WHOEVER READS THIS NEXT. The branch here used to read
+     * `q.includes('.')` as "pasted from another registrar" and route to the
+     * external-records screen. What it did in practice: `emberandoak.com` — a name
+     * this same screen had been offering at $9.99 a second earlier — came back as
+     * "Registered at GoDaddy. It stays there — no transfer needed", with a raw IP and
+     * two lines to paste at a company the customer has never used. The registrar was
+     * invented by that screen's `?? 'GoDaddy'` fallback, and typing the ending is
+     * simply how people write a domain (QA, 13.09.2026).
+     *
+     * SO THE EXTERNAL SCREEN IS REACHABLE FROM EXACTLY ONE PLACE, AND MUST STAY
+     * THAT WAY: the conditional `This is my domain` on the taken card, where the
+     * customer has told us the name is theirs. Never from bare routing — an ending
+     * in the string is not a customer claim.
      */
-    if (owned.some((o) => o.domain === q)) goDomains('own', q)
-    else if (isTaken(exactMatch(q).domain)) goDomains('results', q)
-    else if (q.includes('.') && !q.endsWith('.')) goDomains('external', q)
+    if (mine.has(q)) goDomains('own', q)
     else goDomains('results', q)
   }
 

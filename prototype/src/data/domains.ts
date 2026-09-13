@@ -122,19 +122,54 @@ export const AI_SUGGESTIONS: ResultRow[] = [
 
 /* ------------------------------------------------------------------ search */
 
-/** Strip whatever ending the user typed — we are about to offer our own. */
+/**
+ * The NAME the customer typed, with whatever ending they put on it taken off.
+ *
+ * The ending is always the last dot-segment, priced or not, and the name is the
+ * label in front of it — not the FIRST label, which is what this used to take.
+ * `www.example.com` came back as `www`, and since a dot no longer routes anybody
+ * to the external screen (see DomainsSurface's router), that string reaches this
+ * function for real now: it would have answered a search for `www.example.com`
+ * with a hero reading `www.com`.
+ */
 const stem = (q: string) => {
-  const clean = q.trim().toLowerCase().split('.')[0].replace(/[^a-z0-9-]/g, '')
-  return clean || 'yourbrand'
+  const parts = q.trim().toLowerCase().split('.')
+  const name = parts.length > 1 ? parts[parts.length - 2] : parts[0]
+  return name.replace(/[^a-z0-9-]/g, '') || 'yourbrand'
 }
 
 /**
- * The exact match, shown as the hero: the name they asked for, in .com — and the
- * one row that can come back `taken`, because it is the only one the user chose
- * rather than us. When it does, the results screen swaps the hero for the taken
- * card (Figma 27270:5623) instead of offering a price on somebody's domain.
+ * The ending they typed — but only when we can price it.
+ *
+ * An ending we have no verified price for cannot be sold in this prototype, and
+ * every row falls back to the .com price when `priceFor` misses, so honouring
+ * `brand.xyz` as a hero would put $9.99 under a name nobody quoted us that figure
+ * for. Longest match first, so a name ending in `.com` is never read as `.co`.
  */
-export const exactMatch = (q: string): ResultRow => row(`${stem(q)}.com`)
+const typedEnding = (q: string): string | null => {
+  const clean = q.trim().toLowerCase()
+  const hit = [...TLD_PRICES]
+    .sort((a, b) => b.tld.length - a.tld.length)
+    .find((p) => clean.endsWith(p.tld))
+  return hit ? hit.tld : null
+}
+
+/**
+ * The exact match, shown as the hero: the name they asked for, in the ending they
+ * asked for — and the one row that can come back `taken`, because it is the only
+ * one the user chose rather than us. When it does, the results screen swaps the
+ * hero for the taken card (Figma 27270:5623) instead of offering a price on
+ * somebody's domain.
+ *
+ * ⚠️ The ending used to be hardcoded to `.com`, which was true enough while a
+ * query carrying an ending never reached this screen at all — anything with a dot
+ * was routed to the external-registrar screen, which is the defect that routing
+ * pass removed. Now that `fitration.shop` lands here, answering it with a hero
+ * reading `fitration.com` would be the same category error the block order exists
+ * to avoid: the person asked about THAT name. Unpriceable endings still fall back
+ * to .com — see typedEnding.
+ */
+export const exactMatch = (q: string): ResultRow => row(`${stem(q)}${typedEnding(q) ?? '.com'}`)
 
 /**
  * Search results — Figma 27729:14650, reworked Sep 2026.
