@@ -8,6 +8,7 @@
 import { create } from 'zustand'
 import type { ThumbId } from '@/modules/home/thumbs'
 import type { BriefKey } from '@/modules/chat/brief'
+import type { CartLine } from '@/data/cart'
 
 /* ------------------------------------------------------------------ axes */
 
@@ -272,6 +273,16 @@ export interface World {
   /** Every site this customer has generated. Empty = the first-run Home page. */
   projects: HomeProject[]
   /**
+   * What is sitting in the hosting panel's cart.
+   *
+   * The cart is genuinely outside Remixer — panel.dreamhost.com owns that page — but
+   * the prototype has to carry its contents to render it, and two surfaces read them
+   * (the cart itself and, later, any "you have items waiting" hint we decide to show
+   * in the builder). So it lives here, like every other piece of truth. Not in the
+   * URL keys: a shared link carries the situation, not somebody's shopping.
+   */
+  cart: CartLine[]
+  /**
    * The live transcript, once the user has actually typed something.
    *
    * Empty means "render the scenario's demo thread" (see modules/chat/thread.ts);
@@ -315,6 +326,7 @@ export const DEFAULT_WORLD: World = {
   published: false,
   chat: 'long',
   projects: DEMO_PROJECTS,
+  cart: [],
   sent: [],
   brief: EMPTY_BRIEF,
   build: EMPTY_BUILD,
@@ -539,6 +551,11 @@ export const useWorld = create<Store>((set, get) => ({
     if (patch.chat !== undefined && patch.planEdits === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
       patch = { ...patch, planEdits: EMPTY_PLAN_EDITS }
     }
+    // A named preset means somebody deliberately staged a different world, and a
+    // cart filled under the previous one has nothing to do with it. Keyed on the
+    // preset rather than on any field, because the composer patches the world on
+    // every send and must never wipe the cart.
+    if (preset !== null && patch.cart === undefined) patch = { ...patch, cart: [] }
     const world = { ...get().world, ...patch }
     syncUrl(world)
     set({ world, preset })
