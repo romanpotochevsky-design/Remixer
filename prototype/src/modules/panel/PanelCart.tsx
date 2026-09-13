@@ -342,6 +342,66 @@ function Summary({
   )
 }
 
+/* --------------------------------------------- the intent that outlives the till */
+
+/**
+ * THE DOMAIN THE CUSTOMER CAME TO THE TILL TO CONNECT, PARKED ACROSS CHECKOUT.
+ *
+ * Attaching a domain that already sits in the customer's DreamHost account is FREE, so it
+ * puts no line in the cart. Somebody on a trial who presses Connect on their own domain
+ * therefore arrives here with exactly one line — the plan they have to buy before anything
+ * can go live — and the name they came for written nowhere this page can reach it: not in
+ * the cart, not in `world.customDomain` (only written once a connect actually starts), not
+ * in the UI store (the sheet closes on the way out).
+ *
+ * This page used to read the intent off the cart, and so could only ever honour a
+ * PURCHASE: it started a connect when it found a domain-registration line, and otherwise
+ * just opened the Publish panel. The sheet promised "connects as soon as you add a plan",
+ * the customer added the plan, and the domain was never attached — nothing on screen even
+ * said so (QA, 13.09.2026). The intent was dropped on the floor between the sheet and the
+ * till, so the fix is to give it somewhere to stand: one name, parked when the customer is
+ * sent to checkout, spent once when the order is placed, dropped on every other way out.
+ * (The August `pendingSetup` branch solved the same problem the same way.)
+ *
+ * IT IS PERSISTED, deliberately. The world store writes itself to localStorage on every
+ * change (state/world.ts), so `world.cart` survives a reload; the UI store does not, so
+ * `ui.panel` does not — a reload inside checkout comes back to the builder still holding a
+ * full cart. An intent kept only in memory would be the one half of that pair to
+ * evaporate. Same idiom as the world's own snapshot: versioned key, best-effort, never
+ * fatal (the published artifact runs in a sandbox where storage can be walled off).
+ */
+const PENDING_KEY = 'remixer-prototype/pending-connect/v1'
+
+let pendingConnect: string | null = (() => {
+  try { return localStorage.getItem(PENDING_KEY) } catch { return null }
+})()
+
+/**
+ * Park a domain to be connected the moment the order is placed.
+ *
+ * Exported because this module is not the only place that could ever know: the checkout
+ * sheet names the domain out loud, and the day it wants to say so itself rather than let
+ * the till infer it (see the subscription in `PanelCart`), this is the door. One name at a
+ * time — a customer stands at one till.
+ */
+export function rememberPendingConnect(domain: string) {
+  pendingConnect = domain
+  try { localStorage.setItem(PENDING_KEY, domain) } catch { /* storage may be walled off */ }
+}
+
+/** Drop it: the customer left without paying, or the plan it was waiting on is gone. */
+export function clearPendingConnect() {
+  pendingConnect = null
+  try { localStorage.removeItem(PENDING_KEY) } catch { /* storage may be walled off */ }
+}
+
+/** Read AND clear — an intent can be spent exactly once, however often this is called. */
+function takePendingConnect(): string | null {
+  const domain = pendingConnect
+  if (domain) clearPendingConnect()
+  return domain
+}
+
 /* -------------------------------------------------------------------- page */
 
 export function PanelCart() {
@@ -355,11 +415,58 @@ export function PanelCart() {
   const lines = world.cart
   const total = cartTotal(lines)
 
-  /* Leaving without paying is a real outcome — the cart survives it, exactly as the
-     panel's does, and the builder goes back to the screen the user came from. */
+  /*
+   * WHO PARKS THE INTENT, AND WHY IT IS CAUGHT HERE RATHER THAN READ AT RENDER.
+   *
+   * The sheet that sends a customer to checkout writes `domain: 'checkout'` — the world's
+   * own word for "standing at the till" — WHILE IT IS STILL ON SCREEN, and only then
+   * closes itself and opens this page (modules/domains/DomainModal.tsx). At that one
+   * instant both halves are readable: the axis says the customer is being sent to
+   * checkout, and `ui.domainModal` still names the domain they pressed Connect on. By the
+   * time this component renders with the panel open, the sheet is gone — a render-time
+   * read is a frame too late, which is why this is a store subscription and not an effect
+   * on `open`.
+   *
+   * Nothing being REGISTERED in the cart is what makes this a connect-what-you-own trip: a
+   * purchase carries its own line and that line is read back at submit, below.
+   */
+  useEffect(() =>
+    useWorld.subscribe((s, prev) => {
+      if (s.world.domain !== 'checkout' || prev.world.domain === 'checkout') return
+      const sheet = useUI.getState().domainModal
+      if (sheet && !s.world.cart.some((l) => l.kind === 'domreg')) rememberPendingConnect(sheet.domain)
+    }), [])
+
+  /* A parked intent with no till left to come back to is dropped on the next load rather
+     than left to fire over somebody's next order: a reload inside checkout keeps the world
+     (it persists) but loses this page (the UI store does not). If the world is no longer
+     standing at the till, or the cart no longer holds the plan the connection was waiting
+     on, there is nothing to resume. */
+  useEffect(() => {
+    const w = useWorld.getState().world
+    if (w.domain !== 'checkout' || !w.cart.some((l) => l.kind === 'remixer')) clearPendingConnect()
+  }, [])
+
+  /*
+   * Leaving without paying is a real outcome, and this is its one exit — the Back button
+   * beside the logo, and Escape.
+   *
+   * THE CART LEAVES WITH THE CUSTOMER. The real panel keeps a cart between visits and this
+   * page used to copy that, but the prototype has nowhere to keep it: there is no route
+   * back to the till and nothing in the builder that says items are waiting, so a kept
+   * cart was invisible state that could only surprise somebody later. It also contradicted
+   * the line beneath it — walking out moves the domain axis off `checkout`, so the world
+   * stopped standing at the till while the till stayed loaded. Emptying it makes the two
+   * agree, and the parked intent goes with it: nothing was paid for, so nothing is pending.
+   *
+   * The honest alternative — keep the cart AND say so, with a way back into checkout from
+   * the builder chrome — needs a surface outside this file. Until that exists, this is the
+   * half that can be told truthfully.
+   */
   const back = () => {
+    clearPendingConnect()
     closePanel()
-    set({ domain: 'searching' })
+    set({ cart: [], domain: 'searching' })
   }
 
   /* Escape closes an open dropdown first and the page only when nothing is open —
@@ -394,7 +501,13 @@ export function PanelCart() {
     if (!submitting) return
     const t = window.setTimeout(() => {
       const plan = lines.find((l) => l.kind === 'remixer')
-      const domain = lines.find((l) => l.kind === 'domreg')?.domain
+      /* Two ways a domain can come out of this order, and only one of them is a purchase.
+         A registration line is a name bought HERE; a parked intent is a name the customer
+         already held, which this order merely paid for the right to put in front of the
+         site. `take` reads and clears, so the intent cannot be spent twice — and a stale
+         one left over from an abandoned trip dies here rather than riding along. */
+      const registered = lines.find((l) => l.kind === 'domreg')?.domain
+      const owned = takePendingConnect()
       set({
         ...(plan ? { account: 'paid' as const, billing: plan.term ?? 'yearly', credits: 1000 } : null),
         cart: [],
@@ -404,28 +517,39 @@ export function PanelCart() {
       closeSurface()
       /* Where the return lands is OUR decision, and it is the Publish panel: the sheet
          promised "connects automatically after checkout", and the panel is where every
-         state of that connection is now read (designer, 13.09.2026). A domain bought
-         here is a fresh registration, so its ICANN clock starts with it. */
-      if (domain) startConnect(domain, { bought: true })
+         state of that connection is now read (designer, 13.09.2026). A domain bought here
+         is a fresh registration, so its ICANN clock starts with it; one that was already
+         in the account was not registered by this transaction, so it must NOT — `bought`
+         is what gates that clock (modules/domains/connect.ts). */
+      if (registered) startConnect(registered, { bought: true })
+      else if (owned) startConnect(owned, { bought: false })
       else togglePublish(true)
     }, 1500)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitting])
 
+  /** Every write to the cart goes through here, because a parked connect cannot outlive
+   *  the plan line that pays for it: pull that line out — one at a time, or with Remove
+   *  All — and there is nothing left in this order that could connect anything. */
+  const writeCart = (next: CartLine[]) => {
+    if (!next.some((l) => l.kind === 'remixer')) clearPendingConnect()
+    set({ cart: next })
+  }
+
   const removeLine = (i: number) =>
-    set({ cart: lines.filter((_, n) => n !== i) })
+    writeCart(lines.filter((_, n) => n !== i))
 
   /** Applying a choice: years on a domain line, billing term on the plan line.
    *  Both feed straight back into the totals. */
   const changeLine = (i: number, value: string) =>
-    set({
-      cart: lines.map((line, n) =>
+    writeCart(
+      lines.map((line, n) =>
         n !== i ? line
           : line.kind === 'domreg' ? { ...line, years: Number(value) }
           : { ...line, term: value as 'monthly' | 'yearly' },
       ),
-    })
+    )
 
   return (
     <AnimatePresence>
@@ -456,7 +580,7 @@ export function PanelCart() {
                       <span className="dh-sort__value">Newest</span>
                       <DhChevron />
                     </button>
-                    <button className="dh-removeall" onClick={() => set({ cart: [] })}>
+                    <button className="dh-removeall" onClick={() => writeCart([])}>
                       <span>Remove All</span>
                       <DhRemoveAllIcon />
                     </button>

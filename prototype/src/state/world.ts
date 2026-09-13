@@ -38,13 +38,47 @@ export type Inventory =
   /** External registrar without it (Namecheap, Cloudflare) — guided manual records only. */
   | 'external-manual'
 
-/** Axis B — what the current project's domain is doing. */
+/**
+ * Axis B — what the current project's domain is doing.
+ *
+ * The order below is the order of the walk, and the two paths through it are genuinely
+ * different lengths (modules/domains/connect.ts):
+ *
+ *   attach something they own   connecting → verifying → ready | live
+ *   buy a new name              registering → propagating → verifying → ready | live
+ *
+ * `registering` and `propagating` exist because fifteen minutes and a working website are
+ * two different events: the registry writes the name "within 15 minutes of completing the
+ * purchase form" (verified), and a brand-new registration is "typically 24–72 hours" from
+ * being viewable online. One `connecting` for both paths made the bought path promise the
+ * attached path's speed.
+ */
 export type DomainState =
   | 'staging'
   | 'searching'
   | 'checkout'
+  /** Bought: the registry has the order, the name is not ours yet. Minutes. */
+  | 'registering'
+  /** Bought: registered, and now travelling the world. Hours, up to 72. */
+  | 'propagating'
+  /** Attached: the records are ours to write, and we are writing them. */
   | 'connecting'
+  /** Either path: the address answers here, so the padlock can finally be issued. */
   | 'verifying'
+  /**
+   * Set up, correct, nothing wrong — and the site has never been published, so there is
+   * nothing at the address to see. The one state a novice is most likely to sit in
+   * (failures.md №8), and the one they read as "it's broken".
+   */
+  | 'ready'
+  /**
+   * The publish onto this domain FAILED because the address still holds an older website.
+   * Our own KB: the domain "must be associated with a clean hosting environment, as the
+   * tool is not compatible with existing sites (e.g. WordPress or other types of
+   * installations)". DreamHost's customer base is WordPress, so on the attach path this is
+   * a likely failure, not an edge (failures.md №15 — "нарисован нигде").
+   */
+  | 'old-site'
   | 'live'
   | 'unreachable'
   | 'multiple'
@@ -299,11 +333,16 @@ export interface World {
    * A newly REGISTERED domain whose registrant email is still unconfirmed.
    *
    * Its own axis rather than a `domain` value, because it is orthogonal to everything
-   * that axis tracks: the site can be connecting, switching its padlock on or fully live
-   * and still be sitting on this clock. ICANN gives 15 days; miss it and the registrar
-   * suspends the domain — the site and its email both stop. That is why the Publish
-   * panel carries it in an amber card with its own way out (Resend) rather than as a
-   * line of prose (designer's state ⑤, 13.09.2026).
+   * that axis tracks: the site can be registering, travelling, switching its padlock on
+   * or fully live and still be sitting on this clock. Miss it and the registrar SUSPENDS
+   * the domain — the site and its email both stop. That is why the Publish panel carries
+   * it in an amber card with its own way out (Resend) rather than as a line of prose
+   * (designer's state ⑤, 13.09.2026).
+   *
+   * ⚠️ THE RULE IS REAL, THE NUMBER IS NOT. "15 days" traces in our own research to
+   * SQUARESPACE's unlink rule, not to a DreamHost or ICANN page, so no countdown is
+   * printed anywhere: the card says "before the deadline in the email" and the digit
+   * waits for somebody to read DreamHost's registrant-verification article (states.md §5).
    *
    * Only a domain bought THROUGH us can be in this state; connecting one you already own
    * never sets it.
@@ -395,9 +434,10 @@ export const canUseAI = (w: World) =>
   (w.account === 'trial' || w.account === 'paid') && w.credits > 0
 /** Going live on a custom domain is a paid capability. Staging is always free. */
 export const canConnectDomain = (w: World) => hasPlan(w)
+/** A custom domain is in play — bought, attached, waiting, ready or answering. Everything
+ *  except the three states where the project still has only its free address. */
 export const isCustomDomainActive = (w: World) =>
-  w.domain === 'connecting' || w.domain === 'verifying' ||
-  w.domain === 'live' || w.domain === 'unreachable' || w.domain === 'multiple'
+  w.domain !== 'staging' && w.domain !== 'searching' && w.domain !== 'checkout'
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
 /** First run on the Home page: nothing generated yet, so the dock shows templates. */
 export const hasProjects = (w: World) => w.projects.length > 0
@@ -450,6 +490,16 @@ export function violations(w: World): Violation[] {
       field: 'published',
       value: 'true',
       reason: { en: 'There is no site yet, so nothing can be live.', uk: 'Сайту ще немає — публікувати нічого.' },
+    })
+  }
+  if (w.published && w.domain === 'ready') {
+    out.push({
+      field: 'domain',
+      value: 'ready',
+      reason: {
+        en: '"Ready" is a domain waiting for the FIRST publish — once it happens the domain is live.',
+        uk: '«Ready» — це домен, який чекає на ПЕРШУ публікацію; після неї домен уже живий.',
+      },
     })
   }
   if (w.published === false && (w.domain === 'live' || w.domain === 'multiple')) {

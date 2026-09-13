@@ -69,6 +69,8 @@ docs/
 │   └── remixer-competitive-audit.html  итоговый HTML аудита (опубликован артефактом)
 ├── research/                  ← сырьё исследований, не редактируется, только дополняется
 │   ├── domain-search-research.md   глубокий ресёрч поиска доменов (5 агентов, 433 запроса)
+│   ├── dreamhost-domain-connect-research.md  механика подключения домена у DreamHost
+│   │                               (13.09.2026, 10 агентов) — ⚠️ через суммаризатор поиска
 │   ├── recon_dossiers.json    6 досье по конкурентам
 │   ├── lenses.json            6 UX-линз
 │   └── factcheck_corrections.json  поправки фактчека

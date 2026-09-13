@@ -8,19 +8,23 @@
  *   axis 1 — WHAT is being done
  *     connect-owned    : a domain already sitting in this customer's DreamHost
  *                        account. Iteration 1 ships exactly two paths and this is
- *                        the second one. It runs NEITHER axis below: attaching a
- *                        domain you already own is free, so there is no price, and
- *                        the plan gate is a different question from this one — see
- *                        `OwnedBody`, which is the whole of its body.
- *     connect-existing : the older sheet for that same case, which DID drag the
- *                        price/plan machinery over it. Superseded by connect-owned.
+ *                        the second one. It carries NO PRICE — the name is free to
+ *                        attach and never enters the cart — but it runs axis 2 like
+ *                        every other kind; see `OwnedBody` for why the boards make
+ *                        that look otherwise.
+ *     connect-existing : the older sheet for that same case, drawn before the ㉖
+ *                        boards existed. Superseded by connect-owned.
  *     buy              : a name from search or the AI suggestions. Carries the
  *                        first-year figure and the honest renewal line.
  *
  *   axis 2 — DOES THE ACCOUNT HAVE A PLAN (read from the world, never passed in)
- *     yes : the lean sheet, 560×232 — one row, one button.
- *     no  : the sheet grows to 600×516, folds the Remixer Build plan chooser in
+ *     yes : the lean sheet — 560×232, or 540 on the connect-owned boards. One row,
+ *           one button.
+ *     no  : the sheet grows to 600, folds the Remixer Build plan chooser in
  *           underneath, and the CTA hands off to checkout instead of connecting.
+ *           TRUE OF EVERY KIND. Going live on a custom domain is a paid capability
+ *           (verified product fact) whether or not the domain itself costs anything,
+ *           so this axis is about the plan, never about the name.
  *
  * The paywall is disclosed INSIDE this surface rather than bouncing the user to a
  * pricing page, and the domain identity stays pinned at the top so the thread is
@@ -152,6 +156,57 @@ function PlanCard({
   )
 }
 
+/**
+ * The Remixer Build chooser — the block that makes the sheet tall.
+ *
+ * ONE definition, used by every kind that can meet an account without a plan: buying a
+ * name, and (since 13.09.2026) connecting one the customer already owns. It was inline in
+ * the buy sheet until the connect-owned boards needed the same block; a second copy would
+ * have been two places to keep the 72/80px card heights, the badge's offset and the two
+ * verified prices in step.
+ */
+function PlanChooser({ term, setTerm }: { term: Term; setTerm: (t: Term) => void }) {
+  const { t } = useT()
+  return (
+    <div className="rounded-[12px]">
+      <div className="flex h-24 items-center gap-4 py-6 pl-4 pr-9">
+        <span className="grid h-12 w-12 flex-none place-items-center">
+          <span className="grid h-8 w-8 place-items-center rounded-[12px] p-0.5">
+            <LogoRemixer size={32} />
+          </span>
+        </span>
+        <p className="font-display text-[18px] font-semibold text-white">
+          {t({ en: 'Remixer Build', uk: 'Remixer Build' })}
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 px-4 pb-4">
+        <PlanCard
+          term="yearly"
+          selected={term === 'yearly'}
+          onSelect={() => setTerm('yearly')}
+          title={{ en: 'Yearly', uk: 'Річний' }}
+          caption={{ en: 'Best value', uk: 'Найвигідніше' }}
+          price="$9.99"
+          per={{ en: '/mo', uk: '/міс' }}
+          footnote={{ en: 'billed yearly · $119.88', uk: 'оплата за рік · $119.88' }}
+          badge={{ en: 'Save 33%', uk: 'Economія 33%' }}
+        />
+        <PlanCard
+          term="monthly"
+          selected={term === 'monthly'}
+          onSelect={() => setTerm('monthly')}
+          title={{ en: 'Monthly', uk: 'Щомісячний' }}
+          caption={{ en: 'Cancel any month', uk: 'Скасувати будь-якого місяця' }}
+          price="$14.99"
+          per={{ en: '/mo', uk: '/міс' }}
+          footnote={{ en: '$9.99 for your first month', uk: '$9.99 за перший місяць' }}
+        />
+      </div>
+    </div>
+  )
+}
+
 /* ------------------------------------------------- connect-owned (㉖A / ㉖B) */
 
 /**
@@ -165,11 +220,26 @@ function PlanCard({
  * changes to name the consequence ("Replace and connect"), because a stray click
  * here takes down a site that is live right now.
  *
- * NO PRICE AND NO PLAN BLOCK, deliberately. A domain already in the account costs
- * nothing to attach, and `hasPlan` — which decides whether the buy/connect-existing
- * sheet folds the Remixer Build chooser in — is a question about going live, not
- * about this. Mixing the two is what made the old `connect-existing` sheet show a
- * paywall over a free action.
+ * NO PRICE — ever. A domain already in the account costs nothing to attach, so nothing
+ * on this sheet carries a figure for the NAME, and nothing about it goes in the cart.
+ *
+ * BUT THE PLAN GATE STILL APPLIES, and this is the correction of 13.09.2026. The boards
+ * live in a Figma section titled «㉖ Connect domain · свой домен на DreamHost · план
+ * есть» — PLAN EXISTS. They draw the has-plan case only, which is why there is no plan
+ * block on them to copy; it is not evidence that the gate is absent. What is gated is
+ * putting the site on a custom domain at all (verified product fact), not the
+ * registration — so a free domain on a trial account is still a sale. Reading the boards
+ * as "free, therefore ungated" let a trial user reach `domain: 'connecting'` with
+ * `account: 'trial'`, a combination `world.violations()` itself declares impossible
+ * ("A custom domain needs a paid plan — checkout comes first"). QA reproduced it on
+ * `?i=dh-free&a=trial&b=none`.
+ *
+ * So the sheet has the same two cases the buy sheet has, and gets there with the same
+ * block (`PlanChooser`) and the same handoff. The ONE difference from buying, and the
+ * whole reason this kind exists: the cart carries the plan and nothing else. The till
+ * finishes the job — PanelCart parks the name when the world moves to `checkout` with no
+ * registration line in the cart, and spends it after Submit Order as
+ * `startConnect(domain, { bought: false })`.
  *
  * The boards are MID-FI (Inter, flat greys, 1px strokes on nested boxes). Structure,
  * geometry and copy come from them; the surface, type scale, hairlines and radii come
@@ -177,7 +247,16 @@ function PlanCard({
  * Every stroke is an inset box-shadow: Figma's sit inside the geometry, a CSS `border`
  * would push the 492px content box out to 494.
  */
-function OwnedBody({ domain, inUse, onConfirm }: { domain: string; inUse: boolean; onConfirm: () => void }) {
+function OwnedBody({
+  domain, inUse, showPlans, term, setTerm, onConfirm,
+}: {
+  domain: string
+  inUse: boolean
+  showPlans: boolean
+  term: Term
+  setTerm: (t: Term) => void
+  onConfirm: () => void
+}) {
   const { t } = useT()
   return (
     /* 24px sides against the 540 sheet is the board's 492 content width exactly;
@@ -191,9 +270,24 @@ function OwnedBody({ domain, inUse, onConfirm }: { domain: string; inUse: boolea
             <p className="min-w-0 truncate font-display text-[24px] font-medium leading-[1.2] text-white">
               {domain}
             </p>
-            <p className="mt-1 truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
-              {t({ en: 'On DreamHost · connects in a few seconds', uk: 'На DreamHost · підключиться за кілька секунд' })}
-            </p>
+            {/* The one line that carries the whole state. With a plan it is a
+                promise of speed; without one it names what is standing in the way —
+                in cream, because cream is "waiting on you". Neutral grey here would
+                read as "nothing blocking", which would be a lie. Same pair of
+                strings the sheet has used since the first connect board. */}
+            {showPlans ? (
+              <p className="mt-1 flex items-center gap-0.5 truncate text-[14px] leading-[1.4]">
+                <span className="text-[#ffffffa3]">{t({ en: 'On DreamHost', uk: 'На DreamHost' })}</span>
+                <span className="mx-0.5 flex-none text-[rgba(255,240,186,0.9)]"><IconLink size={20} /></span>
+                <span className="truncate text-[rgba(255,240,186,0.9)]">
+                  {t({ en: 'connects as soon as you add a plan', uk: 'підключиться, щойно ви оформите план' })}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-1 truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
+                {t({ en: 'On DreamHost · connects in a few seconds', uk: 'На DreamHost · підключиться за кілька секунд' })}
+              </p>
+            )}
           </div>
         </div>
 
@@ -223,18 +317,35 @@ function OwnedBody({ domain, inUse, onConfirm }: { domain: string; inUse: boolea
             </div>
           </>
         )}
+
+        {/* The plan, folded in under the domain rather than bounced to a pricing
+            page — the same disclosure rule the buy sheet follows, and the same
+            block. The caution above it stays put: an in-use domain on a trial
+            account is still about to replace a live site, and the warning must
+            not be the thing that falls out when the sheet grows. */}
+        {showPlans && (
+          /* Full-bleed, unlike the caution's own 456-wide rule above: this one is a
+             SECTION split — the same one the buy sheet draws across its whole body
+             card — not a rule between two things inside one block. */
+          <div className="-mx-[18px] -mb-[18px] mt-[18px] border-t border-[#ffffff0a]">
+            <PlanChooser term={term} setTerm={setTerm} />
+          </div>
+        )}
       </div>
 
       {/* Full-width, as drawn: there is exactly one thing to do on this sheet, and
           nothing to weigh it against. 40px is the house button stop (the board's 42
-          is not one of them). */}
+          is not one of them). Without a plan the next step is genuinely the till, so
+          the verb says so — the connection itself resumes after Submit Order. */}
       <button
         onClick={onConfirm}
         className="mt-4 h-10 w-full rounded-[10px] bg-[var(--action)] text-[14px] font-semibold leading-none text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
       >
-        {inUse
-          ? t({ en: 'Replace and connect', uk: 'Замінити й підключити' })
-          : t({ en: 'Connect domain', uk: 'Підключити домен' })}
+        {showPlans
+          ? t({ en: 'Continue to checkout', uk: 'Перейти до оплати' })
+          : inUse
+            ? t({ en: 'Replace and connect', uk: 'Замінити й підключити' })
+            : t({ en: 'Connect domain', uk: 'Підключити домен' })}
       </button>
     </div>
   )
@@ -268,11 +379,25 @@ export function DomainModal() {
   const tld = domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '.com'
   const price = priceFor(tld) ?? priceFor('.com')!
 
-  /* The plan chooser is what makes the sheet tall, and it is present exactly when
-     the account cannot go live yet. Everything else keys off these two booleans.
-     `owned` is excluded outright: the plan gate is about going live on something you
-     are buying, and this sheet is about attaching something already paid for. */
-  const showPlans = !paid && !owned
+  /* The plan chooser is what makes the sheet tall, and it is present exactly when the
+     account cannot go live yet — on EVERY kind, connect-owned included. It briefly was
+     not (13.09.2026): attaching a domain you already own is free, so the gate looked
+     like it did not apply. It does. The plan buys the right to put the site on a custom
+     domain at all; the registration is a separate purchase that this kind simply does
+     not make. Dropping it let a trial account reach `domain: 'connecting'`, which
+     `world.violations()` lists as impossible. */
+  const showPlans = !paid
+
+  /* The header names what the SHEET is, which is not always "connect": on the buy kind
+     the customer is acquiring a name they do not have yet, and the CTA below already
+     says "Continue to checkout". A sheet titled "Connect domain" over that pair told
+     them they were doing something else (QA, 13.09.2026). The verb is the one the
+     dashboard uses to get here — Buy for a new name, Connect for one you own (see
+     docs/features/domains/README.md §5; the audit glossary's "Add" is an open question
+     against these mockups, not a decision, so this follows the mockups). */
+  const heading: Text = buying
+    ? { en: 'Buy domain', uk: 'Купити домен' }
+    : { en: 'Connect domain', uk: 'Підключити домен' }
 
   /*
    * What actually happens when this button is pressed.
@@ -287,11 +412,17 @@ export function DomainModal() {
    * one case with nothing to buy; that still completes in place, as before.
    */
   const confirm = () => {
-    /* Nothing to pay for, ever: skip the cart entirely and start the clock. `bought:
-       false` is what tells connect.ts this domain was not registered through us just
-       now, so it does not start the 15-day ICANN verification clock — that belongs to
-       a registration, not to an attach. */
-    if (owned) {
+    /* A domain already in the account, on an account that can already go live: the one
+       path with nothing at all to pay for. Straight to the clock. `bought: false` tells
+       connect.ts this name was not registered through us just now, so it does not start
+       the 15-day ICANN verification clock — that belongs to a registration, not an attach.
+
+       WITHOUT a plan this falls through to the cart below, and the cart carries the PLAN
+       ONLY. The name is not a line item because it is not for sale; PanelCart parks it on
+       the `domain: 'checkout'` transition (which is why that write happens below while
+       this sheet is still mounted) and spends it after Submit Order with the same
+       `{ bought: false }`. */
+    if (owned && !showPlans) {
       closeDomainModal()
       closeSurface()
       startConnect(domain, { bought: false })
@@ -326,7 +457,7 @@ export function DomainModal() {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[70] grid place-items-center" role="dialog" aria-modal="true" aria-label={t({ en: 'Connect domain', uk: 'Підключення домену' })}>
+        <div className="fixed inset-0 z-[70] grid place-items-center" role="dialog" aria-modal="true" aria-label={t(heading)}>
           {/* 70% black, no blur — it covers the chat and the rail, not just the canvas */}
           <motion.div
             variants={modalScrim}
@@ -349,22 +480,34 @@ export function DomainModal() {
                clipped; that was the system fallback face being ~10% wider than
                Proxima Nova, and it went away once real webfonts shipped. */
             /* 540 on the connect-owned boards — the narrowest of the three, which is
-               right: it is the only sheet with nothing to weigh up. */
+               right: with a plan in hand it is the only sheet with nothing to weigh up.
+               Without one it takes the same 600 every plan-bearing sheet takes, because
+               it is carrying the same cards. */
             className={`relative -translate-y-1 rounded-[24px] border border-[#ffffff0a] bg-[var(--gray-850)] ${
-              owned ? 'w-[540px]' : showPlans ? 'w-[600px]' : 'w-[560px]'
+              showPlans ? 'w-[600px]' : owned ? 'w-[540px]' : 'w-[560px]'
             }`}
             style={{ boxShadow: '0px 24px 28px rgba(0,0,0,0.33)' }}
           >
             {/* ------------------------------------------------- header, 64px */}
             <div className="flex h-16 items-center justify-between pl-6 pr-4">
               <h3 className="whitespace-nowrap pt-0.5 font-display text-[18px] font-semibold leading-[1.2] text-white">
-                {t({ en: 'Connect domain', uk: 'Підключити домен' })}
+                {t(heading)}
               </h3>
               <CloseButton onClick={closeDomainModal} label={t({ en: 'Close', uk: 'Закрити' })} />
             </div>
 
-            {/* The connect-owned sheet ends here: one block, one button, no cart. */}
-            {owned && <OwnedBody domain={domain} inUse={inUse} onConfirm={confirm} />}
+            {/* The connect-owned sheet is its own body end to end — the ㉖ boards' item
+                block, the in-use caution, and (without a plan) the shared chooser. */}
+            {owned && (
+              <OwnedBody
+                domain={domain}
+                inUse={inUse}
+                showPlans={showPlans}
+                term={term}
+                setTerm={setTerm}
+                onConfirm={confirm}
+              />
+            )}
 
             {/* --------------------------------------------------- body card */}
             {!owned && (
@@ -442,44 +585,7 @@ export function DomainModal() {
                 </div>
 
                 {/* ------------------------------------------- plan chooser */}
-                {showPlans && (
-                  <div className="rounded-[12px]">
-                    <div className="flex h-24 items-center gap-4 py-6 pl-4 pr-9">
-                      <span className="grid h-12 w-12 flex-none place-items-center">
-                        <span className="grid h-8 w-8 place-items-center rounded-[12px] p-0.5">
-                          <LogoRemixer size={32} />
-                        </span>
-                      </span>
-                      <p className="font-display text-[18px] font-semibold text-white">
-                        {t({ en: 'Remixer Build', uk: 'Remixer Build' })}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-3 px-4 pb-4">
-                      <PlanCard
-                        term="yearly"
-                        selected={term === 'yearly'}
-                        onSelect={() => setTerm('yearly')}
-                        title={{ en: 'Yearly', uk: 'Річний' }}
-                        caption={{ en: 'Best value', uk: 'Найвигідніше' }}
-                        price="$9.99"
-                        per={{ en: '/mo', uk: '/міс' }}
-                        footnote={{ en: 'billed yearly · $119.88', uk: 'оплата за рік · $119.88' }}
-                        badge={{ en: 'Save 33%', uk: 'Economія 33%' }}
-                      />
-                      <PlanCard
-                        term="monthly"
-                        selected={term === 'monthly'}
-                        onSelect={() => setTerm('monthly')}
-                        title={{ en: 'Monthly', uk: 'Щомісячний' }}
-                        caption={{ en: 'Cancel any month', uk: 'Скасувати будь-якого місяця' }}
-                        price="$14.99"
-                        per={{ en: '/mo', uk: '/міс' }}
-                        footnote={{ en: '$9.99 for your first month', uk: '$9.99 за перший місяць' }}
-                      />
-                    </div>
-                  </div>
-                )}
+                {showPlans && <PlanChooser term={term} setTerm={setTerm} />}
               </div>
             </div>
             )}

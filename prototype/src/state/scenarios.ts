@@ -195,6 +195,85 @@ export const PRESETS: Preset[] = [
     patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
+    id: 'left-at-checkout',
+    label: { en: 'Left standing at checkout', uk: 'Покинув оформлення' },
+    note: {
+      en: 'A name in the cart, nobody paid, and the Publish panel used to show this customer "Connect your own domain" as if it had never happened (board 28206:66756 state ⑦)',
+      uk: 'Ім’я в кошику, оплати немає — а панель Publish показувала такому клієнту «Connect your own domain», ніби нічого й не було (борд 28206:66756, стан ⑦)',
+    },
+    /* ⚠️ The cart rides IN the patch. A named preset normally empties the cart (world.set),
+       which is right for every other preset here and would leave this one staging the state
+       with nothing standing in it. */
+    patch: {
+      account: 'trial', trialDay: 22, credits: 640, project: 'built', chat: 'long',
+      inventory: 'none', domain: 'checkout', unpublished: 2, published: false,
+      projects: DEMO_PROJECTS, cart: [{ kind: 'domreg', domain: 'fit-ration.com', years: 1 }],
+    },
+  },
+  /*
+   * THE BOUGHT PATH, BEAT BY BEAT. Its two opening states do not exist on the attach path
+   * at all: the registry writes the name in minutes, and the name then spends hours — up
+   * to 72 — becoming visible around the world (modules/domains/connect.ts). Staged here
+   * one click apart, because nobody is sitting through the real thing and both are states
+   * a customer can close the tab on and come back to.
+   */
+  {
+    id: 'registering',
+    label: { en: 'Just bought — registering', uk: 'Щойно куплено — реєструється' },
+    note: {
+      en: 'The registry has the order and the name is not ours yet. "Within 15 minutes" is verified — and it is NOT the same event as a working website',
+      uk: 'Реєстр отримав замовлення, імені ще немає. «До 15 хвилин» — перевірений факт, і це НЕ те саме, що працюючий сайт',
+    },
+    /* The registrant-email clock is its own axis: flip "Email unconfirmed" on to see the
+       two cards stacked, which is what a real purchase looks like. */
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'registering', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'propagating',
+    label: { en: 'Just bought — on its way', uk: 'Щойно куплено — у дорозі' },
+    note: {
+      en: 'Registered, now travelling: hours, up to 72. The state the checkout sheet’s "connects automatically" was quietly promising away — with the email card stacked under it',
+      uk: 'Зареєстровано, тепер розходиться світом: години, до 72. Саме це ховала обіцянка «підключиться автоматично» — і зверху картка підтвердження пошти',
+    },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'propagating', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'padlock',
+    label: { en: 'Padlock switching on', uk: 'Вмикається замок' },
+    note: {
+      en: 'The last wait on both paths, and it cannot start early: ten to thirty minutes, and only once the address answers here',
+      uk: 'Останнє очікування на обох шляхах, і раніше воно не починається: 10–30 хвилин, і лише коли адреса вже відповідає в нас',
+    },
+    patch: { account: 'paid', credits: 970, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'verifying', unpublished: 0, published: true, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'icann-verify',
+    label: { en: 'Email not confirmed yet', uk: 'Пошту ще не підтверджено' },
+    note: {
+      en: 'Live, and one unopened email from being suspended — site and mail both. No countdown: the digit we had traces to Squarespace, not to DreamHost or ICANN',
+      uk: 'Сайт живий, і один невідкритий лист відділяє домен від зупинки — разом із поштою. Без лічильника: цифра, що в нас була, веде до Squarespace, а не до DreamHost чи ICANN',
+    },
+    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'live', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'domain-ready',
+    label: { en: 'Domain ready, never published', uk: 'Домен готовий, сайт не публікували' },
+    note: {
+      en: 'Nothing is wrong and nothing is happening — the novice’s №1 "it’s broken". One button left, and it lives inside the card',
+      uk: 'Нічого не зламано і нічого не відбувається — головна причина «воно не працює» в новачка. Лишилась одна кнопка, і вона всередині картки',
+    },
+    patch: { account: 'paid', credits: 990, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'ready', unpublished: 2, published: false, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'old-site',
+    label: { en: 'Publish blocked by an old site', uk: 'Публікацію блокує старий сайт' },
+    note: {
+      en: 'Our KB: publishing fails while the address still holds another site. DreamHost’s base is WordPress, so this is likely, not exotic — and it is drawn nowhere',
+      uk: 'Наша KB: публікація не проходить, поки на адресі лежить інший сайт. База DreamHost — WordPress, тож це ймовірний випадок, а не екзотика — і його ніде не намальовано',
+    },
+    patch: { account: 'paid', credits: 990, project: 'built', chat: 'long', inventory: 'dh-in-use', domain: 'old-site', unpublished: 2, published: false, projects: DEMO_PROJECTS },
+  },
+  {
     id: 'live',
     label: { en: 'Live site', uk: 'Живий сайт' },
     note: { en: 'Everything published, domain working', uk: 'Все опубліковано, домен працює' },
@@ -314,9 +393,16 @@ export const AXES: Axis[] = [
       { value: 'staging', label: { en: 'Staging only', uk: 'Лише стейджинг' } },
       { value: 'searching', label: { en: 'Choosing', uk: 'Обирає' } },
       { value: 'checkout', label: { en: 'Checkout', uk: 'Оформлення' } },
-      { value: 'connecting', label: { en: 'Connecting', uk: 'Підключається' } },
-      { value: 'verifying', label: { en: 'Verifying', uk: 'Перевіряється' } },
+      /* The two paths are different lengths, and the axis says so: `registering` and
+         `propagating` belong to a name BOUGHT through us, `connecting` to one already in
+         the account (modules/domains/connect.ts). */
+      { value: 'registering', label: { en: 'Registering (bought)', uk: 'Реєструється (куплений)' }, hint: { en: 'the registry — under 15 min', uk: 'реєстр — до 15 хв' } },
+      { value: 'propagating', label: { en: 'On its way (bought)', uk: 'У дорозі (куплений)' }, hint: { en: 'the world — hours, up to 72', uk: 'світ — години, до 72' } },
+      { value: 'connecting', label: { en: 'Connecting (own)', uk: 'Підключається (свій)' }, hint: { en: 'our own records', uk: 'наші власні записи' } },
+      { value: 'verifying', label: { en: 'Padlock switching on', uk: 'Вмикається замок' }, hint: { en: 'ten to thirty minutes', uk: 'десять–тридцять хвилин' } },
+      { value: 'ready', label: { en: 'Ready, not published', uk: 'Готовий, не опубліковано' }, hint: { en: 'the novice’s №1 failure', uk: 'сбій №1 у новачка' } },
       { value: 'live', label: { en: 'Live', uk: 'Живий' } },
+      { value: 'old-site', label: { en: 'Publish blocked — old site', uk: 'Публікацію блокує старий сайт' }, hint: { en: 'the address is not clean', uk: 'адреса не порожня' } },
       { value: 'unreachable', label: { en: 'Not reachable', uk: 'Не відповідає' } },
       { value: 'multiple', label: { en: 'Several domains', uk: 'Кілька доменів' } },
     ],
@@ -415,8 +501,12 @@ export function describe(w: World): Text {
     staging: { en: 'no custom domain', uk: 'домен не підключено' },
     searching: { en: 'choosing a domain', uk: 'обирає домен' },
     checkout: { en: 'at checkout', uk: 'оформлює покупку' },
+    registering: { en: 'domain being registered', uk: 'домен реєструється' },
+    propagating: { en: 'domain on its way', uk: 'домен у дорозі' },
     connecting: { en: 'domain connecting', uk: 'домен підключається' },
-    verifying: { en: 'domain verifying', uk: 'домен перевіряється' },
+    verifying: { en: 'padlock switching on', uk: 'вмикається замок' },
+    ready: { en: 'domain ready, not published', uk: 'домен готовий, не опубліковано' },
+    'old-site': { en: 'publish blocked by an old site', uk: 'публікацію блокує старий сайт' },
     live: { en: 'domain live', uk: 'домен живий' },
     unreachable: { en: 'domain not reachable', uk: 'домен не відповідає' },
     multiple: { en: 'several domains', uk: 'кілька доменів' },

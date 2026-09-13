@@ -26,14 +26,36 @@
  * that changes with entitlement: trial sells the plan, paid says it's included.
  */
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useRef } from 'react'
-import { useWorld, hasPlan } from '@/state/world'
+import { useEffect, useRef, useState } from 'react'
+import { useWorld, hasPlan, isCustomDomainActive } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
 import { IconPlus, IconEdit, IconClose } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
 import { popover, popoverContent } from '@/ui/motion'
+
+/*
+ * The free address, split at its FIRST dot: the name is white, the host behind it grey.
+ * Derived, never written out — this line used to be `STAGING_HOST.replace('.remixer.site',
+ * '')` against a literal `.remixer.site` suffix below it, so the day the host became
+ * `remixer.ai` (five first-party sources) the field would have printed the whole host and
+ * then the old suffix after it: "fit-ration.remixer.ai.remixer.site".
+ */
+const STAGING_DOT = STAGING_HOST.indexOf('.')
+const STAGING_NAME = STAGING_DOT > 0 ? STAGING_HOST.slice(0, STAGING_DOT) : STAGING_HOST
+const STAGING_SUFFIX = STAGING_DOT > 0 ? STAGING_HOST.slice(STAGING_DOT) : ''
+
+/**
+ * How long "Resend" stays spent before it can be pressed again.
+ *
+ * ⚠️ INVENTED — no board draws a second state for this button, and it had none: it was
+ * wired to `() => undefined`. A confirmation mail that can be fired ten times in ten
+ * seconds is a support ticket, so the button spends itself, says so, and comes back. The
+ * real cooldown would be a minute; compressed here like every other wait in the prototype
+ * (state/flows.ts), so the designer can watch it return instead of timing it.
+ */
+const RESEND_COOLDOWN_MS = 9000
 
 
 /**
@@ -73,43 +95,61 @@ function UrlField({ value, suffix, live }: { value: string; suffix?: string; liv
 /**
  * One state of the connection, as a card (designer's six states, 13.09.2026).
  *
- * Amber is "in flight, and we are telling you so"; red is "stuck, and it needs you".
- * ⚠️ EVERY NON-TERMINAL STATE CARRIES ITS OWN WAY OUT — his note on the failed state,
- * and the reason the old panel's single "Refresh status" button is gone: a generic
+ * Three tones, and the tone is the claim:
+ *  · amber — in flight, and we are telling you so. Nothing is wrong.
+ *  · red   — stuck, and it needs you.
+ *  · blue  — nothing is wrong AND nothing is in flight: everything is set up and the
+ *            next move is the customer's. `ready` is the only one, and it must not wear
+ *            amber (states.md: "не ошибку и не спиннер"). Blue is this project's colour
+ *            for an action, which is exactly what the state is.
+ *
+ * ⚠️ EVERY NON-TERMINAL STATE CARRIES ITS OWN WAY OUT — the designer's note on the failed
+ * state, and the reason the old panel's single "Refresh status" button is gone: a generic
  * refresh cannot resend a confirmation email, and a state that needs nothing from the
- * customer ("Connecting · nothing for you to do") must not offer a button that implies
- * it does.
+ * customer ("nothing for you to do") must not offer a button that implies it does.
+ *
+ * The title WRAPS rather than truncating. It used to be one truncated line, which was
+ * fine while every title was a bare domain; the states below are sentences ("{domain} is
+ * ready — publish to put your site on it"), and half a sentence is worse than two lines.
  */
 function StatusCard({
-  tone, title, sub, action,
+  tone, title, sub, action, stacked,
 }: {
-  tone: 'amber' | 'red'
+  tone: 'amber' | 'red' | 'blue'
   title: string
   sub: string
-  action?: { label: string; onClick: () => void }
+  action?: { label: string; onClick?: () => void; primary?: boolean; disabled?: boolean }
+  /** Sits under another card rather than under the field — a tighter gap. */
+  stacked?: boolean
 }) {
-  const amber = tone === 'amber'
+  const skin = {
+    amber: { fill: '#e5c3591a', rim: '#e5c35959', dot: 'var(--attention)' },
+    red: { fill: '#ef44441a', rim: '#ef444459', dot: 'var(--danger)' },
+    blue: { fill: '#1587ff1a', rim: '#1587ff59', dot: 'var(--action)' },
+  }[tone]
   return (
     <div
-      className="mt-[19px] flex items-center gap-3 rounded-[12px] px-4 py-3.5"
-      style={{
-        background: amber ? '#e5c3591a' : '#ef44441a',
-        boxShadow: `inset 0 0 0 1px ${amber ? '#e5c35959' : '#ef444459'}`,
-      }}
+      className={`${stacked ? 'mt-2' : 'mt-[19px]'} flex items-center gap-3 rounded-[12px] px-4 py-3.5`}
+      style={{ background: skin.fill, boxShadow: `inset 0 0 0 1px ${skin.rim}` }}
     >
       <span
         className="mt-[7px] h-2 w-2 flex-none self-start rounded-full"
-        style={{ background: amber ? 'var(--attention)' : 'var(--danger)' }}
+        style={{ background: skin.dot }}
         aria-hidden
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold leading-[1.3] text-white">{title}</p>
+        <p className="break-words text-[15px] font-semibold leading-[1.3] text-white">{title}</p>
         <p className="mt-1 text-[13px] leading-[1.4] text-[#ffffffa3]">{sub}</p>
       </div>
       {action && (
         <button
           onClick={action.onClick}
-          className="h-8 flex-none rounded-[8px] border border-[var(--white-200)] bg-[#ffffff0a] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+          disabled={action.disabled}
+          className={
+            action.primary
+              ? 'h-8 flex-none rounded-[8px] bg-[var(--action)] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]'
+              : 'h-8 flex-none rounded-[8px] border border-[var(--white-200)] bg-[#ffffff0a] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:border-[var(--white-100)] disabled:bg-transparent disabled:text-[var(--white-400)] disabled:hover:bg-transparent'
+          }
         >
           {action.label}
         </button>
@@ -120,10 +160,19 @@ function StatusCard({
 
 export function PublishPanel() {
   const { world, set } = useWorld()
-  const { publishOpen, togglePublish, openDomains, publishHintOpen, dismissPublishHint } = useUI()
+  const { publishOpen, togglePublish, openDomains, openPanel, publishHintOpen, dismissPublishHint } = useUI()
   const { t } = useT()
   const panelRef = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
+  /* Has the confirmation mail just been sent again? The button's second state, and it
+     stands down on its own — see RESEND_COOLDOWN_MS. Session state, not world state: it
+     describes this press, not the customer's situation. */
+  const [resent, setResent] = useState(false)
+  useEffect(() => {
+    if (!resent) return
+    const t = window.setTimeout(() => setResent(false), RESEND_COOLDOWN_MS)
+    return () => window.clearTimeout(t)
+  }, [resent])
 
   useEffect(() => {
     if (!publishOpen) return
@@ -141,37 +190,89 @@ export function PublishPanel() {
 
   const paid = hasPlan(world)
   /*
-   * THE SIX STATES THE PANEL CARRIES (designer, 13.09.2026 — "после корзины все статусы и
-   * продолжение флоу происходят тут в окне Publish"). They are read off the world, in this
-   * order of precedence:
+   * EVERY STATE THE PANEL CARRIES (the designer's six of 13.09.2026 — "после корзины все
+   * статусы и продолжение флоу происходят тут в окне Publish" — plus the ones the two
+   * walks, our own KB and board 28206:66756 say have to exist). Read straight off the
+   * world, and only one connection card is ever up at a time:
    *
-   *   unreachable  red card, the domain does not answer — the only one that blames nothing
-   *                on the customer's plan ("your plan is active") and the only red
-   *   connecting   records are being written; the field still shows the staging address,
-   *                because that is what the site answers to until they land
-   *   padlock      the certificate is being issued — the domain already answers, so the
-   *                field switches to it and wears the Live pill
-   *   confirmEmail the ICANN clock on a freshly registered name (world.icann)
+   *   waitingOn…   the name is in the cart and checkout was abandoned (board state ⑦)
+   *   unreachable  red — it worked and stopped. The only red besides a failed publish
+   *   registering  bought: the registry has the order. Minutes
+   *   propagating  bought: registered, travelling the world. Hours, up to 72
+   *   connecting   attached: the records are ours and we are writing them
+   *   padlock      either path: the address answers here, so the certificate can be issued
+   *   ready        blue — set up, correct, never published. The novice's №1 "it's broken"
+   *   old-site     red — the publish FAILED: an older website still sits on the address
+   *   confirmEmail the registrant-email clock on a freshly registered name (world.icann)
    *   settled      live and nothing pending: no card at all, one line of prose
    *
-   * The padlock beat outranks the email one when both are true: it clears in half an hour
-   * and the other has a fortnight, so the transient card gets the slot first.
+   * ⚠️ confirmEmail NO LONGER WAITS ITS TURN. The old rule gave the slot to the padlock
+   * because "it clears in half an hour and the other has a fortnight" — but the only path
+   * that sets this flag is the BOUGHT one, which now spends hours in `registering` and
+   * `propagating`, so the fortnight card would have been invisible for exactly the window
+   * in which it is the one thing the customer must act on. It is a different question from
+   * "where has the connection got to", so it is a second card under the first, not a
+   * competitor for one slot.
    */
-  const attached = world.domain === 'connecting' || world.domain === 'verifying' ||
-    world.domain === 'live' || world.domain === 'multiple' || world.domain === 'unreachable'
+  const attached = isCustomDomainActive(world)
   const liveish = world.domain === 'live' || world.domain === 'multiple'
   const unreachable = world.domain === 'unreachable'
   const connecting = world.domain === 'connecting'
+  const registering = world.domain === 'registering'
+  const propagating = world.domain === 'propagating'
   const padlock = world.domain === 'verifying'
-  const confirmEmail = liveish && world.icann
+  const ready = world.domain === 'ready'
+  const oldSite = world.domain === 'old-site'
+  const confirmEmail = attached && world.icann
   const settled = liveish && !world.icann
-  /** Does the domain answer? That is what the field and its Live pill report. */
-  const answering = liveish || padlock
-  const staging = STAGING_HOST.replace('.remixer.site', '')
+  /** A name left standing at the till — see the card for how this maps to board state ⑦. */
+  const cartDomain = world.cart.find((l) => l.kind === 'domreg')?.domain
+  const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
+  /**
+   * Does the domain answer WITH THE SITE? That is what the field and its Live pill report,
+   * and the padlock beat only qualifies if the site was ever published — on the way to
+   * `ready` the certificate goes on in front of a site nobody has put out yet, and a green
+   * "Live" pill over that address would be the one outright lie in the panel.
+   */
+  const answering = liveish || (padlock && world.published)
+  /** Is a connection state showing? The email card stacks under it when so. */
+  const stageCard = unreachable || connecting || registering || propagating || padlock || ready || oldSite
 
   /*
-   * Never live yet → the first publish, whatever the edit count says; live with edits
-   * pending → an update; nothing pending → there is nothing for the button to do.
+   * Our own KB, on publishing to a domain that already serves something: the target "must
+   * be associated with a clean hosting environment, as the tool is not compatible with
+   * existing sites (e.g. WordPress or other types of installations)" — leave the old files
+   * there and "publishing to production will fail". DreamHost's base is WordPress, so on
+   * the attach path this is likely, not exotic.
+   *
+   * ⚠️ MODELLED ON THE INVENTORY AXIS: the first publish onto a domain that is `dh-in-use`
+   * fails. That is deliberate and it is reachable in a demo by accident — say so before
+   * showing the happy path. Flip `inventory` to any other value in the scenario console and
+   * the same press goes live.
+   */
+  const publishNow = () => {
+    if (ready && world.inventory === 'dh-in-use') return set({ domain: 'old-site' })
+    set({ unpublished: 0, published: true, ...(ready ? { domain: 'live' as const } : null) })
+  }
+  /* The second attempt, after support has cleared the address. The prototype cannot model
+     the clearing, so this one lands — a demo that dead-ends teaches nothing. */
+  const retryPublish = () => set({ domain: 'live', published: true, unpublished: 0 })
+
+  /*
+   * THE PRIMARY BUTTON SAYS WHAT IT DOES, IN EVERY STATE.
+   *
+   * It used to read "Continue" while actually publishing (a never-published site with no
+   * pending edits), and "Update"/"Continue" while merely closing the panel (connecting,
+   * verifying, unreachable) — a publish-shaped button that does not publish is the first
+   * thing a product owner presses. So: there is either something to publish, in which case
+   * the button is blue and names it, or there is not, in which case it stops pretending —
+   * it becomes the quiet "Keep editing", the house's own permission to walk away
+   * (states.md, every waiting state).
+   *
+   * `ready` is excluded on purpose even though it CAN publish: that state carries its own
+   * Publish inside its card, where the sentence explaining it is, and two identical blue
+   * verbs in one 480px panel is one too many. `old-site` is excluded because publishing is
+   * precisely what just failed there.
    *
    * ⚠️ NO "· Free" ON THE LABEL (designer, 08.09.2026: "убери из кнопки — Free"), which is
    * also what the board draws — an 86px button reading just "Publish". The suffix was ours,
@@ -180,16 +281,12 @@ export function PublishPanel() {
    * to live: if it is worth making, it belongs in the nudge banner's copy, not stapled to
    * the verb. Raised with the designer; do not put it back on the button.
    */
-  const primary = answering
-    ? world.unpublished > 0
-      ? { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
-      : { en: 'Update', uk: 'Оновити' }
-    : world.unpublished > 0
-      ? world.published
-        ? { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
-        : { en: 'Publish', uk: 'Опублікувати' }
-      : { en: 'Continue', uk: 'Продовжити' }
-  const publishes = world.unpublished > 0 || (!world.published && !attached)
+  const publishes = !ready && !oldSite && (world.unpublished > 0 || !world.published)
+  const primary = !publishes
+    ? { en: 'Keep editing', uk: 'Далі редагувати' }
+    : !world.published
+      ? { en: 'Publish', uk: 'Опублікувати' }
+      : { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
 
   return (
     <AnimatePresence>
@@ -236,10 +333,12 @@ export function PublishPanel() {
           {/* -------------------------------------------------------- header, 64px */}
           <div className="flex h-16 items-center pl-6">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">
-              {/* A domain standing in front of the site counts as published for both of
-                  these: "Not published" over a live custom domain would be a lie, and the
-                  nudge argues for something that has already happened. */}
-              {world.published || attached
+              {/* A domain ANSWERING in front of the site counts as published: "Not
+                  published" over a live custom domain would be a lie. Merely having one
+                  attached does not — a domain that is connecting, or `ready` and waiting
+                  for the first press, stands in front of nothing, and titling that panel
+                  "Publish" would hide the very thing it is there to say. */}
+              {world.published || answering
                 ? t({ en: 'Publish', uk: 'Публікація' })
                 : t({ en: 'Not published', uk: 'Не опубліковано' })}
             </h3>
@@ -302,51 +401,226 @@ export function PublishPanel() {
                 {answering ? (
                   <UrlField value={world.customDomain} live />
                 ) : (
-                  <UrlField value={staging} suffix=".remixer.site" />
+                  <UrlField value={STAGING_NAME} suffix={STAGING_SUFFIX} />
                 )}
               </div>
 
-              {/* ------------------------------------------------- the state card */}
+              {/* ------------------------------------------------- the state card
+                  Copy comes from docs/features/domains/states.md wherever that document
+                  has a string for the state — it is the deliverable, quoted in Figma and
+                  here, and a second copy of a sentence drifts from the first inside a
+                  month. Where it has none, the line is marked INVENTED below. */}
+
+              {/* `needs-attention` in states.md: it worked and it stopped. The first thing
+                  a person thinks is "I've lost my site", so the first thing the card says
+                  is that they have not. The old line ("We can't reach this domain yet ·
+                  your plan is active") reassured them about their BILLING in the middle of
+                  an outage, and wrapped one word short at 480px besides.
+                  ⚠️ states.md opens the sub with "Something changed at {registrar} on
+                  {date}." — dropped, not reworded: the world carries neither a registrar
+                  name nor a date, and inventing either is how a demo starts lying. */}
               {unreachable && (
                 <StatusCard
                   tone="red"
-                  title={world.customDomain}
+                  title={t({
+                    en: `${world.customDomain} stopped showing your site`,
+                    uk: `${world.customDomain} більше не показує ваш сайт`,
+                  })}
                   sub={t({
-                    en: 'We can’t reach this domain yet · your plan is active',
-                    uk: 'Поки не бачимо цей домен · ваш план активний',
+                    en: `Your site is safe — it’s still at ${STAGING_HOST}.`,
+                    uk: `Ваш сайт цілий — він і далі за адресою ${STAGING_HOST}.`,
                   })}
                   action={{
-                    label: t({ en: 'Check again', uk: 'Перевірити ще' }),
+                    label: t({ en: 'Fix this', uk: 'Виправити' }),
                     onClick: () => retryConnect(world.customDomain),
                   }}
                 />
               )}
+
+              {/* `connecting · in-account`, states.md variant A — the one variant of three
+                  entitled to say "a few minutes", because the records are ours to write.
+                  ⚠️ A WINDOW AND A CHECK, NEVER A MOMENT. Board 27071:20574 says "connects
+                  in a few seconds"; DreamHost's own FAQ says a freshly hosted domain "can
+                  take anywhere from 4–8 hours to resolve online"; another KB page claims a
+                  five-minute TTL. Their contradiction, not ours — so the promise stays a
+                  window, and "it goes live on its own" carries the check. */}
               {connecting && (
                 <StatusCard
                   tone="amber"
-                  title={world.customDomain}
-                  sub={t({ en: 'Connecting · nothing for you to do', uk: 'Підключається · від вас нічого не потрібно' })}
+                  title={t({
+                    en: `Connecting ${world.customDomain}`,
+                    uk: `Підключаємо ${world.customDomain}`,
+                  })}
+                  sub={t({
+                    en: 'Usually a few minutes. Keep editing — it goes live on its own.',
+                    uk: 'Зазвичай кілька хвилин. Працюйте далі — він увімкнеться сам.',
+                  })}
                 />
               )}
+
+              {/* `registering`, states.md §5. The registry, and only the registry: fifteen
+                  minutes is verified ("within 15 minutes of completing the purchase form")
+                  and it is NOT the same event as a working website — that is the next
+                  card. No action: there is none. */}
+              {registering && (
+                <StatusCard
+                  tone="amber"
+                  title={t({
+                    en: `Registering ${world.customDomain}`,
+                    uk: `Реєструємо ${world.customDomain}`,
+                  })}
+                  sub={t({
+                    en: 'Usually under 15 minutes. Nothing for you to do.',
+                    uk: 'Зазвичай менш ніж 15 хвилин. Від вас нічого не потрібно.',
+                  })}
+                />
+              )}
+
+              {/* `propagating`, states.md §5 — verbatim, including the last clause, which
+                  is the only honest way to own a 72-hour wait. This is the state the
+                  checkout sheet's "connects automatically after checkout" was silently
+                  promising away. No action: there is none, and the free address works the
+                  whole time. */}
+              {propagating && (
+                <StatusCard
+                  tone="amber"
+                  title={t({
+                    en: `${world.customDomain} is on its way`,
+                    uk: `${world.customDomain} уже в дорозі`,
+                  })}
+                  sub={t({
+                    en: 'Most visitors will reach your site within a few hours. It can take up to 72 hours to work everywhere in the world — that part is the internet, not us.',
+                    uk: 'Більшість відвідувачів побачать сайт за кілька годин. По всьому світу це може зайняти до 72 годин — це вже інтернет, а не ми.',
+                  })}
+                />
+              )}
+
+              {/* `securing`, states.md. The padlock is the LAST wait and it cannot start
+                  early — a certificate needs the address to answer here first — which is
+                  why this is its own card and not a line inside the one above.
+                  ⚠️ The old sub said "the site already works". On the way to `ready` it
+                  does not: nobody has published it yet. */}
               {padlock && (
                 <StatusCard
                   tone="amber"
                   title={t({ en: 'Secure padlock is switching on', uk: 'Вмикається захисний замок' })}
                   sub={t({
-                    en: 'Usually within 30 minutes · the site already works',
-                    uk: 'Зазвичай протягом 30 хвилин · сайт уже працює',
+                    en: 'Nothing for you to do · usually ten to thirty minutes',
+                    uk: 'Від вас нічого не потрібно · зазвичай десять–тридцять хвилин',
                   })}
                 />
               )}
-              {confirmEmail && (
+
+              {/* `ready`, states.md — verbatim, and the state nobody had drawn. Everything
+                  is correct and nothing is happening; the customer concludes the product
+                  is broken. (They may even be looking at DreamHost's own empty-site page —
+                  "Well, this is awkward. The site you're looking for is not here." — while
+                  this panel says all is well. Worth a line one day; it is not in the
+                  approved copy, so it is not invented in here tonight.)
+                  The verb lives INSIDE the card, and it is the only blue thing in the
+                  panel while this state is up. */}
+              {ready && (
+                <StatusCard
+                  tone="blue"
+                  title={t({
+                    en: `${world.customDomain} is ready — publish to put your site on it`,
+                    uk: `${world.customDomain} готовий — опублікуйте, щоб сайт став на нього`,
+                  })}
+                  sub={t({
+                    en: 'Your address is set up. Visitors will see your site the moment you publish.',
+                    uk: 'Адресу налаштовано. Відвідувачі побачать сайт тієї ж миті, коли ви опублікуєте.',
+                  })}
+                  action={{
+                    label: t({ en: 'Publish', uk: 'Опублікувати' }),
+                    onClick: publishNow,
+                    primary: true,
+                  }}
+                />
+              )}
+
+              {/* The dirty-domain publish failure — failures.md №15, "дырки нет даже на
+                  бумаге": no board, no state, and on a WordPress customer base the likely
+                  one. Our KB says the publish fails while the old site's files are there.
+                  ⚠️ OUR WORDING, PENDING THE REAL STRING. DreamHost's exact message for
+                  this case is the single most valuable string missing from the research —
+                  the four we do have verbatim are all about ADDING a domain, not
+                  publishing to it ("Sorry, this domain is already in our system on another
+                  account." · "The domain looks like a subdomain." · "…registered with
+                  another provider and may require its DNS to be pointed to DreamHost." ·
+                  "…not yet registered and would need to be purchased…"). None covers this.
+                  The remedies in the KB are: clear the files, move the old site, or
+                  contact support. The first two are an SFTP session — no builder customer
+                  is doing that from this card — so the card names the one they can act on
+                  and keeps the verb for afterwards. */}
+              {oldSite && (
+                <StatusCard
+                  tone="red"
+                  title={t({
+                    en: `${world.customDomain} still has an older website on it`,
+                    uk: `На ${world.customDomain} досі стоїть старіший сайт`,
+                  })}
+                  sub={t({
+                    en: `It has to come off before your site can go on — support can clear it for you. Your site is safe at ${STAGING_HOST} meanwhile.`,
+                    uk: `Його треба прибрати, перш ніж стане ваш — підтримка може це зробити. Тим часом ваш сайт живий за адресою ${STAGING_HOST}.`,
+                  })}
+                  action={{
+                    label: t({ en: 'Try again', uk: 'Спробувати ще' }),
+                    onClick: retryPublish,
+                  }}
+                />
+              )}
+
+              {/* Board 28206:66756 draws a seventh state, `7 not paid`, and this is our
+                  reading of it: the domain was chosen, the cart was filled and the
+                  customer walked out of checkout. The world already carries that state
+                  (`domain: 'checkout'` with lines in the cart — DomainModal writes both)
+                  and the panel used to render it as if nothing had happened, offering
+                  "Connect your own domain" over a domain already sitting in their cart.
+                  ⚠️ The mapping is OURS — the board's own frame has not been re-read — so
+                  the card claims nothing beyond what the world says and hands straight
+                  back to the till, which is where the price lives. */}
+              {waitingOnCheckout && (
                 <StatusCard
                   tone="amber"
-                  title={t({ en: 'Confirm your email to keep this domain', uk: 'Підтвердьте email, щоб зберегти домен' })}
-                  sub={t({
-                    en: 'We sent a link to roman@example.com · 14 days left',
-                    uk: 'Ми надіслали лист на roman@example.com · лишилось 14 днів',
+                  title={t({
+                    en: `${cartDomain} is waiting in your cart`,
+                    uk: `${cartDomain} чекає у вашому кошику`,
                   })}
-                  action={{ label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => undefined }}
+                  sub={t({
+                    en: 'It connects on its own once checkout is done.',
+                    uk: 'Він підключиться сам, щойно ви завершите оплату.',
+                  })}
+                  action={{
+                    label: t({ en: 'Finish checkout', uk: 'Завершити оплату' }),
+                    onClick: () => openPanel('cart'),
+                  }}
+                />
+              )}
+
+              {/* The registrant-email clock (state ⑤ on board 28206:66756). A SECOND card
+                  under whichever one is above it — see the precedence note upstairs.
+                  ⚠️ NO COUNTDOWN. The board draws "14 days left" and the world comment used
+                  to say fifteen; the digit traces to Squarespace's unlink rule, not to
+                  DreamHost or ICANN (states.md §5), so the card points at the deadline in
+                  the mail instead of inventing one. The address is the board's own
+                  placeholder and stays until the world carries an account email. */}
+              {confirmEmail && (
+                <StatusCard
+                  stacked={stageCard}
+                  tone="amber"
+                  title={t({ en: 'Confirm your email to keep this domain', uk: 'Підтвердьте email, щоб зберегти домен' })}
+                  sub={resent
+                    ? t({
+                        en: 'Sent again to roman@example.com — check your inbox.',
+                        uk: 'Надіслали ще раз на roman@example.com — перевірте пошту.',
+                      })
+                    : t({
+                        en: 'We sent a link to roman@example.com · confirm before the deadline in the email',
+                        uk: 'Ми надіслали посилання на roman@example.com · підтвердьте до терміну, вказаного в листі',
+                      })}
+                  action={resent
+                    ? { label: t({ en: 'Sent', uk: 'Надіслано' }), disabled: true }
+                    : { label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => setResent(true) }}
                 />
               )}
               {/* ------------------------------------------ the prototype's stand-in
@@ -387,10 +661,18 @@ export function PublishPanel() {
                   (13.09.2026): "у нас будет только одна ссылка отображаться в этом окне".
                   The field at the top already carries the one address the site answers to,
                   and a second link under it made the panel answer a question nobody asked
-                  twice. Do not put it back. */}
+                  twice. Do not put it back.
+                  ⚠️ The two RED cards do name the free address inside their sentence, and
+                  that is a different thing: not a second link in the happy path, but the
+                  one line that answers "have I lost my site" in the only two states where
+                  the customer is asking it (states.md rule 4, and its accepted copy for
+                  `needs-attention` says it word for word). */}
 
-              {/* connect your own domain — dashed card, the state before any of this */}
-              {!attached && (
+              {/* connect your own domain — dashed card, the state before any of this.
+                  Not while a name is standing at the till: the card above is about that
+                  name, and offering to start again under it reads as "your purchase went
+                  nowhere". */}
+              {!attached && !waitingOnCheckout && (
                 <button
                   onClick={() => openDomains('home')}
                   /* Hover per Figma 26125:3832: the dashed rim brightens (NA/200 →
@@ -421,12 +703,18 @@ export function PublishPanel() {
 
           {/* ---------------------------------------------------------- button bar */}
           {/* One button. The old "Refresh status" lived here because the panel had no
-              way to say what a connection was doing; now each state says it, and the two
-              that need the customer carry their own action inside the card. */}
+              way to say what a connection was doing; now each state says it, and every
+              state that needs the customer carries its own action inside its card.
+              Blue while it publishes, quiet when it does not — a panel whose primary slot
+              is blue whatever it does teaches people not to read it. */}
           <div className="flex items-center justify-end px-4 py-4">
             <button
-              onClick={() => (publishes ? set({ unpublished: 0, published: true }) : togglePublish(false))}
-              className="h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+              onClick={() => (publishes ? publishNow() : togglePublish(false))}
+              className={
+                publishes
+                  ? 'h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]'
+                  : 'h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white'
+              }
             >
               {t(primary)}
             </button>

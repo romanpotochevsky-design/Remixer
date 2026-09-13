@@ -533,7 +533,10 @@ function HomeScreen() {
   const { t } = useT()
 
   const owned = OWNED_DOMAINS[world.inventory] ?? []
-  const [best, ...rest] = AI_SUGGESTIONS
+  /* The suggestion column cannot offer to sell what the left column already lists
+     as owned — the two are on screen at the same time. */
+  const mine = useMyDomains()
+  const [best, ...rest] = AI_SUGGESTIONS.filter((r) => !mine.has(r.domain))
 
   return (
     <motion.div
@@ -586,10 +589,14 @@ function HomeScreen() {
             <IconSparkleAI size={20} />
           </div>
 
-          {/* Best-match hero (27085:107276): purple tint, gradient rim fading out */}
-          <div className="flex-none">
-            <BestMatchCard row={best} onBuy={() => openDomainModal('buy', best.domain)} />
-          </div>
+          {/* Best-match hero (27085:107276): purple tint, gradient rim fading out.
+              Guarded because the list is filtered now: a customer who somehow owned
+              every suggested name would otherwise render a hero with no row. */}
+          {best && (
+            <div className="flex-none">
+              <BestMatchCard row={best} onBuy={() => openDomainModal('buy', best.domain)} />
+            </div>
+          )}
 
           {/* suggestion list (27085:107303): one card, hairline dividers, own scroll */}
           <div className="mt-4 min-h-0 flex-1 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] py-2 pl-2 pr-3">
@@ -630,34 +637,39 @@ function HomeScreen() {
  * somebody else's domain.
  */
 function ResultsScreen() {
-  const { activeDomain, openDomainModal } = useUI()
+  const { activeDomain, openDomainModal, goDomains } = useUI()
   const term = activeDomain ?? 'fit-ration'
   const buy = (domain: string) => openDomainModal('buy', domain)
+  const mine = useMyDomains()
   const exact = exactMatch(term)
+  /* No list may quote a price on a domain this customer already holds. */
+  const forSale = (rows: ResultRow[]) => rows.filter((r) => !mine.has(r.domain))
 
-  /* Two answers, one screen: the search field above never moves, only what is
-     under it changes hands (see SearchHeader). */
+  /* THREE answers, one screen — the search field above never moves, only what is
+     under it changes hands (see SearchHeader):
+     it is already yours · it is somebody else's · it is for sale. */
+  if (mine.has(exact.domain)) return <OwnedAnswer domain={exact.domain} />
   if (exact.taken) return <TakenResults term={term} exact={exact} onBuy={buy} />
 
   return (
-    <ResultsSheet>
+    <ResultsSheet onBack={() => goDomains('home')}>
       <motion.div variants={listSwapItem}>
         <BestMatchCard row={exact} onBuy={() => buy(exact.domain)} />
       </motion.div>
 
       <ResultBlock
         label={{ en: 'Featured', uk: 'Обране' }}
-        rows={featuredEndings(term)}
+        rows={forSale(featuredEndings(term))}
         onBuy={buy}
       />
       <ResultBlock
         label={{ en: 'Popular', uk: 'Популярні' }}
-        rows={popularEndings(term)}
+        rows={forSale(popularEndings(term))}
         onBuy={buy}
       />
       <ResultBlock
         label={{ en: 'Suggested', uk: 'Пропозиції' }}
-        rows={nameIdeas(term)}
+        rows={forSale(nameIdeas(term))}
         onBuy={buy}
       />
     </ResultsSheet>
@@ -681,29 +693,47 @@ function ResultsScreen() {
 function TakenResults({
   term, exact, onBuy,
 }: { term: string; exact: ResultRow; onBuy: (domain: string) => void }) {
-  const { openDomainModal } = useUI()
+  const { goDomains } = useUI()
+  const mine = useMyDomains()
+  const forSale = (rows: ResultRow[]) => rows.filter((r) => !mine.has(r.domain))
   /* The list is what made the row taken, so the registrar is always there; the
      fallback only exists so a hand-set `taken` row can never render "undefined". */
   const registrar = registrarOf(exact.domain) ?? 'GoDaddy'
 
   return (
-    <ResultsSheet>
+    <ResultsSheet onBack={() => goDomains('home')}>
       <motion.div variants={listSwapItem}>
+        {/*
+         * `This is my domain` is drawn on board 27270:5623; where it LANDS is board
+         * ㉘ A1 (27281:5564) — the external-registrar setup, whose CTA there reads
+         * "Show me what to change". That flow is ITERATION 2 and is not built, so
+         * this is INTERIM ROUTING to the external screen that exists today.
+         *
+         * ⚠️ Do not "fix" this back into the connect-owned sheet. It was wired that
+         * way for an afternoon and the sheet told a customer whose name is registered
+         * at GoDaddy "On DreamHost · connects in a few seconds" — false about the
+         * product in the one place where the customer is telling us the truth about
+         * themselves. And do not assume the screen it lands on is finished: it still
+         * hardcodes one registrar's instructions and prints a raw IP.
+         *
+         * The name is carried across, so the screen names the registrar we already
+         * detected for it rather than a different one.
+         */}
         <TakenCard
           domain={exact.domain}
           registrar={registrar}
-          onClaim={() => openDomainModal('connect-owned', exact.domain)}
+          onClaim={() => goDomains('external', exact.domain)}
         />
       </motion.div>
 
       <motion.div variants={listSwapItem} className="flex flex-col">
         <SectionTitle label={{ en: 'Close alternatives', uk: 'Близькі варіанти' }} />
-        <PlainList rows={closeAlternatives(term)} onBuy={onBuy} />
+        <PlainList rows={forSale(closeAlternatives(term))} onBuy={onBuy} />
       </motion.div>
 
       <motion.div variants={listSwapItem} className="flex flex-col">
         <IdeasTitle name={brandLabel(exact.domain)} />
-        <PlainList rows={takenIdeas(term)} onBuy={onBuy} />
+        <PlainList rows={forSale(takenIdeas(term))} onBuy={onBuy} />
       </motion.div>
     </ResultsSheet>
   )
@@ -753,8 +783,7 @@ function GlobePlate() {
  */
 function OwnScreen() {
   const { world } = useWorld()
-  const { activeDomain, openDomainModal } = useUI()
-  const { t } = useT()
+  const { activeDomain } = useUI()
   const domain = activeDomain ?? CUSTOM_DOMAIN
 
   /* ITERATION 2 — OUT OF SCOPE, left reachable exactly as it was. A domain of ours
@@ -763,8 +792,21 @@ function OwnScreen() {
      CTA "Show me what to change"). Not developed here, not deleted either. */
   if (world.inventory === 'dh-external-ns') return <ExternalNsScreen domain={domain} />
 
+  return <OwnedAnswer domain={domain} />
+}
+
+/**
+ * The card itself, so the two ways in draw the same answer: typing an owned domain
+ * (this screen) and a search whose exact match turns out to be one already in the
+ * account (ResultsScreen). Without this, the second path would have gone on
+ * offering to sell the customer their own name.
+ */
+function OwnedAnswer({ domain }: { domain: string }) {
+  const { openDomainModal, goDomains } = useUI()
+  const { t } = useT()
+
   return (
-    <ResultsSheet>
+    <ResultsSheet onBack={() => goDomains('home')}>
       <motion.div variants={listSwapItem}>
         <div className="flex min-h-[100px] items-center gap-4 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] px-6 py-4">
           <GlobePlate />
@@ -860,17 +902,33 @@ function ExternalNsScreen({ domain }: { domain: string }) {
   )
 }
 
-/** External domain: registrar detected, guided manual path. No Domain Connect promises. */
+/**
+ * External domain: registrar detected, guided manual path. No Domain Connect promises.
+ *
+ * ITERATION 2 — not developed here. One thing was fixed and only one: this screen
+ * used to call `startConnect` itself, which put a custom domain live for an account
+ * with no plan — a combination `world.violations()` declares impossible ("A custom
+ * domain needs a paid plan — checkout comes first"). Going live is a paid act
+ * whichever door it comes through, so the decision now belongs to the sheet that
+ * owns it, exactly as it does for a domain in the account.
+ */
 function ExternalScreen() {
   const { set } = useWorld()
-  const { activeDomain, goDomains, closeSurface } = useUI()
+  const { activeDomain, goDomains, openDomainModal } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? 'emberandoak.com'
+  /* The one thing the taken screen hands over: a name it already detected a
+     registrar for arrives naming THAT company, not a second one. Everything else
+     on this screen is still written for a single registrar and stays that way
+     until iteration 2 — this substitutes a name, it does not make the screen
+     registrar-aware. */
+  const registrar = registrarOf(domain) ?? 'GoDaddy'
 
   const start = () => {
+    /* The inventory axis is true from this press on — the customer is attaching a
+       domain they hold somewhere else, by hand — whether or not they then pay. */
     set({ inventory: 'external-manual' })
-    closeSurface()
-    startConnect(domain)
+    openDomainModal('connect-external', domain)
   }
 
   return (
@@ -884,15 +942,18 @@ function ExternalScreen() {
       {/* The detection bar: registrar identity is registry-level data (RDAP) — reliable. */}
       <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
         {t({
-          en: 'Registered at GoDaddy. It stays there — no transfer needed.',
-          uk: 'Зареєстровано на GoDaddy. Він там і залишиться — переносити не треба.',
+          en: `Registered at ${registrar}. It stays there — no transfer needed.`,
+          uk: `Зареєстровано на ${registrar}. Він там і залишиться — переносити не треба.`,
         })}
       </p>
 
       {/* De-jargoned records card: two named values, copy buttons, inline guide. */}
       <div className="mt-5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
         <p className="text-[13px] font-semibold text-[var(--white-700)]">
-          {t({ en: 'Point your domain to us — 2 lines to paste at GoDaddy', uk: 'Спрямуйте домен до нас — 2 рядки вставити на GoDaddy' })}
+          {t({
+            en: `Point your domain to us — 2 lines to paste at ${registrar}`,
+            uk: `Спрямуйте домен до нас — 2 рядки вставити на ${registrar}`,
+          })}
         </p>
         {[
           { label: 'Website address', value: '64.90.62.162' },
@@ -910,8 +971,11 @@ function ExternalScreen() {
         ))}
         <p className="mt-3 text-[12.5px] leading-[1.5] text-[var(--white-400)]">
           {t({
-            en: 'In GoDaddy: My Products → your domain → DNS. Paste both lines, save, come back here.',
-            uk: 'На GoDaddy: My Products → ваш домен → DNS. Вставте обидва рядки, збережіть і поверніться сюди.',
+            /* ⚠️ The path itself is GoDaddy's own menu and is NOT generic — it is
+               right only while `registrar` is GoDaddy, which is the demo case.
+               Iteration 2 owns per-registrar instructions. */
+            en: `In ${registrar}: My Products → your domain → DNS. Paste both lines, save, come back here.`,
+            uk: `На ${registrar}: My Products → ваш домен → DNS. Вставте обидва рядки, збережіть і поверніться сюди.`,
           })}
         </p>
       </div>
@@ -958,9 +1022,32 @@ export function DomainsSurface() {
   const searching = domainScreen === 'home' || domainScreen === 'results' || domainScreen === 'own'
   const owned = OWNED_DOMAINS[world.inventory] ?? []
 
+  /*
+   * Escape steps back one level and only then closes the window — the same shape
+   * every other overlay in the shell has. It stays silent while the checkout sheet
+   * is up: that sheet listens for Escape too (DomainModal), and answering both would
+   * close the sheet and navigate the window under it in one press.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (useUI.getState().domainModal) return
+      if (useUI.getState().domainScreen !== 'home') goDomains('home')
+      else closeSurface()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [goDomains, closeSurface])
+
   const submit = () => {
     const q = query.trim().toLowerCase()
-    if (!q) return
+    /* An empty field is not a search — it is "show me everything again", and it is
+       the second way back to the dashboard (the first is the button on the sheet,
+       the third is Escape). Until now it was a dead press. */
+    if (!q) {
+      if (domainScreen !== 'home') goDomains('home')
+      return
+    }
     /*
      * Intent detection, prototype-grade, in the order the boards answer:
      *  - a domain sitting in the DreamHost account short-circuits to "You own
@@ -1027,7 +1114,11 @@ export function DomainsSurface() {
       {searching && (
         <SearchHeader
           title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
-          compact={domainScreen === 'results'}
+          /* Compact on every ANSWER, not only on the result lists: the hero
+             settles the moment the field has been used, the way a search engine's
+             home page settles into its results page, and the owned-domain answer
+             (27271:5564) is as much an answer as a list of prices. */
+          compact={domainScreen !== 'home'}
           query={query}
           setQuery={setQuery}
           onSubmit={submit}
