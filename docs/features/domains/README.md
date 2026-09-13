@@ -163,6 +163,13 @@ aftermarket-цен — DreamHost verified не продаёт премиум-д�
 
 ## 8. Ссылки
 
+- `states.md` — стейт-машина подключения: имена состояний, дословный EN-копирайт, глагол,
+  честный срок и выходы. Спасено 13.09.2026 из невлитой ветки `connect-domain-flow-research-z2vuky`.
+- `failures.md` — каталог из 15 сбоев со статусами источников и колонкой «достижим в итерации 1».
+- `copy.md` — словарь глаголов (включая `Try again` / `Check again` / `Refresh status` /
+  `Fix this` / `Transfer`) и список запрещённых слов с правилом escape hatch.
+- `figma-boards.md` — индекс всех 39 доменных бордов с node id. ⚠️ Id сняты 19.08.2026 и
+  перепроверяются — не считать, что они резолвятся.
 - `docs/handoff/domain-connection-design-handoff.md` — хендофф домен-флоу и панели Publish:
   секции Figma ①–⑥, копирайт всех состояний, mobile (10 экранов), открытые пункты.
 - `docs/research/domain-search-research.md` — глубокий ресёрч поиска доменов.
