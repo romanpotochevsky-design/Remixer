@@ -10,10 +10,20 @@
  *                        account. Iteration 1 ships exactly two paths and this is
  *                        the second one. It carries NO PRICE — the name is free to
  *                        attach and never enters the cart — but it runs axis 2 like
- *                        every other kind; see `OwnedBody` for why the boards make
+ *                        every other kind; see `ConnectBody` for why the boards make
  *                        that look otherwise.
  *     connect-existing : the older sheet for that same case, drawn before the ㉖
- *                        boards existed. Superseded by connect-owned.
+ *                        boards existed. Superseded by connect-owned, and with its
+ *                        last caller gone it is now unreachable.
+ *     connect-external : a domain held at another company. ITERATION 2 — the flow is
+ *                        not built. It borrows `ConnectBody` for one honest line and
+ *                        one honest verb, and exists here only so that this door
+ *                        passes the same plan gate as the others.
+ *                        ⚠️ WHERE THIS SHEET SITS IN THAT FLOW IS UNSETTLED, and the
+ *                        two candidate orderings want opposite behaviour from it —
+ *                        including from the no-plan cart handoff, which is the half
+ *                        that looks innocent. Search this file for THE ORDERING
+ *                        PROBLEM (in `confirm`) before moving it.
  *     buy              : a name from search or the AI suggestions. Carries the
  *                        first-year figure and the honest renewal line.
  *
@@ -46,7 +56,7 @@ import { useWorld, hasPlan } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { startConnect } from './connect'
 import { useT, type Text } from '@/i18n'
-import { priceFor } from '@/data/domains'
+import { priceFor, registrarOf } from '@/data/domains'
 import type { CartLine } from '@/data/cart'
 import { LogoRemixer, IconClose, IconGlobeLarge, IconLink } from '@/ui/icons'
 import { modalScrim, modalSheet } from '@/ui/motion'
@@ -210,7 +220,16 @@ function PlanChooser({ term, setTerm }: { term: Term; setTerm: (t: Term) => void
 /* ------------------------------------------------- connect-owned (㉖A / ㉖B) */
 
 /**
- * The body of the connect-owned sheet — Figma 27071:20574 and 27071:20591.
+ * The body of the connect sheets — Figma 27071:20574 (㉖A) and 27071:20591 (㉖B),
+ * plus the one-line external case off ㉘ A2 (27281:5564).
+ *
+ * It serves `connect-owned` and `connect-external`, which differ in two places and
+ * nowhere else: the sub-label and the verb. (They used to differ in a third — where
+ * the button led — until the external one was pointed at the same clock; see THE
+ * ORDERING PROBLEM in `confirm`, which is the note to read before any of this moves.)
+ * That is a poor reason for a second component and a good reason for two conditionals
+ * — especially while the external flow is undesigned and the shape it eventually
+ * wants is unknown.
  *
  * Two drawn boards, one difference: whether the domain is already serving a site.
  * That is not a new axis — the world has carried it since the beginning as
@@ -247,17 +266,23 @@ function PlanChooser({ term, setTerm }: { term: Term; setTerm: (t: Term) => void
  * Every stroke is an inset box-shadow: Figma's sit inside the geometry, a CSS `border`
  * would push the 492px content box out to 494.
  */
-function OwnedBody({
-  domain, inUse, showPlans, term, setTerm, onConfirm,
+function ConnectBody({
+  domain, inUse, external, showPlans, term, setTerm, onConfirm,
 }: {
   domain: string
   inUse: boolean
+  /** The domain lives at another company. Everything below has to say so. */
+  external: boolean
   showPlans: boolean
   term: Term
   setTerm: (t: Term) => void
   onConfirm: () => void
 }) {
   const { t } = useT()
+  /* Derived here rather than passed in, exactly as DomainsSurface derives it —
+     `registrarOf` is pure data and the fallback matches the demo name that screen
+     uses when a domain is not in the taken list. */
+  const registrar = registrarOf(domain) ?? 'GoDaddy'
   return (
     /* 24px sides against the 540 sheet is the board's 492 content width exactly;
        the board's own 23/25 asymmetry is mid-fi drift, not a decision. */
@@ -274,8 +299,22 @@ function OwnedBody({
                 promise of speed; without one it names what is standing in the way —
                 in cream, because cream is "waiting on you". Neutral grey here would
                 read as "nothing blocking", which would be a lie. Same pair of
-                strings the sheet has used since the first connect board. */}
-            {showPlans ? (
+                strings the sheet has used since the first connect board.
+
+                An EXTERNAL domain gets neither: both describe DreamHost, and this
+                name is not at DreamHost. It states the customer's own situation
+                instead — whose company holds the name, and that the work happens
+                over there (board ㉘ A2, 27281:5564). Deliberately NOT board ㉔'s
+                "you'll approve one change there": that board assumes Domain Connect,
+                which DreamHost supports in no role, and is annotated obsolete. */}
+            {external ? (
+              <p className="mt-1 truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
+                {t({
+                  en: `At ${registrar} · you'll add two records there`,
+                  uk: `На ${registrar} · два записи треба додати там`,
+                })}
+              </p>
+            ) : showPlans ? (
               <p className="mt-1 flex items-center gap-0.5 truncate text-[14px] leading-[1.4]">
                 <span className="text-[#ffffffa3]">{t({ en: 'On DreamHost', uk: 'На DreamHost' })}</span>
                 <span className="mx-0.5 flex-none text-[rgba(255,240,186,0.9)]"><IconLink size={20} /></span>
@@ -343,9 +382,16 @@ function OwnedBody({
       >
         {showPlans
           ? t({ en: 'Continue to checkout', uk: 'Перейти до оплати' })
-          : inUse
-            ? t({ en: 'Replace and connect', uk: 'Замінити й підключити' })
-            : t({ en: 'Connect domain', uk: 'Підключити домен' })}
+          : external
+            /* The dictionary's verb for exactly this moment (docs/features/domains/
+               copy.md §Check again): "ask us to re-read the situation AT ANOTHER
+               COMPANY after the person has said they changed something there". Not
+               `Refresh status` — that is us polling our own half of the work, and
+               putting it here would imply nothing was ever asked of them. */
+            ? t({ en: 'Check again', uk: 'Перевірити ще раз' })
+            : inUse
+              ? t({ en: 'Replace and connect', uk: 'Замінити й підключити' })
+              : t({ en: 'Connect domain', uk: 'Підключити домен' })}
       </button>
     </div>
   )
@@ -371,6 +417,14 @@ export function DomainModal() {
   const buying = domainModal?.kind === 'buy'
   /** The free path: a domain already in this customer's DreamHost account (㉖A/㉖B). */
   const owned = domainModal?.kind === 'connect-owned'
+  /* A domain held at another company. ITERATION 2 — the flow is not built and is not
+     being built here. This kind reached the sheet on 13.09.2026 so that going live
+     would pass the same plan gate as every other door (ExternalScreen used to call
+     `startConnect` itself, which put a custom domain live on an account with no plan).
+     It renders the same body as `owned` with three substitutions — sub-label, verb,
+     destination — because the alternative was a second body for a path nobody has
+     designed yet. */
+  const external = domainModal?.kind === 'connect-external'
   /* Which of the two boards. Not a new axis: `dh-in-use` is the world's own word for
      "this customer's domain currently serves another site" — the same read
      DomainsSurface's OwnScreen makes. */
@@ -423,6 +477,50 @@ export function DomainModal() {
        this sheet is still mounted) and spends it after Submit Order with the same
        `{ bought: false }`. */
     if (owned && !showPlans) {
+      closeDomainModal()
+      closeSurface()
+      startConnect(domain, { bought: false })
+      return
+    }
+
+    /*
+     * ⚠️ THE ORDERING PROBLEM — read this before moving this sheet. ⚠️
+     *
+     * Where this sheet sits in the external flow is not settled, and the two answers
+     * want OPPOSITE behaviour from this branch.
+     *
+     * Board ㉘ puts the sheet BEFORE the records screen: the customer says "connect my
+     * GoDaddy domain", the sheet appears, and only afterwards are they shown the two
+     * records to paste. Our wiring puts it AFTER — the control that opens it is
+     * `I've added them — check now`, at the bottom of ExternalScreen, pressed by
+     * somebody who has already been shown the records and is telling us they pasted
+     * them. Checking, at that moment, is the honest act, and it is the self-attestation
+     * every platform in the field uses; so this branch starts the clock, exactly as the
+     * owned case does. `bought: false` — nothing was registered here.
+     *
+     * IF SOMEBODY MOVES THIS SHEET TO ㉘'s ORDERING, TWO THINGS BREAK, NOT ONE:
+     *
+     *  1. This branch. Starting a connect clock for a domain still parked at GoDaddy,
+     *     before its records have even been shown, is a lie — the verb would have to go
+     *     back to showing instructions (`goDomains('external', domain)`).
+     *  2. THE NO-PLAN BRANCH BELOW, WHICH IS THE ONE EASY TO MISS. It hands off to the
+     *     till, and PanelCart's parking is GENERIC: it parks any sheet-opened domain
+     *     whose cart carries no registration line, then connects it the moment the order
+     *     is submitted (PanelCart.tsx :433-438 and :501-528). Today that is right, because
+     *     the records were pasted before the sheet ever opened. In ㉘'s ordering it would
+     *     connect a domain whose records the customer has never seen — paying for a plan
+     *     would silently start a clock on work nobody has done. PanelCart would have to
+     *     learn the difference between "owned, connect now" and "external, show the
+     *     records first"; it cannot infer it from the cart, because in both cases the
+     *     cart holds the plan and nothing else.
+     *
+     * That second one is a PanelCart change, in a file this sheet does not own.
+     *
+     * So: this branch is byte-identical to the owned one above and MUST NOT be merged
+     * with it. They agree by coincidence of today's wiring, not by nature — the seam is
+     * the whole point, and collapsing it is how the divergence above gets lost.
+     */
+    if (external && !showPlans) {
       closeDomainModal()
       closeSurface()
       startConnect(domain, { bought: false })
@@ -484,7 +582,7 @@ export function DomainModal() {
                Without one it takes the same 600 every plan-bearing sheet takes, because
                it is carrying the same cards. */
             className={`relative -translate-y-1 rounded-[24px] border border-[#ffffff0a] bg-[var(--gray-850)] ${
-              showPlans ? 'w-[600px]' : owned ? 'w-[540px]' : 'w-[560px]'
+              showPlans ? 'w-[600px]' : owned || external ? 'w-[540px]' : 'w-[560px]'
             }`}
             style={{ boxShadow: '0px 24px 28px rgba(0,0,0,0.33)' }}
           >
@@ -498,10 +596,11 @@ export function DomainModal() {
 
             {/* The connect-owned sheet is its own body end to end — the ㉖ boards' item
                 block, the in-use caution, and (without a plan) the shared chooser. */}
-            {owned && (
-              <OwnedBody
+            {(owned || external) && (
+              <ConnectBody
                 domain={domain}
                 inUse={inUse}
+                external={external}
                 showPlans={showPlans}
                 term={term}
                 setTerm={setTerm}
@@ -510,7 +609,7 @@ export function DomainModal() {
             )}
 
             {/* --------------------------------------------------- body card */}
-            {!owned && (
+            {!owned && !external && (
             <div className="px-1.5">
               <div className="rounded-[16px] border border-[#ffffff0a] bg-[#ffffff0a]">
                 {/* -------------------------------------------- domain row */}
@@ -591,7 +690,7 @@ export function DomainModal() {
             )}
 
             {/* ----------------------------------------------- button bar, 72 */}
-            {!owned && (
+            {!owned && !external && (
             <div className="flex items-center justify-end py-4 pl-4 pr-[18px]">
               <button
                 onClick={confirm}

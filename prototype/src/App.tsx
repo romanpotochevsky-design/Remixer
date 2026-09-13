@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useWorld, canUseAI, hasPlan } from '@/state/world'
+import { useWorld, canUseAI, hasPlan, type DomainState } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
@@ -41,6 +41,44 @@ function Glass({ children, className = '' }: { children: React.ReactNode; classN
       {children}
     </div>
   )
+}
+
+/**
+ * WHAT THE DOT ON THE PROJECT CHIP MEANS — the Publish panel's own tones, verbatim
+ * (`StatusCard`, modules/publish/PublishPanel.tsx), so the two never say different things
+ * about the same domain: amber while something is running and there is nothing for the
+ * customer to do, red when it is stuck and needs them, blue when nothing is wrong and
+ * nothing is in flight and the next move is theirs, green when the address answers.
+ *
+ * The chip is the one piece of chrome on screen for the whole set-up, so every state the
+ * panel paints has to reach it. Keyed on `connecting`/`verifying` alone it went blank
+ * through `registering` and `propagating` — together ~11 of the bought walk's 17 seconds
+ * (modules/domains/connect.ts) — and the topbar read as if the flow had stopped.
+ *
+ * ⚠️ `ready` is BLUE and must never wear amber. Nothing is in progress there: the domain
+ * is attached and correct, and the site is one press of Publish from being live. Painting
+ * that like a spinner is precisely what makes a novice sit and wait for a product that is
+ * already waiting for them (states.md's "не ошибку и не спиннер").
+ */
+const DOMAIN_STATUS = {
+  working: { dot: 'bg-[var(--attention)]', note: { en: 'Setting up your domain', uk: 'Домен налаштовується' } },
+  stuck: { dot: 'bg-[var(--danger)]', note: { en: 'Needs your attention', uk: 'Потребує уваги' } },
+  ready: { dot: 'bg-[var(--action)]', note: { en: 'Ready to publish', uk: 'Готово до публікації' } },
+  live: { dot: 'bg-[var(--live)]', note: { en: 'Live', uk: 'Онлайн' } },
+} as const
+
+function domainStatus(d: DomainState): keyof typeof DOMAIN_STATUS | null {
+  switch (d) {
+    /* both walks: the registry, the world, our records, the padlock — in flight, and
+       nothing the customer can do about any of them */
+    case 'registering': case 'propagating': case 'connecting': case 'verifying': return 'working'
+    case 'ready': return 'ready'
+    case 'old-site': case 'unreachable': return 'stuck'
+    case 'live': case 'multiple': return 'live'
+    /* staging · searching · checkout — the project still has only its free address, and
+       there is no domain to report on yet */
+    default: return null
+  }
 }
 
 const RAIL = [
@@ -184,6 +222,9 @@ export default function App() {
     world.domain === 'live' || world.domain === 'multiple'
       ? world.customDomain || CUSTOM_DOMAIN
       : STAGING_HOST
+
+  /** …and HOW that address is doing, in the Publish panel's tones. See DOMAIN_STATUS. */
+  const status = domainStatus(world.domain)
 
   /* "Update" only means something once the site is live: it is the word for pushing
      edits out to visitors who already have the old version. A site that has never been
@@ -347,20 +388,23 @@ export default function App() {
 
           {/* center: project button, 280×40 — the live address in permanent chrome */}
           <button
-            onClick={() => (world.domain === 'connecting' || world.domain === 'verifying'
-              /* mid-connection the chip opens the panel that reports it, not the
-                 domains window — there is no status page any more */
+            onClick={() => (status && status !== 'live'
+              /* Every state the dot marks except a working address is reported BY the
+                 Publish panel, in its own card with its own way out — in flight, waiting
+                 on the first press (`ready`), or stuck. So the chip opens that panel, not
+                 the domains window; there is no status page any more. A live address has
+                 nothing left to report, so it goes back to the domains dashboard. */
               ? togglePublish(true)
               : openDomains('home'))}
+            title={status ? t(DOMAIN_STATUS[status].note) : undefined}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
             <span className="flex min-w-0 items-center gap-2">
               <span className="grid h-6 w-6 flex-none place-items-center text-[var(--white-400)]">
                 <IconGrid size={22} />
               </span>
-              {world.domain === 'live' && <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--live)]" aria-hidden />}
-              {(world.domain === 'connecting' || world.domain === 'verifying') && (
-                <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--attention)]" aria-hidden />
+              {status && (
+                <span className={`h-1.5 w-1.5 flex-none rounded-full ${DOMAIN_STATUS[status].dot}`} aria-hidden />
               )}
               <span className="truncate text-[15px] font-semibold leading-[1.4]">{address}</span>
             </span>
