@@ -424,8 +424,8 @@ export const FLOWS: Flow[] = [
       { id: 'live', label: { en: 'Published — and one card is still up', uk: 'Опубліковано — і одна картка ще лишилася' },
         patch: { domain: 'live', published: true, unpublished: 0 }, view: { publish: true }, awaitUser: true,
         note: {
-          en: 'Only a bought name ever gets it: until the person who registered it answers, the registrar can switch the name off. So it has its own way out, and the panel holds back its all-clear — no green tag, no "anyone can visit" — while it is up.',
-          uk: 'Її отримує лише куплене ім’я: доки не відповість той, хто його зареєстрував, реєстратор може ім’я вимкнути. Тож у картки свій вихід, а панель тримає остаточне «все гаразд» — ні зеленої позначки, ні «доступно всім», — поки картка тут.',
+          en: 'Only a bought name ever gets it: the registrar has to hear back from the person who registered it, and until it does the panel holds back its all-clear — no green tag, no "anyone can visit". The card carries its own way out, and so does the letter beside it.',
+          uk: 'Її отримує лише куплене ім’я: реєстратор має почути відповідь від того, хто його зареєстрував, і доки не почує, панель тримає остаточне «все гаразд» — ні зеленої позначки, ні «доступно всім». У картки є свій вихід, і в листа поруч теж.',
         } },
       { id: 'confirmed', label: { en: 'Confirmed — and the panel gives its all-clear', uk: 'Підтверджено — і панель дає остаточне «все гаразд»' },
         patch: { icann: false }, view: { publish: true }, awaitUser: true,
@@ -471,11 +471,11 @@ export const FLOWS: Flow[] = [
       uk: 'Сайт, який уже живий, і чотири правки, яких відвідувачі ще не бачили. Панель Publish показує адресу і скільки їх у черзі; одне натискання — і вони виходять. Публікація не витрачає кредитів.',
     },
     /* Live in front of a site that was never published is a contradiction the console
-       flags in red (world.violations) — this flow is about a site that IS out. */
-    /* `icann: false` is not decoration either: the domain axis is live here, so the store's
-       own tidy-up (which clears that clock whenever the project falls back to its free
-       address) never fires — and a registrant-email card left over from the bought walk
-       would sit in this panel over a domain nobody registered tonight. */
+       flags in red (world.violations) — this flow is about a site that IS out.
+       And `icann: false` is not decoration either: the domain axis is live here, so the
+       store's own tidy-up (which clears that clock whenever the project falls back to its
+       free address) never fires — and a registrant-email card left over from the bought
+       walk would sit in this panel over a domain nobody registered tonight. */
     setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', customDomain: DH_OWNED, icann: false, unpublished: 4, published: true, cart: [] },
     steps: [
       { id: 'panel', label: { en: 'The Publish panel is open over the builder', uk: 'Над білдером відкрито панель Publish' },

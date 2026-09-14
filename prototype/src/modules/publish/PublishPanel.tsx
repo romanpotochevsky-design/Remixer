@@ -67,30 +67,37 @@ const STAGING_SUFFIX = STAGING_DOT > 0 ? STAGING_HOST.slice(STAGING_DOT) : ''
 const RESEND_COOLDOWN_MS = 9000
 
 /**
- * "Update · 1 change", not "1 changes".
+ * "1 unpublished change", not "1 changes" — the button bar's own line (Figma 28071:53189,
+ * which writes the singular correctly at n=1).
  *
- * ⚠️ UKRAINIAN HAS THREE FORMS and the middle one is the trap: 1 зміна · 2–4 зміни ·
- * 5+ змін, with the teens taking the last however they end (11 is `змін`, not `зміна`).
- * Same rule the scenario console spells out for its own summary line (`edits`,
- * state/scenarios.ts) — a second copy of the RULE, not of the string: that sentence is a
- * description ("3 unpublished changes"), this one is a button. The day a third caller
- * appears the rule wants one home; two is where that starts.
+ * ⚠️ UKRAINIAN HAS THREE FORMS and the middle one is the trap: 1 неопублікована зміна ·
+ * 2–4 неопубліковані зміни · 5+ неопублікованих змін, with the teens taking the last
+ * however they end (11 is `змін`, not `зміна`) — and the ADJECTIVE moves with the noun,
+ * so the three forms are three pairs, not one word with three endings.
  *
- * The label used to read `Оновити · змін: N`, which dodges agreement by making the noun
- * a genitive heading rather than a counted thing. That is not wrong Ukrainian — it is a
- * different sentence from the English beside it, and the English one said "1 changes",
- * at the count this panel shows more often than any other.
+ * ⚠️ THIS IS NOW THE SAME SENTENCE AS `edits` IN state/scenarios.ts, not merely the same
+ * rule. It was the same rule before, and the comment here argued that two copies of a
+ * rule were tolerable because the two sentences differed — a description in the console
+ * against a button label. The board has made them identical, so that argument is spent:
+ * the pair wants one home, in a shared module, and the console's copy is the one that
+ * should move (a product string cannot import from devtools). Raised, not done — this
+ * file is the only one this commit may touch.
+ *
+ * The label it replaced read `Update · N changes` / `Оновити · змін: N`, which dodged
+ * agreement by making the Ukrainian noun a genitive heading rather than a counted thing.
+ * That is not wrong Ukrainian — it is a different sentence from the English beside it,
+ * and the English one said "1 changes", at the count this panel shows most often.
  */
 const changeCount = (n: number) => {
   const ones = n % 10
   const tens = n % 100
   const uk =
     ones === 1 && tens !== 11
-      ? 'зміна'
+      ? 'неопублікована зміна'
       : ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)
-        ? 'зміни'
-        : 'змін'
-  return { en: `${n} ${n === 1 ? 'change' : 'changes'}`, uk: `${n} ${uk}` }
+        ? 'неопубліковані зміни'
+        : 'неопублікованих змін'
+  return { en: `${n} unpublished ${n === 1 ? 'change' : 'changes'}`, uk: `${n} ${uk}` }
 }
 
 /**
@@ -617,17 +624,29 @@ export function PublishPanel() {
    */
   const settleLabel = settling && !publishes
   const edits = changeCount(world.unpublished)
+  /*
+   * The one state the board draws: a site that is live and holding edits. It is also the
+   * only state whose button publishes EDITS rather than the site, so the count line and
+   * the verb are one decision — a count beside a button reading "Publish" would be
+   * counting something the press does not do.
+   */
+  const publishesChanges = publishes && !ready && world.published
   const primary = settleLabel
     ? { en: 'Published', uk: 'Опубліковано' }
     : !publishes
       ? { en: 'Keep editing', uk: 'Далі редагувати' }
-      /* "Update" means "push edits out to visitors who already have the old version", so
-         it needs an old version to exist AT THIS ADDRESS. At `ready` none does, whatever
-         the site did on its free address before — this press is the first publish onto
-         the domain, and the word for that is Publish. */
-      : ready || !world.published
-        ? { en: 'Publish', uk: 'Опублікувати' }
-        : { en: `Update · ${edits.en}`, uk: `Оновити · ${edits.uk}` }
+      /* ⚠️ THE COUNT IS NOT IN THE LABEL (Figma 28071:53189). The board puts it on its
+         own line at the far left of this bar and leaves the button a plain verb phrase —
+         see the bar below. A button that carries its own subtotal has to be re-read every
+         time the number moves; a line beside it can be glanced at and ignored.
+         ⚠️ AND THE BOARD'S VERB IS `Publish changes`, NOT `Update`. Flagged, not settled:
+         the topbar's own button says "Update" in this exact situation (App.tsx), and the
+         audit's verb table reads `Publish/Update = переопубликовать`. Two surfaces now
+         name one action differently, which is a defect wherever it lands — but the board
+         is the designer's drawing and this file is the one he pointed at. */
+      : publishesChanges
+        ? { en: 'Publish changes', uk: 'Опублікувати зміни' }
+        : { en: 'Publish', uk: 'Опублікувати' }
 
   return (
     <AnimatePresence>
@@ -1175,7 +1194,31 @@ export function PublishPanel() {
               that pressed it, so the second half of a double-click dismissed the panel
               and the payoff was never seen at all (gate, 14.09.2026). While `settling`
               the button holds the result instead — see PUBLISH_SETTLE_MS. */}
-          <div className="flex items-center justify-end px-4 py-4">
+          {/*
+            * ⚠️ THE COUNT IS A LINE IN THIS BAR, far left, on the button's own baseline
+            * (Figma 28071:53189): 12px regular `#c7ccd6` behind an 8px `--action` dot at
+            * a 6px gap, then a spacer, then the button. The board's metrics are the bar's:
+            * pl 24 / pr 16, content height 40 — which is the button's own height, so the
+            * bar's py 16 is untouched and nothing below the card moves.
+            *
+            * `#c7ccd6` is a literal because it is not one of ours: the panel's greys are
+            * white-alpha (`--white-400/500`) over `gray-850`, and this is an opaque cool
+            * grey with a blue cast. Close to `--white-700` and not equal to it. Shipped as
+            * drawn and flagged rather than snapped to the nearest token, which is how a
+            * board's colour quietly becomes a different colour.
+            *
+            * ⚠️ AND THE BOARD DRAWS ONLY THIS STATE. There is no drawn treatment for zero
+            * changes, so there is none here — the line is simply absent, and no
+            * "everything is published" sentence was invented to fill the space.
+            */}
+          <div className="flex items-center justify-end py-4 pl-6 pr-4">
+            {publishesChanges && (
+              <span className="flex items-center gap-1.5 text-[12px] leading-[1.4] text-[#c7ccd6]">
+                <span className="h-2 w-2 flex-none rounded-full bg-[var(--action)]" aria-hidden />
+                {t(edits)}
+              </span>
+            )}
+            <span className="flex-1" />
             <button
               onClick={() => {
                 if (publishes) return publishNow()
