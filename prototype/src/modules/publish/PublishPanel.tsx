@@ -39,7 +39,7 @@ import { useWorld, hasPlan, isCustomDomainActive, type World } from '@/state/wor
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
-import { IconPlus, IconClose, IconCopy, IconUnlink } from '@/ui/icons'
+import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
 import { popover, popoverContent } from '@/ui/motion'
@@ -280,52 +280,35 @@ function UrlField({ value, suffix }: { value: string; suffix?: string }) {
     } catch { setCopied('fail') }
   }
   return (
-    <div className="w-full rounded-[12px] shadow-[inset_0_0_0_1px_var(--white-200)]">
-      <div className="flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 pr-2">
-        <p className="min-w-0 truncate text-[15px]">
-          <span className="text-[var(--white-900)]">{value}</span>
-          {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
-        </p>
-        <button
-          onClick={copy}
-          title={t({ en: 'Copy the address', uk: 'Скопіювати адресу' })}
-          aria-label={t({ en: 'Copy the address', uk: 'Скопіювати адресу' })}
-          className="press-bloom ml-2 flex h-8 flex-none items-center gap-1.5 rounded-[8px] px-2 text-[12px] font-medium text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
-        >
-          <IconCopy size={16} />
-          {copied && (
-            <span>
-              {copied === 'ok'
-                ? t({ en: 'Copied', uk: 'Скопійовано' })
-                : t({ en: 'Copy it by hand', uk: 'Скопіюйте вручну' })}
-            </span>
-          )}
-        </button>
-      </div>
+    /* Board 30282:53241: a 48-tall field with a `White/200` rim at radius 12 and NO fill —
+       the card's own 4% white is the surface. pl 16 / pr 8, the address at 15px. */
+    <div className="flex h-12 items-center justify-between rounded-[12px] py-1 pl-4 pr-2 shadow-[inset_0_0_0_1px_var(--white-200)]">
+      <p className="min-w-0 truncate text-[15px]">
+        <span className="text-[var(--white-900)]">{value}</span>
+        {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
+      </p>
+      {/* The board's Icon button: a 32 box around a 24 glyph, radius 8, no label. The
+          answer to a press is the glyph itself — a tick when the clipboard took it, the
+          copy mark again a beat later. A word beside it would widen the box the board
+          draws, and this control has one job. */}
+      <button
+        onClick={copy}
+        title={copied === 'fail'
+          ? t({ en: 'Copy it by hand', uk: 'Скопіюйте вручну' })
+          : copied
+            ? t({ en: 'Copied', uk: 'Скопійовано' })
+            : t({ en: 'Copy the address', uk: 'Скопіювати адресу' })}
+        aria-label={t({ en: 'Copy the address', uk: 'Скопіювати адресу' })}
+        className={`press-bloom grid h-8 w-8 flex-none place-items-center rounded-[8px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] ${
+          copied === 'ok' ? 'text-[var(--live)]' : copied === 'fail' ? 'text-[var(--attention)]' : 'text-[var(--white-500)] hover:text-white'
+        }`}
+      >
+        {copied === 'ok' ? <IconCheck size={24} /> : <IconCopy size={24} />}
+      </button>
     </div>
   )
 }
 
-/**
- * One state of the connection, as a card (designer's six states, 13.09.2026).
- *
- * Three tones, and the tone is the claim:
- *  · amber — in flight, and we are telling you so. Nothing is wrong.
- *  · red   — stuck, and it needs you.
- *  · blue  — nothing is wrong AND nothing is in flight: everything is set up and the
- *            next move is the customer's. `ready` is the only one, and it must not wear
- *            amber (states.md: "не ошибку и не спиннер"). Blue is this project's colour
- *            for an action, which is exactly what the state is.
- *
- * ⚠️ EVERY NON-TERMINAL STATE CARRIES ITS OWN WAY OUT — the designer's note on the failed
- * state, and the reason the old panel's single "Refresh status" button is gone: a generic
- * refresh cannot resend a confirmation email, and a state that needs nothing from the
- * customer ("nothing for you to do") must not offer a button that implies it does.
- *
- * The title WRAPS rather than truncating. It used to be one truncated line, which was
- * fine while every title was a bare domain; the states below are sentences ("{domain} is
- * ready — publish to put your site on it"), and half a sentence is worse than two lines.
- */
 /**
  * THE IN-FLIGHT CARD — board 30282:54233, the connecting state, pixel for pixel.
  *
@@ -352,7 +335,11 @@ function ProgressCard({ title, sub }: { title: string; sub: string }) {
             <circle cx="12" cy="12" r="8" stroke="var(--white-200)" strokeWidth="1.8" />
             <path
               d="M12 4a8 8 0 0 1 8 8"
-              stroke="var(--white-700)" strokeWidth="1.8" strokeLinecap="round"
+              /* ⚠️ THE MOVING ARC IS `--action` #1587FF (designer, 14.09.2026: "я хочу
+                 чтобы цвет в спинере был синий вот такой 1587FF"). Blue is this product's
+                 colour for something happening; the ring behind it stays neutral so the
+                 arc is the only thing the eye follows. */
+              stroke="var(--action)" strokeWidth="1.8" strokeLinecap="round"
               className="step-spin"
             />
           </svg>
@@ -762,9 +749,17 @@ export function PublishPanel() {
                   ATTACHED does not count: one that is connecting, or `ready` and waiting
                   for the first press, stands in front of nothing, and titling that panel
                   "Publish" would hide the very thing it is there to say. */}
-              {world.published || liveish
-                ? t({ en: 'Publish', uk: 'Публікація' })
-                : t({ en: 'Not published', uk: 'Не опубліковано' })}
+              {/* ⚠️ AND THE THIRD TITLE IS `Published` (board 30282:53241, and the designer
+                  said it in words: "если изменения новых нет, то заголовок окна пишет
+                  Published"). Three states, three answers: nothing has ever gone out
+                  ("Not published"), something is waiting ("Publish"), everything that was
+                  made is out there ("Published"). The middle one is the action, the other
+                  two are the status — which is why this heading changes word class. */}
+              {!world.published && !liveish
+                ? t({ en: 'Not published', uk: 'Не опубліковано' })
+                : canPublish(world)
+                  ? t({ en: 'Publish', uk: 'Публікація' })
+                  : t({ en: 'Published', uk: 'Опубліковано' })}
             </h3>
           </div>
 
@@ -774,7 +769,10 @@ export function PublishPanel() {
                 hairline. The nudge and the fields are two children 8px apart; the padding
                 that used to be on this card now belongs to the fields' own container, so
                 the banner can sit inset 8px on its own. */}
-            <div className="flex flex-col gap-2 rounded-[16px] bg-[#ffffff0a] shadow-[inset_0_0_0_1px_#ffffff0a]">
+            {/* ⚠️ NO GAP between the children (board 30282:53241): the field block's own
+                pb 16 is the whole distance down to the domain card. The nudge keeps the 8px
+                inset it had by carrying it itself (`px-2 pt-2 pb-2` on the banner). */}
+            <div className="flex flex-col rounded-[16px] bg-[#ffffff0a] shadow-[inset_0_0_0_1px_#ffffff0a]">
             {/* ------------------------------------------------ the nudge, 29697:37264 */}
             <AnimatePresence initial={false}>
               {!world.published && !attached && publishHintOpen && (
@@ -786,7 +784,7 @@ export function PublishPanel() {
                   initial={false}
                   exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
                   transition={{ duration: 0.16, ease: [0.4, 0, 1, 1] }}
-                  className="px-2 pt-2"
+                  className="px-2 pb-2 pt-2"
                 >
                   <div className="relative flex h-[120px] items-center overflow-hidden rounded-[12px] bg-[var(--gray-900)] px-6 shadow-[inset_0_0_0_1px_#ffffff0a]">
                     {/* the brand's dot field, dying out to the left — index.css */}
@@ -866,7 +864,7 @@ export function PublishPanel() {
             <div className="px-4 pb-4 pt-[19px]">
               {/* website URL */}
               <div className="flex flex-col gap-[7px]">
-                <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
+                <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-560)]">
                   {t({ en: 'Website URL', uk: 'Адреса сайту' })}
                 </p>
                 {/*
@@ -911,20 +909,6 @@ export function PublishPanel() {
                 * What survives is the half that is true and that the success checklist
                 * promises — the padlock.
                 */}
-              {settled && (
-                <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
-                  <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
-                    {t({ en: 'Secure padlock on', uk: 'Замок увімкнено' })}
-                  </p>
-                  <button
-                    onClick={unlinkDomain}
-                    className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[#f57c00] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#f57c0014]"
-                  >
-                    {t({ en: 'Unlink', uk: 'Відв’язати' })}
-                    <IconUnlink size={20} />
-                  </button>
-                </div>
-              )}
 
 
               {/* ------------------------------------------------- the state card
@@ -1257,6 +1241,23 @@ export function PublishPanel() {
               )}
             </div>
             </div>
+            {/* ⚠️ A SIBLING OF THE FIELD BLOCK, not a child of it (board 30282:53241):
+                the Text Input block carries px 16, this card does not — so it spans the
+                body card's full 420 while the field inside sits at 388. */}
+            {settled && (
+              <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
+                <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
+                  {t({ en: 'Secure padlock on', uk: 'Замок увімкнено' })}
+                </p>
+                <button
+                  onClick={unlinkDomain}
+                  className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[#f57c00] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#f57c0014]"
+                >
+                  {t({ en: 'Unlink', uk: 'Відв’язати' })}
+                  <IconUnlink size={20} />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ---------------------------------------------------------- button bar */}

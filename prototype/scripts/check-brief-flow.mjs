@@ -1761,6 +1761,7 @@ check('…and the typed prompt is built as given', await cardUp())
       insetTop: +(cb.top - bb.top).toFixed(1), gap: getComputedStyle(card).gap,
       para: w(para), lines: Math.round(para.getBoundingClientRect().height / parseFloat(getComputedStyle(para).lineHeight)),
       fill: getComputedStyle(banner).backgroundColor, radius: getComputedStyle(banner).borderRadius,
+      bannerPad: getComputedStyle(banner.parentElement).padding,
     }
   })
   check('the panel is the board’s 432 with a 420 card and a 404 × 120 banner',
@@ -1768,8 +1769,11 @@ check('…and the typed prompt is built as given', await cardUp())
   check('the ✕ is 32 at radius 10, inset 8 from the banner’s corner',
     box.close === 32 && box.insetRight === 8 && box.insetTop === 8, `${box.close} / ${box.insetRight} / ${box.insetTop}`)
   check('the copy fills the column the 432 panel gives it', box.para === 276, `${box.para}px / ${box.lines} lines`)
-  check('the banner is gray-900 at radius 12, 8px under the card’s other child',
-    box.fill === 'rgb(24, 24, 27)' && box.radius === '12px' && box.gap === '8px', JSON.stringify([box.fill, box.radius, box.gap]))
+  /* ⚠️ The 8px no longer comes from a gap on the card — board 30282:53241 has its children
+     flush and the field block's own pb 16 is the whole distance — so the banner carries its
+     own inset instead (`p-2` on its wrapper). Same pixels, different owner. */
+  check('the banner is gray-900 at radius 12, inset 8 inside the card',
+    box.fill === 'rgb(24, 24, 27)' && box.radius === '12px' && box.bannerPad === '8px', JSON.stringify([box.fill, box.radius, box.bannerPad]))
   /* the ✕ takes it down — and nothing else moves */
   const wide = box.panel
   await p.click('[role="dialog"] [aria-label="Dismiss"]')
@@ -1783,8 +1787,10 @@ check('…and the typed prompt is built as given', await cardUp())
   await p.click('[role="dialog"] button:has-text("Publish")')
   await p.waitForTimeout(500)
   await shot('23-publish-done')
+  /* ⚠️ `Published`, not `Publish` (designer, 14.09.2026; board 30282:53241): the press just
+     emptied the queue, so the heading is the status, not the action. */
   check('publishing retitles the panel and leaves no nudge',
-    (await title()) === 'Publish' && !(await hint()), await title())
+    (await title()) === 'Published' && !(await hint()), await title())
 
   /* the negative: a site that has been published gets neither, banner state or not */
   await openPublish('p=built&u=3&v=true&a=trial&t=22&c=640')

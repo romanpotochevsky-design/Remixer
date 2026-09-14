@@ -777,12 +777,21 @@ export default function App() {
                   ? t({ en: 'Nothing to publish yet', uk: 'Публікувати поки нічого' })
                   : undefined
               }
+              /*
+               * ⚠️ AND THE IDLE FACE IS GLASS, NOT A DIM PLATE — board 30289:56116, which
+               * the designer measured for me (14.09.2026): fill `White/200`, a WHITE label,
+               * and a rim that is a diagonal gradient, 12% → 4% → 8%. Not the greyed-out
+               * pair the empty project wears: there is nothing wrong with a site that has
+               * nothing queued, so the button rests rather than switching off. The greyed
+               * pair still belongs to `project !== 'built'`, where the press genuinely
+               * cannot work.
+               */
               className={`h-9 rounded-[10px] px-4 text-[13px] font-semibold leading-[1.4] transition-colors duration-[var(--dur-fast)] ease-std ${
                 world.project !== 'built'
                   ? 'cursor-not-allowed bg-[var(--white-100)] text-[#ffffff3d]'
                   : canPublish(world)
                     ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
-                    : 'bg-[var(--white-100)] text-[#ffffff3d] hover:bg-[var(--white-200)]'
+                    : 'liquid-glass liquid-glass--publish glass-interactive text-white'
               }`}
             >
               {t(publishLabel)}

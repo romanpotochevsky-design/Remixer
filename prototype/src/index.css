@@ -1010,6 +1010,24 @@
     background: linear-gradient(to bottom right, #ffffff1f 0%, #ffffff0a 50%, #ffffff14 100%);
   }
 
+  /*
+   * THE TOPBAR'S PUBLISH WITH NOTHING TO PUBLISH — board 30289:56116, and the designer's
+   * own reading of it (14.09.2026: "она типа с имитацией Liquid glass как у Apple, сделай
+   * параметры бордера точно такими же… градиент наискось").
+   *
+   * ⚠️ IT IS NOT A FIFTH GLASS. His screenshot of the stroke reads 0% FFFFFF 12% · 50%
+   * FFFFFF 4% · 100% FFFFFF 8% on the diagonal — which is `--dim`'s rim to the digit, so
+   * this modifier borrows it rather than writing a fourth set of numbers into the canon.
+   * All that differs is the fill: `White/200` (12% white) where `--dim` sits on Black/500,
+   * because this one rides on the topbar rather than floating over the canvas.
+   */
+  .liquid-glass--publish {
+    background: var(--white-200);
+  }
+  .liquid-glass--publish::before {
+    background: linear-gradient(to bottom right, #ffffff1f 0%, #ffffff0a 50%, #ffffff14 100%);
+  }
+
   /* ---- interaction states (see the block comment above) ---- */
 
   .glass-interactive,
