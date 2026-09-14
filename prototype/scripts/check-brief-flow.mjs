@@ -1211,7 +1211,7 @@ check('…and is still at its end after the canvas opens and re-wraps it',
   /* the toolbar is back, because the site is — and the balance is on it again */
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
   check('Publish comes alive once the site exists',
-    !(await p.$eval('button:has-text("Update"), button:has-text("Publish")', (el) => el.disabled)))
+    !(await p.$eval('header button:has-text("Publish")', (el) => el.disabled)))
   /*
    * ONE DIRECTION per place, Lovable's arrangement and the designer's call (07.09.2026):
    * hiding the canvas is a control ON the canvas, and the chat header only carries the
@@ -1711,7 +1711,7 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.click('.home-card-face')
     await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 15000 })
     await p.waitForTimeout(400)
-    await p.click('header button:has-text("Publish"), header button:has-text("Update")')
+    await p.click('header button:has-text("Publish")')
     await p.waitForTimeout(600)
   }
   const panel = () => p.$('[role="dialog"][aria-label="Publish"]')
@@ -1787,8 +1787,11 @@ check('…and the typed prompt is built as given', await cardUp())
   await openPublish('p=built&u=3&v=true&a=trial&t=22&c=640')
   check('a published site’s panel is titled by the action', (await title()) === 'Publish', await title())
   check('…and never shows the nudge', !(await hint()))
-  check('…and its topbar button says Update with the pending count',
-    !!(await p.$('header button:has-text("Update")')))
+  /* ONE VERB in both places (designer, 14.09.2026): the topbar says what the panel's
+     own button says, and the count rides beside it. "Update" is gone from the product. */
+  check('…and its topbar button says Publish changes with the pending count',
+    !!(await p.$('header button:has-text("Publish changes")')) &&
+      !(await p.$('header button:has-text("Update")')))
   await p.keyboard.press('Escape')
   await p.waitForTimeout(400)   // it leaves on the popover's own exit, not instantly
   check('the panel closes on Escape', !(await panel()))

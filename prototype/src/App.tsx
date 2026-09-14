@@ -529,13 +529,20 @@ export default function App() {
   /** …and HOW that address is doing, in the Publish panel's tones. See DOMAIN_STATUS. */
   const status = domainStatus(world)
 
-  /* "Update" only means something once the site is live: it is the word for pushing
-     edits out to visitors who already have the old version. A site that has never been
-     published just says Publish, and carries no pending-change count either — the count
-     answers "how far behind is what people see", which has no answer yet. */
+  /*
+   * ONE ACTION, ONE VERB — "Publish changes", the same words the panel's own button
+   * carries (Figma 28071:53189). This button said "Update" until the designer settled
+   * it on 14.09.2026: pushing edits to visitors who already have the old version is one
+   * action, and it was named differently in the topbar and in the panel that the topbar
+   * opens. The audit's verb table allows either word; a product cannot afford both.
+   *
+   * The phrase only applies once the site is live — a site that has never been published
+   * just says "Publish", and carries no pending-change count either, because the count
+   * answers "how far behind is what people see", which has no answer yet.
+   */
   const publishLabel =
     world.published && world.unpublished > 0
-      ? { en: 'Update', uk: 'Оновити' }
+      ? { en: 'Publish changes', uk: 'Опублікувати зміни' }
       : { en: 'Publish', uk: 'Опублікувати' }
 
   return (

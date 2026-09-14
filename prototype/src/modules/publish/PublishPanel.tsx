@@ -628,11 +628,11 @@ export function PublishPanel() {
          own line at the far left of this bar and leaves the button a plain verb phrase —
          see the bar below. A button that carries its own subtotal has to be re-read every
          time the number moves; a line beside it can be glanced at and ignored.
-         ⚠️ AND THE BOARD'S VERB IS `Publish changes`, NOT `Update`. Flagged, not settled:
-         the topbar's own button says "Update" in this exact situation (App.tsx), and the
-         audit's verb table reads `Publish/Update = переопубликовать`. Two surfaces now
-         name one action differently, which is a defect wherever it lands — but the board
-         is the designer's drawing and this file is the one he pointed at. */
+         ⚠️ AND THE BOARD'S VERB IS `Publish changes`, NOT `Update` — SETTLED 14.09.2026.
+         The topbar said "Update" in this exact situation, so one action was named two
+         ways across two surfaces (the audit's verb table allows either). The designer
+         chose the board's phrase for both: App.tsx now says "Publish changes" too, and
+         "Update" is gone from the product. */
       : publishesChanges
         ? { en: 'Publish changes', uk: 'Опублікувати зміни' }
         : { en: 'Publish', uk: 'Опублікувати' }

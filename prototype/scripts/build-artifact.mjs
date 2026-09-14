@@ -188,6 +188,8 @@ writeFileSync(OUT, page)
 /*
  * The largest page this host has actually accepted, in bytes — a FLOOR on the limit, never
  * the limit itself, which is why the line below reports headroom rather than a verdict.
+ * 973,036 went through on 14.09.2026 as version 54 — 30 bytes over the floor this line
+ * carried an hour earlier, which this script duly called "0.0 KB over".
  * 973,006 went through on 14.09.2026 as version 53 — and this script had just called it
  * "27.4 KB over the largest page the host has accepted". Sixth time the verdict was
  * wrong and the file published anyway; 944,983 was the standing floor before it.
@@ -207,7 +209,7 @@ writeFileSync(OUT, page)
  * why "fonts embedded" still counts 4. They arrive pre-subset to the single line each one
  * draws, so there is nothing left to trim — see src/fonts/OFL.txt.
  */
-const CEILING = 973_006
+const CEILING = 973_036
 const bytes = Buffer.byteLength(page)
 console.log(`fonts embedded: ${embedded} — ${GLYPHS.length} glyphs kept`)
 console.log(`  ${subsetReport.join(' · ')}`)
