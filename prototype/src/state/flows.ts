@@ -303,7 +303,7 @@ export const FLOWS: Flow[] = [
         patch: { domain: 'connecting' }, view: { surface: 'preview', modal: null, publish: true }, ms: 2600,
         note: { en: 'Nothing is asked of the customer, and the site stays reachable on its free address throughout. The dot beside the address turns amber.', uk: 'Від клієнта нічого не потрібно, і сайт увесь цей час доступний за безкоштовною адресою. Крапка біля адреси стає бурштиновою.' } },
       { id: 'ssl', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2200,
-        note: { en: 'The last wait, and it can only begin once the address answers here. Nothing is asked of the customer.', uk: 'Останнє очікування, і воно починається лише тоді, коли адреса вже відповідає тут. Від клієнта нічого не потрібно.' } },
+        note: { en: 'The last wait, and it can only begin once the address points here. Nothing is asked of the customer.', uk: 'Останнє очікування, і воно починається лише тоді, коли адреса вже вказує сюди. Від клієнта нічого не потрібно.' } },
       { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 900,
         note: { en: 'The topbar now shows their own name with a green dot, and the panel says the padlock is on and anyone can visit', uk: 'У верхній панелі тепер їхнє власне ім’я із зеленою крапкою, а панель каже, що замок увімкнено і сайт доступний усім' } },
       { id: 'done', label: { en: 'Done — one screen, nothing to paste, no second tab', uk: 'Готово — один екран, нічого вставляти, жодної другої вкладки' }, awaitUser: true,
@@ -354,11 +354,11 @@ export const FLOWS: Flow[] = [
           en: 'Best match at the top, in the ending they asked for, with both figures on the card. The renewal is never the small print: a first-year price on its own is the pattern this product refuses.',
           uk: 'Найкращий збіг угорі, у тому домені, який просили, і обидві суми на картці. Ціна продовження ніколи не дрібним шрифтом: сума лише за перший рік — це прийом, від якого продукт відмовляється.',
         } },
-      { id: 'sheet', label: { en: 'The checkout sheet — the name, the term, the total', uk: 'Аркуш оплати — ім’я, строк, сума' },
+      { id: 'sheet', label: { en: 'The checkout sheet — the price and the renewal, side by side', uk: 'Аркуш оплати — ціна і продовження поруч' },
         view: { modal: 'buy', domain: BUY_NAME }, ms: 3400,
         note: {
-          en: 'The name, what it costs and what it renews at, over the shortest term that ending is actually sold for. Nothing has been charged: the next press leaves Remixer altogether.',
-          uk: 'Ім’я, його ціна і ціна продовження — на найкоротший строк, на який цей домен узагалі продається. Нічого ще не списано: наступне натискання виводить із Remixer.',
+          en: 'What the first year costs and what it will cost every year after, on one card. Nothing has been charged: the next press leaves Remixer altogether.',
+          uk: 'Скільки коштує перший рік і скільки коштуватиме кожен наступний — на одній картці. Нічого ще не списано: наступне натискання виводить із Remixer.',
         } },
       /*
        * The seam, and the prototype shows it rather than papering over it: buying anything
@@ -392,8 +392,8 @@ export const FLOWS: Flow[] = [
       { id: 'padlock', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' },
         patch: { domain: 'verifying' }, ms: 2600,
         note: {
-          en: 'The last wait, and it cannot start earlier: the padlock is issued for an address that already answers here. Still nothing for the customer to do.',
-          uk: 'Останнє очікування, і раніше воно початися не може: замок видають на адресу, яка вже відповідає тут. Від клієнта й далі нічого не потрібно.',
+          en: 'The last wait, and it cannot start earlier — a padlock is only issued for an address that already points here. Still nothing for the customer to do.',
+          uk: 'Останнє очікування, і раніше воно початися не може: замок видають лише на адресу, яка вже вказує сюди. Від клієнта й далі нічого не потрібно.',
         } },
       /*
        * `ready`, and the one state in this walk that is a person's move rather than a wait.
@@ -514,7 +514,7 @@ export const FLOWS: Flow[] = [
       { id: 'saved', label: { en: 'Saved — the domain is now connecting', uk: 'Збережено — домен підключається' },
         patch: { domain: 'connecting' }, view: { surface: 'preview', modal: null, publish: true }, ms: 3400,
         note: { en: 'It persists: the customer can close the tab and this carries on without them. The wait is longer than for a name already at DreamHost, because the change has to travel from the other company.', uk: 'Це зберігається: можна закрити вкладку — і все триває без них. Очікування довше, ніж для імені, яке вже в DreamHost: зміна має пройти шлях від іншої компанії.' } },
-      { id: 'verifying', label: { en: 'The address answers here — the secure padlock switches on', uk: 'Адреса вже відповідає тут — вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2600 },
+      { id: 'verifying', label: { en: 'The address points here now — the secure padlock switches on', uk: 'Адреса вже вказує сюди — вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2600 },
       { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 1200 },
       { id: 'done', label: { en: 'Done — the name never left the other company', uk: 'Готово — ім’я нікуди не переїжджало' }, awaitUser: true,
         note: { en: 'Only where it points has changed. Nothing was transferred and nothing was bought.', uk: 'Змінилося лише те, куди воно вказує. Нічого не переносили і нічого не купували.' } },

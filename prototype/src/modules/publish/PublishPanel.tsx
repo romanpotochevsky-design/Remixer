@@ -118,7 +118,7 @@ const PUBLISH_FRESH_MS = 60000
  * The designer's rule, 14.09.2026: «мы убираем первый домен и вместо него вставляем
  * кастомный, только тогда, когда кастомный домен уже привязан». The field keeps the free
  * *.remixer.ai address for the WHOLE of the connection walk and swaps to the customer's
- * own name only once that name is actually attached and working.
+ * own name only once that name genuinely opens the site.
  *
  * Exported because the topbar chip prints an address too (App.tsx), off this same
  * function. The two used to derive it separately and disagreed for the length of a state,
@@ -135,27 +135,31 @@ const PUBLISH_FRESH_MS = 60000
  * answer to that is the free address — the one that certainly works — not the one that
  * happens to resolve for us, this minute, from here.
  *
- * ⚠️ AND "FINISHED" IS THE DOMAIN WORKING, NOT EVERY OBLIGATION AROUND IT DISCHARGED.
- * A registrant-email confirmation is a separate requirement on its own deadline: a newly
- * registered name resolves straight away and the registrar suspends it only if that
- * deadline passes unmet. So a domain on that clock IS attached and IS working, the
- * customer can publish to it, and printing the free address over it would be the lie
- * this rule exists to stop — the mirror of the one it stops during the walk.
+ * ⚠️ AND AN UNCONFIRMED REGISTRANT EMAIL IS NOT A CLOCK BESIDE THE DOMAIN — IT IS THE
+ * DOMAIN NOT WORKING. A DreamHost developer, asked directly (14.09.2026): connecting is
+ * possible, publishing is probably possible, but «вебсайт поідеї не буде працювати якщо
+ * запаблішити» — and, on "so you can publish, but without confirming the email the link
+ * will not work", «так». So the name does not resolve at all until the mail is confirmed.
  *
- * Which is why this reading is `live`-or-`multiple` and NOT the panel's `settled`. The
- * two questions look alike and are not: WHICH ADDRESS DO WE HAND OVER is answered by the
- * domain working, while ALL CLEAR — the green pill, and the "Padlock on · anyone can
- * visit" line — additionally requires nothing outstanding against it. The address is the
- * wider of the two, so live-with-a-confirmation-owed shows the name and wears no pill.
+ * That refutes the intuition this file held for one draft — that a fresh registration
+ * resolves immediately and is only suspended once a deadline passes. It came from a
+ * search summariser (the session proxy blocks help.dreamhost.com); a developer on the
+ * product beats it. `world.icann` therefore belongs in THIS predicate: a domain whose
+ * address cannot be opened is not an address we hand anybody, so the field keeps the free
+ * one, which is the only one that works.
+ *
+ * ⚠️ AND IT DOES NOT BLOCK PUBLISHING — the same answer says publishing goes through. The
+ * consequence is only that the site is out on the free address and the custom name does
+ * not answer yet, which is exactly what the field and its marker then say.
  */
 export const domainIsHome = (w: World) =>
-  w.domain === 'live' || w.domain === 'multiple'
+  (w.domain === 'live' || w.domain === 'multiple') && !w.icann
 
 /**
  * ⚠️ THE INHERITED NAME, kept only because App.tsx imports it and that file belongs to
  * another pair of hands tonight. It was written for "does the address answer", which
- * `verifying` also satisfied; the test is now "is the domain attached and working", so
- * the name is close enough to mislead and should go. Rename both sides in the one commit
+ * `verifying` also satisfied; the test is now "does the domain open the site", so the
+ * name is close enough to mislead and should go. Rename both sides in the one commit
  * that can touch both. What must NOT happen is a second predicate growing in App.tsx:
  * the chip's address and this field's address are one decision, and splitting them is
  * the bug this export exists to prevent.
@@ -194,19 +198,17 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
  * The inset URL field.
  *
  * Three faces, and which one is on says what link the customer can give somebody:
- *  · `bare` — an address and nothing beside it. Two situations land here and they agree
- *    that there is nothing yet to mark: the free address before anybody has pressed
- *    Publish, and the working custom domain while a registrant-email confirmation is
- *    still owed on it (the amber card directly beneath carries that whole story, and a
- *    pill would either repeat it or contradict it).
+ *  · `bare` — the free address, before anybody has pressed Publish. An address and
+ *    nothing beside it, because nothing has happened to it yet.
  *  · `published` — the free address, with the quiet marker that the site is out on it.
  *    This is the face the WHOLE connection walk wears — registering, on its way,
- *    connecting, padlock switching on — because through all of it the free address is
- *    the one that certainly works. See the marker itself below for why it is not green,
- *    and `domainIsHome` for why the custom name waits.
- *  · `live` — the custom domain under the green pill. One state reaches it: working, and
- *    nothing outstanding. The pill replaces the trailing button rather than joining it,
- *    and the board draws it in that slot.
+ *    connecting, padlock switching on, and a registered name whose email is still
+ *    unconfirmed — because through all of it the free address is the one that opens the
+ *    site. See the marker itself below for why it is not green, and `domainIsHome` for
+ *    why the custom name waits.
+ *  · `live` — the custom domain under the green pill. One state reaches it: the domain
+ *    opens the site and nothing is outstanding against it. The pill replaces the trailing
+ *    button rather than joining it, and the board draws it in that slot.
  *
  * ⚠️ THERE IS NO PENCIL (demo-readiness gate, 14.09.2026). The free address used to
  * carry an "Edit address" button — hover fill, aria-label, and no handler — and it was
@@ -218,18 +220,17 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
  * starts teaching a product that does not exist. Do not put a pencil back without the
  * screens behind it.
  *
- * ⚠️ THE GREEN PILL IS NOT PAINTED BY "there is a domain in the field" (14.09.2026).
- * It was, twice over, and both times it ended up arguing with the card beneath it: over
- * `verifying` it said Live above a card saying the padlock was still switching on, and
- * over a live domain owing a registrant-email confirmation it said Live a hundred pixels
- * above "Confirm your email to keep this domain" — the designer, on the second: "почему
- * пишется что Live если Confirm your email to keep this domain". Green in this product
- * is the ALL CLEAR — every line of the checklist closed (copy.md §5) and nothing
- * outstanding against the name. A domain on a deadline the registrar can switch it off
- * at is working CONDITIONALLY, which is a different claim; it keeps the field, because
- * it genuinely is the address, and it loses the pill, because the amber card below is
- * the one surface saying the conditional thing. No second status, no second colour on
- * the field: one link, one status, which is this window's standing rule.
+ * ⚠️ THE GREEN PILL AND THE ADDRESS ARE ONE DECISION, NOT TWO (14.09.2026). The field
+ * shows the custom domain only where that domain actually opens the site, and that is
+ * the only thing green claims — so the pill cannot end up beside something that
+ * contradicts it. It did, twice, by being a second decision: over `verifying` it said
+ * Live above a card saying the padlock was still switching on, and over a registered
+ * domain whose email was unconfirmed it said Live a hundred pixels above "Confirm your
+ * email to keep this domain" — the designer, on that one: "почему пишется что Live если
+ * Confirm your email to keep this domain". The second case is not even a shade of
+ * meaning: a developer on the product confirmed the name does not resolve at all until
+ * the mail is confirmed (see `domainIsHome`), so Live was simply false there.
+ * One link, one status — this window's standing rule — and the amber card is the status.
  */
 function UrlField({ value, suffix, slot, publishedLabel }: {
   value: string
@@ -433,9 +434,10 @@ export function PublishPanel() {
    * competitor for one slot.
    */
   const attached = isCustomDomainActive(world)
-  /* WHICH ADDRESS the field hands over — and the topbar chip prints the same one, off
-     the same function (`domainIsHome`). Do not re-derive it at either end. */
-  const liveish = domainIsHome(world)
+  /* The raw axis. Read by the TITLE, which asks "has this site ever gone live" — a
+     question a pending confirmation does not un-answer. What goes in the FIELD is the
+     narrower `settled` below; the two are not interchangeable. */
+  const liveish = world.domain === 'live' || world.domain === 'multiple'
   const unreachable = world.domain === 'unreachable'
   const connecting = world.domain === 'connecting'
   const registering = world.domain === 'registering'
@@ -445,13 +447,13 @@ export function PublishPanel() {
   const oldSite = world.domain === 'old-site'
   const confirmEmail = attached && world.icann
   /*
-   * ALL CLEAR — strictly narrower than `liveish`, and the gap between them is this
-   * panel's most-argued pixel. The domain working is what puts its name in the field;
-   * all clear is what puts the GREEN on it and what lets the panel say "Padlock on ·
-   * anyone can visit". A registrant-email clock running against the name closes neither
-   * sentence, so in that window the name shows and both of those stay away.
+   * THE ONE READING THE ADDRESS, THE PILL AND THE PROSE LINE SHARE — and the topbar chip
+   * reads it too, off the same exported function. The domain opens the site and nothing
+   * is outstanding: that single sentence is what puts the name in the field, the green on
+   * it, and "Padlock on · anyone can visit" under it. Three surfaces, one predicate, so
+   * none of them can end up arguing with the card — which is how this panel got here.
    */
-  const settled = liveish && !world.icann
+  const settled = domainIsHome(world)
   /*
    * A NAME LEFT STANDING AT THE TILL — see the card for how this maps to board state ⑦.
    *
@@ -709,19 +711,18 @@ export function PublishPanel() {
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
                   {t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
                 </p>
-                {liveish ? (
-                  /* The domain, once it is attached and working — with the green pill
-                     only when nothing is outstanding against it. Two reads, not one: see
-                     `liveish` and `settled` above for why the wider one picks the name
-                     and the narrower one paints it. */
-                  <UrlField value={world.customDomain} slot={settled ? 'live' : 'bare'} />
+                {settled ? (
+                  /* The domain, once it opens the site — and the only face that wears
+                     the green pill. One branch, one slot: the field cannot show this name
+                     without the all-clear, nor the all-clear without this name. */
+                  <UrlField value={world.customDomain} slot="live" />
                 ) : (
                   /* The free address — through the whole walk, not just before it. It
                      gets the marker the moment the site is out on it, INCLUDING while a
                      custom domain is registering, travelling, connecting, switching its
                      padlock on or waiting on a registrant-email confirmation, because
                      that is precisely when "where IS my site right now" is the question,
-                     and through all of it the answer is: here. */
+                     and through all of it the answer is: here, and only here. */
                   <UrlField
                     value={STAGING_NAME}
                     suffix={STAGING_SUFFIX}

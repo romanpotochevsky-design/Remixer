@@ -17,34 +17,6 @@ const SPEEDS: { value: Speed; label: string }[] = [
   { value: 'instant', label: 'instant' },
 ]
 
-/**
- * WHERE THE STRIP STANDS SO IT NEVER COVERS WHAT IT IS TELLING SOMEBODY TO PRESS.
- *
- * It used to be pinned to the bottom centre of the window, 620 wide, which is exactly
- * where the product puts the controls a flow asks for: with the canvas away the chat owns
- * the whole shell and centres its dock there, so the strip sat on top of the plan card's
- * Review / Start Building — the presenter could read "press Start Building" and could not
- * reach it (14.09.2026).
- *
- * Two docks, chosen by the layout underneath rather than by the step, because the step does
- * not know how wide the window is or where the divider was dragged to:
- *
- *  · `canvas` — there IS a canvas (the preview, the domains window, the plan document), so
- *    the strip lives at its bottom-right: clear of the chat column and its dock, which is
- *    where every press in the chat happens, clear of the right rail, and clear of the
- *    simulated letter, which App.tsx pins to the canvas's TOP-left. The only thing it can
- *    overlay there is canvas content — the demo site, or the tail of a scrolling list —
- *    never a control a step names.
- *  · `top` — the chat owns the shell (a brief, a plan, a build) or a page from outside
- *    Remixer covers the window. Then the bottom band is all dock and there is no free
- *    620px anywhere along it, while the top of that layout carries only the header and the
- *    thread's oldest turns — nothing any flow asks anybody to press.
- *
- * Everything is expressed against the shell's own custom properties (`--chat-w` is written
- * straight to <html> by the resizer), so dragging the divider moves the strip with it and
- * nothing here has to re-render to keep up.
- */
-
 /** Drives auto-advance and renders the narration strip. Mount once, near the root. */
 export function FlowRunner() {
   const { t } = useT()
@@ -53,6 +25,33 @@ export function FlowRunner() {
   const step = flow?.steps[index]
   const last = flow ? index === flow.steps.length - 1 : false
 
+  /*
+   * WHERE THE STRIP STANDS SO IT NEVER COVERS WHAT IT IS TELLING SOMEBODY TO PRESS.
+   *
+   * It used to be pinned to the bottom centre of the window, 620 wide, which is exactly
+   * where the product puts the controls a flow asks for: with the canvas away the chat owns
+   * the whole shell and centres its dock there, so the strip sat on top of the plan card's
+   * Review / Start Building — the presenter could read "press Start Building" and could not
+   * reach it (14.09.2026).
+   *
+   * Two docks, chosen by the layout underneath rather than by the step, because the step does
+   * not know how wide the window is or where the divider was dragged to:
+   *
+   *  · `canvas` — there IS a canvas (the preview, the domains window, the plan document), so
+   *    the strip lives at its bottom-right: clear of the chat column and its dock, which is
+   *    where every press in the chat happens, clear of the right rail, and clear of the
+   *    simulated letter, which App.tsx pins to the canvas's TOP-left. The only thing it can
+   *    overlay there is canvas content — the demo site, or the tail of a scrolling list —
+   *    never a control a step names.
+   *  · `top` — the chat owns the shell (a brief, a plan, a build) or a page from outside
+   *    Remixer covers the window. Then the bottom band is all dock and there is no free
+   *    620px anywhere along it, while the top of that layout carries only the header and the
+   *    thread's oldest turns — nothing any flow asks anybody to press.
+   *
+   * Everything is expressed against the shell's own custom properties (`--chat-w` is written
+   * straight to <html> by the resizer), so dragging the divider moves the strip with it and
+   * nothing here has to re-render to keep up.
+   */
   const page = useUI((s) => s.page)
   const previewOpen = useUI((s) => s.previewOpen)
   const panel = useUI((s) => s.panel)
