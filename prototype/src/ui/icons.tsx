@@ -250,10 +250,20 @@ export const IconThumbDown = ({ size = 16, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * COPY — two sheets, the front one at the BOTTOM-LEFT (Figma 30282:19184 → 889:7325).
+ *
+ * ⚠️ THE FRAME IS 24, THE INK IS 15 (designer, 14.09.2026: "иконка скопировать ссылку
+ * какая-то стрёмная и большая, не такая как в макете"). The board's icon component is a
+ * 24 box, and this glyph used to fill 17 of it at the house's 1.7 stroke — next to a 15px
+ * address that reads as a different weight of object. Figma's frame size is not the glyph
+ * size; measure the ink in the render (design-system.md, the generation card's rings).
+ * It was also mirrored: the board stacks the sheets the other way round.
+ */
 export const IconCopy = ({ size = 16, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <rect x="8.5" y="8.5" width="12" height="12" rx="2.6" />
-    <path d="M15.5 4.5a2 2 0 0 0-2-2H6a2.5 2.5 0 0 0-2.5 2.5v7.5a2 2 0 0 0 2 2" />
+  <svg {...base(size)} strokeWidth={1.5} className={className}>
+    <rect x="4.5" y="9.5" width="10" height="10" rx="2.6" />
+    <path d="M9.5 9.5V7A2.5 2.5 0 0 1 12 4.5h5A2.5 2.5 0 0 1 19.5 7v5a2.5 2.5 0 0 1-2.5 2.5h-2.5" />
   </svg>
 )
 

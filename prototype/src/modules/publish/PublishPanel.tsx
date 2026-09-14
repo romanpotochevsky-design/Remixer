@@ -338,8 +338,10 @@ function ProgressCard({ title, sub, done }: { title: string; sub: string; done?:
               is what makes the finish read as the end of the thing that was moving. */}
           {done ? (
             <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
+              {/* A filled green disc with a WHITE tick, as the board draws it — the ink
+                  the eye reads as "done" everywhere else in the product. */}
               <circle cx="12" cy="12" r="11" fill="var(--live)" />
-              <path d="m7.5 12.4 3 3 6-6.4" stroke="var(--gray-950)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="m7.4 12.3 3.1 3.1 6.1-6.6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : (
           <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
@@ -512,10 +514,6 @@ export function PublishPanel() {
    * competitor for one slot.
    */
   const attached = isCustomDomainActive(world)
-  /* The raw axis. Read by the TITLE, which asks "has this site ever gone live" — a
-     question a pending confirmation does not un-answer. What goes in the FIELD is the
-     narrower `settled` below; the two are not interchangeable. */
-  const liveish = world.domain === 'live' || world.domain === 'multiple'
   const unreachable = world.domain === 'unreachable'
   const connecting = world.domain === 'connecting'
   const provisioning = world.domain === 'provisioning'
@@ -530,7 +528,16 @@ export function PublishPanel() {
    * The footer keeps its blue Publish either way: publishing is allowed, and its result is
    * a site out on the free address, which is exactly what the field then shows.
    */
-  const readyCard = ready && !world.icann
+  /*
+   * ⚠️ "CONNECTED, AND THE SITE HAS NEVER BEEN ON IT" IS A SITUATION, NOT AN AXIS VALUE
+   * (designer, 14.09.2026, looking at a panel that showed none of this: "что это? ты меня
+   * слушаешь?"). The world can say it two ways — `ready`, which is the walk's own word for
+   * it, and `live` on a site that was never published, which a preset or a shared link can
+   * stage — and the panel used to answer only to the first. Same customer, same moment,
+   * two different faces: one with the green card and a button naming the address, one with
+   * no card at all and a nameless `Publish`. The panel reads the situation now.
+   */
+  const readyCard = (ready || domainIsHome(world)) && !world.published && !world.icann
   const oldSite = world.domain === 'old-site'
   const confirmEmail = attached && world.icann
   /*
@@ -787,7 +794,12 @@ export function PublishPanel() {
                   ("Not published"), something is waiting ("Publish"), everything that was
                   made is out there ("Published"). The middle one is the action, the other
                   two are the status — which is why this heading changes word class. */}
-              {!world.published && !liveish
+              {/* ⚠️ …AND A DOMAIN DOES NOT MAKE IT PUBLISHED. The title used to read `Publish`
+                  over a live domain whatever `published` said, on the reasoning that "Not
+                  published" over a working address would be a lie. It is not: board
+                  30289:59972 titles exactly that state as not published, because the
+                  address working and the site being on it are two different facts. */}
+              {!world.published
                 ? t({ en: 'Not published', uk: 'Не опубліковано' })
                 : canPublish(world)
                   ? t({ en: 'Publish', uk: 'Публікація' })
