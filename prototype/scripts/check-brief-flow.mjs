@@ -1792,6 +1792,36 @@ check('…and the typed prompt is built as given', await cardUp())
   check('publishing retitles the panel and leaves no nudge',
     (await title()) === 'Published' && !(await hint()), await title())
 
+  /*
+   * ⚠️ THE DOMAIN CARD IS THE BODY CARD'S LAST CHILD, not a sibling of it.
+   *
+   * This is the one the designer had to say five times (14.09.2026), and no width ever
+   * caught it: as a sibling the card is still 420 and still flush against the card above,
+   * but two radius-16 corners meet and leave a dark wedge — a GAP where board 30282:19132
+   * has a SEAM. Measured by PARENT, because that is the thing that was wrong; and by the
+   * field beside it, which is 388 only because the block holding it carries the px 16 this
+   * card does not.
+   */
+  await openPublish('p=built&u=1&v=true&d=live&n=adovasio.com&a=paid&t=22&c=640')
+  const seam = await p.evaluate(() => {
+    const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+    const rim = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).borderColor === 'rgb(49, 49, 51)')
+    const body = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).backgroundColor === 'rgba(255, 255, 255, 0.04)')
+    const field = [...d.querySelectorAll('p')].find((e) => e.textContent === 'Website URL').parentElement.querySelector('div')
+    const w = (el) => Math.round(el.getBoundingClientRect().width)
+    return {
+      parented: rim.parentElement === body,
+      card: w(rim), body: w(body), field: w(field),
+      flush: Math.round(rim.getBoundingClientRect().bottom) === Math.round(body.getBoundingClientRect().bottom),
+    }
+  })
+  check('the domain card is a CHILD of the body card, ending on its own bottom edge',
+    seam.parented && seam.flush, JSON.stringify(seam))
+  check('…and so it spans 420 where the field spans 388',
+    seam.card === 420 && seam.body === 420 && seam.field === 388, JSON.stringify(seam))
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(400)
+
   /* the negative: a site that has been published gets neither, banner state or not */
   await openPublish('p=built&u=3&v=true&a=trial&t=22&c=640')
   check('a published site’s panel is titled by the action', (await title()) === 'Publish', await title())

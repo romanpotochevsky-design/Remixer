@@ -1295,10 +1295,14 @@ export function PublishPanel() {
                 </button>
               )}
             </div>
-            </div>
-            {/* ⚠️ A SIBLING OF THE FIELD BLOCK, not a child of it (board 30282:53241):
-                the Text Input block carries px 16, this card does not — so it spans the
-                body card's full 420 while the field inside sits at 388. */}
+            {/* ⚠️ THE BODY CARD'S LAST CHILD, and that is the difference the designer kept
+                pointing at (14.09.2026, five times): on board 30282:19132 this card is a
+                child of the same card the field lives in, so its rim sits ON that card's
+                bottom edge and the two read as one surface split by a line. As a SIBLING it
+                became a second card below the first, and the two radius-16 corners left a
+                dark wedge between them — a gap where the board has a seam. It spans the
+                body card's full 420 because it carries no px of its own; the field block
+                above it does (px 16), which is why the field is 388. */}
             {(settled || readyCard) && (
               <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
                 <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
@@ -1313,6 +1317,7 @@ export function PublishPanel() {
                 </button>
               </div>
             )}
+            </div>
           </div>
 
           {/* ---------------------------------------------------------- button bar */}
