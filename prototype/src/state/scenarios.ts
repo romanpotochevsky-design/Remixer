@@ -271,7 +271,7 @@ export const PRESETS: Preset[] = [
    *
    *   choose a name              searching → checkout
    *   buy a new one              registering → propagating ┐
-   *   attach one they own        connecting ──────────────┴→ verifying → ready | live
+   *   attach one they own        connecting ──────────────┴→ ready | live
    *
    * So: choosing, the cart, the two beats only a PURCHASE has, the one beat only an
    * ATTACH has, the padlock both of them end on — then the ways it stalls, then live.
@@ -341,7 +341,7 @@ export const PRESETS: Preset[] = [
        walk holds at `registering` until the registrant confirms (see "Email not confirmed
        yet" below, and modules/domains/connect.ts). This tile is what the registry wait
        looks like once that is out of the way. */
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'registering', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'provisioning', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'propagating',
@@ -367,16 +367,6 @@ export const PRESETS: Preset[] = [
       uk: 'Бурштинова картка в Publish: підключається, робити нічого не треба, а сайт поки на безкоштовній адресі',
     },
     patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
-  },
-  {
-    id: 'padlock',
-    group: PG.domain,
-    label: { en: 'Padlock switching on', uk: 'Вмикається замок' },
-    note: {
-      en: 'The last wait on both paths, and it cannot start early — the address has to answer here first. Ten to thirty minutes, nothing for them to do',
-      uk: 'Останнє очікування на обох шляхах, і раніше воно не почнеться — спершу адреса має відповідати в нас. 10–30 хвилин, робити нічого не треба',
-    },
-    patch: { account: 'paid', credits: 970, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'verifying', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'domain-ready',
@@ -431,7 +421,7 @@ export const PRESETS: Preset[] = [
      * `registering`; the resuming version of this beat is the buy FLOW, or a real
      * purchase through the cart.
      */
-    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'registering', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'provisioning', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'live',
@@ -560,13 +550,13 @@ export const AXES: Axis[] = [
       { value: 'staging', label: { en: 'Staging only', uk: 'Лише стейджинг' } },
       { value: 'searching', label: { en: 'Choosing', uk: 'Обирає' } },
       { value: 'checkout', label: { en: 'Checkout', uk: 'Оформлення' } },
-      /* The two paths are different lengths, and the axis says so: `registering` and
-         `propagating` belong to a name BOUGHT through us, `connecting` to one already in
-         the account (modules/domains/connect.ts). */
-      { value: 'registering', label: { en: 'Registering (bought)', uk: 'Реєструється (куплений)' }, hint: { en: 'the registry — under 15 min', uk: 'реєстр — до 15 хв' } },
-      { value: 'propagating', label: { en: 'On its way (bought)', uk: 'У дорозі (куплений)' }, hint: { en: 'the world — hours, up to 72', uk: 'світ — години, до 72' } },
-      { value: 'connecting', label: { en: 'Connecting (own)', uk: 'Підключається (свій)' }, hint: { en: 'our own records', uk: 'наші власні записи' } },
-      { value: 'verifying', label: { en: 'Padlock switching on', uk: 'Вмикається замок' }, hint: { en: 'ten to thirty minutes', uk: 'десять–тридцять хвилин' } },
+      /* ⚠️ THREE STATUSES, AND TWO OF THEM BELONG TO A PURCHASE (designer, 14.09.2026):
+         `provisioning` and `propagating` happen only to a name bought through us, and a
+         domain the customer already owns has exactly one beat — `connecting`. The
+         certificate stage this list used to carry is gone with the state. */
+      { value: 'provisioning', label: { en: 'Provisioning (bought)', uk: 'Реєструється (куплений)' }, hint: { en: 'the registry — under 15 min', uk: 'реєстр — до 15 хв' } },
+      { value: 'connecting', label: { en: 'Connecting', uk: 'Підключається' }, hint: { en: 'the only beat an owned domain has', uk: 'єдиний такт для свого домену' } },
+      { value: 'propagating', label: { en: 'Propagating (bought)', uk: 'Пропагується (куплений)' }, hint: { en: 'the world — hours, up to 72', uk: 'світ — години, до 72' } },
       { value: 'ready', label: { en: 'Ready, not published', uk: 'Готовий, не опубліковано' }, hint: { en: 'the novice’s №1 failure', uk: 'сбій №1 у новачка' } },
       { value: 'live', label: { en: 'Live', uk: 'Живий' } },
       { value: 'old-site', label: { en: 'Publish blocked — old site', uk: 'Публікацію блокує старий сайт' }, hint: { en: 'the address is not clean', uk: 'адреса не порожня' } },
@@ -701,10 +691,9 @@ export function describe(w: World): Text {
     staging: { en: 'no custom domain', uk: 'домен не підключено' },
     searching: { en: 'choosing a domain', uk: 'обирає домен' },
     checkout: { en: 'at checkout', uk: 'оформлює покупку' },
-    registering: { en: 'domain being registered', uk: 'домен реєструється' },
+    provisioning: { en: 'domain being registered', uk: 'домен реєструється' },
     propagating: { en: 'domain on its way', uk: 'домен у дорозі' },
     connecting: { en: 'domain connecting', uk: 'домен підключається' },
-    verifying: { en: 'padlock switching on', uk: 'вмикається замок' },
     ready: { en: 'domain ready, not published', uk: 'домен готовий, не опубліковано' },
     'old-site': { en: 'publish blocked by an old site', uk: 'публікацію блокує старий сайт' },
     live: { en: 'domain live', uk: 'домен живий' },

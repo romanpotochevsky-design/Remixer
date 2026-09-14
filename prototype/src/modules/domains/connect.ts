@@ -32,7 +32,7 @@
  *    REGISTRY record is written "within 15 minutes of completing the purchase form"
  *    (verified), but a brand-new registration "typically takes 24–72 hours to be viewable
  *    online". Fifteen minutes and a working website are not the same event, so the bought
- *    path is two states, not one: `registering` (the registry) and then `propagating` (the
+ *    path is two states, not one: `provisioning` (the registry) and then `propagating` (the
  *    world). It is the slow path, and it must survive the customer closing the tab —
  *    which it does, because every state of it is world state, not a variable in here.
  *
@@ -44,7 +44,7 @@
  *    confirmation is a GATE on this walk, not a clock beside it — see THE GATE below.
  *
  * The padlock is a THIRD wait and it cannot start early: a certificate cannot be issued
- * until the address already answers at DreamHost, so `verifying` only ever follows one of
+ * until the address already answers at DreamHost, so the spread only ever follows one of
  * the two walks above, never runs beside it (10–30 minutes, product facts).
  *
  * Three rules, all borrowed from the engines that already exist here:
@@ -79,27 +79,32 @@ type Path = 'attach' | 'buy'
 /*
  * THE TWO TIMELINES, and what each beat stands for.
  *
- *   ATTACH   connecting   2.2s   our own records — quick, but up to ~4h on a parked name
- *                                (negative caching, see the header)
- *            verifying    6.6s   the certificate: 10–30 minutes
- *            ──────────── 8.8s total
+ * ⚠️ THREE STATUSES EXIST, AND ONLY THREE (designer, 14.09.2026): `provisioning` while the
+ * name is being registered, `connecting` while it is being pointed at the project, and
+ * `propagating` while it spreads. The first and the last belong ONLY to a name bought
+ * through us — a domain the customer already owns has exactly one beat, `connecting`.
+ * The certificate beat that used to sit at the end of both walks ("Secure padlock is
+ * switching on") is GONE: it was a stage of ours, not of the product.
  *
- *   BUY      registering  2.6s   the registry: "within 15 minutes" (verified)
- *            propagating  8.4s   the world: hours, up to 72 — the LONGEST beat, as in life
- *            verifying    6.6s   the certificate: 10–30 minutes, and it starts last
+ *   ATTACH   connecting   6.0s   pointing our own records at the site — quick, but up to
+ *                                ~4h on a parked name (negative caching, see the header)
+ *            ──────────── 6.0s total
+ *
+ *   BUY      provisioning 2.6s   the registry: "within 15 minutes" (verified)
+ *            connecting   6.0s   the same pointing, once the name exists
+ *            propagating 17.6s   the world: hours, up to 72 — the LONGEST beat, as in life
  *            ──────────── 17.6s total
  *
- * Buying is twice the walk of attaching, and the beat that makes the difference is the one
- * that really does take days. That proportion is the point; the seconds are not.
+ * Buying is three times the walk of attaching, and the beat that makes the difference is
+ * the one that really does take days. That proportion is the point; the seconds are not.
  */
 const ATTACH: Leg[] = [
-  ['connecting', 'verifying', 2200],
-  ['verifying', 'finish', 8800],
+  ['connecting', 'finish', 6000],
 ]
 const BUY: Leg[] = [
-  ['registering', 'propagating', 2600],
-  ['propagating', 'verifying', 11000],
-  ['verifying', 'finish', 17600],
+  ['provisioning', 'connecting', 2600],
+  ['connecting', 'propagating', 8600],
+  ['propagating', 'finish', 17600],
 ]
 const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY }
 
@@ -109,26 +114,26 @@ const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY }
  * WHERE THE BOUGHT WALK STOPS UNTIL SOMEBODY OPENS THEIR MAIL.
  *
  * The registrant-email confirmation used to run as a SECOND clock beside this one:
- * `startConnect` set `icann` in the same write as `registering` and then nothing in the
- * walk ever read it again, so the walk carried straight on to `propagating`, `verifying`
+ * `startConnect` set `icann` in the same write as `provisioning` and then nothing in the
+ * walk ever read it again, so the walk carried straight on to `connecting`, `propagating`
  * and `live` while the confirmation was still owed. The product therefore manufactured,
  * reliably and on its happy path, a domain the topbar painted green and the panel called
  * live — in front of a name that, on the developer's answer (see the header), does not
- * resolve at all. It also ran `verifying`, which is a certificate being issued for an
+ * resolve at all. It also ran the whole spread, which is the world being told about an
  * address that cannot be validated.
  *
  * So the flag is a GATE. The registry beat still runs — the order is placed, the name is
  * written, and that much is true whatever the inbox says — and the walk then HOLDS at
- * `registering` for as long as `icann` stands. Clearing it (the simulated letter in
+ * `provisioning` for as long as `icann` stands. Clearing it (the simulated letter in
  * App.tsx, or the console's own toggle — both are one `set`) releases the park and the
  * remaining beats play at their true remaining distance.
  *
- * The consequence worth stating, because it is the point: `propagating`, `verifying`,
+ * The consequence worth stating, because it is the point: `connecting`, `propagating`,
  * `ready` and `live` are now UNREACHABLE with a confirmation outstanding. The defect the
  * designer caught cannot be produced by the product any more, only staged by hand in the
  * console — where `violations()` marks it red (state/world.ts).
  */
-const PARKED_AT: DomainState = 'registering'
+const PARKED_AT: DomainState = 'provisioning'
 const parked = (w: World) => w.domain === PARKED_AT && w.icann
 
 let timers: number[] = []
@@ -264,7 +269,7 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
          * THE GATE. The beat is due and the confirmation is not in, so the walk stops
          * here rather than settling — see THE GATE above. The remaining timers come
          * down with it (left armed, the next one would fire against a world still
-         * reading `registering`, mistake it for a staged state and destroy the ticket
+         * reading `provisioning`, mistake it for a staged state and destroy the ticket
          * this park depends on), and the ticket is re-issued AT THIS LEG: it is still
          * owed, which is exactly what makes a reload come back parked instead of
          * running the rest of the walk off a stale anchor.
@@ -289,7 +294,7 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
  * attaching a domain you already own never does.
  *
  * ⚠️ Which means this call does not walk a bought name to `live` on its own any more. It
- * walks it to `registering` and stops there, because the flag it sets in the same write
+ * walks it to `provisioning` and stops there, because the flag it sets in the same write
  * is the gate on the very next beat (see THE GATE). Nothing else has to know: the walk
  * arms exactly as before and parks itself when the beat comes due.
  */
@@ -297,7 +302,7 @@ export function startConnect(domain: string, opts: { bought?: boolean } = {}) {
   clear()
   const bought = opts.bought ?? false
   useWorld.getState().set({
-    domain: bought ? 'registering' : 'connecting',
+    domain: bought ? 'provisioning' : 'connecting',
     customDomain: domain,
     icann: bought,
   })
@@ -312,7 +317,7 @@ export function startConnect(domain: string, opts: { bought?: boolean } = {}) {
  *
  * Always the FAST timeline, whoever registered the name: by the time a domain can stop
  * answering it exists in the registry and it has been round the world once, so replaying
- * `registering` would be theatre. And `icann` is left exactly as it stands — that clock
+ * `provisioning` would be theatre. And `icann` is left exactly as it stands — that clock
  * belongs to the registration, not to this attempt. (It used to be re-derived from the
  * flag here, which meant retrying a live domain whose email was still unconfirmed
  * silently re-registered it, and retrying after confirmation wiped the flag.)
@@ -391,7 +396,7 @@ export function resumeConnect() {
    * `startedAt` is wall clock, so after an hour at the gate every beat reads as owed and
    * the block below would settle the lot in one step — landing `live` on a name that does
    * not resolve, which is the whole defect, re-entered through the resume door. The park
-   * is world truth (`registering` + `icann`), so it survives a reload by simply being
+   * is world truth (`provisioning` + `icann`), so it survives a reload by simply being
    * read: re-issue the ticket at the same leg and stand down. `resumeFromPark` is the
    * only thing that may pick it up again, and only when the confirmation lands.
    */
@@ -415,7 +420,7 @@ export function resumeConnect() {
 /**
  * The confirmation landed — let the bought walk go.
  *
- * NO TICKET, NO WALK, exactly as at load. A world staged at `registering` + `icann` from
+ * NO TICKET, NO WALK, exactly as at load. A world staged at `provisioning` + `icann` from
  * the console or a shared link has never been through `startConnect`, so flipping the
  * clock off there leaves it standing — which is what staging is for. A domain the
  * customer actually bought carries the ticket the park re-issued, and that one moves.
@@ -453,7 +458,7 @@ function resumeFromPark() {
  * ⚠️ AND IT ALSO STANDS DOWN WHEN THE WORLD MOVES, which is the header's second rule and
  * which a parked walk cannot obey on its own: it has no timers left, so nothing of its own
  * ever re-reads the store. Its ticket would simply sit in storage — and then a scenario or
- * a flow that staged `registering` on the same name again would hand that stale note to
+ * a flow that staged `provisioning` on the same name again would hand that stale note to
  * the release below and start a real clock racing the steps somebody is presenting. A
  * running walk already gets this for free (every tick checks, and drops the ticket if the
  * world moved past it); the park gets it here.

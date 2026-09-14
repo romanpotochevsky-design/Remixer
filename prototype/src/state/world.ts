@@ -44,10 +44,10 @@ export type Inventory =
  * The order below is the order of the walk, and the two paths through it are genuinely
  * different lengths (modules/domains/connect.ts):
  *
- *   attach something they own   connecting → verifying → ready | live
- *   buy a new name              registering → propagating → verifying → ready | live
+ *   attach something they own   connecting → ready | live
+ *   buy a new name              provisioning → connecting → propagating → ready | live
  *
- * `registering` and `propagating` exist because fifteen minutes and a working website are
+ * `provisioning` and `propagating` exist because fifteen minutes and a working website are
  * two different events: the registry writes the name "within 15 minutes of completing the
  * purchase form" (verified), and a brand-new registration is "typically 24–72 hours" from
  * being viewable online. One `connecting` for both paths made the bought path promise the
@@ -58,13 +58,12 @@ export type DomainState =
   | 'searching'
   | 'checkout'
   /** Bought: the registry has the order, the name is not ours yet. Minutes. */
-  | 'registering'
+  | 'provisioning'
   /** Bought: registered, and now travelling the world. Hours, up to 72. */
   | 'propagating'
   /** Attached: the records are ours to write, and we are writing them. */
   | 'connecting'
   /** Either path: the address answers here, so the padlock can finally be issued. */
-  | 'verifying'
   /**
    * Set up, correct, nothing wrong — and the site has never been published, so there is
    * nothing at the address to see. The one state a novice is most likely to sit in
@@ -346,11 +345,11 @@ export interface World {
    * name nobody could open.
    *
    * So this is not a clock running BESIDE the connection — it is a GATE ON it. The bought
-   * walk registers the name and then holds at `registering` until this clears
-   * (modules/domains/connect.ts, THE GATE), which is why `live`, `multiple` and `verifying`
+   * walk registers the name and then holds at `provisioning` until this clears
+   * (modules/domains/connect.ts, THE GATE), which is why `live` and `multiple`
    * alongside it are listed in `violations` as combinations the product cannot produce.
    * Its own axis all the same, because it is a fact about the REGISTRATION and not a place
-   * on the walk: it outlives `registering`, and only a name bought through us ever has it.
+   * on the walk: it outlives `provisioning`, and only a name bought through us ever has it.
    *
    * Miss it and the registrar SUSPENDS the domain — the site and its email both stop. That
    * is why the Publish panel carries it in an amber card with its own way out (Resend)
@@ -555,7 +554,7 @@ export function violations(w: World): Violation[] {
    * THE ONE THE PRODUCT USED TO MANUFACTURE. An unconfirmed registrant email means the
    * name does not resolve at all (see `World.icann`), so it cannot be the address a
    * visitor reaches (`live`, `multiple`) and a certificate cannot be issued against it
-   * (`verifying`). The walk is gated on exactly that now, which is what makes these
+   * The walk is gated on exactly that now, which is what makes these
    * pairings unreachable rather than merely wrong — so the only way to see one is to
    * stage it by hand, and the console should say so in red instead of letting the topbar
    * paint it green.
@@ -565,7 +564,7 @@ export function violations(w: World): Violation[] {
    * because "publish and visitors will see your site" is false while the mail is owed. A
    * violation here would declare that handling dead code.
    */
-  if (w.icann && (w.domain === 'live' || w.domain === 'multiple' || w.domain === 'verifying')) {
+  if (w.icann && (w.domain === 'live' || w.domain === 'multiple')) {
     out.push({
       field: 'icann',
       value: 'true',

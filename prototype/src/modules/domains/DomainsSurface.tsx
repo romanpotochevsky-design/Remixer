@@ -742,10 +742,9 @@ const CONNECTION_CHIP: Record<DomainState, { label: Text; tone: { fill: string; 
   staging: null,
   searching: null,
   checkout: null,
-  registering: { label: CONNECTING, tone: CHIP_FLIGHT },
+  provisioning: { label: CONNECTING, tone: CHIP_FLIGHT },
   propagating: { label: CONNECTING, tone: CHIP_FLIGHT },
   connecting: { label: CONNECTING, tone: CHIP_FLIGHT },
-  verifying: { label: CONNECTING, tone: CHIP_FLIGHT },
   /* Set up, correct, and the site has simply never been published. Not a failure. */
   ready: { label: { en: 'Connected', uk: 'Підключено' }, tone: CHIP_SETTLED },
   'old-site': { label: ATTENTION, tone: CHIP_STUCK },
@@ -810,7 +809,7 @@ const ATTACHED_LINE: Record<DomainState, Text | null> = {
   staging: null,
   searching: null,
   checkout: null,
-  registering: {
+  provisioning: {
     en: 'This site’s domain — we’re registering it now.',
     uk: 'Домен цього сайту — зараз реєструємо.',
   },
@@ -821,10 +820,6 @@ const ATTACHED_LINE: Record<DomainState, Text | null> = {
   connecting: {
     en: 'This site’s domain — we’re connecting it now.',
     uk: 'Домен цього сайту — зараз підключаємо.',
-  },
-  verifying: {
-    en: 'This site’s domain — the secure padlock is switching on.',
-    uk: 'Домен цього сайту — вмикається захисний замок.',
   },
   ready: {
     en: 'This site’s domain — set up and waiting for you to publish.',
@@ -1354,7 +1349,7 @@ function ExternalNsScreen({ domain }: { domain: string }) {
    *
    * It used to call `startConnect(domain)` from here, which is the same defect
    * ExternalScreen was fixed for earlier tonight (see the note on that component):
-   * a trial account walked connecting → verifying → ready → Publish → live on a
+   * a trial account walked connecting → ready → Publish → live on a
    * custom domain, the one combination `world.violations()` declares impossible
    * ("A custom domain needs a paid plan — checkout comes first"). QA reproduced it
    * on `?a=trial&i=dh-external-ns`. Two copies of one mistake, because this screen

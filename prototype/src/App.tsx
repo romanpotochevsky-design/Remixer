@@ -54,7 +54,7 @@ function Glass({ children, className = '' }: { children: React.ReactNode; classN
  * published, which is later than "the address answers" by exactly the padlock beat (D5).
  *
  * The chip is the one piece of chrome on screen for the whole set-up, so every state the
- * panel paints has to reach it. Keyed on `connecting`/`verifying` alone it went blank
+ * panel paints has to reach it. Keyed on `connecting` alone it went blank
  * through `registering` and `propagating` — together ~11 of the bought walk's 17 seconds
  * (modules/domains/connect.ts) — and the topbar read as if the flow had stopped.
  *
@@ -99,7 +99,7 @@ function domainStatus(w: World): keyof typeof DOMAIN_STATUS | null {
     switch (w.domain) {
       /* both walks: the registry, the world, our records, the padlock — in flight, and
          nothing the customer can do about any of them */
-      case 'registering': case 'propagating': case 'connecting': case 'verifying': return 'working'
+      case 'provisioning': case 'connecting': case 'propagating': return 'working'
       case 'ready': return 'ready'
       case 'old-site': case 'unreachable': return 'stuck'
       case 'live': case 'multiple': return 'live'
@@ -519,7 +519,7 @@ export default function App() {
    * The test used to be spelled out here as live-or-multiple, and the panel's was written
    * separately one file away — so through the whole padlock beat the panel printed the
    * custom domain and this chip printed the staging one: two addresses on screen at once,
-   * for the ~6.6 seconds `verifying` lasts. Both now ask `domainIsHome`, which is the
+   * for the seconds the walk lasts. Both now ask `domainIsHome`, which is the
    * panel's own function. Swapping the branches here would be the same bug mirrored: the
    * domain DOES answer by this beat (a certificate cannot be issued before it does), it
    * simply is not secured yet — and the amber dot beside it is what says so.

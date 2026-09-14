@@ -507,9 +507,8 @@ export function PublishPanel() {
   const liveish = world.domain === 'live' || world.domain === 'multiple'
   const unreachable = world.domain === 'unreachable'
   const connecting = world.domain === 'connecting'
-  const registering = world.domain === 'registering'
+  const provisioning = world.domain === 'provisioning'
   const propagating = world.domain === 'propagating'
-  const padlock = world.domain === 'verifying'
   const ready = world.domain === 'ready'
   /*
    * …AND `ready` DOES NOT SHOW ITS CARD WHILE THE MAIL IS OWED. That card's sentence is
@@ -562,7 +561,7 @@ export function PublishPanel() {
   const cartDomain = cartRegistration ?? parkedConnect
   const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
   /** Is a connection state showing? The email card stacks under it when so. */
-  const stageCard = unreachable || connecting || registering || propagating || padlock || readyCard || oldSite
+  const stageCard = unreachable || provisioning || connecting || propagating || readyCard || oldSite
   /*
    * ⚠️ AND WHILE ONE IS UP, THIS PANEL HAS NO DOOR OF ITS OWN — on purpose (designer,
    * 14.09.2026). A quiet text row under the card used to offer "See all your domains" /
@@ -856,41 +855,32 @@ export function PublishPanel() {
                     uk: `Підключаємо ${world.customDomain}`,
                   })}
                   sub={t({
-                    en: 'Usually quick, sometimes a few hours. Keep editing — we’ll keep checking.',
-                    uk: 'Зазвичай швидко, іноді кілька годин. Працюйте далі — ми перевіряємо.',
+                    en: 'Pointing the domain at your site. Usually quick, sometimes a few hours — keep editing, we’ll keep checking.',
+                    uk: 'Спрямовуємо домен на ваш сайт. Зазвичай швидко, іноді кілька годин — працюйте далі, ми перевіряємо.',
                   })}
                 />
               )}
-              {registering && (
+              {provisioning && (
                 <ProgressCard
                   title={t({
-                    en: `Registering ${world.customDomain}`,
+                    en: `Provisioning ${world.customDomain}`,
                     uk: `Реєструємо ${world.customDomain}`,
                   })}
                   sub={t({
-                    en: 'Usually under 15 minutes. Nothing for you to do.',
-                    uk: 'Зазвичай менш ніж 15 хвилин. Від вас нічого не потрібно.',
+                    en: 'Registering the name in your account. Usually under 15 minutes — nothing for you to do.',
+                    uk: 'Реєструємо ім’я у вашому акаунті. Зазвичай менш ніж 15 хвилин — від вас нічого не потрібно.',
                   })}
                 />
               )}
               {propagating && (
                 <ProgressCard
                   title={t({
-                    en: `${world.customDomain} is on its way`,
-                    uk: `${world.customDomain} уже в дорозі`,
+                    en: `Propagating ${world.customDomain}`,
+                    uk: `Пропагуємо ${world.customDomain}`,
                   })}
                   sub={t({
-                    en: 'Most visitors will reach your site within a few hours. It can take up to 72 hours to work everywhere in the world — that part is the internet, not us.',
-                    uk: 'Більшість відвідувачів побачать сайт за кілька годин. По всьому світу це може зайняти до 72 годин — це вже інтернет, а не ми.',
-                  })}
-                />
-              )}
-              {padlock && (
-                <ProgressCard
-                  title={t({ en: 'Secure padlock is switching on', uk: 'Вмикається захисний замок' })}
-                  sub={t({
-                    en: 'Nothing for you to do · usually ten to thirty minutes',
-                    uk: 'Від вас нічого не потрібно · зазвичай десять–тридцять хвилин',
+                    en: 'The address is set and spreading across the internet. Most visitors reach your site within a few hours; up to 72 to reach everyone.',
+                    uk: 'Адресу налаштовано, вона розходиться інтернетом. Більшість відвідувачів побачать сайт за кілька годин; до 72, щоб побачили всі.',
                   })}
                 />
               )}
@@ -914,7 +904,7 @@ export function PublishPanel() {
                   * over somebody else's address while your own is finished.
                   *
                   * The free address everywhere else, INCLUDING while a custom domain is
-                  * registering, travelling, connecting, switching its padlock on or
+                  * provisioning, connecting, propagating or
                   * waiting on a registrant-email confirmation — that is precisely when
                   * "where IS my site right now" is the question, and through all of it
                   * the answer is: here, and only here.
