@@ -5,16 +5,22 @@
  * Card: gray-850, radius 20, hairline border, deep drop shadow, anchored under the
  * Publish button. Header 64px. Body: an inset card (white-4%, radius 16) holding — for a
  * site that has never gone live — the nudge banner, then the website-URL field and the
- * "Connect your own domain" dashed card. Button bar bottom-right.
+ * "Buy or connect a domain" dashed card. Button bar bottom-right.
  *
- * TWO THINGS DEPEND ON WHETHER THE SITE IS PUBLISHED (`world.published`, designer
+ * THREE THINGS DEPEND ON WHETHER THE SITE IS PUBLISHED (`world.published`, designer
  * 08.09.2026):
  *  · THE TITLE. An unpublished site's panel is titled by its STATUS — "Not published" —
  *    rather than by the action. Once it is live the title is the action again, "Publish".
  *  · THE NUDGE. A 120px banner, "Ready to put your site live?", purely informational:
  *    it argues for publishing and can be waved off with its own ✕ (`ui.publishHintOpen`).
  *    It is gone for good once the site is live — there is nothing left to nudge.
- * Neither hangs off `unpublished`: see the field's own note in state/world.ts.
+ *  · THE MARKER beside the free address (14.09.2026). Neither of the two above is a
+ *    RESULT — a title changing one word and a banner leaving are both things the panel
+ *    stops doing — so on a site with no custom domain the headline verb had no visible
+ *    outcome at all and read as a broken button. The marker is the outcome, and it is
+ *    the small honest one: the green Live pill and the padlock stay the property of a
+ *    working custom domain. See UrlField.
+ * None of the three hangs off `unpublished`: see the field's own note in state/world.ts.
  *
  * ⚠️ The board writes the title as "Not Publisher", which is not English — the site is
  * not published. Shipped as "Not published", the same call this project made for the
@@ -22,8 +28,10 @@
  *
  * The Figma frame draws the base case; the connecting/live cases keep the Launchpad
  * logic from the handoff (⑥-A) re-dressed in the same visual language, so every world
- * state still renders. The subtitle under "Connect your own domain" is the one line
- * that changes with entitlement: trial sells the plan, paid says it's included.
+ * state still renders. The subtitle under "Buy or connect a domain" is the one line
+ * that changes with entitlement: on trial it names the plan and its price, on a paid
+ * account it says what the plan covers — publishing on a custom domain, never the name
+ * itself, which is a purchase on every plan (see the card).
  */
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
@@ -31,9 +39,9 @@ import { useWorld, hasPlan, isCustomDomainActive, type World } from '@/state/wor
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
-import { IconPlus, IconEdit, IconClose } from '@/ui/icons'
+import { IconPlus, IconClose } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
-import { popover, popoverContent } from '@/ui/motion'
+import { cardInBody, cardInBodyFade, popover, popoverContent } from '@/ui/motion'
 
 /*
  * The free address, split at its FIRST dot: the name is white, the host behind it grey.
@@ -56,6 +64,24 @@ const STAGING_SUFFIX = STAGING_DOT > 0 ? STAGING_HOST.slice(STAGING_DOT) : ''
  * (state/flows.ts), so the designer can watch it return instead of timing it.
  */
 const RESEND_COOLDOWN_MS = 9000
+
+/**
+ * PUBLISHING HAS TO LAND — the two clocks that make it land.
+ *
+ * `PUBLISH_SETTLE_MS` is how long the footer button refuses to be a dismiss button after
+ * a publish. The gate found that a double-press published AND closed the panel, so the
+ * one moment the whole panel exists for was thrown away by the second half of a gesture
+ * people make constantly on a button that has just changed under their finger. For this
+ * beat the button states the result instead — "Published" — and only then offers the way
+ * out. It is not a dead button: it is a button that answers before it moves on.
+ *
+ * `PUBLISH_FRESH_MS` is how long "just now" stays true. After it, the marker beside the
+ * address keeps the fact and drops the timing rather than ageing into a lie — the world
+ * persists `published` to localStorage and cannot say WHEN, so "just now" is knowable
+ * only inside the session that pressed the button.
+ */
+const PUBLISH_SETTLE_MS = 1800
+const PUBLISH_FRESH_MS = 60000
 
 
 /**
@@ -108,41 +134,85 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
  * The inset URL field.
  *
  * Three faces, and which one is on says what the site answers to RIGHT NOW:
- *  · `edit` — the staging address, with the pencil: nothing else answers yet.
- *  · `bare` — the custom domain, and no trailing control at all. The address resolves,
- *    the site is published behind it, and the padlock is still switching on. There is
- *    nothing to edit (it is not our subdomain) and nothing to claim: the amber card
- *    directly beneath already says where this has got to, and a pill repeating it would
- *    be the panel talking about one thing twice.
+ *  · `bare` — an address and nothing beside it. Two situations land here, and they agree:
+ *    the free address before anybody has pressed Publish (nothing has happened yet), and
+ *    the custom domain while the padlock is still switching on (the amber card directly
+ *    beneath already says where this has got to, and a pill repeating it would be the
+ *    panel talking about one thing twice).
+ *  · `published` — the free address, with the quiet marker that the site is out on it.
+ *    See the marker itself below for why it is not green.
  *  · `live` — the custom domain under the green pill. The pill replaces the trailing
  *    button rather than joining it, and the board draws it in that slot.
+ *
+ * ⚠️ THERE IS NO PENCIL (demo-readiness gate, 14.09.2026). The free address used to
+ * carry an "Edit address" button — hover fill, aria-label, and no handler — and it was
+ * the ONLY trailing control in the panel's opening frame, which is to say the one thing
+ * a person reaches for while the presenter is saying "this is your address". It is
+ * REMOVED rather than wired: there is no design for what editing the free address would
+ * mean (rename the subdomain? against what taken-name check? with what effect on a link
+ * already shared?), and answering those questions in code at night is how a prototype
+ * starts teaching a product that does not exist. Do not put a pencil back without the
+ * screens behind it.
  *
  * ⚠️ THE GREEN PILL IS NOT PAINTED BY "there is a domain in the field" (D5, 14.09.2026).
  * It used to be, so during `verifying` the field said Live directly above a card saying
  * the padlock was still switching on. Live in this product means the checklist's third
  * line is closed; while it is not, the address answers and that is a different claim.
  */
-function UrlField({ value, suffix, slot }: { value: string; suffix?: string; slot: 'edit' | 'bare' | 'live' }) {
+function UrlField({ value, suffix, slot, publishedLabel }: {
+  value: string
+  suffix?: string
+  slot: 'bare' | 'live' | 'published'
+  /** Read on `published` only. The freshness lives in the WORDING, not in the paint. */
+  publishedLabel?: string
+}) {
+  const reduce = useReducedMotion()
+  /* The field's right padding belongs to whatever is (or is not) in the trailing slot:
+     8px is the inset a 24px pill wants, and with the slot empty it left the address
+     sitting 16px from the left rim and 8px from the right — an off-centre box that read
+     as a control missing rather than a control absent. Nothing there, nothing implied. */
+  const trailing = slot !== 'bare'
   return (
     <div className="w-full rounded-[12px] shadow-[inset_0_0_0_1px_var(--white-200)]">
-      <div className="flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 pr-2">
+      <div className={`flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 ${trailing ? 'pr-2' : 'pr-4'}`}>
         <p className="min-w-0 truncate text-[15px]">
           <span className="text-[var(--white-900)]">{value}</span>
           {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
         </p>
-        {slot === 'bare' ? null : slot === 'live' ? (
+        {slot === 'live' && (
           <span className="flex h-6 flex-none items-center gap-1.5 rounded-full bg-[#48ba7926] pl-2 pr-2.5 text-[12px] font-medium text-[var(--live)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--live)]" aria-hidden />
             Live
           </span>
-        ) : (
-          <button
-            className="grid h-8 w-8 flex-none place-items-center rounded-[8px] text-[var(--white-400)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-[var(--white-700)]"
-            aria-label="Edit address"
-          >
-            <IconEdit size={18} />
-          </button>
         )}
+        {/*
+         * THE SMALLER, HONEST SIGNAL — same shape as the Live pill, deliberately not its
+         * colour. Green and the word Live are this product's claim that a working custom
+         * domain is answering with the padlock on (D5 above, and the checklist in
+         * copy.md §5); the free address earns neither, and never will — we do not promise
+         * a padlock on it. What IS true is the fact the panel refused to state at all
+         * until tonight: the site is out, on the address we gave you. So: the same 24px
+         * pill, in the hairline ink the rest of the chrome uses, saying exactly that.
+         *
+         * `initial={false}` so it animates only when it ARRIVES — a press of Publish —
+         * and is simply there on every later opening of the panel. The nudge banner
+         * leaves in the same beat (160ms), and cardInBody's own 160ms delay is what
+         * lands this after the reflow instead of underneath it.
+         */}
+        <AnimatePresence initial={false}>
+          {slot === 'published' && (
+            <motion.span
+              key="published"
+              variants={reduce ? cardInBodyFade : cardInBody}
+              initial="initial"
+              animate="animate"
+              className="flex h-6 flex-none items-center gap-1.5 rounded-full bg-[var(--white-100)] pl-2 pr-2.5 text-[12px] font-medium text-[var(--white-700)]"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--white-400)]" aria-hidden />
+              {publishedLabel}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -233,6 +303,22 @@ export function PublishPanel() {
     const t = window.setTimeout(() => setResent(false), RESEND_COOLDOWN_MS)
     return () => window.clearTimeout(t)
   }, [resent])
+  /* Did the publish happen in FRONT of this person, and how long ago? Session state for
+     the same reason `resent` is: it describes this press, not the customer's situation —
+     `world.published` is the situation, and it survives a reload, which is exactly why it
+     cannot be asked what time it is. Two clocks, see the constants above. */
+  const [settling, setSettling] = useState(false)
+  const [justPublished, setJustPublished] = useState(false)
+  useEffect(() => {
+    if (!settling) return
+    const t = window.setTimeout(() => setSettling(false), PUBLISH_SETTLE_MS)
+    return () => window.clearTimeout(t)
+  }, [settling])
+  useEffect(() => {
+    if (!justPublished) return
+    const t = window.setTimeout(() => setJustPublished(false), PUBLISH_FRESH_MS)
+    return () => window.clearTimeout(t)
+  }, [justPublished])
 
   useEffect(() => {
     if (!publishOpen) return
@@ -327,13 +413,20 @@ export function PublishPanel() {
    * showing the happy path. Flip `inventory` to any other value in the scenario console and
    * the same press goes live.
    */
+  /* A press that WORKED starts both clocks; the `dh-in-use` branch is a publish that
+     failed, and a failure that congratulates itself is the worst thing in this file. */
+  const markPublished = () => { setSettling(true); setJustPublished(true) }
   const publishNow = () => {
     if (ready && world.inventory === 'dh-in-use') return set({ domain: 'old-site' })
     set({ unpublished: 0, published: true, ...(ready ? { domain: 'live' as const } : null) })
+    markPublished()
   }
   /* The second attempt, after support has cleared the address. The prototype cannot model
      the clearing, so this one lands — a demo that dead-ends teaches nothing. */
-  const retryPublish = () => set({ domain: 'live', published: true, unpublished: 0 })
+  const retryPublish = () => {
+    set({ domain: 'live', published: true, unpublished: 0 })
+    markPublished()
+  }
 
   /*
    * THE PRIMARY BUTTON SAYS WHAT IT DOES, IN EVERY STATE.
@@ -359,11 +452,21 @@ export function PublishPanel() {
    * the verb. Raised with the designer; do not put it back on the button.
    */
   const publishes = !ready && !oldSite && (world.unpublished > 0 || !world.published)
-  const primary = !publishes
-    ? { en: 'Keep editing', uk: 'Далі редагувати' }
-    : !world.published
-      ? { en: 'Publish', uk: 'Опублікувати' }
-      : { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
+  /*
+   * …AND FOR ONE BEAT AFTER A PRESS IT SAYS WHAT HAPPENED (see PUBLISH_SETTLE_MS).
+   * The slot is the same one the press was made in, so the answer arrives under the
+   * finger that asked; then it stands down into "Keep editing" on its own. This is the
+   * half of the fix the customer feels; the marker beside the address is the half they
+   * can still read a minute later.
+   */
+  const settleLabel = settling && !publishes
+  const primary = settleLabel
+    ? { en: 'Published', uk: 'Опубліковано' }
+    : !publishes
+      ? { en: 'Keep editing', uk: 'Далі редагувати' }
+      : !world.published
+        ? { en: 'Publish', uk: 'Опублікувати' }
+        : { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
 
   return (
     <AnimatePresence>
@@ -478,7 +581,18 @@ export function PublishPanel() {
                 {answering ? (
                   <UrlField value={world.customDomain} slot={liveish ? 'live' : 'bare'} />
                 ) : (
-                  <UrlField value={STAGING_NAME} suffix={STAGING_SUFFIX} slot="edit" />
+                  /* The free address. It gets the marker the moment the site is out on it
+                     — including while a custom domain is still connecting behind the
+                     scenes, because that is precisely when "where IS my site right now"
+                     is the question, and the answer is: here. */
+                  <UrlField
+                    value={STAGING_NAME}
+                    suffix={STAGING_SUFFIX}
+                    slot={world.published ? 'published' : 'bare'}
+                    publishedLabel={justPublished
+                      ? t({ en: 'Published · just now', uk: 'Опубліковано · щойно' })
+                      : t({ en: 'Published', uk: 'Опубліковано' })}
+                  />
                 )}
               </div>
 
@@ -791,13 +905,43 @@ export function PublishPanel() {
                   <span className="grid h-8 w-8 flex-none place-items-center rounded-[12px] border border-[#ffffff26] bg-[#ffffff14] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std group-hover:border-[#ffffff40] group-hover:bg-white group-hover:text-[#09090b]">
                     <IconPlus size={13} />
                   </span>
+                  {/*
+                    * ⚠️ THE DOOR NAMES BOTH THINGS BEHIND IT (demo-readiness gate,
+                    * 14.09.2026). It read "Connect your own domain", and `openDomains`
+                    * opens a dashboard whose larger half is names FOR SALE — so on the
+                    * commonest account of all, a paid one with no domains, the whole
+                    * screen behind a door marked Connect was a shop. `Connect` in this
+                    * product means attaching a name the person already owns and no money
+                    * moving (copy.md §1, and the same table's `Buy` for registering a new
+                    * one); a door onto both has to say both, and the two sanctioned verbs
+                    * are exactly the two halves of that screen.
+                    * `Buy`, not `Add`: the conflict copy.md §2 leaves open is settled the
+                    * way the boards and DomainsSurface already ship it.
+                    */}
                   <span className="min-w-0">
                     <span className="block text-[16px] font-semibold leading-normal text-white">
-                      {t({ en: 'Connect your own domain', uk: 'Підключити власний домен' })}
+                      {t({ en: 'Buy or connect a domain', uk: 'Купити або підключити домен' })}
                     </span>
+                    {/*
+                      * ⚠️ AND CLAIMS ONLY WHAT THE PLAN ACTUALLY COVERS. This line used to
+                      * tell a paid customer the domain was "Included in your Remixer Build
+                      * plan" while every name on the other side of the door cost between
+                      * $0.99 and $89.99. The plan buys the CAPABILITY — publishing on a
+                      * custom domain at all — and nothing else; the name is a purchase,
+                      * every time, on every plan. Said once and plainly, per copy.md's
+                      * "каждое обещание — один раз": no price and no teaser here, because
+                      * a first-year figure without its renewal beside it is the dark
+                      * pattern the audit's rule 5 exists to stop, and prices belong on the
+                      * screen that can show both.
+                      * The trial line is untouched and is now framed correctly by the
+                      * title: the plan is what publishing on a custom domain requires.
+                      */}
                     <span className="mt-1 block text-[13px] leading-normal text-[var(--white-500)]">
                       {paid
-                        ? t({ en: 'Included in your Remixer Build plan', uk: 'Входить у ваш план Remixer Build' })
+                        ? t({
+                            en: 'Your Remixer Build plan covers publishing on one',
+                            uk: 'Ваш план Remixer Build покриває публікацію на ньому',
+                          })
                         : t({ en: 'Requires the Remixer Build plan — $9.99/mo', uk: 'Потрібен план Remixer Build — $9.99/міс' })}
                     </span>
                   </span>
@@ -812,14 +956,26 @@ export function PublishPanel() {
               way to say what a connection was doing; now each state says it, and every
               state that needs the customer carries its own action inside its card.
               Blue while it publishes, quiet when it does not — a panel whose primary slot
-              is blue whatever it does teaches people not to read it. */}
+              is blue whatever it does teaches people not to read it.
+              ⚠️ AND IT DOES NOT CLOSE THE PANEL ON THE BEAT AFTER A PUBLISH. The press
+              that publishes turns this button from a verb into an exit under the finger
+              that pressed it, so the second half of a double-click dismissed the panel
+              and the payoff was never seen at all (gate, 14.09.2026). While `settling`
+              the button holds the result instead — see PUBLISH_SETTLE_MS. */}
           <div className="flex items-center justify-end px-4 py-4">
             <button
-              onClick={() => (publishes ? publishNow() : togglePublish(false))}
+              onClick={() => {
+                if (publishes) return publishNow()
+                if (settleLabel) return
+                togglePublish(false)
+              }}
+              aria-disabled={settleLabel || undefined}
               className={
                 publishes
                   ? 'h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]'
-                  : 'h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white'
+                  : settleLabel
+                    ? 'h-10 cursor-default rounded-[10px] border border-[var(--white-100)] px-5 text-[14px] font-semibold text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std'
+                    : 'h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white'
               }
             >
               {t(primary)}

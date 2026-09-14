@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useWorld, canUseAI, hasPlan, type DomainState } from '@/state/world'
+import { useWorld, canUseAI, hasPlan, isCustomDomainActive, type DomainState } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
@@ -124,9 +124,17 @@ const RAIL = [
  *    chat column, so it never covers what a presenter is pointing at. Checked at
  *    1600×1000 and at 1280×800, which is the projector.
  *
- * It is up only while `world.icann` is true, and the link is the same one write the
- * scenario console's "Email unconfirmed" toggle makes — either way out clears the state
- * and the panel settles to "Padlock on · anyone can visit".
+ * It is up on exactly the terms the Publish panel's own amber card is up on — a domain
+ * attached AND `world.icann` — and the link is the same one write the scenario console's
+ * "Email unconfirmed" toggle makes — either way out clears the state and the panel settles
+ * to "Padlock on · anyone can visit".
+ */
+/*
+ * The registrant address. Hardcoded ON PURPOSE and NOT world truth: the world carries no
+ * account email, and the Publish panel's own card prints this very literal in all four of
+ * its strings ("We sent a link to roman@example.com…", PublishPanel.tsx). Two surfaces
+ * naming the same inbox is the whole point, so if one of them ever starts reading a real
+ * address from the world, the other has to move in the same commit.
  */
 const SIM_EMAIL_TO = 'roman@example.com' // the address the Publish panel's card names
 
@@ -135,9 +143,34 @@ function SimulatedEmail() {
   const previewOpen = useUI((s) => s.previewOpen)
   const { t } = useT()
 
+  /*
+   * WHICH NAME THE LETTER SAYS IS WORLD TRUTH — the same read as the topbar chip below and
+   * as the Publish panel's field: `customDomain`, "WHICH domain is attached to this
+   * project" (state/world.ts). This printed the CUSTOM_DOMAIN constant until tonight, so a
+   * customer who had just bought `emberandoak.com` was congratulated on `fit-ration.com`
+   * forty pixels under a panel reading `emberandoak.com` — two different domain names in
+   * one frame, on the only white surface on the screen, at the climax of the purchase, and
+   * still disagreeing at Live. The constant survives only as the fallback for a world
+   * carrying no name, exactly as the chip has it.
+   */
+  const domain = world.customDomain || CUSTOM_DOMAIN
+
+  /*
+   * …AND THE LETTER IS DUE ON EXACTLY THE PANEL'S TERMS. The panel asks
+   * `attached && world.icann` (PublishPanel, `confirmEmail`); this asked `world.icann`
+   * alone. Nothing clears that flag when the domain axis moves back to `staging` —
+   * neither the store nor the scenario console, which HIDES the "Email unconfirmed"
+   * toggle the moment no domain is attached — so a world staged from `icann-verify` and
+   * then returned to the free address kept a letter floating over a project with no
+   * domain, announcing a registration that had not happened and holding the one control
+   * that could take it back. Asking the panel's question is also what stops the two from
+   * ever disagreeing about whether this state exists at all.
+   */
+  const due = isCustomDomainActive(world) && world.icann
+
   return (
     <AnimatePresence>
-      {world.icann && (
+      {due && (
         <motion.aside
           key="sim-email"
           /* Bottom-left of the canvas. `--chat-w` is written straight to <html> by the
@@ -194,8 +227,8 @@ function SimulatedEmail() {
             </p>
             <p className="mt-1 text-[12.5px] leading-[1.45] text-neutral-600">
               {t({
-                en: `You registered ${CUSTOM_DOMAIN}. Confirm this address to keep the domain and its email working.`,
-                uk: `Ви зареєстрували ${CUSTOM_DOMAIN}. Підтвердьте цю адресу, щоб домен і пошта й далі працювали.`,
+                en: `You registered ${domain}. Confirm this address to keep the domain and its email working.`,
+                uk: `Ви зареєстрували ${domain}. Підтвердьте цю адресу, щоб домен і пошта й далі працювали.`,
               })}
             </p>
 

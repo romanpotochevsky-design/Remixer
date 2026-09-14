@@ -14,7 +14,7 @@
  * appears nowhere in it.
  */
 import type { Billing } from '@/state/world'
-import { priceFor } from './domains'
+import { endingOf, minTermYears, priceFor } from './domains'
 
 /** Remixer Build, from the verified product facts (CLAUDE.md). */
 export const PLAN = {
@@ -27,14 +27,26 @@ export const PLAN_CREDITS = 1000
 
 export const money = (n: number) => `$${n.toFixed(2)}`
 
+/**
+ * The term this line is actually sold for: never shorter than the registry's minimum.
+ *
+ * `.ai` is sold in two-year blocks (TLD_PRICES `minYears`, and the search row says so
+ * in the price stack), but the sheet that fills this cart pushes `years: 1` for every
+ * name. Clamping HERE rather than at the sheet is what keeps the two honest together:
+ * the figure, the "2 Years" in the select and the Order Summary all read the same
+ * number, whatever a caller asked for.
+ */
+export const termYears = (tld: string, years?: number) =>
+  Math.max(Math.round(years ?? 1) || 1, minTermYears(tld))
+
 /** First year at the promo price, the rest at renewal — the panel's own formula. */
 export function domainAmount(tld: string, years: number) {
   const p = priceFor(tld) ?? priceFor('.com')!
-  return p.register + p.renew * (years - 1)
+  return p.register + p.renew * (termYears(tld, years) - 1)
 }
 
-export const tldOf = (domain: string) =>
-  domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '.com'
+/** The ending a line prices off — multi-label aware, so `.co.uk` is not read as `.uk`. */
+export const tldOf = (domain: string) => endingOf(domain) || '.com'
 
 /** One line in the panel's cart. Kept minimal: it is a shopping cart, not an order. */
 export interface CartLine {
@@ -71,20 +83,47 @@ export interface LineCopy {
   options: { value: string; label: string }[]
 }
 
-/** Registration terms offered on a domain line. The panel's real list is unknown —
- *  this is a sensible 1–5, labelled the way its code pluralises ("{{count}} Year(s)"). */
-const YEAR_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
-  value: String(n),
-  label: n === 1 ? '1 Year' : `${n} Years`,
-}))
+const yearLabel = (n: number) => (n === 1 ? '1 Year' : `${n} Years`)
+
+/**
+ * Registration terms offered on a domain line. The panel's real list is unknown —
+ * this is a sensible 1–5, labelled the way its code pluralises ("{{count}} Year(s)").
+ *
+ * ⚠️ A TLD'S MINIMUM TERM IS PART OF THE LIST, NOT A SPECIAL CASE. A flat 1–5 on
+ * every ending sold a one-year `.ai` at $89.99 — an order DreamHost cannot place —
+ * on the same screen whose search row had just printed "2-year minimum". The
+ * minimum comes off TLD_PRICES, so the next ending with one is right for free.
+ */
+const yearOptions = (tld: string) => {
+  const min = minTermYears(tld)
+  const terms: number[] = []
+  for (let n = min; n <= Math.max(5, min); n += 1) terms.push(n)
+  return terms.map((n) => ({ value: String(n), label: yearLabel(n) }))
+}
 
 export function lineCopy(line: CartLine): LineCopy {
   if (line.kind === 'domreg') {
     const domain = line.domain ?? ''
     const tld = tldOf(domain)
-    const years = line.years ?? 1
+    const years = termYears(tld, line.years)
     const price = priceFor(tld) ?? priceFor('.com')!
     const promo = price.register !== price.renew
+    /*
+     * A MULTI-YEAR FIGURE IS A TOTAL, AND HAS TO SAY SO.
+     *
+     * `domainAmount` sums the whole term — $9.99 + $19.99 × 2 for three years of a
+     * .com — and that is the number the Order Summary adds up, so the figure itself
+     * cannot become an average: the line and the summary would stop agreeing, and a
+     * per-year average ($16.66) is a price nobody is ever charged and that appears in
+     * no DreamHost table. What was wrong was the SUFFIX: "First 3 years $49.97/yr."
+     * claims $149.91, and ".ai 2 Years" read "$179.98/yr." Naming it a total keeps
+     * the honest number and drops the false rate, and the per-year rate is still on
+     * screen underneath as the renewal.
+     *
+     * The suffix carries a NO-BREAK space: `.dh-tile__figure` is an inline-flex box,
+     * which strips a leading ordinary space and glues the word to the figure.
+     */
+    const multiYear = years > 1
     return {
       product: 'domreg',
       name: domain,
@@ -93,12 +132,16 @@ export function lineCopy(line: CartLine): LineCopy {
       amount: domainAmount(tld, years),
       // A .com is $9.99 the first year and $19.99 after, so the line is a promo and
       // carries the step-up. A TLD that renews at its registration price shows a
-      // bare figure, like DreamShield's $3.00/mo. in the capture.
-      termLabel: promo ? (years === 1 ? 'First year' : `First ${years} years`) : '',
-      cycle: '/yr.',
-      then: promo ? { amount: money(price.renew), cycle: '/yr.' } : null,
-      option: years === 1 ? '1 Year' : `${years} Years`,
-      options: YEAR_OPTIONS,
+      // bare figure, like DreamShield's $3.00/mo. in the capture — until the term is
+      // longer than a year, where even a flat price needs to say what the sum covers.
+      termLabel: multiYear ? `First ${years} years` : promo ? 'First year' : '',
+      cycle: multiYear ? ' total' : '/yr.',
+      // The renewal rate travels with every multi-year total, promo or not: it is the
+      // only per-year number on the line, and the house rule is that the renewal
+      // price never travels separately from the price above it.
+      then: promo || multiYear ? { amount: money(price.renew), cycle: '/yr.' } : null,
+      option: yearLabel(years),
+      options: yearOptions(tld),
     }
   }
 
