@@ -825,13 +825,19 @@ const ATTACHED_LINE: Record<DomainState, Text | null> = {
     en: 'This site’s domain — it stopped showing your site.',
     uk: 'Домен цього сайту — він перестав показувати ваш сайт.',
   },
+  /* ⚠️ NOT the panel's "Padlock on · anyone can visit", tempting as the borrow is: that
+     is its `settled` line, and `settled` is live AND no ICANN confirmation outstanding.
+     A record keyed by the domain axis alone cannot see `world.icann`, so in the one world
+     where the panel replaces that sentence with "Confirm your email to keep this domain"
+     the hero would still be printing it. What is true of every live world is the plain
+     fact, and the green chip beside it is the panel's pill anyway. */
   live: {
-    en: 'Your site is live on it · padlock on.',
-    uk: 'Ваш сайт працює на ньому · замок увімкнено.',
+    en: 'This site’s domain — your site is live on it.',
+    uk: 'Домен цього сайту — ваш сайт працює на ньому.',
   },
   multiple: {
-    en: 'Your site is live on it · padlock on.',
-    uk: 'Ваш сайт працює на ньому · замок увімкнено.',
+    en: 'This site’s domain — your site is live on it.',
+    uk: 'Домен цього сайту — ваш сайт працює на ньому.',
   },
 }
 
@@ -1224,9 +1230,21 @@ function OwnedAnswer({ domain }: { domain: string }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
               <p className="min-w-0 truncate text-[18px] font-medium leading-normal text-white">{domain}</p>
-              <span className="flex h-5 flex-none items-center rounded-[10px] bg-[#48ba7926] px-2 text-[11px] font-semibold leading-none text-[var(--live)]">
-                {t({ en: 'In your account', uk: 'У вашому акаунті' })}
-              </span>
+              {/* ⚠️ ONE STATUS PAINT PER CARD. This badge is GREEN — the product's live
+                  colour — and it says something else entirely (you hold this name), which
+                  is unambiguous while it is the only pill on the card and stops being so
+                  the moment the state chip joins it: green beside the red `Needs
+                  attention` reads as two surfaces disagreeing about one domain, and green
+                  beside the green `Live` reads as one fact printed twice. So on the
+                  attached card the state takes the paint and the ownership fact moves into
+                  the line below, whose stem ("This site's domain") is the stronger claim
+                  anyway. Every other owned domain keeps the badge exactly as drawn
+                  (27271:5564). */}
+              {!attached && (
+                <span className="flex h-5 flex-none items-center rounded-[10px] bg-[#48ba7926] px-2 text-[11px] font-semibold leading-none text-[var(--live)]">
+                  {t({ en: 'In your account', uk: 'У вашому акаунті' })}
+                </span>
+              )}
             </div>
             {/*
               * NO CLOCK ON THIS LINE, ON PURPOSE. Board 27071:20574 says "connects in
