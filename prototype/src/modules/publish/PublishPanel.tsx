@@ -179,11 +179,14 @@ export const domainAnswers = domainIsHome
  * a domain — and so the copy stays the plain sentence the deliverable quotes.
  */
 const HOSTISH = /([A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)*\.[A-Za-z]{2,})/
-const keepHostsWhole = (text: string) =>
+const keepHostsWhole = (text: string, ink?: string) =>
   /* split() with one capture group hands back [text, host, text, host, …] — the odd
-     slots are the matches, and only those get the nowrap. */
+     slots are the matches, and only those get the nowrap — and, when a card asks for it,
+     the ink that marks the name as what the card is ABOUT (see StatusCard's `subject`). */
   text.split(HOSTISH).map((part, i) =>
-    i % 2 ? <span key={i} className="whitespace-nowrap">{part}</span> : part,
+    i % 2
+      ? <span key={i} className="whitespace-nowrap" style={ink ? { color: ink } : undefined}>{part}</span>
+      : part,
   )
 
 /**
@@ -312,7 +315,7 @@ function UrlField({ value, suffix, slot, publishedLabel }: {
  * ready — publish to put your site on it"), and half a sentence is worse than two lines.
  */
 function StatusCard({
-  tone, title, sub, action, stacked,
+  tone, title, sub, action, stacked, subject,
 }: {
   tone: 'amber' | 'red' | 'blue'
   title: string
@@ -320,6 +323,23 @@ function StatusCard({
   action?: { label: string; onClick?: () => void; primary?: boolean; disabled?: boolean }
   /** Sits under another card rather than under the field — a tighter gap. */
   stacked?: boolean
+  /**
+   * THE NAME IN THE TITLE IS THE SUBJECT OF THE NOTICE — ink it in the card's own colour
+   * (designer, 14.09.2026: «нам нужно просто в этом уведомлении добавить кастомный домен
+   * куда-то стильно и красиво, чтобы было понятно для какого домена это уведомление»).
+   *
+   * Opt-in, and only one card asks for it: the one whose domain is NOT in the field above
+   * it, so a reader has nothing else on screen to tie the notice to. The others name a
+   * domain the field is already showing, or one their own sentence is plainly about, and
+   * a colour there would be decoration.
+   *
+   * ⚠️ AND IT IS NOT A SECOND ADDRESS. The obvious move — a pill or a boxed row under the
+   * title — would put a second address-shaped thing 60px under the address field, in a
+   * window whose standing rule is one link (13.09.2026). This is the same run of title
+   * text, in the same weight, wearing the same colour as the dot and rim that already say
+   * which card you are reading: the subject of a sentence, not a field.
+   */
+  subject?: boolean
 }) {
   const skin = {
     amber: { fill: '#e5c3591a', rim: '#e5c35959', dot: 'var(--attention)' },
@@ -340,7 +360,7 @@ function StatusCard({
         {/* Hostnames stay whole and the title keeps its last two words together —
             see keepHostsWhole / bindWidow above. */}
         <p className="break-words text-[15px] font-semibold leading-[1.3] text-white">
-          {keepHostsWhole(bindWidow(title))}
+          {keepHostsWhole(bindWidow(title), subject ? skin.dot : undefined)}
         </p>
         <p className="mt-1 text-[13px] leading-[1.4] text-[#ffffffa3]">{keepHostsWhole(sub)}</p>
       </div>
@@ -444,6 +464,16 @@ export function PublishPanel() {
   const propagating = world.domain === 'propagating'
   const padlock = world.domain === 'verifying'
   const ready = world.domain === 'ready'
+  /*
+   * …AND `ready` DOES NOT SHOW ITS CARD WHILE THE MAIL IS OWED. That card's sentence is
+   * "your address is set up · visitors will see your site the moment you publish", and on
+   * the developer's answer (see `domainIsHome`) the second half is false: nothing resolves
+   * until the confirmation lands. So in that window the confirmation card is the state —
+   * which is also what the axis should say, and cannot yet (see the note on `confirmEmail`).
+   * The footer keeps its blue Publish either way: publishing is allowed, and its result is
+   * a site out on the free address, which is exactly what the field then shows.
+   */
+  const readyCard = ready && !world.icann
   const oldSite = world.domain === 'old-site'
   const confirmEmail = attached && world.icann
   /*
@@ -485,7 +515,7 @@ export function PublishPanel() {
   const cartDomain = cartRegistration ?? parkedConnect
   const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
   /** Is a connection state showing? The email card stacks under it when so. */
-  const stageCard = unreachable || connecting || registering || propagating || padlock || ready || oldSite
+  const stageCard = unreachable || connecting || registering || propagating || padlock || readyCard || oldSite
   /**
    * …and while one is up, THIS PANEL IS THE ONLY DOOR IN THE SHELL (D3, 14.09.2026).
    *
@@ -502,7 +532,9 @@ export function PublishPanel() {
    * that was removed — it belongs to the card above it, it appears only while that card
    * is up, and a state that needs nothing from the customer still asks for nothing.
    */
-  const stalled = ready || oldSite || unreachable
+  /* `readyCard`, not `ready`: while the mail is owed the hold-up is not the NAME — it is
+     one click in an inbox — so offering a different domain would be the wrong escape. */
+  const stalled = readyCard || oldSite || unreachable
 
   /*
    * Our own KB, on publishing to a domain that already serves something: the target "must
@@ -862,7 +894,7 @@ export function PublishPanel() {
                   stays BLUE and now earns it twice: blue is this project's colour for an
                   action, the state IS an action waiting to be taken, and the card is
                   pointing straight at the only blue thing on screen. */}
-              {ready && (
+              {readyCard && (
                 <StatusCard
                   tone="blue"
                   title={t({
@@ -969,36 +1001,51 @@ export function PublishPanel() {
                 />
               )}
 
-              {/* The registrant-email clock (state ⑤ on board 28206:66756). A SECOND card
+              {/* The registrant-email step (state ⑤ on board 28206:66756). A SECOND card
                   under whichever one is above it — see the precedence note upstairs.
                   ⚠️ NO COUNTDOWN. The board draws "14 days left" and the world comment used
                   to say fifteen; the digit traces to Squarespace's unlink rule, not to
-                  DreamHost or ICANN (states.md §5), so the card points at the deadline in
-                  the mail instead of inventing one. The address is the board's own
-                  placeholder and stays until the world carries an account email. */}
+                  DreamHost or ICANN (states.md §5), so no figure is printed. The inbox
+                  address is the board's own placeholder and stays until the world carries
+                  an account email.
+                  ⚠️ IT IS THE LAST STEP OF CONNECTING, NOT A WARNING ABOUT LOSING SOMETHING
+                  (14.09.2026). It read "Confirm your email to keep this domain", which says
+                  you have a working domain and might forfeit it. A DreamHost developer,
+                  asked directly, says the opposite: the name does not resolve at all until
+                  the mail is confirmed — «вебсайт поідеї не буде працювати якщо запаблішити»,
+                  and on "without confirming the email the link will not work", «так». So the
+                  card is the end of the purchase, and it says the one thing the customer
+                  needs: it is bought, it is set up, and the address starts working when they
+                  click the link. The deadline is real and unsourced, so it is not mentioned
+                  at all rather than guessed at — losing the name is a later consequence of a
+                  step they are being asked to take now anyway.
+                  ⚠️ AND THE TITLE IS NOT A VERB, on purpose. Every other card's title names
+                  what to press; the move this one needs happens in an inbox, and the panel
+                  has no control for it — the same reason the dashed "Confirm email" strip was
+                  thrown out of this window. "One last step" is honest about where the step is.
+                  ⚠️ AND IT NAMES THE DOMAIN, inked as the subject (see StatusCard's
+                  `subject`): the field above shows the FREE address in every state this card
+                  is up in, so "this domain" pointed at nothing on screen. */}
               {confirmEmail && (
                 <StatusCard
                   stacked={stageCard}
                   tone="amber"
-                  /* ⚠️ IT NAMES THE DOMAIN, and that is not decoration. The line used to
-                     read "…to keep this domain", pointing at the field — but this card
-                     is also up through `registering`, `propagating` and `verifying`,
-                     where the field holds the FREE address and the demonstrative has
-                     nothing to demonstrate. Every other card in the panel names the name
-                     anyway, so this one does too, in all of them. */
+                  subject
                   title={t({
-                    en: `Confirm your email to keep ${world.customDomain}`,
-                    uk: `Підтвердьте email, щоб зберегти ${world.customDomain}`,
+                    en: `One last step for ${world.customDomain}`,
+                    uk: `Останній крок для ${world.customDomain}`,
                   })}
-                  sub={resent
-                    ? t({
-                        en: 'Sent again to roman@example.com — check your inbox.',
-                        uk: 'Надіслали ще раз на roman@example.com — перевірте пошту.',
-                      })
-                    : t({
-                        en: 'We sent a link to roman@example.com · confirm before the deadline in the email',
-                        uk: 'Ми надіслали посилання на roman@example.com · підтвердьте до терміну, вказаного в листі',
-                      })}
+                  /* The explanation is the STABLE half and the acknowledgement the moving
+                     one: `Resend` used to replace the whole sub, so for nine seconds the
+                     card stopped saying why any of this was happening. */
+                  sub={t({
+                    en: `It’s bought and set up — the address starts working once you confirm your email. ${resent
+                      ? 'Sent again to roman@example.com — check your inbox.'
+                      : 'We sent the link to roman@example.com.'}`,
+                    uk: `Він куплений і налаштований — адреса запрацює, щойно ви підтвердите email. ${resent
+                      ? 'Надіслали ще раз на roman@example.com — перевірте пошту.'
+                      : 'Посилання надіслали на roman@example.com.'}`,
+                  })}
                   action={resent
                     ? { label: t({ en: 'Sent', uk: 'Надіслано' }), disabled: true }
                     : { label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => setResent(true) }}
@@ -1025,7 +1072,7 @@ export function PublishPanel() {
                      card that just said there is nothing to do, and on the bought path over
                      a name they have already paid for. So it is plain navigation.
                   `openDomains` closes this panel on its way (state/ui.ts) — one write. */}
-              {stageCard && (
+              {(stageCard || confirmEmail) && (
                 <button
                   onClick={() => openDomains('home')}
                   className="mt-2 flex h-8 items-center rounded-[8px] px-0.5 text-[13px] font-semibold leading-[1.4] text-[var(--white-560)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
