@@ -527,11 +527,32 @@ export function violations(w: World): Violation[] {
 
 /* ------------------------------------------------------------ URL coding */
 
-/** Short keys keep the shareable link readable. */
+/**
+ * Short keys keep the shareable link readable.
+ *
+ * ⚠️ `n` IS THE ONE VALUE HERE THAT IS NOT A TOKEN, AND IT STILL HAS TO TRAVEL.
+ *
+ * Every other entry is a word from a union or a number. The domain NAME is free text, and
+ * leaving it off this table is what made a reload forget a purchase: the URL wins whole in
+ * `initialWorld`, and after a purchase the address bar ALWAYS has one (`?a=paid&d=live&…`),
+ * so the world was rebuilt over `DEFAULT_WORLD` and the drawn constant came back. A customer
+ * who had bought `emberandoak.com` returned to `fit-ration.com` on the topbar chip, in the
+ * Publish panel's field and in the floating letter at once — and the label was the smaller
+ * half: the connect clock validates its resume ticket against THIS field
+ * (modules/domains/connect.ts, `resumeConnect`), so after a reload the ticket no longer
+ * matched, the clock stood down and consumed it, and the progress card sat on "Registering…"
+ * for ever — the same hang the ticket was written to remove, re-entered by another door.
+ *
+ * Nothing on either side of the trip assumes a short value: `String(v)` goes in, the raw
+ * string comes out, and URLSearchParams does the encoding. A hostname needs none of it —
+ * letters, digits, `-` and `.` are all form-safe, so `n=emberandoak.com` travels literally
+ * and the link stays as readable as it was. The table already carries longer words than most
+ * domain names (`dh-external-ns`, `trial-expired`).
+ */
 const KEYS: Record<string, keyof World> = {
   l: 'lang', a: 'account', t: 'trialDay', b: 'billing', c: 'credits', z: 'bonus',
   i: 'inventory', d: 'domain', p: 'project', u: 'unpublished', v: 'published', h: 'chat',
-  m: 'mode', k: 'icann',
+  m: 'mode', k: 'icann', n: 'customDomain',
 }
 
 /**
@@ -546,6 +567,15 @@ const PROJECTS_KEY = 'w'
 export function worldToParams(w: World): string {
   const q = new URLSearchParams()
   for (const [short, key] of Object.entries(KEYS)) {
+    /*
+     * The name rides along only while a domain is actually in play. `customDomain` is
+     * sticky by design — it holds the last name long after the axis has walked back to
+     * `staging` — and a dead name in a link is not free: it is the name the RECIPIENT's
+     * next staged `live` would print. This can only ever drop a stale one, never a live
+     * one: the two writers of the field (startConnect, retryConnect) set the name and a
+     * transient domain state in the same call, so a name that matters is never inactive.
+     */
+    if (key === 'customDomain' && !isCustomDomainActive(w)) continue
     const v = w[key]
     if (v !== DEFAULT_WORLD[key]) q.set(short, String(v))
   }
@@ -631,6 +661,15 @@ function initialWorld(): World {
      * glow burning and the composer locked. In exactly that case (and no other,
      * so a shared scenario link stays a clean stage) carry the transcript over
      * from storage; send.ts resumes the interrupted job from it on mount.
+     *
+     * ⚠️ AND THE DOMAIN NAME IS DELIBERATELY NOT A SECOND SUCH CASE. It travels in the URL
+     * now (`n`, see KEYS), so a reload keeps it without being carried. Taking it from the
+     * snapshot instead — "the link did not name one, so use the stored one" — reads like the
+     * tidier fix and is half a fix plus a new bug: the link is then not the state its sender
+     * was looking at, and a clean scenario link opened in a browser that had once bought a
+     * name would print THAT name over somebody else's staged situation. The address bar is
+     * either ours (syncUrl keeps it in step, name included) or somebody else's; in both
+     * cases it should win whole, which is why only the untravelable transcript is rescued.
      */
     const resumable =
       fromUrl.chat === 'working' &&

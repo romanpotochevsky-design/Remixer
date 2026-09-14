@@ -770,6 +770,71 @@ function ConnectionChip({ state }: { state: DomainState }) {
   )
 }
 
+/**
+ * THE SAME FACT IN A SENTENCE — what the in-account hero (`OwnedAnswer`) says under the
+ * name once the searched domain turns out to be the one this site is already on.
+ *
+ * The chip above is the headline and this is the line beneath it, so the two are keyed
+ * by the SAME axis and written from the Publish panel's own cards — `registering`'s
+ * fifteen minutes, `propagating`'s journey, `ready`'s "publish to put your site on it",
+ * `old-site`'s older website that has to come off, `unreachable`'s "stopped showing your
+ * site", `live`'s padlock. Three surfaces, one story about one domain.
+ *
+ * ⚠️ NO CLOCK IN ANY OF THEM, which is this screen's standing rule (see the note inside
+ * `OwnedAnswer`) and not a stylistic preference: the panel is allowed to say "usually
+ * under 15 minutes" about `registering` because it is reading ONE state, while a hero
+ * that collapses four in-flight states under one `Connecting` chip would be a click away
+ * from promising the attach path's speed on the bought path. The durations live once,
+ * in the panel, where the state is the whole subject.
+ *
+ * ⚠️ Exhaustive like `CONNECTION_CHIP`, and for the same reason: a new domain state
+ * cannot reach this hero without somebody deciding what it says. The three `null`s are
+ * the states where nothing is attached at all (`isCustomDomainActive` excludes exactly
+ * those), so the hero never reads them — it is offering to connect then, which is the
+ * correct answer for a domain the site is not on.
+ */
+const ATTACHED_LINE: Record<DomainState, Text | null> = {
+  staging: null,
+  searching: null,
+  checkout: null,
+  registering: {
+    en: 'This site’s domain — we’re registering it now.',
+    uk: 'Домен цього сайту — зараз реєструємо.',
+  },
+  propagating: {
+    en: 'This site’s domain — it’s on its way across the internet.',
+    uk: 'Домен цього сайту — він уже в дорозі інтернетом.',
+  },
+  connecting: {
+    en: 'This site’s domain — we’re connecting it now.',
+    uk: 'Домен цього сайту — зараз підключаємо.',
+  },
+  verifying: {
+    en: 'This site’s domain — the secure padlock is switching on.',
+    uk: 'Домен цього сайту — вмикається захисний замок.',
+  },
+  ready: {
+    en: 'This site’s domain — set up and waiting for you to publish.',
+    uk: 'Домен цього сайту — усе налаштовано, лишилося опублікувати.',
+  },
+  'old-site': {
+    en: 'This site’s domain — an older website on it has to come off first.',
+    uk: 'Домен цього сайту — спершу треба прибрати старіший сайт на ньому.',
+  },
+  unreachable: {
+    en: 'This site’s domain — it stopped showing your site.',
+    uk: 'Домен цього сайту — він перестав показувати ваш сайт.',
+  },
+  live: {
+    en: 'Your site is live on it · padlock on.',
+    uk: 'Ваш сайт працює на ньому · замок увімкнено.',
+  },
+  multiple: {
+    en: 'Your site is live on it · padlock on.',
+    uk: 'Ваш сайт працює на ньому · замок увімкнено.',
+  },
+}
+
 /* ------------------------------------------------------------------ screens */
 
 /**
@@ -1089,11 +1154,22 @@ function OwnScreen() {
   const { activeDomain } = useUI()
   const domain = activeDomain ?? CUSTOM_DOMAIN
 
+  /* ⚠️ THE ATTACHED DOMAIN NEVER REACHES THE SETUP SCREEN, WHATEVER THE INVENTORY SAYS.
+     `ExternalNsScreen` is one long instruction for attaching a name — "we’ll show you
+     the two lines to paste at Cloudflare", a Connect that opens the connect sheet — and
+     every word of it is moot about the domain this site is already on, whose records
+     were written long ago. Same defect as the one `OwnedAnswer` is being fixed for
+     (QA, 14.09.2026), one route further out: `?i=dh-external-ns&d=live` typed its own
+     live domain into the field and was handed a setup guide with a Connect at the
+     bottom. The attached case answers with the state, which is what `OwnedAnswer` now
+     draws; the external-NS body keeps every OTHER domain in that account. */
+  const attached = isCustomDomainActive(world) && world.customDomain === domain
+
   /* ITERATION 2 — OUT OF SCOPE, left reachable exactly as it was. A domain of ours
      whose settings are managed at another company cannot be attached by writing
      records on our side, so it needs its own flow (㉘ A2 gives it one, and calls the
      CTA "Show me what to change"). Not developed here, not deleted either. */
-  if (world.inventory === 'dh-external-ns') return <ExternalNsScreen domain={domain} />
+  if (world.inventory === 'dh-external-ns' && !attached) return <ExternalNsScreen domain={domain} />
 
   return <OwnedAnswer domain={domain} />
 }
@@ -1103,10 +1179,42 @@ function OwnScreen() {
  * (this screen) and a search whose exact match turns out to be one already in the
  * account (ResultsScreen). Without this, the second path would have gone on
  * offering to sell the customer their own name.
+ *
+ * ⚠️ AND IT MUST NOT OFFER TO CONNECT THE DOMAIN THE SITE IS ALREADY ON (QA,
+ * 14.09.2026 — "a very plausible demo move"). Typing the live domain into the field
+ * landed here with a blue `Connect`, and that button is not decoration: it opens the
+ * connect sheet, which sends `domain` back to `connecting`, reverts the Publish panel's
+ * URL field to the free address and takes the live site off the air for an eleven-second
+ * replay of a connection that already happened. The Existing-domains list learned this
+ * the same night (see `ConnectionChip`); the SEARCH answer for the same domain is the
+ * same claim about the same world and had been left behind — one surface offering what
+ * the other had already marked done.
+ *
+ * So the state decides: attached, and the verb is replaced by the state chip and the
+ * line under the name says where the connection stands — in the dashboard row's and the
+ * Publish panel's own vocabulary and tones (`CONNECTION_CHIP` · `ATTACHED_LINE`), never
+ * a second set invented here. Not attached — including every OTHER domain in the
+ * account — and the screen is exactly what it was: one card, one blue verb.
+ *
+ * ⚠️ The test is `world.domain` + the name, never "is there a name in the field".
+ * `customDomain` keeps its name long before anything is attached and long after a
+ * connection is abandoned, so the comparison has to go through `isCustomDomainActive`
+ * — the house rule the Publish panel and the list both already follow.
+ *
+ * The way out is untouched in both branches: the field above still searches, the "just
+ * keep typing" caption still says so, and `All domains` still leads back.
  */
 function OwnedAnswer({ domain }: { domain: string }) {
+  const { world } = useWorld()
   const { openDomainModal, goDomains } = useUI()
   const { t } = useT()
+
+  /* Null unless THIS name is the one the project is actually on — the same read the
+     Existing-domains list makes one screen away. */
+  const attached = isCustomDomainActive(world) && world.customDomain === domain
+    ? world.domain
+    : null
+  const standing = attached ? ATTACHED_LINE[attached] : null
 
   return (
     <ResultsSheet onBack={() => goDomains('home')}>
@@ -1135,20 +1243,32 @@ function OwnedAnswer({ domain }: { domain: string }) {
               * minute · nothing to configure" — went out with the pre-redesign
               * OwnScreen body on 18.08.2026, commit 4059a41.)
               */}
+            {/* ⚠️ "free to connect" IS AN OFFER, so it goes out with the button on the
+                domain that is already connected: the honest half of that sentence
+                (ownership, no charge) is the reason there is no price on this card, and
+                the reason has no work left to do once the connection exists. What the
+                customer needs instead is where it stands — `ATTACHED_LINE`. */}
             <p className="mt-1.5 text-[13px] leading-none text-[#ffffff7a]">
-              {t({
+              {t(standing ?? {
                 en: 'You own this — registered with DreamHost · free to connect',
                 uk: 'Це ваш домен — зареєстрований у DreamHost · підключення безкоштовне',
               })}
             </p>
           </div>
-          {/* The one blue thing on the screen: nothing else here is an action. */}
-          <button
-            onClick={() => openDomainModal('connect-owned', domain)}
-            className="h-9 min-w-[110px] flex-none rounded-[8px] bg-[var(--action)] px-4 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-          >
-            {t({ en: 'Connect', uk: 'Підключити' })}
-          </button>
+          {/* Attached: the verb's slot carries the state instead — the same swap the
+              Existing-domains row makes, so the two screens cannot disagree about one
+              situation. Otherwise the one blue thing on the screen: nothing else here
+              is an action. */}
+          {attached ? (
+            <ConnectionChip state={attached} />
+          ) : (
+            <button
+              onClick={() => openDomainModal('connect-owned', domain)}
+              className="h-9 min-w-[110px] flex-none rounded-[8px] bg-[var(--action)] px-4 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+            >
+              {t({ en: 'Connect', uk: 'Підключити' })}
+            </button>
+          )}
         </div>
       </motion.div>
 

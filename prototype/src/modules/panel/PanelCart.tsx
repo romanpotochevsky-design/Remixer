@@ -334,8 +334,12 @@ function Summary({
   /**
    * The order cannot be placed, and this is the domain it would have stranded.
    * Null the rest of the time — see `blocker` in `PanelCart` for the rule.
+   *
+   * `removed` says whether the plan was ever in THIS cart. It is what makes the strip's
+   * sentence true in both the states that reach it, and only the wording hangs off it —
+   * the refusal and its Add button are the same either way.
    */
-  blocker: { domain: string } | null
+  blocker: { domain: string; removed: boolean } | null
   onSubmit: () => void
   onRestorePlan: () => void
 }) {
@@ -373,9 +377,14 @@ function Summary({
             animate="animate"
           >
             <DhAlert />
+            {/* "back" only when there is a back to go to. The strip is reached two ways:
+                the customer deletes the plan line here, and the cart is opened on an order
+                that never held one (the `left-at-checkout` preset stages exactly that — a
+                registration standing alone on a trial account). Telling the second one to
+                add the plan BACK describes a removal they never made. */}
             <span className="min-w-0 flex-1">
-              {blocker.domain} can only go live on the Remixer Build plan — add it back to
-              place this order.
+              {blocker.domain} can only go live on the Remixer Build plan —{' '}
+              {blocker.removed ? 'add it back' : 'add it'} to place this order.
             </span>
             {/* `[&>svg]:mr-0` because the strip styles its own mark (`.dh-renewal svg`
                 gets 12px of clearance) and that selector reaches into this button too —
@@ -551,7 +560,7 @@ export function PanelCart() {
   const orderDomain = lines.find((l) => l.kind === 'domreg')?.domain ?? peekPendingConnect()
   const blocker =
     orderDomain && !lines.some((l) => l.kind === 'remixer') && !hasPlan(world)
-      ? { domain: orderDomain }
+      ? { domain: orderDomain, removed: removedPlan !== null }
       : null
 
   /*
@@ -699,6 +708,30 @@ export function PanelCart() {
       const owned = takePendingConnect()
       set({
         ...(plan ? { account: 'paid' as const, billing: plan.term ?? 'yearly', credits: 1000 } : null),
+        /*
+         * AND THE ORDER THAT CONNECTS NOTHING STILL HAS TO LEAVE THE TILL.
+         *
+         * `checkout` is the world's word for "standing at the till", and the two paths
+         * below move the axis off it themselves — `startConnect` writes `connecting` or
+         * `registering` on its way past. The third path connects nothing: the customer
+         * bought the plan and took the domain line back out of the order (or the intent
+         * belonged to a trip that had already died). That order used to be placed with the
+         * axis left sitting at `checkout` over an empty cart — invisible on screen, but
+         * `d=checkout` stays in the address bar, so a link shared from that moment stands
+         * somebody at a till with nothing in it, and no screen describes that pair
+         * (QA, 14.09.2026).
+         *
+         * `staging` is what the world actually is once the money has moved: the plan is
+         * paid for, no custom domain is in play, and the site has only its free address —
+         * one of the three states `isCustomDomainActive` calls "no domain yet", and the
+         * one every screen already renders as its default (DEFAULT_WORLD).
+         *
+         * NOT `searching`, which is what walking out (`back`) writes. That is a claim about
+         * where the customer is standing, and it is true there because the domains window
+         * is still open behind the till. This path closes it (`closeSurface` below) and
+         * opens the Publish panel instead, so nobody is choosing a domain.
+         */
+        ...(registered || owned ? null : { domain: 'staging' as const }),
         cart: [],
       })
       setSubmitting(false)

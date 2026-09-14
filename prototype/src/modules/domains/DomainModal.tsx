@@ -305,10 +305,28 @@ function ConnectBody({
   onConfirm: () => void
 }) {
   const { t } = useT()
-  /* Derived here rather than passed in, exactly as DomainsSurface derives it —
-     `registrarOf` is pure data and the fallback matches the demo name that screen
-     uses when a domain is not in the taken list. */
-  const registrar = registrarOf(domain) ?? 'GoDaddy'
+  /*
+   * Derived here rather than passed in, exactly as DomainsSurface derives it —
+   * `registrarOf` is pure data.
+   *
+   * ⚠️ AND IT NAMES NOBODY WE CANNOT NAME. This read was `registrarOf(domain) ?? 'GoDaddy'`
+   * until 14.09.2026, which told a customer whose registrar we do not know that their name
+   * is held at GoDaddy — an invented claim about a real company, said out loud on screen.
+   * The same fabrication was removed the same night from the two screens on either side of
+   * this sheet (DomainsSurface's taken card and ExternalScreen); this copy survived only
+   * because it is unreachable today — the external sheet is opened from a taken card, and
+   * a row may only be marked taken where the data says who holds it (data/domains.ts rule
+   * 3). Unreachable is exactly how an invented registrar gets to outlive the ones that
+   * were caught, so it goes now rather than when iteration 2 opens a second door onto this
+   * sheet.
+   *
+   * `another provider` is ExternalScreen's own degradation, word for word — the wording
+   * states.md prescribes for `{registrar}` when the registry does not show one. The
+   * Ukrainian differs from that screen's only in case: this sentence's preposition takes
+   * the locative ("На іншому провайдері"), that one's an object.
+   */
+  const registrar = registrarOf(domain)
+  const where = registrar ?? t({ en: 'another provider', uk: 'іншому провайдері' })
   return (
     /* 24px sides against the 540 sheet is the board's 492 content width exactly;
        the board's own 23/25 asymmetry is mid-fi drift, not a decision. */
@@ -329,15 +347,16 @@ function ConnectBody({
 
                 An EXTERNAL domain gets neither: both describe DreamHost, and this
                 name is not at DreamHost. It states the customer's own situation
-                instead — whose company holds the name, and that the work happens
-                over there (board ㉘ A2, 27281:5564). Deliberately NOT board ㉔'s
+                instead — whose company holds the name (or `another provider` where
+                the registry does not tell us: see `where` above), and that the work
+                happens over there (board ㉘ A2, 27281:5564). Deliberately NOT board ㉔'s
                 "you'll approve one change there": that board assumes Domain Connect,
                 which DreamHost supports in no role, and is annotated obsolete. */}
             {external ? (
               <p className="mt-1 truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
                 {t({
-                  en: `At ${registrar} · you'll add two records there`,
-                  uk: `На ${registrar} · два записи треба додати там`,
+                  en: `At ${where} · you'll add two records there`,
+                  uk: `На ${where} · два записи треба додати там`,
                 })}
               </p>
             ) : showPlans ? (
@@ -375,12 +394,25 @@ function ConnectBody({
                * Wording is OwnScreen's ("nothing to change anywhere else") — same fact,
                * same module, already in the product's voice. The designer may prefer to
                * change the board instead; that is his call, not a silent fix.
+               *
+               * ⚠️ …AND THE SECOND HALF COMES OFF WHEN THE DOMAIN IS IN USE (14.09.2026).
+               * "Nothing to change anywhere else" is a statement about OTHER COMPANIES —
+               * no registrar to visit, nothing to paste — and on a clean domain that is the
+               * whole story. On ㉖B it lands directly above a caution saying this domain
+               * currently shows another site, and the pair reads as a contradiction:
+               * something on the customer's own account IS about to change, which is
+               * exactly why that caution is there and why the button below it says
+               * "Replace and connect". The caution already carries the truth in full, so
+               * the fix is to say LESS rather than add a claim — the location alone, which
+               * is the half that holds on both boards.
                */
               <p className="mt-1 truncate text-[14px] leading-[1.4] text-[#ffffff8f]">
-                {t({
-                  en: 'On DreamHost · nothing to change anywhere else',
-                  uk: 'На DreamHost · нічого не треба змінювати деінде',
-                })}
+                {inUse
+                  ? t({ en: 'On DreamHost', uk: 'На DreamHost' })
+                  : t({
+                    en: 'On DreamHost · nothing to change anywhere else',
+                    uk: 'На DreamHost · нічого не треба змінювати деінде',
+                  })}
               </p>
             )}
           </div>
