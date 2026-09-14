@@ -67,6 +67,33 @@ const STAGING_SUFFIX = STAGING_DOT > 0 ? STAGING_HOST.slice(STAGING_DOT) : ''
 const RESEND_COOLDOWN_MS = 9000
 
 /**
+ * "Update · 1 change", not "1 changes".
+ *
+ * ⚠️ UKRAINIAN HAS THREE FORMS and the middle one is the trap: 1 зміна · 2–4 зміни ·
+ * 5+ змін, with the teens taking the last however they end (11 is `змін`, not `зміна`).
+ * Same rule the scenario console spells out for its own summary line (`edits`,
+ * state/scenarios.ts) — a second copy of the RULE, not of the string: that sentence is a
+ * description ("3 unpublished changes"), this one is a button. The day a third caller
+ * appears the rule wants one home; two is where that starts.
+ *
+ * The label used to read `Оновити · змін: N`, which dodges agreement by making the noun
+ * a genitive heading rather than a counted thing. That is not wrong Ukrainian — it is a
+ * different sentence from the English beside it, and the English one said "1 changes",
+ * at the count this panel shows more often than any other.
+ */
+const changeCount = (n: number) => {
+  const ones = n % 10
+  const tens = n % 100
+  const uk =
+    ones === 1 && tens !== 11
+      ? 'зміна'
+      : ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)
+        ? 'зміни'
+        : 'змін'
+  return { en: `${n} ${n === 1 ? 'change' : 'changes'}`, uk: `${n} ${uk}` }
+}
+
+/**
  * PUBLISHING HAS TO LAND — the two clocks that make it land.
  *
  * `PUBLISH_SETTLE_MS` is how long the footer button refuses to be a dismiss button after
@@ -91,8 +118,7 @@ const PUBLISH_FRESH_MS = 60000
  * The designer's rule, 14.09.2026: «мы убираем первый домен и вместо него вставляем
  * кастомный, только тогда, когда кастомный домен уже привязан». The field keeps the free
  * *.remixer.ai address for the WHOLE of the connection walk and swaps to the customer's
- * own name only once that name is genuinely finished — working, secured, and with nothing
- * outstanding against it.
+ * own name only once that name is actually attached and working.
  *
  * Exported because the topbar chip prints an address too (App.tsx), off this same
  * function. The two used to derive it separately and disagreed for the length of a state,
@@ -109,26 +135,30 @@ const PUBLISH_FRESH_MS = 60000
  * answer to that is the free address — the one that certainly works — not the one that
  * happens to resolve for us, this minute, from here.
  *
- * So the swap waits on two things, and the second is the one the walk keeps forgetting:
- *  · `live` or `multiple` — the address answers WITH the site, padlock and all;
- *  · and nothing outstanding against the name. `world.icann` is a clock the registrar
- *    switches the domain OFF at the end of (state/world.ts) — a name on that clock works
- *    conditionally, and a conditional name is not a link you give somebody.
+ * ⚠️ AND "FINISHED" IS THE DOMAIN WORKING, NOT EVERY OBLIGATION AROUND IT DISCHARGED.
+ * A registrant-email confirmation is a separate requirement on its own deadline: a newly
+ * registered name resolves straight away and the registrar suspends it only if that
+ * deadline passes unmet. So a domain on that clock IS attached and IS working, the
+ * customer can publish to it, and printing the free address over it would be the lie
+ * this rule exists to stop — the mirror of the one it stops during the walk.
  *
- * Which makes this exactly the panel's `settled`, and that is deliberate, not a
- * coincidence to be tidied apart: the field hands over the domain in the same beat the
- * panel is able to say "Padlock on · anyone can visit", and never one state earlier.
+ * Which is why this reading is `live`-or-`multiple` and NOT the panel's `settled`. The
+ * two questions look alike and are not: WHICH ADDRESS DO WE HAND OVER is answered by the
+ * domain working, while ALL CLEAR — the green pill, and the "Padlock on · anyone can
+ * visit" line — additionally requires nothing outstanding against it. The address is the
+ * wider of the two, so live-with-a-confirmation-owed shows the name and wears no pill.
  */
 export const domainIsHome = (w: World) =>
-  (w.domain === 'live' || w.domain === 'multiple') && !w.icann
+  w.domain === 'live' || w.domain === 'multiple'
 
 /**
- * ⚠️ THE INHERITED NAME. Accurate while the test was "does the address answer"; the test
- * is now "is the domain done", so it lies about its own body — and it is kept only
- * because App.tsx imports it and that file belongs to another pair of hands tonight.
- * Rename both sides in the one commit that can touch both. What must NOT happen is a
- * second predicate growing in App.tsx: the chip's address and this field's address are
- * one decision, and splitting them is the bug this export exists to prevent.
+ * ⚠️ THE INHERITED NAME, kept only because App.tsx imports it and that file belongs to
+ * another pair of hands tonight. It was written for "does the address answer", which
+ * `verifying` also satisfied; the test is now "is the domain attached and working", so
+ * the name is close enough to mislead and should go. Rename both sides in the one commit
+ * that can touch both. What must NOT happen is a second predicate growing in App.tsx:
+ * the chip's address and this field's address are one decision, and splitting them is
+ * the bug this export exists to prevent.
  */
 export const domainAnswers = domainIsHome
 
@@ -164,17 +194,19 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
  * The inset URL field.
  *
  * Three faces, and which one is on says what link the customer can give somebody:
- *  · `bare` — the free address, before anybody has pressed Publish. An address and
- *    nothing beside it, because nothing has happened to it yet.
+ *  · `bare` — an address and nothing beside it. Two situations land here and they agree
+ *    that there is nothing yet to mark: the free address before anybody has pressed
+ *    Publish, and the working custom domain while a registrant-email confirmation is
+ *    still owed on it (the amber card directly beneath carries that whole story, and a
+ *    pill would either repeat it or contradict it).
  *  · `published` — the free address, with the quiet marker that the site is out on it.
  *    This is the face the WHOLE connection walk wears — registering, on its way,
- *    connecting, padlock switching on, and live-but-still-owing-a-confirmation — because
- *    through all of it the free address is the one that certainly works. See the marker
- *    itself below for why it is not green, and `domainIsHome` for why the custom name
- *    waits.
- *  · `live` — the custom domain under the green pill. Reached in one beat and one only:
- *    the domain is finished. The pill replaces the trailing button rather than joining
- *    it, and the board draws it in that slot.
+ *    connecting, padlock switching on — because through all of it the free address is
+ *    the one that certainly works. See the marker itself below for why it is not green,
+ *    and `domainIsHome` for why the custom name waits.
+ *  · `live` — the custom domain under the green pill. One state reaches it: working, and
+ *    nothing outstanding. The pill replaces the trailing button rather than joining it,
+ *    and the board draws it in that slot.
  *
  * ⚠️ THERE IS NO PENCIL (demo-readiness gate, 14.09.2026). The free address used to
  * carry an "Edit address" button — hover fill, aria-label, and no handler — and it was
@@ -186,17 +218,18 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
  * starts teaching a product that does not exist. Do not put a pencil back without the
  * screens behind it.
  *
- * ⚠️ THE GREEN PILL AND THE ADDRESS ARE ONE DECISION, NOT TWO (14.09.2026). The field
- * shows the custom domain only when that domain is done, and "done" is the only thing
- * green means here — so the pill cannot end up beside anything that contradicts it.
- * It got there twice by being a second decision: over `verifying` it said Live above a
- * card saying the padlock was still switching on, and over a live domain with the
- * registrant email unconfirmed it said Live a hundred pixels above "Confirm your email
- * to keep this domain" — the designer, on that one: "почему пишется что Live если
- * Confirm your email to keep this domain". Green in this product is the all-clear:
- * every checklist line closed AND nothing outstanding. A name on a clock the registrar
- * can switch off is working conditionally, which is a different claim and gets a
- * different surface — the amber card, which is the only one saying it.
+ * ⚠️ THE GREEN PILL IS NOT PAINTED BY "there is a domain in the field" (14.09.2026).
+ * It was, twice over, and both times it ended up arguing with the card beneath it: over
+ * `verifying` it said Live above a card saying the padlock was still switching on, and
+ * over a live domain owing a registrant-email confirmation it said Live a hundred pixels
+ * above "Confirm your email to keep this domain" — the designer, on the second: "почему
+ * пишется что Live если Confirm your email to keep this domain". Green in this product
+ * is the ALL CLEAR — every line of the checklist closed (copy.md §5) and nothing
+ * outstanding against the name. A domain on a deadline the registrar can switch it off
+ * at is working CONDITIONALLY, which is a different claim; it keeps the field, because
+ * it genuinely is the address, and it loses the pill, because the amber card below is
+ * the one surface saying the conditional thing. No second status, no second colour on
+ * the field: one link, one status, which is this window's standing rule.
  */
 function UrlField({ value, suffix, slot, publishedLabel }: {
   value: string
@@ -400,7 +433,9 @@ export function PublishPanel() {
    * competitor for one slot.
    */
   const attached = isCustomDomainActive(world)
-  const liveish = world.domain === 'live' || world.domain === 'multiple'
+  /* WHICH ADDRESS the field hands over — and the topbar chip prints the same one, off
+     the same function (`domainIsHome`). Do not re-derive it at either end. */
+  const liveish = domainIsHome(world)
   const unreachable = world.domain === 'unreachable'
   const connecting = world.domain === 'connecting'
   const registering = world.domain === 'registering'
@@ -410,13 +445,13 @@ export function PublishPanel() {
   const oldSite = world.domain === 'old-site'
   const confirmEmail = attached && world.icann
   /*
-   * THE ONE READING THE ADDRESS AND THE PROSE LINE SHARE. `domainIsHome` is spelled
-   * `live-or-multiple AND no clock running` — the same sentence this const used to spell
-   * out here in longhand, now said once, in the place the topbar chip reads it from too.
-   * Two names for one truth is how the field and the chip came to disagree in the first
-   * place.
+   * ALL CLEAR — strictly narrower than `liveish`, and the gap between them is this
+   * panel's most-argued pixel. The domain working is what puts its name in the field;
+   * all clear is what puts the GREEN on it and what lets the panel say "Padlock on ·
+   * anyone can visit". A registrant-email clock running against the name closes neither
+   * sentence, so in that window the name shows and both of those stay away.
    */
-  const settled = domainIsHome(world)
+  const settled = liveish && !world.icann
   /*
    * A NAME LEFT STANDING AT THE TILL — see the card for how this maps to board state ⑦.
    *
@@ -547,6 +582,7 @@ export function PublishPanel() {
    * can still read a minute later.
    */
   const settleLabel = settling && !publishes
+  const edits = changeCount(world.unpublished)
   const primary = settleLabel
     ? { en: 'Published', uk: 'Опубліковано' }
     : !publishes
@@ -557,7 +593,7 @@ export function PublishPanel() {
          the domain, and the word for that is Publish. */
       : ready || !world.published
         ? { en: 'Publish', uk: 'Опублікувати' }
-        : { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
+        : { en: `Update · ${edits.en}`, uk: `Оновити · ${edits.uk}` }
 
   return (
     <AnimatePresence>
@@ -673,11 +709,12 @@ export function PublishPanel() {
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
                   {t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
                 </p>
-                {settled ? (
-                  /* The finished domain, and the only face that wears the green pill.
-                     One branch, one slot: the field cannot show this name without the
-                     all-clear, nor the all-clear without this name (`domainIsHome`). */
-                  <UrlField value={world.customDomain} slot="live" />
+                {liveish ? (
+                  /* The domain, once it is attached and working — with the green pill
+                     only when nothing is outstanding against it. Two reads, not one: see
+                     `liveish` and `settled` above for why the wider one picks the name
+                     and the narrower one paints it. */
+                  <UrlField value={world.customDomain} slot={settled ? 'live' : 'bare'} />
                 ) : (
                   /* The free address — through the whole walk, not just before it. It
                      gets the marker the moment the site is out on it, INCLUDING while a
@@ -943,12 +980,11 @@ export function PublishPanel() {
                   stacked={stageCard}
                   tone="amber"
                   /* ⚠️ IT NAMES THE DOMAIN, and that is not decoration. The line used to
-                     read "…to keep this domain", which pointed at the field — and the
-                     field no longer holds that name in any state this card is up in: it
-                     holds the free address until the domain is done, and this clock is
-                     one of the two things stopping it being done. A demonstrative with
-                     nothing to demonstrate is worse than a long title, and every other
-                     card in the panel names the name anyway. */
+                     read "…to keep this domain", pointing at the field — but this card
+                     is also up through `registering`, `propagating` and `verifying`,
+                     where the field holds the FREE address and the demonstrative has
+                     nothing to demonstrate. Every other card in the panel names the name
+                     anyway, so this one does too, in all of them. */
                   title={t({
                     en: `Confirm your email to keep ${world.customDomain}`,
                     uk: `Підтвердьте email, щоб зберегти ${world.customDomain}`,

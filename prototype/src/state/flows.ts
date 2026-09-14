@@ -406,17 +406,22 @@ export const FLOWS: Flow[] = [
           en: 'The state a first-timer reads as "it’s broken": everything is right and the site was simply never put out. So the panel says which press is missing, and carries it.',
           uk: 'Стан, який новачок читає як «усе зламалося»: усе правильно, просто сайт жодного разу не публікували. Тому панель каже, якого натискання бракує, і сама його пропонує.',
         } },
-      { id: 'live', label: { en: 'Published — the site answers on their own name', uk: 'Опубліковано — сайт відповідає за їхнім власним іменем' },
+      /* Published and live — and the panel deliberately withholds its all-clear, because
+         the registrant clock is still outstanding. The subtitle is written about the CARD
+         and about that withheld all-clear rather than about the address field: which
+         address the field prints while a confirmation is owed is a live argument in
+         PublishPanel and has been answered both ways this week. */
+      { id: 'live', label: { en: 'Published — and one card is still up', uk: 'Опубліковано — і одна картка ще лишилася' },
         patch: { domain: 'live', published: true, unpublished: 0 }, awaitUser: true,
         note: {
-          en: 'One card is still up, and only a bought name ever gets it: the registrar has to hear back from the person who registered it. Miss that and the name is suspended — so it is a card with its own way out, not a line of prose.',
-          uk: 'Одна картка ще лишилася, і її отримує лише куплене ім’я: реєстратор має почути відповідь від того, хто його зареєстрував. Пропустиш — ім’я призупинять, тому це картка з власним виходом, а не рядок тексту.',
+          en: 'Only a bought name ever gets it: until the person who registered it answers, the registrar can switch the name off. So it has its own way out, and the panel holds back its all-clear — no green tag, no "anyone can visit" — while it is up.',
+          uk: 'Її отримує лише куплене ім’я: доки не відповість той, хто його зареєстрував, реєстратор може ім’я вимкнути. Тож у картки свій вихід, а панель тримає остаточне «все гаразд» — ні зеленої позначки, ні «доступно всім», — поки картка тут.',
         } },
-      { id: 'confirmed', label: { en: 'Confirmed — the panel settles to one line', uk: 'Підтверджено — панель зводиться до одного рядка' },
+      { id: 'confirmed', label: { en: 'Confirmed — and the panel gives its all-clear', uk: 'Підтверджено — і панель дає остаточне «все гаразд»' },
         patch: { icann: false }, awaitUser: true,
         note: {
-          en: 'Padlock on, anyone can visit. A name attached from the DreamHost account never passes through this last card at all — nobody registered anything, so there is nothing to confirm.',
-          uk: 'Замок увімкнено, сайт доступний усім. Ім’я, підключене з акаунта DreamHost, цієї останньої картки не бачить узагалі: ніхто нічого не реєстрував, підтверджувати нема чого.',
+          en: 'Padlock on, anyone can visit, and the address wears its green tag. A name attached from the DreamHost account never passes this card at all — nobody registered anything, so there is nothing to confirm.',
+          uk: 'Замок увімкнено, сайт доступний усім, а адреса отримує зелену позначку. Ім’я, підключене з акаунта DreamHost, цієї картки не бачить узагалі: ніхто нічого не реєстрував, підтверджувати нема чого.',
         } },
     ],
   },

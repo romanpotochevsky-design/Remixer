@@ -7,7 +7,6 @@
 import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { FLOWS, flowById, stepDelay, useFlow, type Speed } from '@/state/flows'
-import { isCustomDomainActive, useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { foreignPage } from '@/ui/motion'
 import { useT } from '@/i18n'
@@ -32,10 +31,10 @@ const SPEEDS: { value: Speed; label: string }[] = [
  *
  *  · `canvas` — there IS a canvas (the preview, the domains window, the plan document), so
  *    the strip lives at its bottom-right: clear of the chat column and its dock, which is
- *    where every press in the chat happens, and clear of the right rail. The one thing that
- *    also lives down there is the simulated letter (App.tsx pins it to the canvas's
- *    bottom-left), and the bought walk ends with it up and asking to be clicked — so its
- *    width is reserved out of the strip's rather than shared with it.
+ *    where every press in the chat happens, clear of the right rail, and clear of the
+ *    simulated letter, which App.tsx pins to the canvas's TOP-left. The only thing it can
+ *    overlay there is canvas content — the demo site, or the tail of a scrolling list —
+ *    never a control a step names.
  *  · `top` — the chat owns the shell (a brief, a plan, a build) or a page from outside
  *    Remixer covers the window. Then the bottom band is all dock and there is no free
  *    620px anywhere along it, while the top of that layout carries only the header and the
@@ -45,7 +44,6 @@ const SPEEDS: { value: Speed; label: string }[] = [
  * straight to <html> by the resizer), so dragging the divider moves the strip with it and
  * nothing here has to re-render to keep up.
  */
-const LETTER_RESERVE = 364 // the simulated letter: 348 wide, plus its 16px gutter
 
 /** Drives auto-advance and renders the narration strip. Mount once, near the root. */
 export function FlowRunner() {
@@ -58,16 +56,13 @@ export function FlowRunner() {
   const page = useUI((s) => s.page)
   const previewOpen = useUI((s) => s.previewOpen)
   const panel = useUI((s) => s.panel)
-  /* The same question App.tsx asks before floating the letter (`SimulatedEmail`): a
-     registration that still owes its registrant email, on a domain actually in play. */
-  const letter = useWorld((s) => isCustomDomainActive(s.world) && s.world.icann)
   const dock = page !== 'builder' || panel !== null || !previewOpen ? 'top' : 'canvas'
   const place =
     dock === 'canvas'
       ? {
           bottom: 16,
           right: 'calc(var(--rail-w) + 16px)',
-          width: `min(620px, max(320px, calc(100vw - var(--chat-w) - var(--rail-w) - 32px - ${letter ? LETTER_RESERVE : 0}px)))`,
+          width: 'min(620px, max(320px, calc(100vw - var(--chat-w) - var(--rail-w) - 32px)))',
         }
       : /* left AND right AND a width centres it without a transform — which motion owns
            on this element, and an inline `translateX` would simply be overwritten.
