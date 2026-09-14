@@ -17,22 +17,43 @@ import { useWorld, EMPTY_BRIEF } from './world'
 import type { Text } from '../i18n'
 import { BRIEF_INTRO, BRIEF_STATUS, briefAck, briefDone, type BriefAnswers } from '../modules/chat/brief'
 
+/*
+ * ⚠️ EVERY STRING IN HERE IS READ OUT LOUD IN FRONT OF AN AUDIENCE.
+ *
+ * The console is opened in demos — product owners, and the room the CEO is in. Labels
+ * and notes are printed on the narration strip under the running prototype, so they are
+ * not team shorthand: they are the subtitles of the film.
+ *
+ * Three rules, each of them bought the hard way (14.09.2026):
+ *
+ *  · SAY WHAT THE VIEWER WILL SEE. A person who has never opened this prototype should
+ *    read a note and know what is about to happen on screen. Our reasoning, our audit
+ *    conclusions and our instructions to each other are not descriptions of a screen.
+ *  · NO COMPETITOR NAMES AND NO INTERNAL VOCABULARY. "That step is ours, not Lovable's"
+ *    and "the flow the CEO asked for" were both on screen in front of the room.
+ *  · NOTHING THAT IS NOT TRUE OF THE PRODUCT TODAY. A flow narrating a screen that
+ *    changed is worse than no flow, because it plays anyway and the room watches the
+ *    mismatch. No invented price, no invented duration, and none of the jargon the
+ *    product itself bans from primary paths (DNS, nameserver, records, certificate).
+ */
 export interface FlowStep {
   id: string
-  /** Narratable: what is happening right now. */
+  /** Narratable: what is happening on screen right now, in plain product language. */
   label: Text
   patch?: Partial<World>
   /** Dwell before auto-advancing, in ms at speed 1. */
   ms?: number
   /** Stop here until the user actually does something. */
   awaitUser?: boolean
-  /** Design note for the team, shown in the console — not product copy. */
+  /** The second line of the subtitle: what else the viewer can see in this beat. */
   note?: Text
 }
 
 export interface Flow {
   id: string
   label: Text
+  /** The one-sentence description in the flow picker — what this flow shows, for a
+   *  reader who has never seen the prototype. Not the argument for why we built it. */
   note: Text
   /** World state the flow begins from. */
   setup: Partial<World>
@@ -74,39 +95,47 @@ export const FLOWS: Flow[] = [
     id: 'thin-prompt',
     label: { en: 'Thin prompt → questions → first build', uk: 'Слабкий промпт → запитання → перша збірка' },
     note: {
-      en: 'Nothing to build from, so Remixer asks first, then shows the PLAN it compiled and waits for Approve — that last step is ours, not Lovable\'s. The preview stays collapsed until the build starts.',
-      uk: 'Будувати нема з чого: Remixer спершу питає, потім показує зібраний ПЛАН і чекає Approve — цей крок наш, не Lovable. Прев’ю згорнуте, доки не почнеться збірка.',
+      en: 'Someone types "Build me a website." and nothing is built: Remixer asks four questions, writes a build plan from the answers and waits for Start Building. No site preview until the build begins.',
+      uk: 'Людина пише «Build me a website.», і нічого не будується: Remixer ставить чотири запитання, складає з відповідей план збірки й чекає на Start Building. Прев’ю сайту немає, доки не почнеться збірка.',
     },
     setup: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], brief: EMPTY_BRIEF, domain: 'staging', inventory: 'none', unpublished: 0 },
     steps: [
       { id: 'typed', label: { en: '"Build me a website." is sent — Remixer thinks', uk: 'Надіслано «Build me a website.» — Remixer думає' },
         patch: { sent: [THIN_PROMPT], chat: 'working', brief: EMPTY_BRIEF }, ms: 5200,
-        note: { en: 'Preview collapsed: nothing to show yet, the chat owns the shell', uk: 'Прев’ю згорнуте: показувати нічого, чат займає весь шелл' } },
+        note: { en: 'No site preview on screen: there is nothing to show yet, so the conversation fills the whole window', uk: 'Прев’ю сайту на екрані немає: показувати ще нічого, тож переписка займає все вікно' } },
       { id: 'asks', label: { en: 'Instead of building, it asks for direction', uk: 'Замість збірки — просить напрямок' },
         patch: { sent: [THIN_PROMPT, THIN_ASK], chat: 'long', brief: { status: 'asking', step: 0, answers: {} } }, awaitUser: true,
-        note: { en: 'The question panel docks above the composer; the composer becomes "Tell Remixer what to do instead…"', uk: 'Панель запитань стає над композером; композер — «Tell Remixer what to do instead…»' } },
-      { id: 'q1', label: { en: 'Q1 — what the site is for', uk: 'В1 — для чого сайт' },
-        patch: { brief: { status: 'asking', step: 1, answers: { goal: THIN_ANSWERS.goal } } }, ms: 1400 },
-      { id: 'q2', label: { en: 'Q2 — how much there is to say', uk: 'В2 — скільки треба розповісти' },
-        patch: { brief: { status: 'asking', step: 2, answers: { goal: THIN_ANSWERS.goal, pages: THIN_ANSWERS.pages } } }, ms: 1400 },
-      { id: 'q3', label: { en: 'Q3 — a colour plate is picked from the grid', uk: 'В3 — обрано плитку кольорів' },
+        note: { en: 'A panel of questions grows out of the message field, and the field itself stays live — typing into it drops the questions', uk: 'З поля введення виростає панель запитань, і саме поле лишається робочим — якщо писати в нього, запитання зникають' } },
+      /* ⚠️ EACH OF THESE FOUR STEPS RECORDS AN ANSWER, SO THE PANEL HAS ALREADY MOVED ON
+         BY THE TIME THE STRIP IS READ. `step: 1` is the SECOND question on screen. The
+         labels used to be "Q1 … Q4" and pointed one question behind the panel every time
+         — measured on the running flow, 14.09.2026 — so they now name the question the
+         viewer is looking at, not the one just answered. */
+      { id: 'q1', label: { en: 'The first answer is in — the panel moves on to how much there is to say', uk: 'Перша відповідь є — панель переходить до того, скільки треба розповісти' },
+        patch: { brief: { status: 'asking', step: 1, answers: { goal: THIN_ANSWERS.goal } } }, ms: 1400,
+        note: { en: 'Under every answer is the consequence of choosing it, and one carries a Recommended tag — the answer an unanswered question falls back to anyway', uk: 'Під кожною відповіддю — наслідок вибору, а на одній є позначка Recommended: саме на неї впаде пропущене запитання' } },
+      { id: 'q2', label: { en: 'Answered — on to the colours, chosen from a grid of palettes', uk: 'Відповіли — далі кольори, які обирають із сітки палітр' },
+        patch: { brief: { status: 'asking', step: 2, answers: { goal: THIN_ANSWERS.goal, pages: THIN_ANSWERS.pages } } }, ms: 1400,
+        note: { en: 'The one question drawn as tiles rather than a list; the field under them takes a colour by name or a brand hex', uk: 'Єдине запитання, намальоване плитками, а не списком; поле під ними приймає колір за назвою або бренд-хекс' } },
+      { id: 'q3', label: { en: 'Answered — on to the lettering, set in the actual typefaces', uk: 'Відповіли — далі шрифти, показані самими накресленнями' },
         patch: { brief: { status: 'asking', step: 3, answers: { goal: THIN_ANSWERS.goal, pages: THIN_ANSWERS.pages, palette: THIN_ANSWERS.palette } } }, ms: 1400 },
-      { id: 'q4', label: { en: 'Q4 — lettering picked, ready to submit', uk: 'В4 — обрано шрифти, можна надсилати' },
+      { id: 'q4', label: { en: 'All four answered — Submit is the customer’s press', uk: 'Усі чотири відповіді є — Submit натискає клієнт' },
         patch: { brief: { status: 'asking', step: 3, answers: THIN_ANSWERS } }, awaitUser: true,
-        note: { en: '"Submit" is the user\'s decision — nothing is built until they press it', uk: '«Submit» — рішення користувача: до нього нічого не будується' } },
-      { id: 'summary', label: { en: 'Answers compiled into a brief card', uk: 'Відповіді зібрано в картку брифу' },
-        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'working', brief: { status: 'planning', step: 3, answers: THIN_ANSWERS } }, ms: 2400 },
-      { id: 'plan', label: { en: 'The PLAN is offered — nothing builds until Approve', uk: 'Показано ПЛАН — до Approve нічого не збирається' },
+        note: { en: 'The questions are free. Nothing is generated and nothing is charged until Submit.', uk: 'Запитання безкоштовні. До Submit нічого не генерується і нічого не списується.' } },
+      { id: 'summary', label: { en: 'The four answers come back as a card in the conversation', uk: 'Чотири відповіді повертаються карткою в переписці' },
+        patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'working', brief: { status: 'planning', step: 3, answers: THIN_ANSWERS } }, ms: 2400,
+        note: { en: 'Goal, pages, colours, lettering — and anything left to Remixer says so instead of pretending it was chosen', uk: 'Мета, сторінки, кольори, шрифти — а те, що лишили на розсуд Remixer, так і підписано, а не видається за вибір клієнта' } },
+      { id: 'plan', label: { en: 'A build plan appears — nothing is generated until Start Building', uk: 'З’являється план збірки — до Start Building нічого не генерується' },
         patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD], chat: 'long', brief: { status: 'planning', step: 3, answers: THIN_ANSWERS } }, awaitUser: true,
         note: {
-          en: 'Where Remixer parts ways with Lovable: the answers are compiled into a plan and the customer approves it. `Review` moves the document into the canvas at full size.',
-          uk: 'Тут Remixer розходиться з Lovable: відповіді збираються в план, і клієнт його підтверджує. «Review» переносить документ у канвас на повний розмір.',
+          en: 'The plan is written from the answers, and the customer can edit it in place. "Review" opens the same document full size beside the conversation.',
+          uk: 'План складено з відповідей, і клієнт може правити його просто в тексті. «Review» відкриває той самий документ на повний розмір поруч із перепискою.',
         } },
-      { id: 'ack', label: { en: 'Approved — "Got it — …", and the canvas opens EMPTY', uk: 'Підтверджено — «Got it — …», канвас відкривається ПОРОЖНІМ' },
+      { id: 'ack', label: { en: 'Start Building pressed — "Got it — …" and the work starts', uk: 'Натиснуто Start Building — «Got it — …», починається робота' },
         patch: { sent: [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK], chat: 'working', brief: THIN_BRIEF_READY, project: 'generating' }, ms: 2200,
         note: {
-          en: 'This pass builds the home page, and the preview is a preview OF that page — so there is nothing in the canvas yet',
-          uk: 'Цей прохід збирає головну, а прев’ю — це прев’ю САМЕ ЦІЄЇ сторінки, тож у канвасі поки нічого',
+          en: 'Still no site preview: this pass builds the home page, and the preview is a preview OF that page — it arrives when the page does',
+          uk: 'Прев’ю сайту й далі немає: цей прохід збирає головну, а прев’ю — це прев’ю САМЕ цієї сторінки, тож воно з’явиться разом з нею',
         } },
       /*
        * The generation, in four beats instead of its real minute.
@@ -117,94 +146,140 @@ export const FLOWS: Flow[] = [
        * site outlined, one section in hand at a time, and the canvas empty until the
        * page it previews actually exists.
        */
-      { id: 'outline', label: { en: 'The whole site is outlined — the home page first', uk: 'Показано план усього сайту — спершу головна' },
+      { id: 'outline', label: { en: 'The whole site is listed — the home page first', uk: 'Перелічено весь сайт — спершу головна' },
         patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 0, line: 0 } }, ms: 2600,
         note: {
-          en: 'Only the first page is generated in this pass — About, Services and Contact are named and visibly waiting (Figma 29480:48478)',
-          uk: 'У цьому проході генерується лише перша сторінка — About, Services і Contact названі й видимо чекають (Figma 29480:48478)',
+          en: 'Only the home page is built this pass. About, Services and Contact are named underneath it and visibly waiting.',
+          uk: 'Цього проходу збирається лише головна. About, Services і Contact названі під нею і видимо чекають.',
         } },
-      { id: 'sections', label: { en: 'Section by section, with the work named', uk: 'Секція за секцією, з назвою роботи' },
+      { id: 'sections', label: { en: 'Section by section, each one named as it is written', uk: 'Секція за секцією, кожна названа, доки її пишуть' },
         patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 2, line: 1 } }, ms: 2600,
         note: {
-          en: 'Done above, in hand in the middle with the line that says what is happening to it, waiting below',
-          uk: 'Готове вище, у роботі — посередині, з рядком про те, що саме відбувається; те, що в черзі — нижче',
+          en: 'Finished above, in hand in the middle with a line saying what is happening to it, queued below',
+          uk: 'Готове вище, у роботі — посередині, з рядком про те, що саме відбувається; у черзі — нижче',
         } },
       { id: 'assembling', label: { en: 'Every section done — the page is put together', uk: 'Усі секції готові — сторінка збирається' },
         patch: { sent: THIN_BUILDING, chat: 'working', brief: THIN_BRIEF_READY, project: 'generating', build: { at: 5, line: 0 } }, ms: 2200 },
-      { id: 'built', label: { en: 'The home page appears in the canvas', uk: 'Головна з’являється в канвасі' },
+      { id: 'built', label: { en: 'The home page appears, and the preview opens with it', uk: 'З’являється головна, і разом з нею відкривається прев’ю' },
         patch: { sent: [...THIN_BUILDING, THIN_DONE], chat: 'long', brief: THIN_BRIEF_READY, project: 'built', build: { at: 5, line: 0 }, credits: 1990, unpublished: 1 }, awaitUser: true,
         note: {
-          en: 'The outline stays in the transcript: it is the record of what was built, and of which pages have not been',
-          uk: 'План лишається у стрічці: це запис про те, що зібрано і які сторінки ще ні',
+          en: 'The list stays in the conversation as the record of what was built and which pages were not. Ten credits for the build; the questions cost nothing.',
+          uk: 'Перелік лишається в переписці як запис про те, що зібрано і які сторінки — ні. Десять кредитів за збірку; запитання не коштували нічого.',
         } },
     ],
   },
-  {
-    id: 'connect-external',
-    label: { en: 'Connect a domain hosted elsewhere (GoDaddy)', uk: 'Підключити домен з іншого хостингу (GoDaddy)' },
-    note: { en: 'The flow the CEO asked for. The domain stays registered at GoDaddy — we never ask for a transfer.', uk: 'Флоу, який просив CEO. Домен лишається в GoDaddy — переносити не просимо.' },
-    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'staging', unpublished: 0 },
-    steps: [
-      { id: 'open', label: { en: 'The "Connect a domain" screen is open', uk: 'Відкрито екран «Connect a domain»' }, patch: { domain: 'searching' }, awaitUser: true,
-        note: { en: 'Entered from Publish → Add custom domain', uk: 'Вхід із Publish → Add custom domain' } },
-      { id: 'typed', label: { en: 'Domain entered — detecting the registrar', uk: 'Введено домен — визначаємо реєстратора' }, ms: 900 },
-      { id: 'detected', label: { en: 'Found: this domain is registered at GoDaddy', uk: 'Знайдено: домен зареєстровано в GoDaddy' }, ms: 1400,
-        note: { en: 'Slim detection bar: stays at GoDaddy, no transfer needed', uk: 'Смуга детекту: лишається в GoDaddy, перенос не потрібен' } },
-      { id: 'method', label: { en: 'Choosing how to connect', uk: 'Вибір способу підключення' }, awaitUser: true,
-        note: { en: 'One-click Domain Connect REQUIRES Entri, which we do not have today. Manual records are the real path.', uk: 'Domain Connect в один клік ПОТРЕБУЄ Entri, якого в нас немає. Реальний шлях — ручні записи.' } },
-      { id: 'records', label: { en: 'DNS records shown, ready to copy', uk: 'Показано DNS-записи для копіювання' }, awaitUser: true,
-        note: { en: 'A + TXT with copy buttons; the GoDaddy guide is inline, not a link away', uk: 'A + TXT з копіюванням; інструкція GoDaddy вбудована' } },
-      { id: 'saved', label: { en: 'Domain saved as "Connecting"', uk: 'Домен збережено як «Підключається»' }, patch: { domain: 'connecting' }, ms: 2200,
-        note: { en: 'It persists — the domain stays in the list even if they walk away', uk: 'Персистентність: домен лишається у списку, навіть якщо піти' } },
-      { id: 'propagating', label: { en: 'Waiting for DNS to propagate', uk: 'Чекаємо на поширення DNS' }, ms: 3200 },
-      { id: 'verifying', label: { en: 'Records found — verifying and issuing the certificate', uk: 'Записи знайдено — перевіряємо та випускаємо сертифікат' }, patch: { domain: 'verifying' }, ms: 2600 },
-      { id: 'live', label: { en: 'Domain is live, HTTPS on', uk: 'Домен живий, HTTPS увімкнено' }, patch: { domain: 'live' }, ms: 1200 },
-      { id: 'done', label: { en: 'Success — the site answers on their own address', uk: 'Успіх — сайт доступний за власною адресою' }, awaitUser: true,
-        note: { en: 'Success copy should push distribution, not merely confirm', uk: 'Копірайт успіху має штовхати до поширення, а не лише підтверджувати' } },
-    ],
-  },
+  /*
+   * ITERATION 1 SHIPS TWO DOMAIN PATHS — attach a name already in the DreamHost account,
+   * and buy a new one — so the finished one leads. The third (a name held at another
+   * company) is iteration 2 and sits at the bottom of the list, marked in the first words
+   * of its own note — the console renders a flow as label + note and has no "coming
+   * later" affordance of its own, so the note is the only place this file can say it.
+   */
   {
     id: 'connect-dreamhost',
     label: { en: 'Connect a domain already on DreamHost', uk: 'Підключити домен, який уже на DreamHost' },
-    note: { en: 'Our edge: zero DNS records, no other tab, under a minute.', uk: 'Наша перевага: нуль DNS-записів, жодних інших вкладок.' },
-    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'staging', unpublished: 0 },
+    note: {
+      en: 'The customer picks a name already sitting in their DreamHost account: nothing to paste, nothing to change at another company, no second tab. Remixer sets it up on its own side and the address in the topbar changes over.',
+      uk: 'Клієнт обирає ім’я, яке вже є в його акаунті DreamHost: нічого не треба вставляти, нічого не треба міняти в іншій компанії, жодної другої вкладки. Remixer усе налаштовує на своєму боці, і адреса у верхній панелі змінюється.',
+    },
+    /* `published: true` is not decoration: a domain cannot be live in front of a site
+       nobody ever published (world.violations), and without it the console showed the
+       room a red contradiction under "On screen now" at the end of the flow. The site
+       here is one that has been out on its free address and is now getting its own name. */
+    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'staging', unpublished: 0, published: true },
     steps: [
-      { id: 'open', label: { en: 'Domains screen — "Existing domains" sits on top', uk: 'Екран доменів — зверху «Existing domains»' }, patch: { domain: 'searching' }, awaitUser: true },
-      { id: 'pick', label: { en: 'Picked a domain from their DreamHost account', uk: 'Обрано домен з акаунта DreamHost' }, ms: 700,
-        note: { en: 'Say it plainly: no records to change', uk: 'Сказати прямо: жодного запису змінювати не треба' } },
-      { id: 'connect', label: { en: 'Records written on our side', uk: 'Записи пишуться на нашому боці' }, patch: { domain: 'connecting' }, ms: 1600 },
-      { id: 'ssl', label: { en: 'Certificate being issued', uk: 'Випускається сертифікат' }, patch: { domain: 'verifying' }, ms: 1800 },
-      { id: 'live', label: { en: 'Live — inside a minute', uk: 'Живий — вклалися в хвилину' }, patch: { domain: 'live' }, ms: 900 },
-      { id: 'done', label: { en: 'Success', uk: 'Успіх' }, awaitUser: true },
+      { id: 'open', label: { en: 'The Domains screen — their own names on the left, names for sale on the right', uk: 'Екран Domains — ліворуч власні імена, праворуч імена на продаж' }, patch: { domain: 'searching' }, awaitUser: true,
+        note: { en: 'Opened from the Publish panel, "Buy or connect a domain". A name they already own carries Connect and no price — attaching it costs nothing.', uk: 'Відкривається з панелі Publish — «Buy or connect a domain». У власного імені кнопка Connect і жодної ціни: підключення нічого не коштує.' } },
+      { id: 'pick', label: { en: 'A name from their own account is chosen', uk: 'Обрано ім’я з власного акаунта' }, ms: 700,
+        note: { en: 'The confirmation says it plainly: it is already in the DreamHost account, so there is nothing to change anywhere else', uk: 'Підтвердження каже прямо: ім’я вже в акаунті DreamHost, тож більше ніде нічого міняти не треба' } },
+      { id: 'connect', label: { en: 'Connecting — Remixer sets it up on its own side', uk: 'Підключення — Remixer усе налаштовує на своєму боці' }, patch: { domain: 'connecting' }, ms: 1600,
+        note: { en: 'Nothing is asked of the customer, and the site stays reachable on its free address throughout. The dot beside the address turns amber.', uk: 'Від клієнта нічого не потрібно, і сайт увесь цей час доступний за безкоштовною адресою. Крапка біля адреси стає бурштиновою.' } },
+      { id: 'ssl', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 1800,
+        note: { en: 'The last wait, and it can only begin once the address already answers here', uk: 'Останнє очікування, і воно починається лише тоді, коли адреса вже відповідає тут' } },
+      { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 900,
+        note: { en: 'The topbar now shows their own name with a green dot, and the panel says the padlock is on and anyone can visit', uk: 'У верхній панелі тепер їхнє власне ім’я із зеленою крапкою, а панель каже, що замок увімкнено і сайт доступний усім' } },
+      { id: 'done', label: { en: 'Done — one screen, nothing to paste, no second tab', uk: 'Готово — один екран, нічого вставляти, жодної другої вкладки' }, awaitUser: true,
+        note: {
+          en: 'That is the whole advantage of a name already with DreamHost: no settings to move at another company, and nobody else to wait on. How long the rest of the internet takes to catch up is not ours to promise.',
+          uk: 'У цьому вся перевага імені, яке вже в DreamHost: жодних налаштувань не треба міняти в іншій компанії й нікого не треба чекати. А скільки решта інтернету наздоганятиме — не наша обіцянка.',
+        } },
     ],
   },
   {
     id: 'trial-to-paid',
     label: { en: 'Trial expires → buying a plan', uk: 'Тріал завершився → купівля плану' },
-    note: { en: 'The gate must read as an UPGRADE, never as "start a trial".', uk: 'Гейт має читатися як АПГРЕЙД, а не «почни тріал».' },
+    note: {
+      en: 'The last days of the free trial: the credits run out, editing with AI switches off, and the site itself stays exactly where it was. Buying the Remixer Build plan turns AI back on.',
+      uk: 'Останні дні безкоштовного тріалу: кредити закінчуються, редагування з AI вимикається, а сам сайт лишається на місці. Купівля плану Remixer Build знову вмикає AI.',
+    },
     setup: { account: 'trial', trialDay: 29, credits: 40, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 2 },
     steps: [
-      { id: 'low', label: { en: 'Credits running low — a quiet warning', uk: 'Кредити закінчуються — м\'яке попередження' }, patch: { credits: 10 }, ms: 1600 },
-      { id: 'expired', label: { en: 'Trial over: AI off, manual editing still alive', uk: 'Тріал закінчився: AI вимкнено, ручні правки живі' }, patch: { account: 'trial-expired', credits: 0, trialDay: 30 }, ms: 2400,
-        note: { en: 'The retention moment. Their site must not disappear.', uk: 'Момент утримання. Сайт не має зникати.' } },
-      { id: 'gate', label: { en: 'Plan gate opens', uk: 'Відкрито план-гейт' }, awaitUser: true,
-        note: { en: 'State the requirement in plain words: you need Remixer Build, $9.99/mo', uk: 'Сказати прямо: потрібен Remixer Build, $9.99/міс' } },
-      { id: 'checkout', label: { en: 'Checkout', uk: 'Оформлення' }, ms: 1400 },
-      { id: 'paid', label: { en: 'Plan active, credits granted', uk: 'План активний, кредити нараховано' }, patch: { account: 'paid', billing: 'yearly', credits: 1000 }, ms: 1200 },
-      { id: 'done', label: { en: 'Back in the builder — AI available again', uk: 'Повернулись у білдер — AI знову доступний' }, awaitUser: true },
+      { id: 'low', label: { en: 'The credits run down — the count in the topbar reaches ten', uk: 'Кредити добігають кінця — лічильник у верхній панелі показує десять' }, patch: { credits: 10 }, ms: 1600,
+        note: { en: 'The balance is on screen the whole time, next to Publish — it is never a page you have to go and find', uk: 'Баланс увесь час на екрані, поруч із Publish — по нього ніколи не треба кудись іти' } },
+      { id: 'expired', label: { en: 'Day 30 — AI is off; the site and hand editing are not', uk: 'День 30 — AI вимкнено; сайт і ручні правки — ні' }, patch: { account: 'trial-expired', credits: 0, trialDay: 30 }, ms: 2400,
+        note: { en: 'The message field now reads "AI is off — a plan is required" and the count is zero. The site is untouched: nothing was taken away, and it can still be edited by hand.', uk: 'У полі введення тепер «AI is off — a plan is required», а лічильник на нулі. Сайт неторканий: нічого не забрали, і його й далі можна правити руками.' } },
+      { id: 'gate', label: { en: 'What is needed is named in plain words: Remixer Build, $9.99 a month', uk: 'Потрібне названо прямо: Remixer Build, $9.99 на місяць' }, awaitUser: true,
+        note: { en: 'It is said at every door the expired trial now closes — under the domain row in the Publish panel, and inside the checkout sheet, which folds the plan chooser in', uk: 'Це сказано в кожних дверях, які тепер зачинив тріал: під рядком про домен у панелі Publish і в аркуші оплати, що розгортає вибір плану' } },
+      { id: 'checkout', label: { en: 'Checkout — yearly or monthly', uk: 'Оплата — річний або щомісячний' }, ms: 1400 },
+      { id: 'paid', label: { en: 'The plan is active and the month’s credits are in the topbar', uk: 'План активний, місячні кредити — у верхній панелі' }, patch: { account: 'paid', billing: 'yearly', credits: 1000 }, ms: 1200 },
+      { id: 'done', label: { en: 'Back in the builder — AI available again', uk: 'Повернулись у білдер — AI знову доступний' }, awaitUser: true,
+        note: { en: 'Nothing was lost on the way through: the same site, the same conversation, the message field working again', uk: 'Дорогою нічого не загубилося: той самий сайт, та сама переписка, поле введення знову працює' } },
     ],
   },
   {
     id: 'publish',
     label: { en: 'Publishing changes', uk: 'Публікація змін' },
-    note: { en: 'Publishing has to be free — it is our most attackable line against competitors.', uk: 'Публікація має бути безкоштовною — це наша найвразливіша позиція.' },
-    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4 },
+    note: {
+      en: 'A site that is already live, with four edits visitors have not seen yet. The Publish panel shows the address and the number waiting; one press sends them out. Publishing spends no credits.',
+      uk: 'Сайт, який уже живий, і чотири правки, яких відвідувачі ще не бачили. Панель Publish показує адресу і скільки їх у черзі; одне натискання — і вони виходять. Публікація не витрачає кредитів.',
+    },
+    /* Live in front of a site that was never published is a contradiction the console
+       flags in red (world.violations) — this flow is about a site that IS out. */
+    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4, published: true },
     steps: [
-      { id: 'panel', label: { en: 'Publish panel open', uk: 'Відкрито панель публікації' }, awaitUser: true },
-      { id: 'publishing', label: { en: 'Publishing — you can keep working', uk: 'Публікується — можна працювати далі' }, ms: 2600,
-        note: { en: 'Progress never blocks; the copy releases the user', uk: 'Прогрес не блокує; копірайт відпускає користувача' } },
-      { id: 'purge', label: { en: 'Refreshing the cache across every CDN point', uk: 'Оновлюється кеш на всіх точках CDN' }, ms: 1400 },
-      { id: 'done', label: { en: 'Published — nothing pending', uk: 'Опубліковано, змін немає' }, patch: { unpublished: 0 }, awaitUser: true },
+      { id: 'panel', label: { en: 'The Publish panel is open over the builder', uk: 'Над білдером відкрито панель Publish' }, awaitUser: true,
+        note: { en: 'Opened from Update in the topbar, which carries the number of waiting edits. The panel shows the address the site answers on and the same number again.', uk: 'Відкривається кнопкою Update у верхній панелі, на якій стоїть кількість правок у черзі. У панелі — адреса, за якою відповідає сайт, і те саме число.' } },
+      { id: 'publishing', label: { en: 'Publish pressed — the waiting edits go out to visitors', uk: 'Натиснуто Publish — правки з черги виходять до відвідувачів' }, ms: 2600,
+        note: { en: 'Nothing is blocked: the panel stays open and the builder underneath it keeps working', uk: 'Нічого не блокується: панель лишається відкритою, а білдер під нею працює далі' } },
+      { id: 'done', label: { en: 'Published — nothing pending', uk: 'Опубліковано — черги немає' }, patch: { unpublished: 0 }, awaitUser: true,
+        note: { en: 'The number is gone from the topbar and the address keeps its green Live tag. The balance has not moved: publishing costs nothing.', uk: 'Число зникло з верхньої панелі, а адреса лишається із зеленою позначкою Live. Баланс не змінився: публікація нічого не коштує.' } },
+    ],
+  },
+  /*
+   * ITERATION 2, AND LAST IN THE LIST FOR THAT REASON.
+   *
+   * The screens exist but the path is unfinished: the instructions are written for one
+   * company only and the first of the two lines is still a raw address. Nobody should
+   * start it expecting a finished path, so the note says so in its first words — the
+   * console has no other way to mark a flow today.
+   */
+  {
+    id: 'connect-external',
+    label: { en: 'Connect a domain registered at another company (GoDaddy)', uk: 'Підключити домен, зареєстрований в іншій компанії (GoDaddy)' },
+    note: {
+      en: 'Iteration 2, unfinished — not part of today’s demo. A name registered elsewhere stays registered there; we never ask for a transfer. The customer copies two lines into the other company’s settings and comes back.',
+      uk: 'Ітерація 2, не завершено — сьогодні не показуємо. Ім’я, зареєстроване в іншій компанії, там і лишається: переносити не просимо. Клієнт копіює два рядки в налаштування тієї компанії й повертається.',
+    },
+    /* The name is the one the data holds at GoDaddy, so the panel, the topbar chip and
+       this narration all say the same domain even when the flow is stepped through
+       without touching the screens. And `published: true` for the reason the two flows
+       above carry it: a live domain in front of an unpublished site is a contradiction. */
+    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'staging', unpublished: 0, published: true, customDomain: 'trulieve.com' },
+    steps: [
+      { id: 'open', label: { en: 'The Domains screen — the customer types a name they already own', uk: 'Екран Domains — клієнт вводить ім’я, яким уже володіє' }, patch: { domain: 'searching' }, awaitUser: true,
+        note: { en: 'Opened from the Publish panel, "Buy or connect a domain". With no DreamHost names in the account there is no list of their own to pick from, so the search field is the only way in.', uk: 'Відкривається з панелі Publish — «Buy or connect a domain». Якщо в акаунті немає імен DreamHost, власного списку для вибору теж немає, тож єдиний вхід — поле пошуку.' } },
+      { id: 'typed', label: { en: 'The name comes back taken, and names the company it is registered at', uk: 'Ім’я повертається зайнятим і називає компанію, де воно зареєстроване' }, ms: 1400,
+        note: { en: 'A taken name carries no price and no Buy — the only thing offered on it is "This is my domain"', uk: 'У зайнятого імені немає ні ціни, ні кнопки Buy — пропонується лише «This is my domain»' } },
+      { id: 'detected', label: { en: 'Confirmed: it stays where it is registered, no transfer needed', uk: 'Підтверджено: ім’я лишається там, де зареєстроване, переносити не треба' }, ms: 1400,
+        note: { en: 'The screen names the other company only when it actually knows it, and says nothing about it when it does not', uk: 'Екран називає іншу компанію лише тоді, коли справді її знає, і мовчить, коли не знає' } },
+      { id: 'records', label: { en: 'Two lines to paste at the other company, a Copy button on each', uk: 'Два рядки, які треба вставити в іншій компанії, з кнопкою Copy біля кожного' }, awaitUser: true,
+        note: { en: 'The steps are on the screen rather than behind a link. Unfinished here: they are written for one company only, and the first line is still a raw address.', uk: 'Кроки — на екрані, а не за посиланням. Тут не завершено: вони написані лише під одну компанію, а перший рядок — це досі сира адреса.' } },
+      { id: 'saved', label: { en: 'Saved — the domain is now connecting', uk: 'Збережено — домен підключається' }, patch: { domain: 'connecting' }, ms: 3400,
+        note: { en: 'It persists: the customer can close the tab and this carries on without them. The wait is longer than for a name already at DreamHost, because the change has to travel from the other company.', uk: 'Це зберігається: можна закрити вкладку — і все триває без них. Очікування довше, ніж для імені, яке вже в DreamHost: зміна має пройти шлях від іншої компанії.' } },
+      { id: 'verifying', label: { en: 'The address answers here — the secure padlock switches on', uk: 'Адреса вже відповідає тут — вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2600 },
+      { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 1200 },
+      { id: 'done', label: { en: 'Done — the name never left the other company', uk: 'Готово — ім’я нікуди не переїжджало' }, awaitUser: true,
+        note: { en: 'Only where it points has changed. Nothing was transferred and nothing was bought.', uk: 'Змінилося лише те, куди воно вказує. Нічого не переносили і нічого не купували.' } },
     ],
   },
 ]

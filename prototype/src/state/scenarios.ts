@@ -15,12 +15,51 @@ import { leadingDone } from '../modules/chat/autopilot'
 
 export interface Preset {
   id: string
+  /**
+   * Which labelled section of the Situations list this tile stands in. Same shape and
+   * same mechanism as an axis `group` — one list of tiles with three headings over it,
+   * not a second grouping idiom beside the one the axes already use.
+   *
+   * The rule that decides it: A TILE BELONGS TO THE GROUP OF THE AXIS IT ACTUALLY STAGES.
+   * "Live, with edits" moves `unpublished`, which is a Project axis, so it is a project
+   * situation even though it needs a live domain to be worth looking at; "Live site"
+   * moves `domain`, so it is where the domain walk ends. Guessing by what the tile
+   * reminds you of puts the two in the same place and then neither heading means
+   * anything.
+   */
+  group: Text
   label: Text
   note: Text
+  /**
+   * Set when the flow behind the tile is deliberately unfinished. It is drawn ON the
+   * tile, before anybody clicks: the console can afford to disappoint a designer who
+   * knows what is half-built, but not a product owner who does not.
+   */
+  tag?: Text
   patch: Partial<World>
 }
 
-/** Ordered roughly along the customer's life with us. */
+/**
+ * The three headings.
+ *
+ * Twenty-two tiles in one grid is a list nobody reads — somebody hunting for "the state
+ * where the padlock is still coming" had to scan all of them, and the domain ones were
+ * not even in the order the product walks them, so the list gave no hint that they are a
+ * sequence at all. They answer three different questions, and the headings are those
+ * questions: where does the CUSTOMER stand with us, where does the PROJECT stand, and
+ * where does the DOMAIN stand.
+ *
+ * Project first because that is where a demo starts (a blank canvas and a thin prompt);
+ * customer second, because those are commercial facts read over whatever is on screen;
+ * domain last, because it is the longest section and the only one that has to be read as
+ * a walk from top to bottom.
+ */
+const PG = {
+  project: { en: 'Project situations', uk: 'Ситуації проєкту' },
+  customer: { en: 'Customer situations', uk: 'Ситуації клієнта' },
+  domain: { en: 'Domain situations', uk: 'Ситуації домену' },
+}
+
 /**
  * The answers the staged demo presets are built on — one brief, so the generation card, the
  * plan and Autopilot's proposals all describe the same site wherever a preset shows them.
@@ -28,27 +67,38 @@ export interface Preset {
 const DEMO_BRIEF = { goal: 'sell', pages: 'few', palette: 'warm-clay', type: 'friendly' } as const
 
 export const PRESETS: Preset[] = [
+  /*
+   * ───────────────────────────────────────────────────────────── the project
+   * A project's life in order: nothing made → too little to build from → the minute it
+   * takes → what Remixer does with the site once it exists → edits waiting to go out.
+   */
+  {
+    id: 'first-run',
+    group: PG.project,
+    label: { en: 'First run', uk: 'Перший запуск' },
+    note: {
+      en: 'Nothing made yet — the Home page opens on templates and the builder has an empty canvas',
+      uk: 'Ще нічого не створено — головна відкривається на шаблонах, полотно білдера порожнє',
+    },
+    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', domain: 'staging', inventory: 'none', unpublished: 0, published: false, projects: [] },
+  },
   {
     id: 'weak-prompt',
+    group: PG.project,
     label: { en: 'New project — thin prompt', uk: 'Новий проєкт — слабкий промпт' },
     note: {
-      en: 'Type "Build me a website." — Remixer asks four questions before it builds (Lovable, 06.09.2026)',
-      uk: 'Введіть «Build me a website.» — Remixer ставить чотири запитання, перш ніж будувати (Lovable, 06.09.2026)',
+      en: 'Type "Build me a website." — too little to build from, so Remixer asks four questions and writes a plan before it spends a build',
+      uk: 'Введіть «Build me a website.» — будувати нема з чого, тож Remixer ставить чотири запитання й складає план, перш ніж витратити білд',
     },
     patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], domain: 'staging', inventory: 'none', unpublished: 0, published: false },
   },
   {
-    id: 'first-run',
-    label: { en: 'First run', uk: 'Перший запуск' },
-    note: { en: 'Blank canvas, nothing generated yet', uk: 'Порожнє полотно, ще нічого не згенеровано' },
-    patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', domain: 'staging', inventory: 'none', unpublished: 0, published: false, projects: [] },
-  },
-  {
     id: 'generating',
+    group: PG.project,
     label: { en: 'Generating — mid-build', uk: 'Іде генерація — середина' },
     note: {
-      en: 'The outline card frozen on the hero, so the states can be looked at without waiting out the minute (Figma 29480:48478)',
-      uk: 'Картка плану, заморожена на герої — можна розглянути стани, не чекаючи хвилину (Figma 29480:48478)',
+      en: 'One section done, one being written, the rest and the other pages waiting — frozen mid-build, so nobody has to sit out the minute',
+      uk: 'Одна секція готова, одна пишеться, решта й інші сторінки чекають — заморожено посеред білду, щоб не сидіти цілу хвилину',
     },
     /*
      * A STAGED mid-generation, and deliberately frozen: no clock runs behind a preset,
@@ -81,10 +131,11 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'autopilot',
+    group: PG.project,
     label: { en: 'Autopilot — the first proposal', uk: 'Autopilot — перша пропозиція' },
     note: {
-      en: 'The home page has just landed and Remixer asks what to do next — the whole behaviour of the mode, without waiting out the minute',
-      uk: 'Головна щойно приїхала, і Remixer питає, що далі — уся поведінка режиму, без хвилини очікування',
+      en: 'The home page has just landed and Remixer proposes what to do next — the panel the whole mode exists for',
+      uk: 'Головна щойно приїхала, і Remixer пропонує, що робити далі — панель, заради якої існує весь режим',
     },
     /*
      * THE MOMENT AUTOPILOT IS FOR, staged. The live path to it is a real generation from the
@@ -113,8 +164,8 @@ export const PRESETS: Preset[] = [
         {
           id: 1002, who: 'ai', kind: 'ack',
           text: {
-            en: 'Got it \u2014 a site built to sell, across a few pages, in Warm Clay with friendly lettering. Let me build that for you.',
-            uk: '\u0417\u0440\u043e\u0437\u0443\u043c\u0456\u0432 \u2014 \u0441\u0430\u0439\u0442, \u044f\u043a\u0438\u0439 \u043f\u0440\u043e\u0434\u0430\u0454, \u043d\u0430 \u043a\u0456\u043b\u044c\u043a\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u043e\u043a, \u0443 \u043f\u0430\u043b\u0456\u0442\u0440\u0456 Warm Clay \u0456 \u0434\u0440\u0443\u0436\u043d\u0456\u043c\u0438 \u0448\u0440\u0438\u0444\u0442\u0430\u043c\u0438. \u0417\u0431\u0438\u0440\u0430\u044e.',
+            en: 'Got it — a site built to sell, across a few pages, in Warm Clay with friendly lettering. Let me build that for you.',
+            uk: 'Зрозумів — сайт, який продає, на кілька сторінок, у палітрі Warm Clay і дружніми шрифтами. Збираю.',
           },
         },
         { id: 1003, who: 'ai', kind: 'build', text: '' },
@@ -124,10 +175,11 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'rating',
+    group: PG.project,
     label: { en: 'Autopilot — the satisfaction ask', uk: 'Autopilot — питання про враження' },
     note: {
-      en: 'The 1–10 card, asked once after the first proposal was answered (Figma 25744:139153)',
-      uk: 'Картка 1–10, що з’являється раз після першої відповіді на пропозицію (Figma 25744:139153)',
+      en: '"How would you rate Remixer?" — the 1–10 card, asked once, after the first proposal was answered',
+      uk: '«How would you rate Remixer?» — картка 1–10, яку питають один раз, після відповіді на першу пропозицію',
     },
     /*
      * One step past the preset above: the proposal was answered, About is under way, and the
@@ -148,58 +200,114 @@ export const PRESETS: Preset[] = [
         {
           id: 1006, who: 'ai',
           text: {
-            en: 'About is in \u2014 the same grid, palette and lettering as the home page, and linked from the nav so the site reads as one piece. Tell me what belongs on it and I will fill it in.',
-            uk: '\u0421\u0442\u043e\u0440\u0456\u043d\u043a\u0430 \u00ab\u041f\u0440\u043e \u043d\u0430\u0441\u00bb \u043d\u0430 \u043c\u0456\u0441\u0446\u0456 \u2014 \u0442\u0430 \u0441\u0430\u043c\u0430 \u0441\u0456\u0442\u043a\u0430, \u043f\u0430\u043b\u0456\u0442\u0440\u0430 \u0456 \u0448\u0440\u0438\u0444\u0442\u0438, \u0449\u043e \u043d\u0430 \u0433\u043e\u043b\u043e\u0432\u043d\u0456\u0439.',
+            en: 'About is in — the same grid, palette and lettering as the home page, and linked from the nav so the site reads as one piece. Tell me what belongs on it and I will fill it in.',
+            uk: 'Сторінка «Про нас» на місці — та сама сітка, палітра і шрифти, що на головній.',
           },
         },
       ],
     },
   },
   {
+    id: 'live-stale',
+    group: PG.project,
+    label: { en: 'Live, with edits', uk: 'Живий, є правки' },
+    note: {
+      en: 'Four edits made since the last publish — the topbar button reads Update and carries the count',
+      uk: 'Чотири правки після останньої публікації — кнопка в топбарі каже «Update» і показує лічильник',
+    },
+    patch: { account: 'paid', credits: 900, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', icann: false, unpublished: 4, published: true, projects: DEMO_PROJECTS },
+  },
+
+  /*
+   * ──────────────────────────────────────────────────────────── the customer
+   * Where they stand with us commercially, in the order they meet it.
+   */
+  {
     id: 'trial-mid',
+    group: PG.customer,
     label: { en: 'Trial, day 22', uk: 'Тріал, день 22' },
-    note: { en: 'Building, credits going down, no domain yet', uk: 'Будує, кредити витрачаються, домену немає' },
+    note: {
+      en: 'Day 22 of 30, credits going down, and the site still answers on its free address',
+      uk: 'День 22 з 30, кредити спадають, сайт досі відповідає на безкоштовній адресі',
+    },
     patch: { account: 'trial', trialDay: 22, credits: 640, bonus: true, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 3, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'trial-low',
+    group: PG.customer,
     label: { en: 'Credits running out', uk: 'Кредити закінчуються' },
-    note: { en: 'The upsell moment', uk: 'Момент апселу' },
+    note: {
+      en: '40 credits left on day 27 — the moment buying more has to be easy to find',
+      uk: 'Лишилось 40 кредитів, день 27 — момент, коли докупити кредити має бути легко',
+    },
     patch: { account: 'trial', trialDay: 27, credits: 40, project: 'built', chat: 'long', domain: 'staging', unpublished: 1, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'trial-expired',
+    group: PG.customer,
     label: { en: 'Trial expired', uk: 'Тріал завершився' },
     note: {
-      en: 'AI off, manual editing alive. Frame as an UPGRADE, never as "start a trial"',
-      uk: 'AI вимкнено, ручне редагування живе. Це АПГРЕЙД, а не «почни тріал»',
+      en: 'The 30 days are up: AI is off, manual editing still works, and the way back is an upgrade',
+      uk: '30 днів минуло: AI вимкнено, ручне редагування працює, а шлях назад — апгрейд',
     },
     patch: { account: 'trial-expired', trialDay: 30, credits: 0, bonus: false, project: 'built', chat: 'long', domain: 'staging', unpublished: 2, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'paid-no-domain',
+    group: PG.customer,
     label: { en: 'Paid, no domain', uk: 'Оплачено, домену немає' },
-    note: { en: 'Plan active, site still on staging', uk: 'План активний, сайт на стейджингу' },
+    note: {
+      en: 'Paying customer, site built — and it still answers only on its free address',
+      uk: 'Клієнт платить, сайт зібрано — і він досі відповідає лише на безкоштовній адресі',
+    },
     patch: { account: 'paid', billing: 'yearly', credits: 1000, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 0, published: false, projects: DEMO_PROJECTS },
   },
+
+  /*
+   * ────────────────────────────────────────────────────────────── the domain
+   * IN THE ORDER THE PRODUCT WALKS IT, not in the order the tiles were written. The walk
+   * itself is state/world.ts's `DomainState` union and the two timelines in
+   * modules/domains/connect.ts:
+   *
+   *   choose a name              searching → checkout
+   *   buy a new one              registering → propagating ┐
+   *   attach one they own        connecting ──────────────┴→ verifying → ready | live
+   *
+   * So: choosing, the cart, the two beats only a PURCHASE has, the one beat only an
+   * ATTACH has, the padlock both of them end on — then the ways it stalls, then live.
+   *
+   * The stalls are not a judgement call either: PublishPanel.tsx names them itself,
+   * `const stalled = ready || oldSite || unreachable` — nothing is moving and the hold-up
+   * is this name. `icann` joins them as the fourth, because it is the one state where the
+   * site works perfectly and can still be switched off.
+   *
+   * ⚠️ EVERY TILE BELOW NAMES `icann`, INCLUDING THE ONES THAT WANT IT OFF. The clock is
+   * only auto-cleared when the domain axis walks back to a state with no custom domain in
+   * it (world.ts `set`), so between two domain presets it is STICKY: click "Just bought —
+   * on its way" (which stages the pair on purpose) and then "Live site", and the live site
+   * arrived owing a registrant email — the amber card was on the panel and the tile's own
+   * name was no longer true. Nothing in the world is wrong there; a patch that leaves an
+   * axis out is simply not staging it. So a domain preset states the clock the way it
+   * states the domain, and the console's summary line now says which of the two you are
+   * looking at (`describe`).
+   */
   {
     id: 'dh-zero-record',
+    group: PG.domain,
     label: { en: 'Own domain on DreamHost', uk: 'Власний домен на DreamHost' },
-    note: { en: 'Our edge: connect with zero DNS records', uk: 'Наша перевага: підключення без жодного DNS-запису' },
+    note: {
+      en: 'The domain window, with a name they already own on DreamHost — connecting it needs nothing copied anywhere',
+      uk: 'Вікно доменів з іменем, яке вже є в них на DreamHost — щоб підключити, нічого нікуди копіювати не треба',
+    },
     patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'searching', unpublished: 0, published: false, projects: DEMO_PROJECTS },
   },
   {
-    id: 'connecting',
-    label: { en: 'Domain connecting', uk: 'Домен підключається' },
-    note: { en: 'Waiting on DNS — nothing for the user to do', uk: 'Чекаємо на DNS — користувачу нічого робити' },
-    patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', unpublished: 0, published: true, projects: DEMO_PROJECTS },
-  },
-  {
     id: 'left-at-checkout',
+    group: PG.domain,
     label: { en: 'Left standing at checkout', uk: 'Покинув оформлення' },
     note: {
-      en: 'A name in the cart, nobody paid, and the Publish panel used to show this customer "Connect your own domain" as if it had never happened (board 28206:66756 state ⑦)',
-      uk: 'Ім’я в кошику, оплати немає — а панель Publish показувала такому клієнту «Connect your own domain», ніби нічого й не було (борд 28206:66756, стан ⑦)',
+      en: 'A name sitting in the cart and nobody paid — the site is exactly where they left it, and nothing pretends to be connecting',
+      uk: 'Ім’я лежить у кошику, оплати не було — сайт рівно там, де його лишили, і ніщо не вдає підключення',
     },
     /* ⚠️ The cart rides IN the patch. A named preset normally empties the cart (world.set),
        which is right for every other preset here and would leave this one staging the state
@@ -219,10 +327,11 @@ export const PRESETS: Preset[] = [
    */
   {
     id: 'registering',
+    group: PG.domain,
     label: { en: 'Just bought — registering', uk: 'Щойно куплено — реєструється' },
     note: {
-      en: 'The registry has the order and the name is not ours yet. "Within 15 minutes" is verified — and it is NOT the same event as a working website',
-      uk: 'Реєстр отримав замовлення, імені ще немає. «До 15 хвилин» — перевірений факт, і це НЕ те саме, що працюючий сайт',
+      en: 'Bought a minute ago: the registry has the order and the name is not theirs yet. Minutes — and not the same thing as a working website',
+      uk: 'Куплено хвилину тому: реєстр має замовлення, імені ще немає. Це хвилини — і це не те саме, що працюючий сайт',
     },
     /* The registrant-email clock is its own axis: flip "Email unconfirmed" on to see the
        two cards stacked, which is what a real purchase looks like. */
@@ -230,74 +339,106 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'propagating',
+    group: PG.domain,
     label: { en: 'Just bought — on its way', uk: 'Щойно куплено — у дорозі' },
     note: {
-      en: 'Registered, now travelling: hours, up to 72. The state the checkout sheet’s "connects automatically" was quietly promising away — with the email card stacked under it',
-      uk: 'Зареєстровано, тепер розходиться світом: години, до 72. Саме це ховала обіцянка «підключиться автоматично» — і зверху картка підтвердження пошти',
+      en: 'Registered, now travelling the world — hours, up to 72, the longest wait anywhere in the flow. The confirm-your-email card sits under it',
+      uk: 'Зареєстровано, тепер розходиться світом — години, до 72: найдовше очікування в усьому флоу. Під ним — картка підтвердження пошти',
     },
     patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'propagating', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
+    id: 'connecting',
+    group: PG.domain,
+    label: { en: 'Domain connecting', uk: 'Домен підключається' },
+    note: {
+      en: 'The amber card in Publish: connecting, nothing for them to do, and the free address still serving the site',
+      uk: 'Бурштинова картка в Publish: підключається, робити нічого не треба, а сайт поки на безкоштовній адресі',
+    },
+    patch: { account: 'paid', credits: 980, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'connecting', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+  },
+  {
     id: 'padlock',
+    group: PG.domain,
     label: { en: 'Padlock switching on', uk: 'Вмикається замок' },
     note: {
-      en: 'The last wait on both paths, and it cannot start early: ten to thirty minutes, and only once the address answers here',
-      uk: 'Останнє очікування на обох шляхах, і раніше воно не починається: 10–30 хвилин, і лише коли адреса вже відповідає в нас',
+      en: 'The last wait on both paths, and it cannot start early — the address has to answer here first. Ten to thirty minutes, nothing for them to do',
+      uk: 'Останнє очікування на обох шляхах, і раніше воно не почнеться — спершу адреса має відповідати в нас. 10–30 хвилин, робити нічого не треба',
     },
-    patch: { account: 'paid', credits: 970, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'verifying', unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 970, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'verifying', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'domain-ready',
+    group: PG.domain,
+    label: { en: 'Domain ready, never published', uk: 'Домен готовий, сайт не публікували' },
+    note: {
+      en: 'The domain is set up and the site was never published — nothing is wrong, nothing is at the address, and one button is left',
+      uk: 'Домен налаштовано, а сайт не публікували — нічого не зламано, за адресою порожньо, лишилась одна кнопка',
+    },
+    patch: { account: 'paid', credits: 990, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'ready', icann: false, unpublished: 2, published: false, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'old-site',
+    group: PG.domain,
+    label: { en: 'Publish blocked by an old site', uk: 'Публікацію блокує старий сайт' },
+    note: {
+      en: 'Publishing fails because the address still holds an older website — support has to clear it first. Common here, where that is usually WordPress',
+      uk: 'Публікація не проходить, бо за адресою лежить старіший сайт — спершу його має прибрати підтримка. У нас це зазвичай WordPress',
+    },
+    patch: { account: 'paid', credits: 990, project: 'built', chat: 'long', inventory: 'dh-in-use', domain: 'old-site', icann: false, unpublished: 2, published: false, projects: DEMO_PROJECTS },
+  },
+  {
+    id: 'domain-broken',
+    group: PG.domain,
+    label: { en: 'Domain not responding', uk: 'Домен не відповідає' },
+    note: {
+      en: 'The red card in Publish: the address stopped answering, the site is still safe on its free one, and Fix this is the way out',
+      uk: 'Червона картка в Publish: адреса перестала відповідати, сайт у безпеці на безкоштовній, вихід — «Fix this»',
+    },
+    patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'icann-verify',
+    group: PG.domain,
     label: { en: 'Email not confirmed yet', uk: 'Пошту ще не підтверджено' },
     note: {
-      en: 'Live, and one unopened email from being suspended — site and mail both. No countdown: the digit we had traces to Squarespace, not to DreamHost or ICANN',
-      uk: 'Сайт живий, і один невідкритий лист відділяє домен від зупинки — разом із поштою. Без лічильника: цифра, що в нас була, веде до Squarespace, а не до DreamHost чи ICANN',
+      en: 'Live on its own name, and one amber card left: confirm the registrant email, or the domain gets switched off',
+      uk: 'Живий на власному імені, і лишилась одна бурштинова картка: підтвердити пошту реєстранта, інакше домен вимкнуть',
     },
     patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'live', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
-    id: 'domain-ready',
-    label: { en: 'Domain ready, never published', uk: 'Домен готовий, сайт не публікували' },
-    note: {
-      en: 'Nothing is wrong and nothing is happening — the novice’s №1 "it’s broken". One button left, and it lives inside the card',
-      uk: 'Нічого не зламано і нічого не відбувається — головна причина «воно не працює» в новачка. Лишилась одна кнопка, і вона всередині картки',
-    },
-    patch: { account: 'paid', credits: 990, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'ready', unpublished: 2, published: false, projects: DEMO_PROJECTS },
-  },
-  {
-    id: 'old-site',
-    label: { en: 'Publish blocked by an old site', uk: 'Публікацію блокує старий сайт' },
-    note: {
-      en: 'Our KB: publishing fails while the address still holds another site. DreamHost’s base is WordPress, so this is likely, not exotic — and it is drawn nowhere',
-      uk: 'Наша KB: публікація не проходить, поки на адресі лежить інший сайт. База DreamHost — WordPress, тож це ймовірний випадок, а не екзотика — і його ніде не намальовано',
-    },
-    patch: { account: 'paid', credits: 990, project: 'built', chat: 'long', inventory: 'dh-in-use', domain: 'old-site', unpublished: 2, published: false, projects: DEMO_PROJECTS },
-  },
-  {
     id: 'live',
+    group: PG.domain,
     label: { en: 'Live site', uk: 'Живий сайт' },
-    note: { en: 'Everything published, domain working', uk: 'Все опубліковано, домен працює' },
-    patch: { account: 'paid', credits: 940, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 0, published: true, projects: DEMO_PROJECTS },
-  },
-  {
-    id: 'live-stale',
-    label: { en: 'Live, with edits', uk: 'Живий, є правки' },
-    note: { en: 'The build is newer than what is published', uk: 'Зібране новіше за опубліковане' },
-    patch: { account: 'paid', credits: 900, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4, published: true, projects: DEMO_PROJECTS },
-  },
-  {
-    id: 'domain-broken',
-    label: { en: 'Domain not responding', uk: 'Домен не відповідає' },
-    note: { en: 'Failure state — needs a recovery verb', uk: 'Стан помилки — потрібне дієслово відновлення' },
-    patch: { account: 'paid', credits: 900, project: 'built', chat: 'error', inventory: 'dh-external-ns', domain: 'unreachable', unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    note: {
+      en: 'Published, the domain answers, the padlock is on — where both walks end',
+      uk: 'Опубліковано, домен відповідає, замок увімкнено — кінець обох шляхів',
+    },
+    patch: { account: 'paid', credits: 940, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'external-manual',
+    group: PG.domain,
     label: { en: 'Domain at another registrar', uk: 'Домен в іншого реєстратора' },
-    note: { en: 'Namecheap / Cloudflare — manual records only', uk: 'Namecheap / Cloudflare — лише ручні записи' },
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    note: {
+      en: 'A name registered somewhere else, where we cannot write the records ourselves. The screens behind this tile are not built yet — it stages the world, not a finished flow',
+      uk: 'Ім’я зареєстроване деінде, де ми не можемо самі прописати записи. Екранів за цією плиткою ще немає — вона ставить стан світу, а не готовий флоу',
+    },
+    /* The external-registrar path is a second iteration and is not being demoed. The tag
+       is on the TILE and not only in this note, because a note is a tooltip and a tooltip
+       arrives after the decision to click. */
+    tag: { en: 'Not this iteration', uk: 'Не ця ітерація' },
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'connecting', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
 ]
+
+/** Distinct preset groups, in the order they first appear — the same derivation as
+ *  `GROUPS` below, so the console renders both lists through one idiom. */
+export const PRESET_GROUPS: Text[] = PRESETS.reduce<Text[]>((acc, p) => {
+  if (!acc.some((g) => g.en === p.group.en)) acc.push(p.group)
+  return acc
+}, [])
 
 /* ------------------------------------------------------------------ axes */
 
@@ -497,6 +638,25 @@ export const GROUPS: Text[] = AXES.reduce<Text[]>((acc, a) => {
   return acc
 }, [])
 
+/**
+ * "N unpublished changes", counted properly in both languages.
+ *
+ * This line is READ ALOUD in a demo, so "1 unpublished changes" is not a typo somebody
+ * forgives — it is the sentence a product owner hears while looking at the screen. Two of
+ * the presets here stage exactly one edit.
+ */
+function edits(n: number): Text {
+  const ones = n % 10
+  const tens = n % 100
+  const uk =
+    ones === 1 && tens !== 11
+      ? 'неопублікована правка'
+      : ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)
+        ? 'неопубліковані правки'
+        : 'неопублікованих правок'
+  return { en: `${n} unpublished ${n === 1 ? 'change' : 'changes'}`, uk: `${n} ${uk}` }
+}
+
 /** One human sentence describing the current situation — read it aloud in a demo. */
 export function describe(w: World): Text {
   const en: string[] = []
@@ -527,15 +687,33 @@ export function describe(w: World): Text {
   }
   en.push(domain[w.domain].en); uk.push(domain[w.domain].uk)
 
+  /*
+   * The registrant-email clock has no word of its own above, and it is the ONLY thing
+   * separating "Live site" from "Email not confirmed yet" — two presets whose line would
+   * otherwise read identically, one of them describing a domain that can be switched off.
+   * A summary that cannot tell the room which of the two is on screen is worse than no
+   * summary, because it is read out with confidence.
+   */
+  if (w.icann) { en.push('email not confirmed'); uk.push('пошту не підтверджено') }
+
   if (!w.projects.length) { en.push('no sites yet'); uk.push('сайтів ще немає') }
   if (w.brief.status === 'asking') { en.push('asking for direction'); uk.push('уточнює напрямок') }
   else if (w.brief.status === 'planning') { en.push('plan awaiting approval'); uk.push('план очікує підтвердження') }
   else if (w.project === 'empty') { en.push('empty project'); uk.push('проєкт порожній') }
   else if (w.project === 'generating') { en.push('generating'); uk.push('іде генерація') }
   else if (w.unpublished > 0) {
-    en.push(`${w.unpublished} unpublished changes`)
-    uk.push(`${w.unpublished} неопублікованих правок`)
+    const e = edits(w.unpublished)
+    en.push(e.en); uk.push(e.uk)
   }
+
+  /*
+   * What the dock is holding, when Autopilot put something in it. Same idiom as the
+   * brief's two states above — the line names the thing the room is actually looking at.
+   * Without it the two Autopilot presets describe themselves only by their credit
+   * balance, which is the one number nobody in the room is reading.
+   */
+  if (w.suggest.show === 'proposal') { en.push('Autopilot proposing what is next'); uk.push('Autopilot пропонує, що далі') }
+  else if (w.suggest.show === 'rating') { en.push('asking how it went'); uk.push('питає про враження') }
 
   return { en: en.join(' · '), uk: uk.join(' · ') }
 }

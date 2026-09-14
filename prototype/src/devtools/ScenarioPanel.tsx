@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, violations, type World } from '@/state/world'
-import { AXES, GROUPS, PRESETS, describe } from '@/state/scenarios'
+import { AXES, GROUPS, PRESETS, PRESET_GROUPS, describe } from '@/state/scenarios'
 import { FlowList } from './FlowPlayer'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { useT } from '@/i18n'
@@ -21,7 +21,9 @@ const EASE = [0.2, 0, 0, 1] as const
 export function ScenarioPanel() {
   const [open, setOpen] = useState(false)
   const [presenter, setPresenter] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'ok' | 'fail' | false>(false)
+  /** Reset asks first — see the footer. */
+  const [armed, setArmed] = useState(false)
   const { world, preset, set, reset } = useWorld()
   const { t } = useT()
 
@@ -34,6 +36,15 @@ export function ScenarioPanel() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  /* An armed Reset disarms itself. Otherwise the second half of the confirmation waits
+     around indefinitely, and the click that lands on it ten minutes later is the very
+     accident the arming exists to prevent. */
+  useEffect(() => {
+    if (!armed) return
+    const id = window.setTimeout(() => setArmed(false), 3000)
+    return () => window.clearTimeout(id)
+  }, [armed])
+
   const problems = violations(world)
 
   /** Would picking this value produce a state the real product cannot reach?
@@ -42,9 +53,34 @@ export function ScenarioPanel() {
   const blocked = (key: keyof World, patch: Partial<World>) =>
     violations({ ...world, ...patch } as World).find((v) => v.field === key)
 
+  /**
+   * The address bar already IS the state (world.ts `syncUrl` keeps it in step), so this
+   * only has to hand it over.
+   *
+   * ⚠️ WITH A FALLBACK, BECAUSE A PROJECTOR IS USUALLY NOT A SECURE CONTEXT. `localhost`
+   * is; the `http://192.168.x.x` a laptop gets shown from is not, and there
+   * `navigator.clipboard` is simply absent — the await threw, nothing was copied, and the
+   * button still said "Link copied". A silent lie in front of a room is worse than a
+   * button that does nothing.
+   */
   const copyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href)
-    setCopied(true)
+    const url = window.location.href
+    let ok = true
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = url
+      el.setAttribute('readonly', '')
+      el.style.position = 'fixed'
+      el.style.top = '0'
+      el.style.opacity = '0'
+      document.body.appendChild(el)
+      el.select()
+      try { ok = document.execCommand('copy') } catch { ok = false }
+      el.remove()
+    }
+    setCopied(ok ? 'ok' : 'fail')
     setTimeout(() => setCopied(false), 1600)
   }
 
@@ -88,12 +124,27 @@ export function ScenarioPanel() {
                 <p className="mt-0.5 text-[13px] text-neutral-600">Not part of the product</p>
               </div>
               <div className="flex items-center gap-1">
+                {/*
+                  * ⚠️ THE LABEL DOES NOT SAY WHAT THIS DOES. All it does is hide the little
+                  * handle in the bottom-right corner, so only ⌘. / Ctrl+. opens the console
+                  * — and pressing it while the console is open looks like nothing happened,
+                  * because the handle is behind the panel. Then the console is closed and
+                  * there is no visible way back. The title now says both halves, including
+                  * the way back, since a tooltip is the only thing that can be read BEFORE
+                  * the click; renaming it is a call for the designer, whose word this is
+                  * («режим показа»).
+                  */}
                 <button
                   onClick={() => setPresenter((v) => !v)}
+                  aria-pressed={presenter}
                   className={`rounded-md px-2 py-1 font-mono text-[10px] transition-colors duration-150 ${
                     presenter ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:bg-black/5'
                   }`}
-                  title="Hide the handle — keyboard only"
+                  title={
+                    presenter
+                      ? 'Handle hidden — ⌘. / Ctrl+. reopens this console. Click to bring the handle back'
+                      : 'Hide the handle in the bottom-right corner, so only ⌘. / Ctrl+. opens this console'
+                  }
                 >
                   PRESENT
                 </button>
@@ -129,30 +180,57 @@ export function ScenarioPanel() {
               {/* whole flows, played end to end */}
               <FlowList />
 
-              {/* presets — single frozen situations */}
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
-                Situations
-              </p>
-              <div className="mb-6 grid grid-cols-2 gap-1.5">
-                {PRESETS.map((p) => {
-                  const active = preset === p.id
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => set(p.patch, p.id)}
-                      title={t(p.note)}
-                      className={`rounded-md border px-2.5 py-2 text-left text-[12.5px] leading-tight
-                                  transition-colors duration-150 ${
-                        active
-                          ? 'border-neutral-900 bg-neutral-900 text-white'
-                          : 'border-black/10 bg-white text-neutral-800 hover:border-black/25'
-                      }`}
-                    >
-                      {t(p.label)}
-                    </button>
-                  )
-                })}
-              </div>
+              {/*
+                * Presets — single frozen situations, under the SAME labelled sections the
+                * axes get below. Twenty-two tiles in one grid was a list nobody read: the
+                * three kinds of thing (customer, project, domain) sat shuffled together
+                * and the domain ones were not even in the order the product walks them.
+                * The headings and the order live in scenarios.ts; this only renders them,
+                * exactly as the axis loop does.
+                */}
+              {PRESET_GROUPS.map((group) => {
+                const tiles = PRESETS.filter((p) => p.group.en === group.en)
+                if (!tiles.length) return null
+                return (
+                  <section key={group.en} className="mb-5">
+                    <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
+                      {t(group)}
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {tiles.map((p) => {
+                        const active = preset === p.id
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => set(p.patch, p.id)}
+                            title={t(p.note)}
+                            /* A dashed edge for a tile whose flow is not finished — the
+                               same manner the product uses for its own placeholder card,
+                               and readable before the click, which a tooltip is not. */
+                            className={`rounded-md border px-2.5 py-2 text-left text-[12.5px] leading-tight
+                                        transition-colors duration-150 ${p.tag ? 'border-dashed' : ''} ${
+                              active
+                                ? 'border-neutral-900 bg-neutral-900 text-white'
+                                : 'border-black/10 bg-white text-neutral-800 hover:border-black/25'
+                            }`}
+                          >
+                            {t(p.label)}
+                            {p.tag && (
+                              <span
+                                className={`mt-1 block font-mono text-[9px] uppercase tracking-[0.1em] ${
+                                  active ? 'text-white/60' : 'text-neutral-400'
+                                }`}
+                              >
+                                {t(p.tag)}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
+                )
+              })}
 
               {/* axes */}
               {GROUPS.map((group) => {
@@ -245,17 +323,29 @@ export function ScenarioPanel() {
             <footer className="flex items-center gap-2 border-t border-black/10 bg-white px-4 py-3">
               <button
                 onClick={copyLink}
+                title="The address bar already carries this world — this hands it over"
                 className="flex-1 rounded-md border border-black/10 bg-[#F7F7F5] px-3 py-2
                            text-[12.5px] text-neutral-800 transition-colors duration-150 hover:bg-white"
               >
-                {copied ? 'Link copied' : 'Copy link to this state'}
+                {copied === 'ok' ? 'Link copied' : copied === 'fail' ? 'Copy it from the address bar' : 'Copy link to this state'}
               </button>
+              {/*
+                * RESET ASKS FIRST. It throws away whatever was staged, there is no undo,
+                * and it sits one button away from the one people press all the time — in
+                * front of a room, a mis-click used to blank the demo with no way back.
+                * Two clicks, and the armed state says what the second one will do; it
+                * disarms itself after three seconds (see the effect above).
+                */}
               <button
-                onClick={reset}
-                className="rounded-md px-3 py-2 text-[12.5px] text-neutral-500
-                           transition-colors duration-150 hover:bg-black/5"
+                onClick={() => { if (armed) { reset(); setArmed(false) } else setArmed(true) }}
+                title={armed ? 'Click again to throw the staged state away' : 'Back to the default demo world'}
+                className={
+                  armed
+                    ? 'rounded-md border border-[#A33] px-3 py-2 text-[12.5px] text-[#A33] transition-colors duration-150'
+                    : 'rounded-md px-3 py-2 text-[12.5px] text-neutral-500 transition-colors duration-150 hover:bg-black/5'
+                }
               >
-                Reset
+                {armed ? 'Reset — sure?' : 'Reset'}
               </button>
             </footer>
           </motion.aside>
