@@ -70,8 +70,17 @@ export function FlowRunner() {
           width: `min(620px, max(320px, calc(100vw - var(--chat-w) - var(--rail-w) - 32px - ${letter ? LETTER_RESERVE : 0}px)))`,
         }
       : /* left AND right AND a width centres it without a transform — which motion owns
-           on this element, and an inline `translateX` would simply be overwritten. */
-        { top: 60, left: 16, right: 16, marginInline: 'auto', width: 'min(620px, calc(100vw - 32px))' }
+           on this element, and an inline `translateX` would simply be overwritten.
+           A page from outside Remixer has its own header to clear; the chat's own 52px
+           header is empty in the middle, and starting above it gives the thread back two
+           lines it would otherwise lose. */
+        {
+          top: panel ? 60 : 12,
+          left: 16,
+          right: 16,
+          marginInline: 'auto',
+          width: 'min(620px, calc(100vw - 32px))',
+        }
 
   useEffect(() => {
     if (!flow || !step || !playing) return

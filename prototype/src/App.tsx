@@ -11,7 +11,7 @@
  * drive this shell exactly as they drove the old one.
  */
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan, isCustomDomainActive, type DomainState } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
@@ -27,7 +27,7 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
-import { SPRING, foreignPage, popoverContent } from '@/ui/motion'
+import { SPRING, EXIT, popoverContent } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -116,13 +116,28 @@ const RAIL = [
  * HOW IT SAYS IT IS NOT THE PRODUCT, three ways at once:
  *  · MATERIAL. Light paper on the near-black shell, in the same palette the prototype
  *    console and the flow player already use for "not part of the product". It adopts
- *    nothing from the Publish panel — no gray-850, no glass, no blue button.
+ *    nothing from the Publish panel — no gray-850, no glass.
+ *    ⚠️ "and no blue button" stood here until 14.09.2026, when the designer asked for
+ *    one ("сделай кнопку нормальную синюю"). The letter's own action is the only place
+ *    it may borrow the product's blue, and the reason is the reason the card exists at
+ *    all: it is the ONE press that moves the flow on, and it was a text link that nobody
+ *    found. Everything else about the card stays foreign — the paper, the tag, the
+ *    mono strip. Do not let the blue spread to a second element here.
  *  · A TAG. Its own dashed PROTOTYPE strip, in words: this is the prototype standing in
  *    for the email, not Remixer displaying mail.
- *  · WHERE IT SITS. It floats above the whole shell in the bottom-left of the CANVAS —
- *    clear of the Publish panel (fixed top-right, `right-[55px] top-2`) and clear of the
- *    chat column, so it never covers what a presenter is pointing at. Checked at
- *    1600×1000 and at 1280×800, which is the projector.
+ *  · WHERE IT SITS — the TOP-LEFT corner of the canvas since 14.09.2026 (designer:
+ *    "перемести его в левый верхний угол"), 16px in from the canvas's left edge and 16px
+ *    under the toolbar, which is the same 16px inset it used to keep at the bottom.
+ *    Measured, not guessed, with the Publish panel open in both its heights:
+ *
+ *      1280×800   chat 432 │ canvas 432…1224 │ panel x 745…1225, y 8…360 (live) / 8…496
+ *      1600×1000  chat 432 │ canvas 432…1544 │ panel x 1065…1545, same two heights
+ *
+ *    The panel is what the presenter is pointing at while this is up, so the card has to
+ *    live in the strip to the LEFT of it: 745 − 448 = 297px at the projector size. Hence
+ *    the 280 width — 17px of daylight at 1280, 337px at 1600 — and hence the left edge
+ *    still riding `--chat-w`, so a resizer drag can never slide it under the chat.
+ *    Top is `--topbar-h` + 16 = 68, clear of both 52px bars and of the canvas toolbar.
  *
  * It is up on exactly the terms the Publish panel's own amber card is up on — a domain
  * attached AND `world.icann` — and the link is the same one write the scenario console's
@@ -138,9 +153,71 @@ const RAIL = [
  */
 const SIM_EMAIL_TO = 'roman@example.com' // the address the Publish panel's card names
 
+/**
+ * THE ARRIVAL — a message that LANDS, not a surface that appears.
+ *
+ * `foreignPage` carried this until 14.09.2026 and the designer could not see it
+ * ("сделай чтобы оно появлялось с анимацией"): that preset is a 26px rise on
+ * SPRING_SOFT, which is ζ≈0.92 — critically damped, no overshoot, and pointed the wrong
+ * way now that the card sits at the top. It is the right preset for the hosting panel's
+ * cart, a page loading; it is the wrong one for a notification.
+ *
+ * This one is the notification every OS already taught the audience: it comes DOWN out of
+ * the top bar, and it bounces when it gets there. The travel is deliberately SHORT — 16px,
+ * which is exactly the gap between the card's resting top (68) and the bars' lower edge
+ * (52), so the highest frame the card ever occupies is flush with the bar and it can never
+ * cover it, not even for one transparent frame. Legibility is bought with the SPRING
+ * instead: stiffness 420 / damping 21 is ζ=0.51, and the filmed landing is scale 1.0107 and
+ * 2.8px past its seat at ~190ms, home by ~375. The scale carries the rest, anchored
+ * `origin-top` so the card unfolds downward out of the bar rather than zooming at its middle.
+ *
+ * ⚠️ OPACITY IS NOT ON THE SPRING. Give a bouncy spring the opacity as well and it
+ * overshoots 1, clamps, and comes back UNDER — filmed at 1 → 0.977 → 1 across the settle,
+ * a flicker on a card that has already arrived. It gets its own 180ms ease-out, which also
+ * means the card is solid BEFORE the bounce instead of fading through it: the landing is
+ * the part worth seeing.
+ *
+ * Transform and opacity only, like everything else in motion.ts. It lives here and not
+ * there ON PURPOSE: one card in the whole product is a letter, and a preset with one
+ * caller is a local variant, not a house rule. The moment a second foreign message
+ * arrives anywhere, this moves to motion.ts and both take it from there.
+ *
+ * ⚠️ NO RIM FLASH on the landing, tempting as it is. A sheen is the signature of GLASS —
+ * light sliding across something transparent — and this card is opaque paper. That is
+ * the same rule that rolled `.glass-sheen` off the Publish panel (17.08.2026).
+ */
+const letterArrives = {
+  initial: { opacity: 0, y: -16, scale: 0.93 },
+  animate: {
+    opacity: 1, y: 0, scale: 1,
+    transition: {
+      type: 'spring', stiffness: 420, damping: 21, mass: 1,
+      opacity: { duration: 0.18, ease: [0.2, 0, 0, 1] },
+    },
+  },
+  exit: { opacity: 0, y: -10, scale: 0.97, transition: EXIT },
+} as const
+
+/**
+ * …and the same gesture under `prefers-reduced-motion`, which must THROW THE OFFSETS
+ * AWAY rather than let them be jumped to. `<MotionConfig reducedMotion="user">` does not
+ * cancel a variant's target, it snaps to it — so an exit that ends on `y: -10` stops
+ * travelling and instead TELEPORTS 10px at opacity ~.9, which is worse than the slide it
+ * was replacing (measured on the dock's shelf, 26.08.2026; `listSwapFade` in motion.ts
+ * exists for exactly this). A variant whose destination is a displacement needs a
+ * displacement-free twin, chosen by `useReducedMotion()`.
+ */
+const letterArrivesFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+
 function SimulatedEmail() {
   const { world, set } = useWorld()
   const previewOpen = useUI((s) => s.previewOpen)
+  const reloading = useUI((s) => s.reloading)
+  const reduce = useReducedMotion()
   const { t } = useT()
 
   /*
@@ -168,21 +245,36 @@ function SimulatedEmail() {
    */
   const due = isCustomDomainActive(world) && world.icann
 
+  /*
+   * WHILE THE PREVIEW'S EDGE GLOW IS RUNNING, THE LETTER STOPS WAVING.
+   *
+   * Two reasons, and either one alone would be enough. Meaning: the Siri glow is the
+   * product saying "I am working on your site" — a second thing pulsing beside it turns
+   * one signal into two competing ones, and the glow is the one that belongs to the
+   * moment. Cost: the glow is the most expensive thing this prototype draws (measured on
+   * the published build — 4fps with it, 60 without), so the frames it leaves are exactly
+   * the frames not to spend on decoration. The union is the same three sources `App`
+   * reads for the glow itself; `busy` there is local, so this asks the world directly.
+   */
+  const quiet = world.chat === 'working' || world.project === 'generating' || reloading
+
   return (
     <AnimatePresence>
       {due && (
         <motion.aside
           key="sim-email"
-          /* Bottom-left of the canvas. `--chat-w` is written straight to <html> by the
-             resizer, so the letter follows a drag without a React render; with the
-             preview collapsed the chat owns the whole width and it falls back to the
-             page's own gutter. */
-          style={{ left: previewOpen ? 'calc(var(--chat-w) + 16px)' : '16px' }}
-          className="fixed bottom-4 z-[60] w-[348px] overflow-hidden rounded-[14px] bg-[#F7F7F5] text-neutral-900 shadow-[0_2px_6px_rgba(0,0,0,0.22),0_22px_48px_-12px_rgba(0,0,0,0.6)] ring-1 ring-black/15"
-          /* `foreignPage` — motion.ts's own preset for a surface that comes from OUTSIDE
-             the product: a short rise, no scale, transform and opacity only. Exactly what
-             this is. */
-          variants={foreignPage}
+          data-quiet={quiet ? 'true' : undefined}
+          /* TOP-left of the canvas, 16px in on both axes (see the header comment for the
+             measurements this width and this corner come from). `--chat-w` is written
+             straight to <html> by the resizer, so the letter follows a drag without a
+             React render; with the preview collapsed the chat owns the whole width and it
+             falls back to the page's own gutter. */
+          style={{
+            left: previewOpen ? 'calc(var(--chat-w) + 16px)' : '16px',
+            top: 'calc(var(--topbar-h) + 16px)',
+          }}
+          className="sim-letter fixed z-[60] w-[280px] origin-top overflow-hidden rounded-[14px] bg-[#F7F7F5] text-neutral-900 shadow-[0_2px_6px_rgba(0,0,0,0.22),0_22px_48px_-12px_rgba(0,0,0,0.6)] ring-1 ring-black/15"
+          variants={reduce ? letterArrivesFade : letterArrives}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -232,14 +324,30 @@ function SimulatedEmail() {
               })}
             </p>
 
-            {/* The link IS the action — the way it is in the real message. A button, not
-                an anchor: it navigates nowhere, it finishes the state. */}
-            <button
-              onClick={() => set({ icann: false })}
-              className="mt-1 inline-flex h-8 items-center text-[13px] font-semibold leading-[1.4] text-[#0b66c3] underline decoration-[1.5px] underline-offset-[3px] transition-colors duration-[var(--dur-fast)] ease-std hover:text-[#084f99]"
-            >
-              {t({ en: 'Confirm my email address', uk: 'Підтвердити мою email-адресу' })}
-            </button>
+            {/*
+              * THE ACTION — a filled button since 14.09.2026 ("сделай кнопку нормальную
+              * синюю… чтобы было понятно, что нужно нажать на неё, чтобы двигаться
+              * дальше"). It was a blue text link before, which is what a real email would
+              * carry — and that was the trouble: the one press that finishes the walk read
+              * as body copy, on a card the audience had already filed as "a note".
+              *
+              * House blue, house size: `--action` at 40px, the Medium of the three legal
+              * heights (32 / 40 / 48 — 36 is not one of them), radius 10 as everywhere
+              * else at that height, and `press-bloom` so the press feels like every other
+              * press in the product. Checked against PAPER, not against the shell: the
+              * fill stands 3.35:1 off the card's #F7F7F5, so the button is unmistakably an
+              * object on the sheet rather than a tinted word in it.
+              */}
+            <div className="sim-cta relative mt-3">
+              {/* the breath — see index.css, "THE LETTER'S BUTTON, ASKING TO BE PRESSED" */}
+              <span className="sim-cta-halo" aria-hidden />
+              <button
+                onClick={() => set({ icann: false })}
+                className="press-bloom flex h-10 w-full items-center justify-center rounded-[10px] bg-[var(--action)] text-[13px] font-semibold leading-[1.4] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
+              >
+                {t({ en: 'Confirm my email address', uk: 'Підтвердити мою email-адресу' })}
+              </button>
+            </div>
           </motion.div>
         </motion.aside>
       )}

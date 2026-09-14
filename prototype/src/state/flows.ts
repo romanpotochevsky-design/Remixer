@@ -76,6 +76,17 @@ export interface FlowView {
   panel?: PanelPage | null
   /** The Publish panel over the builder. */
   publish?: boolean
+  /**
+   * Is the canvas on screen at all? Only ever needed to take it AWAY — asking for a
+   * surface brings it back on its own (see applyView).
+   *
+   * The product writes this one imperatively rather than deriving it: the canvas collapses
+   * off the world through a brief, a plan and a build (App.tsx), but the very first prompt
+   * lands in none of those states — it is a sent message against an empty project — and in
+   * the product the send itself closes the canvas on its way out of the Home page
+   * (modules/chat/send.ts). A flow does not go through that door, so it says so here.
+   */
+  preview?: boolean
 }
 
 export interface FlowStep {
@@ -182,8 +193,12 @@ export const FLOWS: Flow[] = [
        project inheriting any of them is a contradiction the console prints in red. */
     setup: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], brief: EMPTY_BRIEF, domain: 'staging', inventory: 'none', unpublished: 0, published: false, icann: false, cart: [] },
     steps: [
+      /* The one beat in the prototype where the canvas has to be told to go: the world here
+         is "a message against an empty project", which none of the canvas's own rules cover
+         — see FlowView.preview. Everything after this is covered (an open brief, a plan and
+         a running build all collapse it; the finished page opens it). */
       { id: 'typed', label: { en: '"Build me a website." is sent — Remixer thinks', uk: 'Надіслано «Build me a website.» — Remixer думає' },
-        patch: { sent: [THIN_PROMPT], chat: 'working', brief: EMPTY_BRIEF }, ms: 5200,
+        patch: { sent: [THIN_PROMPT], chat: 'working', brief: EMPTY_BRIEF }, view: { preview: false }, ms: 5200,
         note: { en: 'No site preview on screen: there is nothing to show yet, so the conversation fills the whole window', uk: 'Прев’ю сайту на екрані немає: показувати ще нічого, тож переписка займає все вікно' } },
       { id: 'asks', label: { en: 'Instead of building, it asks for direction', uk: 'Замість збірки — просить напрямок' },
         patch: { sent: [THIN_PROMPT, THIN_ASK], chat: 'long', brief: { status: 'asking', step: 0, answers: {} } }, awaitUser: true,
@@ -341,8 +356,8 @@ export const FLOWS: Flow[] = [
       { id: 'sheet', label: { en: 'The checkout sheet — the name, the term, the total', uk: 'Аркуш оплати — ім’я, строк, сума' },
         view: { modal: 'buy', domain: BUY_NAME }, ms: 3400,
         note: {
-          en: 'It names the shortest term that ending is actually sold for, and totals it. Nothing has been charged: the next press leaves Remixer altogether.',
-          uk: 'Тут названо найкоротший строк, на який цей домен узагалі продається, і підсумок за нього. Нічого ще не списано: наступне натискання виводить із Remixer.',
+          en: 'The name, what it costs and what it renews at, over the shortest term that ending is actually sold for. Nothing has been charged: the next press leaves Remixer altogether.',
+          uk: 'Ім’я, його ціна і ціна продовження — на найкоротший строк, на який цей домен узагалі продається. Нічого ще не списано: наступне натискання виводить із Remixer.',
         } },
       /*
        * The seam, and the prototype shows it rather than papering over it: buying anything
@@ -362,8 +377,8 @@ export const FLOWS: Flow[] = [
         patch: { domain: 'registering', customDomain: BUY_NAME, icann: true, cart: [] },
         view: { panel: null, surface: 'preview', publish: true }, ms: 3000,
         note: {
-          en: 'Back in the builder, and from here the whole connection is read in one place: the Publish panel. Usually under fifteen minutes, and nothing for the customer to do.',
-          uk: 'Назад у білдер — і далі все підключення читається в одному місці, у панелі Publish. Зазвичай менш ніж чверть години, і від клієнта нічого не потрібно.',
+          en: 'Back in the builder, and from here the whole connection is read in one place: the Publish panel. Two cards — where it has got to, and the confirmation the registrar has just posted. The letter arrives with the registration; the last step is about it.',
+          uk: 'Назад у білдер — і далі все підключення читається в одному місці, у панелі Publish. Дві картки: де воно зараз і підтвердження, яке щойно надіслав реєстратор. Лист приходить разом із реєстрацією; про нього — останній крок.',
         } },
       /* The beat that makes the two walks different lengths, so it is the long one here
          too. Nothing to press and nothing to promise: the card owns the wait out loud. */
@@ -414,7 +429,8 @@ export const FLOWS: Flow[] = [
     },
     setup: { account: 'trial', trialDay: 29, credits: 40, project: 'built', chat: 'long', domain: 'staging', customDomain: DH_OWNED, inventory: 'dh-free', unpublished: 2, published: false, icann: false, cart: [] },
     steps: [
-      { id: 'low', label: { en: 'The credits run down — the count in the topbar reaches ten', uk: 'Кредити добігають кінця — лічильник у верхній панелі показує десять' }, patch: { credits: 10 }, ms: 1600,
+      { id: 'low', label: { en: 'The credits run down — the count in the topbar reaches ten', uk: 'Кредити добігають кінця — лічильник у верхній панелі показує десять' },
+        patch: { credits: 10 }, view: { surface: 'preview' }, ms: 1600,
         note: { en: 'The balance is on screen the whole time, next to Publish — it is never a page you have to go and find', uk: 'Баланс увесь час на екрані, поруч із Publish — по нього ніколи не треба кудись іти' } },
       { id: 'expired', label: { en: 'Day 30 — AI is off; the site and hand editing are not', uk: 'День 30 — AI вимкнено; сайт і ручні правки — ні' }, patch: { account: 'trial-expired', credits: 0, trialDay: 30 }, ms: 2400,
         note: { en: 'The message field now reads "AI is off — a plan is required" and the count is zero. The site is untouched: nothing was taken away, and it can still be edited by hand.', uk: 'У полі введення тепер «AI is off — a plan is required», а лічильник на нулі. Сайт неторканий: нічого не забрали, і його й далі можна правити руками.' } },
@@ -535,6 +551,13 @@ interface FlowStore {
 function applyView(v: FlowView) {
   const ui = useUI.getState()
   if (v.surface || v.domainScreen) {
+    /* A surface is WHAT THE CANVAS SHOWS, so asking for one asks for the canvas. With the
+       preview collapsed the canvas is zero width and aria-hidden, so the domains window
+       would open into nothing and the subtitle would name a screen that is not there —
+       which is the whole defect this type exists to close. It is a rule and not a field on
+       every step for the same reason: a field can be forgotten, and forgetting it fails
+       silently. `preview` below is the deliberate exception, applied last so it wins. */
+    ui.setPreviewOpen(true)
     const surface = v.surface ?? 'domains'
     if (surface === 'domains') ui.openDomains(v.domainScreen ?? 'home', v.domain ?? null)
     else ui.openSurface(surface)
@@ -542,6 +565,7 @@ function applyView(v: FlowView) {
   if (v.panel !== undefined) v.panel ? ui.openPanel(v.panel) : ui.closePanel()
   if (v.modal !== undefined) v.modal ? ui.openDomainModal(v.modal, v.domain ?? '') : ui.closeDomainModal()
   if (v.publish !== undefined) ui.togglePublish(v.publish)
+  if (v.preview !== undefined) ui.setPreviewOpen(v.preview)
 }
 
 /**

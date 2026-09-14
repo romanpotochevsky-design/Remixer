@@ -86,22 +86,51 @@ const PUBLISH_FRESH_MS = 60000
 
 
 /**
- * DOES THE ADDRESS ANSWER WITH THE SITE? — the one reading, for the whole shell.
+ * IS THE CUSTOM DOMAIN THE ADDRESS WE HAND OVER? — the one reading, for the whole shell.
  *
- * Exported because the topbar chip prints an address too (App.tsx), and until tonight
- * the two derived it separately: the panel counted the padlock beat as answering, the
- * chip did not, so for the ~6.6 seconds of `verifying` the window held the custom domain
- * and the topbar the staging one — two addresses and two statuses at once, which is the
- * same failure as the second link the designer struck out of this panel (13.09.2026:
- * "у нас будет только одна ссылка отображаться в этом окне"). One function, both readers.
+ * The designer's rule, 14.09.2026: «мы убираем первый домен и вместо него вставляем
+ * кастомный, только тогда, когда кастомный домен уже привязан». The field keeps the free
+ * *.remixer.ai address for the WHOLE of the connection walk and swaps to the customer's
+ * own name only once that name is genuinely finished — working, secured, and with nothing
+ * outstanding against it.
  *
- * `verifying` qualifies ONLY on a published site, and the asymmetry is the mechanism: a
- * certificate cannot be issued until the address already answers here, so by this beat
- * the domain does resolve — but if nobody ever pressed Publish it resolves to an empty
- * site, and printing it as "your website URL" would be the one outright lie in the panel.
+ * Exported because the topbar chip prints an address too (App.tsx), off this same
+ * function. The two used to derive it separately and disagreed for the length of a state,
+ * which is the same failure as the second link the designer struck out of this panel
+ * (13.09.2026: "у нас будет только одна ссылка отображаться в этом окне"). One reading,
+ * both readers — do not re-derive it at either end.
+ *
+ * ⚠️ THIS OVERRIDES D5, and D5's argument is written out here so that nobody restores it
+ * by finding it convincing. D5 handed the field over at `verifying && published`, on the
+ * grounds that a certificate cannot be issued until the name already resolves — so by
+ * that beat the domain DOES answer, and printing the free address would be a lie. That
+ * optimised the wrong thing. The field answers the question the customer actually asks:
+ * WHERE IS MY SITE, WHAT LINK CAN I GIVE SOMEONE. Until the domain is done, the honest
+ * answer to that is the free address — the one that certainly works — not the one that
+ * happens to resolve for us, this minute, from here.
+ *
+ * So the swap waits on two things, and the second is the one the walk keeps forgetting:
+ *  · `live` or `multiple` — the address answers WITH the site, padlock and all;
+ *  · and nothing outstanding against the name. `world.icann` is a clock the registrar
+ *    switches the domain OFF at the end of (state/world.ts) — a name on that clock works
+ *    conditionally, and a conditional name is not a link you give somebody.
+ *
+ * Which makes this exactly the panel's `settled`, and that is deliberate, not a
+ * coincidence to be tidied apart: the field hands over the domain in the same beat the
+ * panel is able to say "Padlock on · anyone can visit", and never one state earlier.
  */
-export const domainAnswers = (w: World) =>
-  w.domain === 'live' || w.domain === 'multiple' || (w.domain === 'verifying' && w.published)
+export const domainIsHome = (w: World) =>
+  (w.domain === 'live' || w.domain === 'multiple') && !w.icann
+
+/**
+ * ⚠️ THE INHERITED NAME. Accurate while the test was "does the address answer"; the test
+ * is now "is the domain done", so it lies about its own body — and it is kept only
+ * because App.tsx imports it and that file belongs to another pair of hands tonight.
+ * Rename both sides in the one commit that can touch both. What must NOT happen is a
+ * second predicate growing in App.tsx: the chip's address and this field's address are
+ * one decision, and splitting them is the bug this export exists to prevent.
+ */
+export const domainAnswers = domainIsHome
 
 /**
  * A hostname never breaks mid-word.
@@ -134,16 +163,18 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
 /**
  * The inset URL field.
  *
- * Three faces, and which one is on says what the site answers to RIGHT NOW:
- *  · `bare` — an address and nothing beside it. Two situations land here, and they agree:
- *    the free address before anybody has pressed Publish (nothing has happened yet), and
- *    the custom domain while the padlock is still switching on (the amber card directly
- *    beneath already says where this has got to, and a pill repeating it would be the
- *    panel talking about one thing twice).
+ * Three faces, and which one is on says what link the customer can give somebody:
+ *  · `bare` — the free address, before anybody has pressed Publish. An address and
+ *    nothing beside it, because nothing has happened to it yet.
  *  · `published` — the free address, with the quiet marker that the site is out on it.
- *    See the marker itself below for why it is not green.
- *  · `live` — the custom domain under the green pill. The pill replaces the trailing
- *    button rather than joining it, and the board draws it in that slot.
+ *    This is the face the WHOLE connection walk wears — registering, on its way,
+ *    connecting, padlock switching on, and live-but-still-owing-a-confirmation — because
+ *    through all of it the free address is the one that certainly works. See the marker
+ *    itself below for why it is not green, and `domainIsHome` for why the custom name
+ *    waits.
+ *  · `live` — the custom domain under the green pill. Reached in one beat and one only:
+ *    the domain is finished. The pill replaces the trailing button rather than joining
+ *    it, and the board draws it in that slot.
  *
  * ⚠️ THERE IS NO PENCIL (demo-readiness gate, 14.09.2026). The free address used to
  * carry an "Edit address" button — hover fill, aria-label, and no handler — and it was
@@ -155,10 +186,17 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
  * starts teaching a product that does not exist. Do not put a pencil back without the
  * screens behind it.
  *
- * ⚠️ THE GREEN PILL IS NOT PAINTED BY "there is a domain in the field" (D5, 14.09.2026).
- * It used to be, so during `verifying` the field said Live directly above a card saying
- * the padlock was still switching on. Live in this product means the checklist's third
- * line is closed; while it is not, the address answers and that is a different claim.
+ * ⚠️ THE GREEN PILL AND THE ADDRESS ARE ONE DECISION, NOT TWO (14.09.2026). The field
+ * shows the custom domain only when that domain is done, and "done" is the only thing
+ * green means here — so the pill cannot end up beside anything that contradicts it.
+ * It got there twice by being a second decision: over `verifying` it said Live above a
+ * card saying the padlock was still switching on, and over a live domain with the
+ * registrant email unconfirmed it said Live a hundred pixels above "Confirm your email
+ * to keep this domain" — the designer, on that one: "почему пишется что Live если
+ * Confirm your email to keep this domain". Green in this product is the all-clear:
+ * every checklist line closed AND nothing outstanding. A name on a clock the registrar
+ * can switch off is working conditionally, which is a different claim and gets a
+ * different surface — the amber card, which is the only one saying it.
  */
 function UrlField({ value, suffix, slot, publishedLabel }: {
   value: string
@@ -371,7 +409,14 @@ export function PublishPanel() {
   const ready = world.domain === 'ready'
   const oldSite = world.domain === 'old-site'
   const confirmEmail = attached && world.icann
-  const settled = liveish && !world.icann
+  /*
+   * THE ONE READING THE ADDRESS AND THE PROSE LINE SHARE. `domainIsHome` is spelled
+   * `live-or-multiple AND no clock running` — the same sentence this const used to spell
+   * out here in longhand, now said once, in the place the topbar chip reads it from too.
+   * Two names for one truth is how the field and the chip came to disagree in the first
+   * place.
+   */
+  const settled = domainIsHome(world)
   /*
    * A NAME LEFT STANDING AT THE TILL — see the card for how this maps to board state ⑦.
    *
@@ -402,13 +447,6 @@ export function PublishPanel() {
       : undefined
   const cartDomain = cartRegistration ?? parkedConnect
   const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
-  /**
-   * Does the domain answer WITH THE SITE? That is which ADDRESS the field prints — and
-   * the topbar chip prints the same one, off the same function (see `domainAnswers`).
-   * It is NOT what paints the green pill: answering and Live are two different claims,
-   * and the padlock beat sits between them (D5).
-   */
-  const answering = domainAnswers(world)
   /** Is a connection state showing? The email card stacks under it when so. */
   const stageCard = unreachable || connecting || registering || propagating || padlock || ready || oldSite
   /**
@@ -467,10 +505,27 @@ export function PublishPanel() {
    * it becomes the quiet "Keep editing", the house's own permission to walk away
    * (states.md, every waiting state).
    *
-   * `ready` is excluded on purpose even though it CAN publish: that state carries its own
-   * Publish inside its card, where the sentence explaining it is, and two identical blue
-   * verbs in one 480px panel is one too many. `old-site` is excluded because publishing is
-   * precisely what just failed there.
+   * ⚠️ AND `ready` IS NOT AN EXCEPTION — it is the clearest case of the rule (designer,
+   * 14.09.2026, on finding the blue button inside the card: «что за Publish не в том
+   * месте?»). It was excluded here on the grounds that every non-terminal state carries
+   * its own verb, so two blue verbs in one 480px panel would be one too many. Both halves
+   * were misread. That rule is about actions with nowhere else to live — `Resend` for an
+   * unconfirmed email, `Fix this` for a domain that stopped answering, `Try again` for a
+   * blocked publish, `Finish checkout` for an abandoned cart; each belongs to one state
+   * and would be meaningless in a shared footer, which is why the shared "Refresh status"
+   * went. PUBLISH IS THE OPPOSITE OF THAT: it is the panel's own action, the panel is
+   * named after it, and it already has a home — this button. Putting it in the card did
+   * not avoid two blue verbs, it INVERTED them: the primary action moved into a card and
+   * the footer, where the eye goes for it, was left holding the secondary "Keep editing".
+   * So `ready` publishes from here, its card keeps the sentence and drops the button, and
+   * the panel still has exactly one blue verb — in the one place it has always been.
+   *
+   * `old-site` stays excluded, and for a reason that survives the correction: publishing
+   * is precisely what FAILED there. A blue Publish in the footer would be a primary button
+   * that cannot work — the original defect this whole paragraph exists to prevent — and
+   * the recovery is genuinely state-specific (the address has to be cleared first, then
+   * `Try again` inside the card). The footer says "Keep editing", as it does at every
+   * other state that is waiting on something: the same answer `unreachable` already gives.
    *
    * ⚠️ NO "· Free" ON THE LABEL (designer, 08.09.2026: "убери из кнопки — Free"), which is
    * also what the board draws — an 86px button reading just "Publish". The suffix was ours,
@@ -479,7 +534,11 @@ export function PublishPanel() {
    * to live: if it is worth making, it belongs in the nudge banner's copy, not stapled to
    * the verb. Raised with the designer; do not put it back on the button.
    */
-  const publishes = !ready && !oldSite && (world.unpublished > 0 || !world.published)
+  /* `ready` publishes unconditionally: the state means the domain is set up and the site
+     has never been on it, so there is always something to do here — reading it through
+     the edit count could leave the one state that exists to be published with no way to
+     publish. */
+  const publishes = !oldSite && (ready || world.unpublished > 0 || !world.published)
   /*
    * …AND FOR ONE BEAT AFTER A PRESS IT SAYS WHAT HAPPENED (see PUBLISH_SETTLE_MS).
    * The slot is the same one the press was made in, so the answer arrives under the
@@ -492,7 +551,11 @@ export function PublishPanel() {
     ? { en: 'Published', uk: 'Опубліковано' }
     : !publishes
       ? { en: 'Keep editing', uk: 'Далі редагувати' }
-      : !world.published
+      /* "Update" means "push edits out to visitors who already have the old version", so
+         it needs an old version to exist AT THIS ADDRESS. At `ready` none does, whatever
+         the site did on its free address before — this press is the first publish onto
+         the domain, and the word for that is Publish. */
+      : ready || !world.published
         ? { en: 'Publish', uk: 'Опублікувати' }
         : { en: `Update · ${world.unpublished} changes`, uk: `Оновити · змін: ${world.unpublished}` }
 
@@ -541,12 +604,16 @@ export function PublishPanel() {
           {/* -------------------------------------------------------- header, 64px */}
           <div className="flex h-16 items-center pl-6">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">
-              {/* A domain ANSWERING in front of the site counts as published: "Not
-                  published" over a live custom domain would be a lie. Merely having one
-                  attached does not — a domain that is connecting, or `ready` and waiting
+              {/* ⚠️ THE TITLE ASKS A DIFFERENT QUESTION FROM THE FIELD, and must not be
+                  folded into it. The field asks "which address do we hand over", which
+                  waits for the domain to be finished; this asks "has this site ever gone
+                  live", which a running registrant-email clock does not un-answer. So it
+                  reads `published` — plus a live domain, because "Not published" over one
+                  would be a lie whatever the clock is doing. Merely having a domain
+                  ATTACHED does not count: one that is connecting, or `ready` and waiting
                   for the first press, stands in front of nothing, and titling that panel
                   "Publish" would hide the very thing it is there to say. */}
-              {world.published || answering
+              {world.published || liveish
                 ? t({ en: 'Publish', uk: 'Публікація' })
                 : t({ en: 'Not published', uk: 'Не опубліковано' })}
             </h3>
@@ -606,13 +673,18 @@ export function PublishPanel() {
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
                   {t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
                 </p>
-                {answering ? (
-                  <UrlField value={world.customDomain} slot={liveish ? 'live' : 'bare'} />
+                {settled ? (
+                  /* The finished domain, and the only face that wears the green pill.
+                     One branch, one slot: the field cannot show this name without the
+                     all-clear, nor the all-clear without this name (`domainIsHome`). */
+                  <UrlField value={world.customDomain} slot="live" />
                 ) : (
-                  /* The free address. It gets the marker the moment the site is out on it
-                     — including while a custom domain is still connecting behind the
-                     scenes, because that is precisely when "where IS my site right now"
-                     is the question, and the answer is: here. */
+                  /* The free address — through the whole walk, not just before it. It
+                     gets the marker the moment the site is out on it, INCLUDING while a
+                     custom domain is registering, travelling, connecting, switching its
+                     padlock on or waiting on a registrant-email confirmation, because
+                     that is precisely when "where IS my site right now" is the question,
+                     and through all of it the answer is: here. */
                   <UrlField
                     value={STAGING_NAME}
                     suffix={STAGING_SUFFIX}
@@ -743,8 +815,15 @@ export function PublishPanel() {
                   "Well, this is awkward. The site you're looking for is not here." — while
                   this panel says all is well. Worth a line one day; it is not in the
                   approved copy, so it is not invented in here tonight.)
-                  The verb lives INSIDE the card, and it is the only blue thing in the
-                  panel while this state is up. */}
+                  ⚠️ THE VERB IS NOT IN HERE (designer, 14.09.2026: «что за Publish не в
+                  том месте?»). It was, and that put the panel's primary action in a card
+                  while the footer held the secondary one. The card's job is the sentence
+                  — everything is correct, and one press puts the site on it; the press
+                  itself belongs to the blue button at the bottom, which is where it is
+                  for every other state and where this panel's name points. The tone
+                  stays BLUE and now earns it twice: blue is this project's colour for an
+                  action, the state IS an action waiting to be taken, and the card is
+                  pointing straight at the only blue thing on screen. */}
               {ready && (
                 <StatusCard
                   tone="blue"
@@ -756,11 +835,6 @@ export function PublishPanel() {
                     en: 'Your address is set up. Visitors will see your site the moment you publish.',
                     uk: 'Адресу налаштовано. Відвідувачі побачать сайт тієї ж миті, коли ви опублікуєте.',
                   })}
-                  action={{
-                    label: t({ en: 'Publish', uk: 'Опублікувати' }),
-                    onClick: publishNow,
-                    primary: true,
-                  }}
                 />
               )}
 
@@ -868,7 +942,17 @@ export function PublishPanel() {
                 <StatusCard
                   stacked={stageCard}
                   tone="amber"
-                  title={t({ en: 'Confirm your email to keep this domain', uk: 'Підтвердьте email, щоб зберегти домен' })}
+                  /* ⚠️ IT NAMES THE DOMAIN, and that is not decoration. The line used to
+                     read "…to keep this domain", which pointed at the field — and the
+                     field no longer holds that name in any state this card is up in: it
+                     holds the free address until the domain is done, and this clock is
+                     one of the two things stopping it being done. A demonstrative with
+                     nothing to demonstrate is worse than a long title, and every other
+                     card in the panel names the name anyway. */
+                  title={t({
+                    en: `Confirm your email to keep ${world.customDomain}`,
+                    uk: `Підтвердьте email, щоб зберегти ${world.customDomain}`,
+                  })}
                   sub={resent
                     ? t({
                         en: 'Sent again to roman@example.com — check your inbox.',

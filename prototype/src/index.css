@@ -4234,3 +4234,80 @@ html[data-drag] .chat-reopen { background: #1587ff3d; }
 }
 .chat-reopen:hover .chat-reopen-grip,
 html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
+
+/*
+ * ───────── THE LETTER'S BUTTON, ASKING TO BE PRESSED ─────────
+ * (the simulated ICANN confirmation email — `SimulatedEmail`, App.tsx)
+ *
+ * The card is the only way out of the registrant-email state, and the designer asked for
+ * the button to "пульсировать / привлекать внимание, чтобы было понятно, что нужно нажать
+ * на неё, чтобы двигаться дальше" (14.09.2026).
+ *
+ * SO IT BREATHES, IT DOES NOT BLINK. The one attention effect this project has shipped
+ * before — the send flash — was compressed three times on the designer's own instruction
+ * and landed on "быстрее и чтобы не било по глазам". A 3.2s swell-and-fade with a rest
+ * beat is the opposite end of that dial on purpose: at any single glance it is barely
+ * moving, and over two seconds it is unmissable. Nothing here flashes, strobes or
+ * changes colour.
+ *
+ * ⚠️ PERFORMANCE CONTRACT — the halo is a SEPARATE LAYER and only its OPACITY animates.
+ * The glow is a box-shadow, which means it is painted ONCE when the layer is rasterised
+ * and never again; an animated `box-shadow` (or an animated filter, or a colour) would
+ * invalidate paint on every frame, which is the 9fps mistake this project made once and
+ * wrote a rule about. Opacity on a promoted layer is compositor work and nothing else,
+ * and unlike the send flash this effect is not a one-shot — it runs for as long as the
+ * state does, which is exactly where a per-frame repaint would bite hardest.
+ *
+ * ⚠️ AND ITS REACH IS BOUNDED BY THE CARD'S PADDING, on purpose. The card clips
+ * (`overflow-hidden`) so the paper reads as paper; a glow spilling past its edge onto the
+ * shell would break that in the one place the prototype is trying hardest to look like it
+ * is not part of the product. Reach here is 10px (blur 18 ÷ 2 + spread 1) against 12px of
+ * padding below the button and 14px at its sides — so the aura stays on the sheet, and the
+ * loudness is bought in ALPHA and in the SPREAD RING rather than in reach.
+ *
+ * The ring is the half that does the work, which is not what you would guess: blue glow on
+ * near-white paper is inherently pale, so the blurred half alone (tried at .55 over 14px,
+ * and at .60 over 18px with a 4px ring) barely registered at peak. An 8px band of flat 20%
+ * blue under the blur is what turns it into a soft FIELD around the button instead of a
+ * halo you have to look for — and 20% is low enough that it never hardens into the ring a
+ * focus outline would draw. Judged at frozen peak against five other recipes.
+ */
+.sim-cta-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px; /* the button's own, so the aura follows its shape */
+  box-shadow:
+    0 0 0 8px rgba(21, 135, 255, 0.2),
+    0 0 18px 1px rgba(21, 135, 255, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+  animation: sim-cta-breathe 3.2s ease-in-out infinite;
+}
+/* Swell · fade · rest. `ease-in-out` between every pair leaves zero slope at the peak
+   and at both zeroes, so there is no kink anywhere in the cycle — the same reason the
+   drawn ring's schedule minimises curvature rather than slope: the eye reads an
+   inflection as an edge, however gentle the ramp around it is. */
+@keyframes sim-cta-breathe {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  82%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+/* It yields to the preview's edge glow. While that is running it is the product's own
+   "something is happening" and it costs nearly the whole frame budget (4fps measured with
+   it, 60 without) — a second pulse beside it would be both a second signal and a second
+   bill. `data-quiet` is set by the card itself off the same three sources App reads. */
+.sim-letter[data-quiet='true'] .sim-cta-halo {
+  animation: none;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The pulse stops ENTIRELY — no parked halo, no slow version. The button is a filled
+     blue 40px control on white paper and needs no help being read as the action; the
+     halo was only ever the part that moves, so under reduce there is nothing to keep. */
+  .sim-cta-halo {
+    animation: none;
+    opacity: 0;
+  }
+}
