@@ -16,7 +16,15 @@
  *    paragraphs under Submit Order.
  *  - Icons are traced (see icons.tsx). The exceptions, all cosmetic and all listed in
  *    the handoff: the four Add Product glyphs in the sidebar, the SEO Toolkit glyph
- *    and the avatar, whose art the capture did not carry.
+ *    and the avatar, whose art the capture did not carry — and the alert mark on the
+ *    strip below, which is MUI's `error` in the same amber the traced marks use.
+ *  - ONE THING ON THIS PAGE IS NOT THE PANEL'S: the amber "needs a plan" strip in the
+ *    Order Summary (see `Summary`). DreamHost's cart has no such rule, because the rule
+ *    is OURS — a custom domain only goes live on a paid plan (world.violations()). The
+ *    panel would happily sell a domain registration on its own, and did, straight into a
+ *    world the product declares impossible (QA, 14.09.2026). It is built out of the
+ *    panel's own parts — its amber warningSimple strip, its Add button — so that the
+ *    screen stays quotable even where it is saying something only Remixer would say.
  *  - There is no receipt page: Submit Order charges and drops the customer straight
  *    back into Remixer (confirmed with the designer). The wait is compressed to a
  *    short "Placing your order…" rather than removed — the panel does charge a card
@@ -30,11 +38,11 @@
  */
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
-import { useWorld } from '@/state/world'
+import { hasPlan, useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { startConnect } from '@/modules/domains/connect'
 import { cartTotal, lineCopy, money, type CartLine } from '@/data/cart'
-import { foreignPage } from '@/ui/motion'
+import { cardInRow, foreignPage } from '@/ui/motion'
 import {
   DhAvatarGlyph, DhBack, DhCartAdd, DhCheck, DhChevron, DhEmptyCart, DhLogo,
   DhNavBillingAccount, DhNavBusinessTools, DhNavCloudServices, DhNavDomainNames,
@@ -305,9 +313,32 @@ function Recommendation() {
 
 /* ----------------------------------------------------------------- summary */
 
+/** MUI `error`, in the amber the panel's traced marks use. Ours — see the header. */
+function DhAlert() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        fill="#F4511E"
+        d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2Zm0 11a1 1 0 0 1-1-1V8a1 1 0 1 1 2 0v4a1 1 0 0 1-1 1Zm1 4h-2v-2h2v2Z"
+      />
+    </svg>
+  )
+}
+
 function Summary({
-  count, total, submitting, onSubmit,
-}: { count: number; total: number; submitting: boolean; onSubmit: () => void }) {
+  count, total, submitting, blocker, onSubmit, onRestorePlan,
+}: {
+  count: number
+  total: number
+  submitting: boolean
+  /**
+   * The order cannot be placed, and this is the domain it would have stranded.
+   * Null the rest of the time — see `planMissing` in `PanelCart` for the rule.
+   */
+  blocker: { domain: string } | null
+  onSubmit: () => void
+  onRestorePlan: () => void
+}) {
   return (
     <aside className="dh-summary">
       <div className="dh-summary__header">
@@ -321,7 +352,43 @@ function Summary({
       </div>
 
       <div className="dh-summary__submitwrap">
-        <button className="dh-submit" onClick={onSubmit} disabled={count === 0 || submitting}>
+        {/*
+          WHY THE BUTTON IS OFF, SAID OUT LOUD, AND THE ONE PRESS THAT TURNS IT BACK ON.
+          A greyed Submit Order with nothing beside it is its own defect: the customer
+          removed a line and the till went quiet. So the refusal names the domain it is
+          protecting, names what it needs, and carries the panel's own Add button — the
+          plan goes back exactly as it was, which is the only way out of this state that
+          does not cost the customer the whole trip (the alternative is Back, which
+          empties the cart). `.dh-renewal` is the panel's warningSimple strip, reused
+          verbatim; only the glyph and the sentence are ours.
+        */}
+        {blocker && (
+          <motion.div
+            id="dh-plan-required"
+            role="status"
+            className="dh-renewal mb-5"
+            variants={cardInRow}
+            custom={0}
+            initial="initial"
+            animate="animate"
+          >
+            <DhAlert />
+            <span className="min-w-0 flex-1">
+              {blocker.domain} can only go live on the Remixer Build plan — add it back to
+              place this order.
+            </span>
+            <button className="dh-reco__add ml-3 flex-none" onClick={onRestorePlan}>
+              <DhCartAdd />Add
+            </button>
+          </motion.div>
+        )}
+
+        <button
+          className="dh-submit"
+          onClick={onSubmit}
+          disabled={count === 0 || submitting || blocker !== null}
+          aria-describedby={blocker ? 'dh-plan-required' : undefined}
+        >
           {submitting ? 'Placing your order…' : 'Submit Order'}
         </button>
       </div>
@@ -363,12 +430,29 @@ function Summary({
  * sent to checkout, spent once when the order is placed, dropped on every other way out.
  * (The August `pendingSetup` branch solved the same problem the same way.)
  *
- * IT IS PERSISTED, deliberately. The world store writes itself to localStorage on every
- * change (state/world.ts), so `world.cart` survives a reload; the UI store does not, so
- * `ui.panel` does not — a reload inside checkout comes back to the builder still holding a
- * full cart. An intent kept only in memory would be the one half of that pair to
- * evaporate. Same idiom as the world's own snapshot: versioned key, best-effort, never
- * fatal (the published artifact runs in a sandbox where storage can be walled off).
+ * IT IS PERSISTED, deliberately — and the reason is NOT the one first written here.
+ *
+ * The first version of this comment said the world store persists, so `world.cart`
+ * survives a reload and the intent has to survive with it. Half of that is false, and the
+ * false half is what the blocker of 14.09.2026 stood on. The world does write itself to
+ * localStorage on every change, but `initialWorld()` lets the URL WIN WHOLE: any query
+ * string at all and the snapshot is discarded except for the transcript (state/world.ts).
+ * Standing at the till always puts `d=checkout` in the address bar, so a reload there
+ * comes back with the domain axis still at `checkout` and the cart EMPTY — the two halves
+ * of one trip, separated. The UI store is not persisted at all, so the till itself is gone
+ * and the customer lands on the Home page.
+ *
+ * So what this key is really for is the OTHER re-entry: the prototype opened on its plain
+ * URL (how the published artifact opens from the gallery, and where a browser Back lands
+ * when the entry it returns to predates the query string). No params means the snapshot
+ * wins whole, cart included — the abandoned trip comes back entire, and an intent kept
+ * only in memory would be the one piece of it missing.
+ *
+ * Either way the rule below is the same and does not depend on guessing which re-entry
+ * happened: the intent is written by the HAND-OFF and by nothing else, once per trip, and
+ * a trip that is walked again writes it again. Same idiom as the world's own snapshot:
+ * versioned key, best-effort, never fatal (the published artifact runs in a sandbox where
+ * storage can be walled off).
  */
 const PENDING_KEY = 'remixer-prototype/pending-connect/v1'
 
@@ -402,6 +486,19 @@ function takePendingConnect(): string | null {
   return domain
 }
 
+/**
+ * Read WITHOUT spending. The till renders from this — an order whose only domain is a
+ * parked name still has a domain in it, and the plan gate below has to see that.
+ *
+ * Safe to read during render even though it is not React state: it changes at exactly
+ * three moments in a trip, and every one of them is either before this page is on screen
+ * (the hand-off) or is accompanied by a world write that re-renders it anyway (`writeCart`
+ * dropping the plan, `back`, the submit effect).
+ */
+function peekPendingConnect(): string | null {
+  return pendingConnect
+}
+
 /* -------------------------------------------------------------------- page */
 
 export function PanelCart() {
@@ -410,38 +507,94 @@ export function PanelCart() {
   const [submitting, setSubmitting] = useState(false)
   /** Which line's select is open, by tile id — one at a time, as in the panel. */
   const [openSelect, setOpenSelect] = useState<string | null>(null)
+  /** The plan line the customer took out, kept so "Add" can put back that one. */
+  const [removedPlan, setRemovedPlan] = useState<CartLine | null>(null)
 
   const open = panel === 'cart'
   const lines = world.cart
   const total = cartTotal(lines)
 
   /*
+   * THE ONE ORDER THIS TILL REFUSES TO TAKE.
+   *
+   * A domain reaches this page two ways — bought here as a registration line, or already
+   * owned and parked above — and in both cases what actually puts it in front of the site
+   * is the PLAN, not the name. That is a product fact, not a preference: `world.
+   * violations()` lists a custom domain on an unpaid account as a combination the real
+   * product cannot produce ("A custom domain needs a paid plan — checkout comes first").
+   *
+   * The panel's cart, faithfully, lets you delete any line you like. So a trial customer
+   * could delete the Remixer line, pay $4.99 for the domain alone, and walk out with the
+   * site live on it — the impossible world, reached through the sheet that had just shown
+   * them the plan as mandatory (QA, 14.09.2026). Charging them and then quietly not
+   * connecting would have been worse, and letting the account go paid without being asked
+   * worse still, so the order is refused while it is in that shape, and the strip in
+   * `Summary` says which domain is waiting on what. `hasPlan` is what makes this a rule
+   * about the ACCOUNT rather than about the cart: somebody who already pays buys a domain
+   * with no plan line at all, and that order is perfectly good.
+   */
+  const orderDomain = lines.find((l) => l.kind === 'domreg')?.domain ?? peekPendingConnect()
+  const blocker =
+    orderDomain && !lines.some((l) => l.kind === 'remixer') && !hasPlan(world)
+      ? { domain: orderDomain }
+      : null
+
+  /*
    * WHO PARKS THE INTENT, AND WHY IT IS CAUGHT HERE RATHER THAN READ AT RENDER.
    *
-   * The sheet that sends a customer to checkout writes `domain: 'checkout'` — the world's
-   * own word for "standing at the till" — WHILE IT IS STILL ON SCREEN, and only then
-   * closes itself and opens this page (modules/domains/DomainModal.tsx). At that one
-   * instant both halves are readable: the axis says the customer is being sent to
-   * checkout, and `ui.domainModal` still names the domain they pressed Connect on. By the
-   * time this component renders with the panel open, the sheet is gone — a render-time
-   * read is a frame too late, which is why this is a store subscription and not an effect
-   * on `open`.
+   * The sheet that sends a customer to checkout writes `cart` and `domain: 'checkout'` in
+   * ONE store write — the world's own word for "standing at the till" — WHILE IT IS STILL
+   * ON SCREEN, and only then closes itself and opens this page
+   * (modules/domains/DomainModal.tsx). At that one instant both halves are readable: the
+   * write says the customer is being sent to checkout, and `ui.domainModal` still names
+   * the domain they pressed Connect on. By the time this component renders with the panel
+   * open, the sheet is gone — a render-time read is a frame too late, which is why this is
+   * a store subscription and not an effect on `open`.
    *
-   * Nothing being REGISTERED in the cart is what makes this a connect-what-you-own trip: a
-   * purchase carries its own line and that line is read back at submit, below.
+   * ⚠️ THE HAND-OFF IS A WRITE, NOT A MOVE OF THE AXIS. This used to fire only on a
+   * TRANSITION into `checkout` (`prev.world.domain !== 'checkout'`), which is true exactly
+   * once per browser session and then never again — because the axis persists and the till
+   * does not. Reload at the till, or come back to the prototype on its plain URL, and the
+   * world is ALREADY sitting at `checkout`; walk the same trip again and the sheet's write
+   * moved nothing, so nothing was parked. Submit Order then took the money, emptied the
+   * cart and attached no domain at all — or, when an intent from the abandoned trip was
+   * still in storage, attached THAT one instead of the name on the sheet just pressed
+   * (QA, 14.09.2026, reproductions A and B). The test is therefore the cart REFERENCE:
+   * `set({ cart: lines, ... })` hands over a fresh array every time, while every write that
+   * leaves the cart alone carries the same one through (state/world.ts `set`). One trip,
+   * one hand-off, one park — however many times the customer walks it.
+   *
+   * AND IT WRITES EITHER WAY, so the intent can never be older than the trip on screen.
+   * A registration line means the name is being BOUGHT here, and the cart carries it to
+   * submit on its own; anything parked at that point belongs to a trip that was abandoned,
+   * and it dies here rather than riding along on somebody else's order.
+   *
+   * `sheet` being null means this write is not a hand-off — the cart being edited at the
+   * till, or a scenario being staged — and nothing about the intent changes.
    */
   useEffect(() =>
     useWorld.subscribe((s, prev) => {
-      if (s.world.domain !== 'checkout' || prev.world.domain === 'checkout') return
+      if (s.world.domain !== 'checkout' || s.world.cart === prev.world.cart) return
       const sheet = useUI.getState().domainModal
-      if (sheet && !s.world.cart.some((l) => l.kind === 'domreg')) rememberPendingConnect(sheet.domain)
+      if (!sheet) return
+      if (s.world.cart.some((l) => l.kind === 'domreg')) clearPendingConnect()
+      else rememberPendingConnect(sheet.domain)
     }), [])
 
-  /* A parked intent with no till left to come back to is dropped on the next load rather
-     than left to fire over somebody's next order: a reload inside checkout keeps the world
-     (it persists) but loses this page (the UI store does not). If the world is no longer
-     standing at the till, or the cart no longer holds the plan the connection was waiting
-     on, there is nothing to resume. */
+  /*
+   * …and the same intent is dropped when the builder comes back up around a trip that no
+   * longer exists. This page lives inside the builder shell (App.tsx), so this runs on
+   * every entry into it, which is where a re-entry lands: the till is UI state and does not
+   * persist, so nobody can still be standing at it.
+   *
+   * The world tells the two re-entries apart without having to know which one happened. A
+   * reload at the till comes back with `d=checkout` in the address bar and an empty cart
+   * (the URL wins whole — see PENDING_KEY above), and an intent with no plan left to pay
+   * for it is spent money waiting to happen: dropped. The plain-URL re-entry comes back
+   * with the whole snapshot, checkout and cart together — that trip is intact and merely
+   * interrupted, so the intent stands, and the hand-off above overwrites it the moment the
+   * customer walks a different one.
+   */
   useEffect(() => {
     const w = useWorld.getState().world
     if (w.domain !== 'checkout' || !w.cart.some((l) => l.kind === 'remixer')) clearPendingConnect()
@@ -469,17 +622,30 @@ export function PanelCart() {
     set({ cart: [], domain: 'searching' })
   }
 
-  /* Escape closes an open dropdown first and the page only when nothing is open —
-     otherwise one keystroke would throw the customer out of checkout. */
+  /*
+   * Escape closes an open dropdown first and the page only when nothing is open —
+   * otherwise one keystroke would throw the customer out of checkout.
+   *
+   * ⚠️ ON THE CAPTURE PHASE, AND IT STOPS THERE. This page is a full-window takeover of
+   * somebody else's site; nothing of ours is on screen under it, and nothing of ours
+   * should be listening. The domains surface is still mounted behind it and keeps its own
+   * Escape on `document` (DomainsSurface: step back a screen, then close the window), so
+   * one press used to run BOTH — the cart emptied itself and walked out, and the surface
+   * underneath navigated as well, so the customer landed somewhere they had not asked for
+   * with a filled cart silently discarded. A capture listener on `document` runs before
+   * every bubble listener on it, so stopping propagation here is what makes the takeover
+   * actually take over. The in-app Back button never had the problem: it is one handler.
+   */
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      e.stopPropagation()
       if (openSelect) setOpenSelect(null)
       else back()
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, openSelect])
 
@@ -496,9 +662,17 @@ export function PanelCart() {
 
   /* Submitting is the one step with a real wait in it: the panel charges the card and
      provisions before it hands anything back. Compressed, but not to zero — the flow
-     engine's rule (waits stay proportional) applies to this screen too. */
+     engine's rule (waits stay proportional) applies to this screen too.
+
+     The first line is an assertion, not a branch the customer can reach: the button that
+     sets `submitting` is disabled for exactly this order (see `blocker`). It is here
+     because the failure it guards against is the expensive kind — charging a card and
+     leaving the domain behind — and because this effect runs on a timer, which is long
+     enough for the order to change under it. Refusing costs nothing; the alternative
+     costs the customer their money. */
   useEffect(() => {
     if (!submitting) return
+    if (blocker) { setSubmitting(false); return }
     const t = window.setTimeout(() => {
       const plan = lines.find((l) => l.kind === 'remixer')
       /* Two ways a domain can come out of this order, and only one of them is a purchase.
@@ -529,16 +703,37 @@ export function PanelCart() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitting])
 
-  /** Every write to the cart goes through here, because a parked connect cannot outlive
-   *  the plan line that pays for it: pull that line out — one at a time, or with Remove
-   *  All — and there is nothing left in this order that could connect anything. */
+  /**
+   * Every write to the cart goes through here, and it keeps the one thing the customer
+   * cannot get back on their own.
+   *
+   * Pulling the plan line out used to DROP the parked connect with it, on the reasoning
+   * that an intent cannot outlive the line that pays for it. True of the money, wrong
+   * about the intent: it threw away the only record of which domain the customer came
+   * for, at the one moment they might want it back, and it left the till unable to say
+   * what had just gone wrong — the connect-what-you-own order is a single plan line, so
+   * removing it emptied the cart and the name vanished with it. The intent now stays and
+   * `blocker` below holds the line instead: an order with a domain and no plan cannot be
+   * placed at all, so nothing can spend it. It still dies on the way out (`back`), on the
+   * next hand-off, and on re-entry into a builder whose cart no longer holds the plan.
+   */
   const writeCart = (next: CartLine[]) => {
-    if (!next.some((l) => l.kind === 'remixer')) clearPendingConnect()
+    const dropped = lines.find((l) => l.kind === 'remixer')
+    if (dropped && !next.some((l) => l.kind === 'remixer')) setRemovedPlan(dropped)
     set({ cart: next })
   }
 
   const removeLine = (i: number) =>
     writeCart(lines.filter((_, n) => n !== i))
+
+  /** "Add" on the refusal strip: the plan goes back exactly as it was taken out — same
+   *  billing term, so the total returns to the figure the customer already agreed to. A
+   *  removal this page did not see (it was made before a re-entry) falls back to the
+   *  account's own billing axis rather than inventing a term. */
+  const restorePlan = () => {
+    writeCart([...lines, removedPlan ?? { kind: 'remixer', term: world.billing }])
+    setRemovedPlan(null)
+  }
 
   /** Applying a choice: years on a domain line, billing term on the plan line.
    *  Both feed straight back into the totals. */
@@ -630,7 +825,9 @@ export function PanelCart() {
                 count={lines.length}
                 total={total}
                 submitting={submitting}
+                blocker={blocker}
                 onSubmit={() => setSubmitting(true)}
+                onRestorePlan={restorePlan}
               />
             </div>
           </div>

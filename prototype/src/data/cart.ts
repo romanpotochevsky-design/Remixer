@@ -12,6 +12,11 @@
  * additional year at the renewal price (`s + h * (l - 1)` in their code). Prices come
  * from TLD_PRICES, which is DreamHost's verified table — the mockups' $11.86 renewal
  * appears nowhere in it.
+ *
+ * ⚠️ THAT SUM IS A TOTAL, AND EVERY LINE THAT PRINTS IT SAYS SO. Three years of a .com
+ * is $49.97 for the term; printed as "$49.97/yr." — which is what this file did until
+ * the demo gate caught it — the line claims $149.91 while the Order Summary beside it
+ * adds up $49.97. A figure and its suffix have to describe the same thing.
  */
 import type { Billing } from '@/state/world'
 import { endingOf, minTermYears, priceFor } from './domains'
@@ -135,7 +140,7 @@ export function lineCopy(line: CartLine): LineCopy {
       // bare figure, like DreamShield's $3.00/mo. in the capture — until the term is
       // longer than a year, where even a flat price needs to say what the sum covers.
       termLabel: multiYear ? `First ${years} years` : promo ? 'First year' : '',
-      cycle: multiYear ? ' total' : '/yr.',
+      cycle: multiYear ? '\u00a0total' : '/yr.',
       // The renewal rate travels with every multi-year total, promo or not: it is the
       // only per-year number on the line, and the house rule is that the renewal
       // price never travels separately from the price above it.

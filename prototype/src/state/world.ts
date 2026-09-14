@@ -512,6 +512,16 @@ export function violations(w: World): Violation[] {
       },
     })
   }
+  if (w.icann && !isCustomDomainActive(w)) {
+    out.push({
+      field: 'icann',
+      value: 'true',
+      reason: {
+        en: 'Nobody registered a domain here, so there is no registrant email to confirm.',
+        uk: 'Домен тут не реєстрували — підтверджувати email реєстранта нема чого.',
+      },
+    })
+  }
   return out
 }
 
@@ -588,6 +598,23 @@ interface Store {
    rule this project already follows when a stored shape changes. */
 const STORAGE_KEY = 'remixer-prototype/world/v3'
 
+/*
+ * THE SAME RULE `set` APPLIES TO A PATCH, FOR A WHOLE WORLD THAT ARRIVES WITHOUT ONE.
+ *
+ * Two of them do: a link (`?d=staging&k=true` says the project is on its free address and
+ * still owes a registrant email) and a snapshot stored before the rule existed. Both are
+ * assembled straight over `DEFAULT_WORLD` and never pass through a patch, so without this
+ * they would walk the contradiction back in through the front door.
+ *
+ * ⚠️ And this is why the storage version below does NOT move: no default changed and no
+ * stored SHAPE changed, so an old snapshot is not stale, only occasionally wrong in one
+ * field — which this mends on the way in. A bump would retire every snapshot and every
+ * shared demo link to fix a single boolean.
+ */
+function normalizeIcann(w: World): World {
+  return w.icann && !isCustomDomainActive(w) ? { ...w, icann: false } : w
+}
+
 function initialWorld(): World {
   const fromUrl = paramsToWorld(window.location.search)
   let saved: Partial<World> = {}
@@ -610,9 +637,9 @@ function initialWorld(): World {
       Array.isArray(saved.sent) &&
       saved.sent.length > 0 &&
       saved.sent[saved.sent.length - 1].who === 'user'
-    return { ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent } : null) }
+    return normalizeIcann({ ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent } : null) })
   }
-  if (Object.keys(saved).length) return { ...DEFAULT_WORLD, ...saved }
+  if (Object.keys(saved).length) return normalizeIcann({ ...DEFAULT_WORLD, ...saved })
   return DEFAULT_WORLD
 }
 
@@ -655,6 +682,18 @@ export const useWorld = create<Store>((set, get) => ({
     // situation it would put their sentences into somebody else's document.
     if (patch.chat !== undefined && patch.planEdits === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
       patch = { ...patch, planEdits: EMPTY_PLAN_EDITS }
+    }
+    // The registrant-email clock is owed by a REGISTRATION, so it cannot outlive the
+    // domain it was started for: move the domain axis to a state where the project is back
+    // on its free address — staging, or choosing and paying for a name it does not have
+    // yet — and the clock goes with it. Otherwise a world carries an email owed for a
+    // registration that does not exist (`?d=staging&k=true`, or the `icann-verify` preset
+    // walked back to staging), and the console hides the toggle that could take it back.
+    // Not when the patch names `icann` itself: startConnect hands over the domain and the
+    // clock in one call, and a preset that deliberately stages the pair is left standing
+    // for `violations` to flag in red rather than quietly rewritten under its author.
+    if (patch.domain !== undefined && patch.icann === undefined && !isCustomDomainActive({ ...get().world, ...patch })) {
+      patch = { ...patch, icann: false }
     }
     // A named preset means somebody deliberately staged a different world, and a
     // cart filled under the previous one has nothing to do with it. Keyed on the

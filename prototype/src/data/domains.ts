@@ -429,7 +429,13 @@ export const nameIdeas = (q: string): ResultRow[] => {
 export const closeAlternatives = (q: string): ResultRow[] => {
   const s = stem(q)
   return offer(
-    [`${s}.net`, `get${s}.com`, `${s}.store`, `${s}.online`, `${s}.shop`, `${s}.me`, `try${s}.com`],
+    [
+      `${s}.net`, `get${s}.com`, `${s}.store`, `${s}.online`, `${s}.shop`, `${s}.me`,
+      /* the tail exists for a brand whose every ending is gone — `dreamhost` has no
+         free ending at all, and two rows under a heading that promises three reads
+         as a list that failed rather than as an answer */
+      `try${s}.com`, `my${s}.com`, `${s}hq.com`,
+    ],
     3,
   )
 }

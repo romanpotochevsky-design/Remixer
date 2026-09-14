@@ -13,12 +13,12 @@
  *  - no DNS jargon on primary paths; the canonical success checklist is fixed.
  */
 import { AnimatePresence, motion } from 'motion/react'
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import { useWorld, isCustomDomainActive } from '@/state/world'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useWorld, isCustomDomainActive, type DomainState } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
-  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, priceFor,
+  AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, TLD_PRICES, priceFor,
   exactMatch, featuredEndings, popularEndings, nameIdeas, type ResultRow,
   closeAlternatives, takenIdeas, registrarOf,
 } from '@/data/domains'
@@ -133,6 +133,61 @@ function useMyDomains() {
   }, [inventory, attached])
 }
 
+/* ------------------------------------------------------------ how wide is a column */
+
+/** The dashboard's two columns are `gap-8` apart — the gap has to come out of the
+ *  measurement before it can be divided. */
+const COLUMN_GAP = 32
+/**
+ * Below this, a column cannot carry the drawn single-line row — see `useColumnFit`.
+ * 440 sits well clear of both stops we demo on (343 at 1280, 508 at 1600), so the
+ * screen never flips shape between a resize and a redraw at either one.
+ */
+const ROOMY_COLUMN = 440
+
+/**
+ * ROOMY OR TIGHT — MEASURED, NOT GUESSED, AND NOT A VIEWPORT BREAKPOINT.
+ *
+ * The dashboard's row is drawn for a 1200px column: name on the left, price and verb
+ * on the right, one line. Inside this shell a column is nothing like 1200 — the chat
+ * takes 432, the rail 56 — and at 1280×800, the width tomorrow's projector gives, each
+ * column is 343px. The furniture (20px padding · 24 gap · 94 price · 32 gap · 54 verb)
+ * eats 244 of it, so the NAME — the product, the thing being sold — gets 80px and
+ * truncates to "getfitrati…" while the price beside it stays perfectly legible. Two
+ * testers reported it as the first screen of the flow.
+ *
+ * So below `ROOMY_COLUMN` the row changes SHAPE rather than merely shrinking: the price
+ * drops under the name and the name takes the full width (see DomainRow/BestMatchCard).
+ * That buys ~130px per row instead of the ~30 that tightening every gap would, which is
+ * the difference between a layout that fits and one that fits until the next name is a
+ * character longer.
+ *
+ * ⚠️ It measures the CONTAINER, never the viewport. The chat column is draggable
+ * (340–760), so window width says nothing about what this screen actually got — and the
+ * drag deliberately bypasses React (CLAUDE.md), which is also why the boolean is set
+ * rather than the width: `setTight` with an unchanged value is a no-op in React, so a
+ * drag across 200px re-renders this screen once, at the crossing, not sixty times a
+ * second.
+ * ⚠️ The container's own width must not depend on `tight`, or the two chase each other.
+ * Only what is INSIDE a column changes; the page padding and the gap stay put.
+ */
+function useColumnFit(columns: number) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [tight, setTight] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(([entry]) => {
+      /* contentRect excludes the page padding — what is left is what the columns share. */
+      const inner = entry.contentRect.width - (columns - 1) * COLUMN_GAP
+      setTight(inner / columns < ROOMY_COLUMN)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [columns])
+  return { ref, tight }
+}
+
 /* --------------------------------------------------- dashboard building blocks */
 
 /** Outlined 36px action — the mockup's row button (Figma 26181:64330). */
@@ -158,12 +213,22 @@ function RowButton({ label, onClick }: { label: Text; onClick?: () => void }) {
  * line of its own: the two belong to one sentence about what this actually costs,
  * and a third line would push the 72px row out of shape.
  */
+/**
+ * `inline` is the same two figures laid along a line instead of down a column — the
+ * shape the price takes when it moves UNDER the name in a tight column (see
+ * `useColumnFit`). It wraps rather than truncating: on a row the pair fits on one line,
+ * in the narrower hero (where the struck list price joins them) it falls onto two by
+ * itself, and neither case ever drops the renewal figure — the one number this project
+ * will not hide.
+ */
 function PriceStack({
-  register, renew, strike, note,
-}: { register: number; renew: number; strike?: boolean; note?: Text }) {
+  register, renew, strike, note, inline,
+}: { register: number; renew: number; strike?: boolean; note?: Text; inline?: boolean }) {
   const { t } = useT()
   return (
-    <div className="flex flex-col items-end gap-1.5">
+    <div className={inline
+      ? 'flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1'
+      : 'flex flex-col items-end gap-1.5'}>
       <p className="flex items-baseline gap-1 leading-none">
         {strike && (
           <span className="font-display text-[15px] text-[#ffffff7a] line-through">${renew.toFixed(2)}</span>
@@ -190,9 +255,17 @@ function PriceStack({
  * ⚠️ The rim is a ring MASK (`.bestmatch-rim`), not a second background layer:
  * the wash is 10% alpha, so an opaque gradient behind it shows through whole.
  */
-function BestMatchCard({ row, onBuy }: { row: ResultRow; onBuy: () => void }) {
+function BestMatchCard({ row, onBuy, tight = false }: { row: ResultRow; onBuy: () => void; tight?: boolean }) {
   const { t } = useT()
   const price = priceFor(row.tld) ?? priceFor('.com')!
+  const buy = (
+    <button
+      onClick={onBuy}
+      className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+    >
+      {t({ en: 'Buy', uk: 'Купити' })}
+    </button>
+  )
   return (
     <div
       className="relative rounded-[16px] px-1 pb-1"
@@ -212,19 +285,27 @@ function BestMatchCard({ row, onBuy }: { row: ResultRow; onBuy: () => void }) {
           {t({ en: 'Best match', uk: 'Найкращий збіг' })}
         </span>
       </div>
-      <div className="flex h-[88px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[var(--gray-850)] px-6 py-4">
-        <p className="min-w-0 flex-1 truncate text-[22px] font-medium leading-normal text-white">{row.domain}</p>
-        <div className="flex h-10 flex-none items-center gap-8">
-          {/* the promo says itself: list price struck, first year large */}
-          <PriceStack register={price.register} renew={price.renew} note={price.note} strike />
-          <button
-            onClick={onBuy}
-            className="h-9 flex-none rounded-[8px] bg-[var(--action)] px-3.5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
-          >
-            {t({ en: 'Buy', uk: 'Купити' })}
-          </button>
+      {/* TIGHT: the name gets the whole width and the price moves under it, next to the
+          verb. The card grows from the drawn 88px to about 100 — a hero is allowed to,
+          and a name the customer cannot read is not worth twelve pixels of height. */}
+      {tight ? (
+        <div className="flex min-h-[88px] flex-col justify-center gap-2 rounded-[14px] border border-[#ffffff0a] bg-[var(--gray-850)] px-6 py-3">
+          <p className="min-w-0 truncate text-[22px] font-medium leading-normal text-white">{row.domain}</p>
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            {/* the promo says itself: list price struck, first year large */}
+            <PriceStack register={price.register} renew={price.renew} note={price.note} strike inline />
+            {buy}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex h-[88px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[var(--gray-850)] px-6 py-4">
+          <p className="min-w-0 flex-1 truncate text-[22px] font-medium leading-normal text-white">{row.domain}</p>
+          <div className="flex h-10 flex-none items-center gap-8">
+            <PriceStack register={price.register} renew={price.renew} note={price.note} strike />
+            {buy}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -237,8 +318,28 @@ function BestMatchCard({ row, onBuy }: { row: ResultRow; onBuy: () => void }) {
  * the name at 16 (27729:15575), the dashboard's suggestion list at 17
  * (27085:107303). Both are as-drawn rather than harmonised behind the designer's back.
  */
-function DomainRow({ row, onBuy, size = 16 }: { row: ResultRow; onBuy: () => void; size?: 16 | 17 }) {
+function DomainRow({
+  row, onBuy, size = 16, tight = false,
+}: { row: ResultRow; onBuy: () => void; size?: 16 | 17; tight?: boolean }) {
   const price = priceFor(row.tld) ?? priceFor('.com')!
+  const buy = <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={onBuy} />
+  /* TIGHT: name on its own line at full width, both prices under it, verb still on the
+     right — and the row keeps its drawn 72px, because the price line is shorter than the
+     button it sits beside. See `useColumnFit` for why the shape changes rather than the
+     type size: dropping a point buys 8px, this buys about 130. */
+  if (tight) {
+    return (
+      <div className="flex min-h-[72px] items-center justify-between gap-4 rounded-[16px] px-4 py-2.5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <p className="min-w-0 truncate font-medium leading-normal text-white" style={{ fontSize: size }}>
+            {row.domain}
+          </p>
+          <PriceStack register={price.register} renew={price.renew} note={price.note} inline />
+        </div>
+        {buy}
+      </div>
+    )
+  }
   return (
     <div className="flex h-[72px] items-center justify-between gap-6 rounded-[16px] px-5 py-4 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
       <p
@@ -249,7 +350,7 @@ function DomainRow({ row, onBuy, size = 16 }: { row: ResultRow; onBuy: () => voi
       </p>
       <div className="flex h-10 flex-none items-center gap-8">
         <PriceStack register={price.register} renew={price.renew} note={price.note} />
-        <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={onBuy} />
+        {buy}
       </div>
     </div>
   )
@@ -272,16 +373,32 @@ function SectionTitle({ label }: { label: Text }) {
 /**
  * The footer bar under every result list — redesigned Sep 2026 (Figma 27729:16043).
  *
- * "Show more" is CENTRED in the bar while "400+ more available" sits on the left.
+ * "Show more" is CENTRED in the bar while the left label counts what we can sell.
  * The mockup centres it the honest way — with a second, invisible copy of the
  * left label balancing the row — and so does this: `justify-between` plus a
  * hidden twin keeps the button on the bar's true centre at any width, which a
  * flex-1 spacer would not do once the left label changes length in another
  * language.
+ *
+ * ⚠️ THE LABEL USED TO READ "400+ more available" AND THAT NUMBER HAD NO SOURCE.
+ * This product can price exactly the endings in the verified table (`TLD_PRICES`,
+ * DreamHost's official list, 06.08.2026) — ten of them — and every row falls back to
+ * the .com price when an ending is missing from it, which is precisely why the table
+ * is the limit rather than a starting point. Four hundred was a number nobody could
+ * back, printed beside a "Show more" that deliberately does nothing: rule 0 of
+ * docs/features/domains/copy.md ("numbers come from the register") forbids exactly
+ * this. The count is now READ from the table, so the claim cannot drift from the data
+ * the way a typed figure does.
+ *
+ * "Show more" stays inert on purpose — there is no honest second page — and the label
+ * beside it no longer promises one.
  */
 function ListFooter({ onShowMore }: { onShowMore?: () => void }) {
   const { t } = useT()
-  const more = t({ en: '400+ more available', uk: 'Ще 400+ вільних' })
+  const more = t({
+    en: `${TLD_PRICES.length} endings to choose from`,
+    uk: `${TLD_PRICES.length} закінчень на вибір`,
+  })
   return (
     <div className="flex items-center justify-between px-6 py-3">
       <p className="whitespace-nowrap text-[15px] leading-normal text-[#ffffff7a]">{more}</p>
@@ -518,6 +635,77 @@ function PrimaryButton({ label, onClick }: { label: Text; onClick?: () => void }
   )
 }
 
+/* ------------------------------------------- the domain the project is already on */
+
+/**
+ * THE ONE ROW IN "EXISTING DOMAINS" THAT IS NOT AN OFFER.
+ *
+ * The column used to render four identical `Connect` buttons whatever the world said,
+ * including on the domain the site is LIVE on — and that button is not decoration: it
+ * opens the connect sheet, which sends `domain` back to `connecting` and the Publish
+ * panel back to "Not published". Two clicks from the panel's own way out ("Use a
+ * different domain" / "See all your domains") a demo could take the live site off the
+ * air on stage. The same list also went on offering the domain that had just failed
+ * with an older website still sitting on it.
+ *
+ * So the attached domain trades its verb for a state, and the row goes inert — no
+ * hover wash, nothing to press. Reading `world.domain` (never "is there a name in the
+ * field") is the house rule the Publish panel already follows: answering and Live are
+ * different claims, and the padlock sits between them (PublishPanel, D5).
+ *
+ * The tones are that panel's own, so the two surfaces cannot disagree about one
+ * situation: amber in flight · blue when everything is set up and the next move is the
+ * customer's · red when it is stuck · green only when the site is actually answering.
+ * `Needs attention` is the state's name in states.md, not a phrase invented here.
+ *
+ * ⚠️ Only the attached domain is marked. Whether the OTHER rows are safe to connect —
+ * one of them may quietly be serving a site of its own — is a per-domain fact this
+ * prototype does not carry yet; see the handover note. Do not infer it from
+ * `inventory`, which describes the account, not the row.
+ */
+const CHIP_LIVE = { fill: '#48ba7926', ink: 'var(--live)' }
+const CHIP_FLIGHT = { fill: '#e5c35926', ink: 'var(--attention)' }
+const CHIP_SETTLED = { fill: '#1587ff26', ink: 'var(--action)' }
+const CHIP_STUCK = { fill: '#ef444426', ink: 'var(--danger)' }
+
+const CONNECTING = { en: 'Connecting', uk: 'Підключається' }
+const ATTENTION = { en: 'Needs attention', uk: 'Потребує уваги' }
+const IS_LIVE = { en: 'Live', uk: 'Онлайн' }
+
+/** Exhaustive on purpose: a new domain state has to say what this list shows for it. */
+const CONNECTION_CHIP: Record<DomainState, { label: Text; tone: { fill: string; ink: string } } | null> = {
+  /* The project still has only its free address — nothing is attached, every row is an offer. */
+  staging: null,
+  searching: null,
+  checkout: null,
+  registering: { label: CONNECTING, tone: CHIP_FLIGHT },
+  propagating: { label: CONNECTING, tone: CHIP_FLIGHT },
+  connecting: { label: CONNECTING, tone: CHIP_FLIGHT },
+  verifying: { label: CONNECTING, tone: CHIP_FLIGHT },
+  /* Set up, correct, and the site has simply never been published. Not a failure. */
+  ready: { label: { en: 'Connected', uk: 'Підключено' }, tone: CHIP_SETTLED },
+  'old-site': { label: ATTENTION, tone: CHIP_STUCK },
+  unreachable: { label: ATTENTION, tone: CHIP_STUCK },
+  live: { label: IS_LIVE, tone: CHIP_LIVE },
+  multiple: { label: IS_LIVE, tone: CHIP_LIVE },
+}
+
+/** The Publish panel's own Live pill (PublishPanel `UrlField`), wearing four tones. */
+function ConnectionChip({ state }: { state: DomainState }) {
+  const { t } = useT()
+  const chip = CONNECTION_CHIP[state]
+  if (!chip) return null
+  return (
+    <span
+      className="flex h-6 flex-none items-center gap-1.5 rounded-full pl-2 pr-2.5 text-[12px] font-medium leading-none"
+      style={{ background: chip.tone.fill, color: chip.tone.ink }}
+    >
+      <span className="h-1.5 w-1.5 flex-none rounded-full bg-current" aria-hidden />
+      {t(chip.label)}
+    </span>
+  )
+}
+
 /* ------------------------------------------------------------------ screens */
 
 /**
@@ -536,6 +724,12 @@ function HomeScreen() {
      as owned — the two are on screen at the same time. */
   const mine = useMyDomains()
   const [best, ...rest] = AI_SUGGESTIONS.filter((r) => !mine.has(r.domain))
+  /* WHICH row is the site's own domain — the one that must not carry a verb. Read off
+     the world, not off `customDomain` alone: the panel keeps that name long before
+     anything is attached (see `useMyDomains`). */
+  const attached = isCustomDomainActive(world) ? world.customDomain : null
+  /* How wide a column actually got, which decides the row's shape — see useColumnFit. */
+  const { ref: listsRef, tight } = useColumnFit(owned.length > 0 ? 2 : 1)
 
   return (
     <motion.div
@@ -546,11 +740,29 @@ function HomeScreen() {
       className="flex min-h-0 flex-1 flex-col"
     >
       {/* ------------------------------------ page sheet: the lists (27085:107102) */}
-      <div className="flex min-h-0 flex-1 justify-center gap-8 rounded-t-[8px] border-t border-[#ffffff0a] bg-[var(--gray-900)] px-8 pb-2 pt-2">
+      <div ref={listsRef} className="flex min-h-0 flex-1 justify-center gap-8 rounded-t-[8px] border-t border-[#ffffff0a] bg-[var(--gray-900)] px-8 pb-2 pt-2">
         {/* Existing domains — only when the account holds any (26181:34790).
-            Name + outlined Connect, nothing else: owned domains have no price. */}
+            Name + outlined Connect, nothing else: owned domains have no price.
+
+            ⚠️ IN A TIGHT ROW THE TWO COLUMNS STOP BEING EQUAL, and that is the point:
+            they hold different things. This one carries the customer's real domains,
+            which are the longest strings on the screen (`odesa-coffee-roasters.com` is
+            210px at the drawn 17px) beside a 85px verb; the suggestions column has
+            handed its price a second line by then and needs far less. Splitting 1.3 : 1
+            gives each what it actually asks for instead of clipping the left to keep a
+            symmetry nobody can see — it leaves both columns about 30px of slack at 1280,
+            where equal halves leave the left column 19px short.
+            ⚠️ Ukrainian still runs over here at 1280: «Підключити» is 50px wider than
+            "Connect", and no split of 696px seats that beside a 25-character name. EN is
+            the product default and the demo language; the UK stop needs the row's shape
+            to change too, and that is a design call, not a ratio. */}
         {owned.length > 0 && (
-          <motion.div variants={listSwapItem} className="flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col">
+          <motion.div
+            variants={listSwapItem}
+            className={tight
+              ? 'flex min-h-0 min-w-0 max-w-[1200px] flex-[1.3] flex-col'
+              : 'flex min-h-0 min-w-0 max-w-[1200px] flex-1 flex-col'}
+          >
             <div className="flex h-16 flex-none items-center px-4">
               <h3 className="font-display text-[18px] font-semibold text-[#f5f5fa]">
                 {t({ en: 'Existing domains', uk: 'Наявні домени' })}
@@ -558,22 +770,34 @@ function HomeScreen() {
             </div>
             <div className="min-h-0 flex-1 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] p-2">
               <ScrollArea className="h-full">
-                {owned.map((o, i) => (
-                  <div key={o.domain}>
-                    {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
-                    <div className="flex h-[72px] items-center justify-between rounded-[16px] px-5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]">
-                      <p className="min-w-0 truncate text-[17px] font-medium text-white">{o.domain}</p>
-                      {/* Same sheet the search's "You own this" screen opens
-                          (`connect-owned`, 27071:20574 / 20591): both entrances to
-                          "attach a domain I already have" land in one designed
-                          modal, and the in-use warning lives there, once. */}
-                      <RowButton
-                        label={{ en: 'Connect', uk: 'Підключити' }}
-                        onClick={() => openDomainModal('connect-owned', o.domain)}
-                      />
+                {owned.map((o, i) => {
+                  /* The project's own domain answers with its state instead of a verb,
+                     and the row stops reacting to the pointer — see ConnectionChip. */
+                  const state = o.domain === attached ? world.domain : null
+                  return (
+                    <div key={o.domain}>
+                      {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
+                      <div className={state
+                        ? 'flex h-[72px] items-center justify-between gap-3 rounded-[16px] px-5'
+                        : 'flex h-[72px] items-center justify-between gap-3 rounded-[16px] px-5 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#ffffff0a]'}
+                      >
+                        <p className="min-w-0 truncate text-[17px] font-medium text-white">{o.domain}</p>
+                        {/* Same sheet the search's "You own this" screen opens
+                            (`connect-owned`, 27071:20574 / 20591): both entrances to
+                            "attach a domain I already have" land in one designed
+                            modal, and the in-use warning lives there, once. */}
+                        {state ? (
+                          <ConnectionChip state={state} />
+                        ) : (
+                          <RowButton
+                            label={{ en: 'Connect', uk: 'Підключити' }}
+                            onClick={() => openDomainModal('connect-owned', o.domain)}
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </ScrollArea>
             </div>
           </motion.div>
@@ -593,7 +817,7 @@ function HomeScreen() {
               every suggested name would otherwise render a hero with no row. */}
           {best && (
             <div className="flex-none">
-              <BestMatchCard row={best} onBuy={() => openDomainModal('buy', best.domain)} />
+              <BestMatchCard row={best} tight={tight} onBuy={() => openDomainModal('buy', best.domain)} />
             </div>
           )}
 
@@ -605,7 +829,7 @@ function HomeScreen() {
               {rest.map((sg, i) => (
                 <Fragment key={sg.domain}>
                   {i > 0 && <div className="mx-5 h-px bg-[#ffffff0a]" aria-hidden />}
-                  <DomainRow row={sg} size={17} onBuy={() => openDomainModal('buy', sg.domain)} />
+                  <DomainRow row={sg} size={17} tight={tight} onBuy={() => openDomainModal('buy', sg.domain)} />
                 </Fragment>
               ))}
             </ScrollArea>

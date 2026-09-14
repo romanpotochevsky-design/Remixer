@@ -427,10 +427,24 @@ export const AXES: Axis[] = [
     appliesWhen: (w) => w.project !== 'empty',
   },
   {
-    /* The ICANN clock on a freshly REGISTERED domain (designer's state ⑤): the panel
-       carries it in its own amber card until the registrant confirms the email. Only
-       reachable once a domain is actually attached — a staging site has nothing to
-       confirm. */
+    /*
+     * The ICANN clock on a freshly REGISTERED domain (designer's state ⑤): the panel
+     * carries it in its own amber card until the registrant confirms the email. Only
+     * reachable once a domain is actually attached — a staging site has nothing to
+     * confirm.
+     *
+     * ⚠️ HIDDEN AND NOT DISABLED, decided 14.09.2026 and deliberately. Hiding the switch
+     * used to TRAP the flag: nothing cleared it when the domain axis walked back to
+     * staging, so the one control that could take it off disappeared exactly when it was
+     * needed. That is fixed at the source now (`world.set` clears the clock with the
+     * domain), so hiding no longer hides a problem — it reads the way `trialDay` off
+     * trial and `billing` off a paid plan already read in this console: an axis that has
+     * no meaning here is not on screen. A visible-but-enabled switch would be worse, not
+     * better — it would let a presenter stage a world `violations` calls impossible, in
+     * front of the room; and a visible-but-greyed one would mean teaching the console's
+     * toggle renderer a disabled state it does not have (only `options` consult
+     * `blocked`), which is ScenarioPanel's business, not this table's.
+     */
     key: 'icann', group: G.domain, label: { en: 'Email unconfirmed', uk: 'Email не підтверджено' }, kind: 'toggle',
     appliesWhen: (w) => isCustomDomainActive(w),
   },
