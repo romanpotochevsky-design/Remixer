@@ -302,11 +302,14 @@ export const FLOWS: Flow[] = [
       { id: 'connect', label: { en: 'Connecting — Remixer sets it up on its own side', uk: 'Підключення — Remixer усе налаштовує на своєму боці' },
         patch: { domain: 'connecting' }, view: { surface: 'preview', modal: null, publish: true }, ms: 2600,
         note: { en: 'Nothing is asked of the customer, and the site stays reachable on its free address throughout. The dot beside the address turns amber.', uk: 'Від клієнта нічого не потрібно, і сайт увесь цей час доступний за безкоштовною адресою. Крапка біля адреси стає бурштиновою.' } },
-      { id: 'ssl', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2200,
+      { id: 'ssl', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' },
+        patch: { domain: 'verifying' }, view: { publish: true }, ms: 2200,
         note: { en: 'The last wait, and it can only begin once the address points here. Nothing is asked of the customer.', uk: 'Останнє очікування, і воно починається лише тоді, коли адреса вже вказує сюди. Від клієнта нічого не потрібно.' } },
-      { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 900,
+      { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' },
+        patch: { domain: 'live' }, view: { publish: true }, ms: 900,
         note: { en: 'The topbar now shows their own name with a green dot, and the panel says the padlock is on and anyone can visit', uk: 'У верхній панелі тепер їхнє власне ім’я із зеленою крапкою, а панель каже, що замок увімкнено і сайт доступний усім' } },
-      { id: 'done', label: { en: 'Done — one screen, nothing to paste, no second tab', uk: 'Готово — один екран, нічого вставляти, жодної другої вкладки' }, awaitUser: true,
+      { id: 'done', label: { en: 'Done — one screen, nothing to paste, no second tab', uk: 'Готово — один екран, нічого вставляти, жодної другої вкладки' },
+        view: { publish: true }, awaitUser: true,
         note: {
           en: 'That is the whole advantage of a name already with DreamHost: no settings to move at another company, and nobody else to wait on. How long the rest of the internet takes to catch up is not ours to promise.',
           uk: 'У цьому вся перевага імені, яке вже в DreamHost: жодних налаштувань не треба міняти в іншій компанії й нікого не треба чекати. А скільки решта інтернету наздоганятиме — не наша обіцянка.',
@@ -382,15 +385,21 @@ export const FLOWS: Flow[] = [
           uk: 'Назад у білдер — і далі все підключення читається в одному місці, у панелі Publish. Дві картки: де воно зараз і підтвердження, яке щойно надіслав реєстратор. Лист приходить разом із реєстрацією; про нього — останній крок.',
         } },
       /* The beat that makes the two walks different lengths, so it is the long one here
-         too. Nothing to press and nothing to promise: the card owns the wait out loud. */
+         too. Nothing to press and nothing to promise: the card owns the wait out loud.
+         ⚠️ AND EVERY BEAT THAT DESCRIBES THE PANEL ASKS FOR IT AGAIN, rather than trusting
+         the step that opened it: the panel closes on any mousedown outside itself, so a
+         presenter who clicks the canvas to point at something — or who pressed the strip
+         before it learned to swallow that event (FlowPlayer) — would be narrating a panel
+         that is no longer there. A step's view says what the step needs, not what the last
+         one left behind. */
       { id: 'propagating', label: { en: 'Registered — and now it has to reach the rest of the world', uk: 'Зареєстровано — тепер ім’я має дійти до решти світу' },
-        patch: { domain: 'propagating' }, ms: 5200,
+        patch: { domain: 'propagating' }, view: { publish: true }, ms: 5200,
         note: {
           en: 'Most visitors reach a new name within hours; everywhere in the world can take days. The card says that plainly instead of counting down to a moment nobody can promise.',
           uk: 'Більшість відвідувачів побачать нове ім’я за кілька годин; по всьому світу це може тривати кілька днів. Картка каже це прямо, замість відліку до моменту, якого ніхто не може пообіцяти.',
         } },
       { id: 'padlock', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' },
-        patch: { domain: 'verifying' }, ms: 2600,
+        patch: { domain: 'verifying' }, view: { publish: true }, ms: 2600,
         note: {
           en: 'The last wait, and it cannot start earlier — a padlock is only issued for an address that already points here. Still nothing for the customer to do.',
           uk: 'Останнє очікування, і раніше воно початися не може: замок видають лише на адресу, яка вже вказує сюди. Від клієнта й далі нічого не потрібно.',
@@ -401,8 +410,8 @@ export const FLOWS: Flow[] = [
        * is the only blue thing in the panel and carries the verb itself. The press is real:
        * the button in that card writes exactly what the next step patches.
        */
-      { id: 'ready', label: { en: 'The address is set up — and nothing is at it until they publish', uk: 'Адресу налаштовано — але за нею нічого немає, доки не опублікують' }, awaitUser: true,
-        patch: { domain: 'ready' },
+      { id: 'ready', label: { en: 'The address is set up — and nothing is at it until they publish', uk: 'Адресу налаштовано — але за нею нічого немає, доки не опублікують' },
+        patch: { domain: 'ready' }, view: { publish: true }, awaitUser: true,
         note: {
           en: 'The state a first-timer reads as "it’s broken": everything is right and the site was simply never put out. So the panel says which press is missing, and carries it.',
           uk: 'Стан, який новачок читає як «усе зламалося»: усе правильно, просто сайт жодного разу не публікували. Тому панель каже, якого натискання бракує, і сама його пропонує.',
@@ -413,13 +422,13 @@ export const FLOWS: Flow[] = [
          address the field prints while a confirmation is owed is a live argument in
          PublishPanel and has been answered both ways this week. */
       { id: 'live', label: { en: 'Published — and one card is still up', uk: 'Опубліковано — і одна картка ще лишилася' },
-        patch: { domain: 'live', published: true, unpublished: 0 }, awaitUser: true,
+        patch: { domain: 'live', published: true, unpublished: 0 }, view: { publish: true }, awaitUser: true,
         note: {
           en: 'Only a bought name ever gets it: until the person who registered it answers, the registrar can switch the name off. So it has its own way out, and the panel holds back its all-clear — no green tag, no "anyone can visit" — while it is up.',
           uk: 'Її отримує лише куплене ім’я: доки не відповість той, хто його зареєстрував, реєстратор може ім’я вимкнути. Тож у картки свій вихід, а панель тримає остаточне «все гаразд» — ні зеленої позначки, ні «доступно всім», — поки картка тут.',
         } },
       { id: 'confirmed', label: { en: 'Confirmed — and the panel gives its all-clear', uk: 'Підтверджено — і панель дає остаточне «все гаразд»' },
-        patch: { icann: false }, awaitUser: true,
+        patch: { icann: false }, view: { publish: true }, awaitUser: true,
         note: {
           en: 'Padlock on, anyone can visit, and the address wears its green tag. A name attached from the DreamHost account never passes this card at all — nobody registered anything, so there is nothing to confirm.',
           uk: 'Замок увімкнено, сайт доступний усім, а адреса отримує зелену позначку. Ім’я, підключене з акаунта DreamHost, цієї картки не бачить узагалі: ніхто нічого не реєстрував, підтверджувати нема чого.',
@@ -472,9 +481,11 @@ export const FLOWS: Flow[] = [
       { id: 'panel', label: { en: 'The Publish panel is open over the builder', uk: 'Над білдером відкрито панель Publish' },
         view: { surface: 'preview', publish: true }, awaitUser: true,
         note: { en: 'Opened from Update in the topbar, which carries the number of waiting edits. The panel shows the address the site answers on and the same number again.', uk: 'Відкривається кнопкою Update у верхній панелі, на якій стоїть кількість правок у черзі. У панелі — адреса, за якою відповідає сайт, і те саме число.' } },
-      { id: 'publishing', label: { en: 'Publish pressed — the waiting edits go out to visitors', uk: 'Натиснуто Publish — правки з черги виходять до відвідувачів' }, ms: 2600,
+      { id: 'publishing', label: { en: 'Publish pressed — the waiting edits go out to visitors', uk: 'Натиснуто Publish — правки з черги виходять до відвідувачів' },
+        view: { publish: true }, ms: 2600,
         note: { en: 'Nothing is blocked: the panel stays open and the builder underneath it keeps working', uk: 'Нічого не блокується: панель лишається відкритою, а білдер під нею працює далі' } },
-      { id: 'done', label: { en: 'Published — nothing pending', uk: 'Опубліковано — черги немає' }, patch: { unpublished: 0 }, awaitUser: true,
+      { id: 'done', label: { en: 'Published — nothing pending', uk: 'Опубліковано — черги немає' },
+        patch: { unpublished: 0 }, view: { publish: true }, awaitUser: true,
         note: { en: 'The number is gone from the topbar and the address keeps its green Live tag. The balance has not moved: publishing costs nothing.', uk: 'Число зникло з верхньої панелі, а адреса лишається із зеленою позначкою Live. Баланс не змінився: публікація нічого не коштує.' } },
     ],
   },
@@ -514,9 +525,12 @@ export const FLOWS: Flow[] = [
       { id: 'saved', label: { en: 'Saved — the domain is now connecting', uk: 'Збережено — домен підключається' },
         patch: { domain: 'connecting' }, view: { surface: 'preview', modal: null, publish: true }, ms: 3400,
         note: { en: 'It persists: the customer can close the tab and this carries on without them. The wait is longer than for a name already at DreamHost, because the change has to travel from the other company.', uk: 'Це зберігається: можна закрити вкладку — і все триває без них. Очікування довше, ніж для імені, яке вже в DreamHost: зміна має пройти шлях від іншої компанії.' } },
-      { id: 'verifying', label: { en: 'The address points here now — the secure padlock switches on', uk: 'Адреса вже вказує сюди — вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2600 },
-      { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 1200 },
-      { id: 'done', label: { en: 'Done — the name never left the other company', uk: 'Готово — ім’я нікуди не переїжджало' }, awaitUser: true,
+      { id: 'verifying', label: { en: 'The address points here now — the secure padlock switches on', uk: 'Адреса вже вказує сюди — вмикається захисний замок' },
+        patch: { domain: 'verifying' }, view: { publish: true }, ms: 2600 },
+      { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' },
+        patch: { domain: 'live' }, view: { publish: true }, ms: 1200 },
+      { id: 'done', label: { en: 'Done — the name never left the other company', uk: 'Готово — ім’я нікуди не переїжджало' },
+        view: { publish: true }, awaitUser: true,
         note: { en: 'Only where it points has changed. Nothing was transferred and nothing was bought.', uk: 'Змінилося лише те, куди воно вказує. Нічого не переносили і нічого не купували.' } },
     ],
   },

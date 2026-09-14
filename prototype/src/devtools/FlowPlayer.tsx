@@ -99,6 +99,13 @@ export function FlowRunner() {
           animate="animate"
           exit="exit"
           style={place}
+          /* ⚠️ PRESSING THE SUBTITLE MUST NOT DISMISS THE PRODUCT. The Publish panel closes
+             on any mousedown outside itself (PublishPanel), so Continue — pressed while the
+             panel is the very thing the step is describing — took it down, and the next
+             beat narrated a panel nobody could see any more (measured on a live playthrough,
+             14.09.2026). The simulated letter stops the same event for the same reason
+             (App.tsx). Clicks inside the strip still work: only the bubble is stopped. */
+          onMouseDown={(e) => e.stopPropagation()}
           className="fixed z-[9997] rounded-xl border border-black/10 bg-[#F7F7F5]
                      px-4 py-3 text-neutral-900 shadow-2xl"
         >
