@@ -529,8 +529,9 @@ export function PanelCart() {
    * product cannot produce ("A custom domain needs a paid plan — checkout comes first").
    *
    * The panel's cart, faithfully, lets you delete any line you like. So a trial customer
-   * could delete the Remixer line, pay $4.99 for the domain alone, and walk out with the
-   * site live on it — the impossible world, reached through the sheet that had just shown
+   * could delete the Remixer line, pay the registration fee alone ($4.99 for the .net this
+   * was caught on), and walk out with the site live on it — the impossible world, reached
+   * through the sheet that had just shown
    * them the plan as mandatory (QA, 14.09.2026). Charging them and then quietly not
    * connecting would have been worse, and letting the account go paid without being asked
    * worse still, so the order is refused while it is in that shape, and the strip in
