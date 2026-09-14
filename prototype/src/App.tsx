@@ -19,6 +19,7 @@ import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 /* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading
    of "does this domain open the site", and the chip must not grow a second one. */
 import { PublishPanel, domainIsHome, canPublish } from '@/modules/publish/PublishPanel'
+import { ConfirmHost } from '@/ui/ConfirmDialog'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
@@ -869,6 +870,10 @@ export default function App() {
             )
           })()}
           <PublishPanel />
+      {/* The design system's "are you sure?" — mounted ONCE, here, because its scrim covers
+          the whole shell (board 30282:51628). Anything that needs it calls
+          `useConfirm.getState().ask({…})`; see ui/ConfirmDialog.tsx. */}
+      <ConfirmHost />
         </main>
       </div>
 

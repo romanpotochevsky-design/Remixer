@@ -186,6 +186,46 @@ export const modalSheet = {
 }
 
 /**
+ * CONFIRM — the "are you sure?" dialog (Figma 30282:52052), and the softest arrival in
+ * the product on purpose.
+ *
+ * A confirm interrupts. The checkout sheet is something you asked for and it can afford a
+ * brisk spring; this one appears BECAUSE you pressed something, and it has to read as the
+ * product catching your arm, not as a box being thrown at you. So: a longer, softer spring
+ * with a little life in it (bounce .22 over .44s), a 10px rise and a 6% inflate — small
+ * enough that a 560px sheet never reads as a zoom, large enough that the eye sees it
+ * arrive rather than blink into place.
+ *
+ * It leaves the way everything in this product leaves: faster than it came, and without
+ * the bounce (motion.ts rule 4). The scrim is one beat behind on the way in and one beat
+ * ahead on the way out, so the dialog is never seen against an already-lit page.
+ *
+ * ⚠️ Under reduce the OFFSETS ARE THROWN AWAY, not jumped to — `confirmSheetFade` exists
+ * for exactly the trap this project has fallen into four times: `MotionConfig
+ * reducedMotion="user"` does not cancel a transform target, it snaps to it.
+ */
+export const confirmScrim = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.14, ease: [0.4, 0, 1, 1] } },
+}
+
+export const confirmSheet = {
+  initial: { opacity: 0, scale: 0.94, y: 10 },
+  animate: {
+    opacity: 1, scale: 1, y: 0,
+    transition: { type: 'spring', duration: 0.44, bounce: 0.22, opacity: { duration: 0.16 } },
+  },
+  exit: { opacity: 0, scale: 0.975, y: 4, transition: EXIT },
+}
+
+export const confirmSheetFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.16 } },
+  exit: { opacity: 0, transition: EXIT },
+}
+
+/**
  * Fullscreen sheet — the template picker (Figma 28616:59168): a 16px-inset
  * surface that covers the whole page. Unlike the centred checkout sheet this
  * one HAS a trigger, so rule 2 applies at full size: the caller sets

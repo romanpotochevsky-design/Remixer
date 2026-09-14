@@ -378,6 +378,18 @@ export const IconGlobeLarge = ({ size = 24, className }: IconProps) => (
  * (Figma 30282:52584). Same two arcs as IconLink, pulled apart, with the stroke that says
  * so drawn between them.
  */
+/**
+ * Two people — the visitor count in the Publish panel's header (Figma 30282:53262).
+ * A head and shoulders, and a second pair half behind it.
+ */
+export const IconVisitors = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <circle cx="8" cy="6.6" r="2.6" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M3.4 15.4c0-2.3 2.1-3.9 4.6-3.9s4.6 1.6 4.6 3.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M13.4 4.4a2.6 2.6 0 0 1 0 4.5M14.4 11.8c1.5.5 2.5 1.7 2.5 3.3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 export const IconUnlink = ({ size = 20, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
     <path

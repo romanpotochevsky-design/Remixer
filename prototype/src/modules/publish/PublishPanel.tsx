@@ -39,9 +39,10 @@ import { useWorld, hasPlan, isCustomDomainActive, type World } from '@/state/wor
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
-import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck } from '@/ui/icons'
+import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck, IconVisitors } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
+import { useConfirm } from '@/ui/ConfirmDialog'
 import { popover, popoverContent } from '@/ui/motion'
 
 /*
@@ -454,8 +455,13 @@ export function PublishPanel() {
     return () => window.clearTimeout(t)
   }, [justPublished])
 
+  /* ⚠️ A DIALOG OVER THE PANEL IS NOT "OUTSIDE" IT. The confirm sheet is mounted at the top
+     of the tree (its scrim covers the shell), so every press on it lands outside this
+     panel's box — and both of its buttons were closing the panel underneath while they
+     answered. Asking a question is not a reason to dismiss the thing that asked it. */
+  const confirming = useConfirm((c) => c.req !== null)
   useEffect(() => {
-    if (!publishOpen) return
+    if (!publishOpen || confirming) return
     const onDown = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) togglePublish(false)
     }
@@ -466,7 +472,7 @@ export function PublishPanel() {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
     }
-  }, [publishOpen, togglePublish])
+  }, [publishOpen, confirming, togglePublish])
 
   const paid = hasPlan(world)
   /*
@@ -586,18 +592,29 @@ export function PublishPanel() {
     markPublished()
   }
   /*
-   * TAKE THE DOMAIN OFF THIS SITE (board 30282:18491, "Unlink").
+   * TAKE THE DOMAIN OFF THIS SITE (board 30282:18491, "Unlink") — BEHIND A CONFIRM
+   * (board 30282:51628, designer 14.09.2026). The press no longer does it; it asks.
    *
    * The site does not go anywhere — it falls back to the free address, which is the one
    * thing that is always there. The name stays in `customDomain`, because it is still the
    * customer's: the domains window still lists it and `Connect` puts it back. The
    * registrant-email clock goes with the connection it belonged to.
    *
-   * ⚠️ No confirmation step, and that is a question for the designer rather than a
-   * decision: the board draws one button and no dialog, and a prototype that asks twice
-   * teaches a flow the product may not have.
+   * The question names the domain and the answer names the act — never "Yes". And the
+   * body says the two things a person needs at that moment: what stops working, and that
+   * it is not final.
    */
-  const unlinkDomain = () => set({ domain: 'staging', icann: false })
+  const unlinkDomain = () => useConfirm.getState().ask({
+    title: t({ en: `Disconnect ${world.customDomain}?`, uk: `Відключити ${world.customDomain}?` }),
+    body: t({
+      en: 'Your website will no longer be accessible at this address. You can connect a new domain at any time.',
+      uk: 'Ваш сайт більше не буде доступний за цією адресою. Ви можете підключити інший домен будь-коли.',
+    }),
+    confirmLabel: t({ en: 'Disconnect', uk: 'Відключити' }),
+    cancelLabel: t({ en: 'Cancel', uk: 'Скасувати' }),
+    tone: 'danger',
+    onConfirm: () => set({ domain: 'staging', icann: false }),
+  })
 
   /* The second attempt, after support has cleared the address. The prototype cannot model
      the clearing, so this one lands — a demo that dead-ends teaches nothing. */
@@ -738,7 +755,7 @@ export function PublishPanel() {
           {/* The panel inflates first, its contents arrive a beat later (motion.ts rule 3). */}
           <motion.div variants={popoverContent}>
           {/* -------------------------------------------------------- header, 64px */}
-          <div className="flex h-16 items-center pl-6">
+          <div className="flex h-16 items-center justify-between pl-6">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">
               {/* ⚠️ THE TITLE ASKS A DIFFERENT QUESTION FROM THE FIELD, and must not be
                   folded into it. The field asks "which address do we hand over", which
@@ -761,6 +778,23 @@ export function PublishPanel() {
                   ? t({ en: 'Publish', uk: 'Публікація' })
                   : t({ en: 'Published', uk: 'Опубліковано' })}
             </h3>
+            {/*
+              * VISITORS, in the corner the board gives them (30282:53260): a 32-tall button
+              * at radius 8, `pl 4 / pr 16`, gap 2 — a 24 icon and the number at 13px Gilroy
+              * Medium on 72% white. It is on all three of the new boards and it was the one
+              * thing on them I did not build, on the grounds that a counter is an analytics
+              * promise rather than a layout detail. The designer put the boards up again
+              * side by side, so it is built as drawn.
+              *
+              * ⚠️ IT READS ZERO AND IT IS NOT WIRED. The world carries no analytics axis,
+              * and inventing traffic is how a demo starts lying — the board says 0 too.
+              * Raised: what it should count (all time? today?) and whether it opens the
+              * Analytics rail, which is where that number lives today.
+              */}
+            <span className="flex h-8 items-center gap-0.5 rounded-[8px] pl-1 pr-4 text-[13px] font-medium leading-[1.4] text-[var(--white-720)]">
+              <IconVisitors size={20} className="mx-0.5" />
+              <span className="tabular-nums">0</span>
+            </span>
           </div>
 
           {/* ---------------------------------------------------------- body card */}
