@@ -12,7 +12,6 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useWorld, violations, type World } from '@/state/world'
 import { AXES, GROUPS, PRESETS, PRESET_GROUPS, describe } from '@/state/scenarios'
-import { FlowList } from './FlowPlayer'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { useT } from '@/i18n'
 
@@ -166,9 +165,14 @@ export function ScenarioPanel() {
             </div>
 
             <ScrollArea className="min-h-0 flex-1" innerClassName="px-4 py-4" thumb="dark">
-              {/* whole flows, played end to end */}
-              <FlowList />
-
+              {/* ⚠️ NO "WHOLE FLOWS" SECTION AND NO PLAYER. Scenarios that played
+                  themselves end to end — a step card with Play / ← → / 0.5× · 1× · instant —
+                  lived here and above the shell, and the designer threw them out
+                  (14.09.2026: "я же давно просил это убрать, оно бесполезное"). Presets and
+                  the axes below stage any state in one click, and the real paths are walked
+                  by hand; a scripted walk was a third way to move the world that nobody
+                  drove. `devtools/FlowPlayer.tsx` and `state/flows.ts` are deleted, not
+                  disabled. Do not bring them back. */}
               {/*
                 * Presets — single frozen situations, under the SAME labelled sections the
                 * axes get below. Twenty-two tiles in one grid was a list nobody read: the

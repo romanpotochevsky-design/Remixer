@@ -373,6 +373,25 @@ export const IconGlobeLarge = ({ size = 24, className }: IconProps) => (
 )
 
 /** Chain link — "this connects to that". Two capsules on one diagonal axis. */
+/**
+ * A link with the chain broken — the `Unlink` control in the Publish panel's domain card
+ * (Figma 30282:52584). Same two arcs as IconLink, pulled apart, with the stroke that says
+ * so drawn between them.
+ */
+export const IconUnlink = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path
+      d="M9.1 12.3a3 3 0 0 0 3.54-.5l2.55-2.55a3 3 0 0 0-4.24-4.24l-1.1 1.1"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+    />
+    <path
+      d="M10.9 7.7a3 3 0 0 0-3.54.5L4.8 10.75a3 3 0 0 0 4.24 4.24l1.1-1.1"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+    />
+    <path d="M3.2 3.2 16.8 16.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 export const IconLink = ({ size = 20, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
     <path

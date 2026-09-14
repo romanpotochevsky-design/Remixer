@@ -56,7 +56,6 @@ import { startBuild } from '@/modules/chat/send'
 import { TEMPLATE_LIBRARY } from '@/data/templates'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
-import { FlowRunner } from '@/devtools/FlowPlayer'
 import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight, IconClose } from '@/ui/icons'
 import { LogoRemixerAnimated } from '@/ui/LogoRemixerAnimated'
 import { HomeDock } from './Dock'
@@ -1244,7 +1243,6 @@ export function HomePage() {
 
       {/* Tooling, mounted per page: the console is how the designer switches the
           dock between "no projects yet" and "one site" without touching code. */}
-      <FlowRunner />
       <ScenarioPanel />
     </div>
   )

@@ -16,7 +16,6 @@ import { useWorld, canUseAI, hasPlan, registrantUnconfirmed, type World } from '
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
-import { FlowRunner } from '@/devtools/FlowPlayer'
 /* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading
    of "does this domain open the site", and the chip must not grow a second one. */
 import { PublishPanel, domainIsHome, canPublish } from '@/modules/publish/PublishPanel'
@@ -948,7 +947,6 @@ export default function App() {
           when it is open, none of our chrome should show through the seam. */}
       <PanelCart />
 
-      <FlowRunner />
       <ScenarioPanel />
     </div>
   )

@@ -1735,13 +1735,17 @@ check('…and the typed prompt is built as given', await cardUp())
       const bar = document.querySelector('header').getBoundingClientRect()
       return { top: Math.round(r.top), fromRight: Math.round(innerWidth - r.right), overTopbar: r.top < bar.bottom }
     })
-    check('the panel sits where the shell board puts it — 8 down, 55 in from the right',
-      pos.top === 8 && pos.fromRight === 55, JSON.stringify(pos))
+    /* 56, not 55: board 30282:18491 puts `Frame 22` at x=2072 in a 2560 frame (14.09.2026). */
+    check('the panel sits where the shell board puts it — 8 down, 56 in from the right',
+      pos.top === 8 && pos.fromRight === 56, JSON.stringify(pos))
     check('…which means it rides OVER the topbar, not tucked under it', pos.overTopbar)
   }
   check('…and carries the nudge banner', !!(await hint()))
-  /* the board's box: 480 panel, 468 card, 452 banner at 120 tall, ✕ inset 8 from the
-     banner's top-right corner, copy held to a 324px column that breaks in two lines.
+  /* ⚠️ THE BOX MOVED TO 432 (board 30282:18491, the designer's correction of 14.09.2026):
+     432 panel, 420 card, 404 banner at 120 tall, ✕ inset 8 from the banner's top-right
+     corner. The copy column went with it — 276px and three lines where 480 gave 324 and
+     two; the newer board draws no banner at all, so its two drawn lines are not a rule the
+     new width can keep. Raised with the designer, shipped as the width he named.
      Rims are inset shadows, not borders — a border would eat these very pixels. */
   const box = await p.evaluate(() => {
     const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
@@ -1759,12 +1763,11 @@ check('…and the typed prompt is built as given', await cardUp())
       fill: getComputedStyle(banner).backgroundColor, radius: getComputedStyle(banner).borderRadius,
     }
   })
-  check('the panel is the board’s 480 with a 468 card and a 452 × 120 banner',
-    box.panel === 480 && box.card === 468 && box.banner === 452 && box.bannerH === 120, JSON.stringify(box))
+  check('the panel is the board’s 432 with a 420 card and a 404 × 120 banner',
+    box.panel === 432 && box.card === 420 && box.banner === 404 && box.bannerH === 120, JSON.stringify(box))
   check('the ✕ is 32 at radius 10, inset 8 from the banner’s corner',
     box.close === 32 && box.insetRight === 8 && box.insetTop === 8, `${box.close} / ${box.insetRight} / ${box.insetTop}`)
-  check('the copy keeps the board’s 324px column and its two lines',
-    box.para === 324 && box.lines === 2, `${box.para}px / ${box.lines} lines`)
+  check('the copy fills the column the 432 panel gives it', box.para === 276, `${box.para}px / ${box.lines} lines`)
   check('the banner is gray-900 at radius 12, 8px under the card’s other child',
     box.fill === 'rgb(24, 24, 27)' && box.radius === '12px' && box.gap === '8px', JSON.stringify([box.fill, box.radius, box.gap]))
   /* the ✕ takes it down — and nothing else moves */

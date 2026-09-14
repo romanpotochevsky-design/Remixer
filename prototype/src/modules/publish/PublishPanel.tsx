@@ -39,10 +39,10 @@ import { useWorld, hasPlan, isCustomDomainActive, type World } from '@/state/wor
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
-import { IconPlus, IconClose } from '@/ui/icons'
+import { IconPlus, IconClose, IconCopy, IconUnlink } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
-import { cardInBody, cardInBodyFade, popover, popoverContent } from '@/ui/motion'
+import { popover, popoverContent } from '@/ui/motion'
 
 /*
  * The free address, split at its FIRST dot: the name is white, the host behind it grey.
@@ -61,8 +61,8 @@ const STAGING_SUFFIX = STAGING_DOT > 0 ? STAGING_HOST.slice(STAGING_DOT) : ''
  * ⚠️ INVENTED — no board draws a second state for this button, and it had none: it was
  * wired to `() => undefined`. A confirmation mail that can be fired ten times in ten
  * seconds is a support ticket, so the button spends itself, says so, and comes back. The
- * real cooldown would be a minute; compressed here like every other wait in the prototype
- * (state/flows.ts), so the designer can watch it return instead of timing it.
+ * real cooldown would be a minute; compressed here like every other wait in the prototype,
+ * so the designer can watch it return instead of timing it.
  */
 const RESEND_COOLDOWN_MS = 9000
 
@@ -251,60 +251,56 @@ const bindWidow = (s: string) => s.replace(/\s+(\S+)$/, ' $1')
  * the mail is confirmed (see `domainIsHome`), so Live was simply false there.
  * One link, one status — this window's standing rule — and the amber card is the status.
  */
-function UrlField({ value, suffix, slot, publishedLabel }: {
-  value: string
-  suffix?: string
-  slot: 'bare' | 'live' | 'published'
-  /** Read on `published` only. The freshness lives in the WORDING, not in the paint. */
-  publishedLabel?: string
-}) {
-  const reduce = useReducedMotion()
-  /* The field's right padding belongs to whatever is (or is not) in the trailing slot:
-     8px is the inset a 24px pill wants, and with the slot empty it left the address
-     sitting 16px from the left rim and 8px from the right — an off-centre box that read
-     as a control missing rather than a control absent. Nothing there, nothing implied. */
-  const trailing = slot !== 'bare'
+/**
+ * The address, and the one thing anybody wants to do with an address: copy it.
+ *
+ * ⚠️ THE TRAILING SLOT IS A COPY BUTTON, NOT A STATUS PILL (designer, 14.09.2026: "в поле
+ * где домен отображается, справа не будет Live. там будет кнопка/иконка скопировать
+ * домен"). It carried a green `Live` pill on the custom domain and a grey `Published` one
+ * on the free address — two paints saying what the line under the field now says in words,
+ * in the slot where the field's only ACTION belongs. The status moved down; the action
+ * moved in.
+ *
+ * The clipboard can be refused (a sandboxed frame, a denied permission), so the press has
+ * a second answer rather than a silent failure — the same two-outcome shape the scenario
+ * console's "Copy link to this state" already uses.
+ */
+function UrlField({ value, suffix }: { value: string; suffix?: string }) {
+  const { t } = useT()
+  const [copied, setCopied] = useState<'ok' | 'fail' | null>(null)
+  useEffect(() => {
+    if (!copied) return
+    const id = window.setTimeout(() => setCopied(null), 1600)
+    return () => window.clearTimeout(id)
+  }, [copied])
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value + (suffix ?? ''))
+      setCopied('ok')
+    } catch { setCopied('fail') }
+  }
   return (
     <div className="w-full rounded-[12px] shadow-[inset_0_0_0_1px_var(--white-200)]">
-      <div className={`flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 ${trailing ? 'pr-2' : 'pr-4'}`}>
+      <div className="flex h-12 items-center justify-between rounded-[8px] bg-[var(--black-300)] py-1 pl-4 pr-2">
         <p className="min-w-0 truncate text-[15px]">
           <span className="text-[var(--white-900)]">{value}</span>
           {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
         </p>
-        {slot === 'live' && (
-          <span className="flex h-6 flex-none items-center gap-1.5 rounded-full bg-[#48ba7926] pl-2 pr-2.5 text-[12px] font-medium text-[var(--live)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--live)]" aria-hidden />
-            Live
-          </span>
-        )}
-        {/*
-         * THE SMALLER, HONEST SIGNAL — same shape as the Live pill, deliberately not its
-         * colour. Green and the word Live are this product's claim that a working custom
-         * domain is answering with the padlock on (D5 above, and the checklist in
-         * copy.md §5); the free address earns neither, and never will — we do not promise
-         * a padlock on it. What IS true is the fact the panel refused to state at all
-         * until tonight: the site is out, on the address we gave you. So: the same 24px
-         * pill, in the hairline ink the rest of the chrome uses, saying exactly that.
-         *
-         * `initial={false}` so it animates only when it ARRIVES — a press of Publish —
-         * and is simply there on every later opening of the panel. The nudge banner
-         * leaves in the same beat (160ms), and cardInBody's own 160ms delay is what
-         * lands this after the reflow instead of underneath it.
-         */}
-        <AnimatePresence initial={false}>
-          {slot === 'published' && (
-            <motion.span
-              key="published"
-              variants={reduce ? cardInBodyFade : cardInBody}
-              initial="initial"
-              animate="animate"
-              className="flex h-6 flex-none items-center gap-1.5 rounded-full bg-[var(--white-100)] pl-2 pr-2.5 text-[12px] font-medium text-[var(--white-700)]"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--white-400)]" aria-hidden />
-              {publishedLabel}
-            </motion.span>
+        <button
+          onClick={copy}
+          title={t({ en: 'Copy the address', uk: 'Скопіювати адресу' })}
+          aria-label={t({ en: 'Copy the address', uk: 'Скопіювати адресу' })}
+          className="press-bloom ml-2 flex h-8 flex-none items-center gap-1.5 rounded-[8px] px-2 text-[12px] font-medium text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+        >
+          <IconCopy size={16} />
+          {copied && (
+            <span>
+              {copied === 'ok'
+                ? t({ en: 'Copied', uk: 'Скопійовано' })
+                : t({ en: 'Copy it by hand', uk: 'Скопіюйте вручну' })}
+            </span>
           )}
-        </AnimatePresence>
+        </button>
       </div>
     </div>
   )
@@ -330,6 +326,48 @@ function UrlField({ value, suffix, slot, publishedLabel }: {
  * fine while every title was a bare domain; the states below are sentences ("{domain} is
  * ready — publish to put your site on it"), and half a sentence is worse than two lines.
  */
+/**
+ * THE IN-FLIGHT CARD — board 30282:54233, the connecting state, pixel for pixel.
+ *
+ * A different animal from `StatusCard`: no tone, no dot, no button. A 12px card in
+ * `Neutral Alpha/100` (8% white in the dark theme, fill AND rim), a title row of
+ * `pl 16 / pr 12 / py 16` with a 24px icon and a 15px semibold line, and under it a second
+ * rounded box with its own `#49494c` rim carrying the explanation at 13px / 64% white.
+ *
+ * ⚠️ AND IT SITS ABOVE THE ADDRESS FIELD, not under it — the board's own order. While a
+ * domain is in flight the news is the domain; once it is carrying the site the address is
+ * the news and its card (with `Unlink`) goes below. Both are the same board's arrangement,
+ * a fortnight apart in the customer's life.
+ *
+ * ⚠️ The icon is OURS: the board's vector is unreachable (the proxy refuses every
+ * figma.com asset URL), so this is the spinning arc the generation card already uses for
+ * a step that is working — one idiom for "this is moving on its own".
+ */
+function ProgressCard({ title, sub }: { title: string; sub: string }) {
+  return (
+    <div className="px-1.5 pt-1.5">
+      <div className="rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]">
+        <div className="flex items-center gap-3 py-4 pl-4 pr-3">
+          <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
+            <circle cx="12" cy="12" r="8" stroke="var(--white-200)" strokeWidth="1.8" />
+            <path
+              d="M12 4a8 8 0 0 1 8 8"
+              stroke="var(--white-700)" strokeWidth="1.8" strokeLinecap="round"
+              className="step-spin"
+            />
+          </svg>
+          <p className="min-w-0 flex-1 break-words text-[15px] font-semibold leading-[1.2] text-white">
+            {keepHostsWhole(title)}
+          </p>
+        </div>
+        <div className="rounded-[12px] border border-[#49494c] px-4 pb-[18px] pt-[19px]">
+          <p className="text-[13px] leading-[1.4] text-[#ffffffa3]">{keepHostsWhole(sub)}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function StatusCard({
   tone, title, sub, action, stacked, subject,
 }: {
@@ -560,6 +598,20 @@ export function PublishPanel() {
     set({ unpublished: 0, published: true, ...(ready ? { domain: 'live' as const } : null) })
     markPublished()
   }
+  /*
+   * TAKE THE DOMAIN OFF THIS SITE (board 30282:18491, "Unlink").
+   *
+   * The site does not go anywhere — it falls back to the free address, which is the one
+   * thing that is always there. The name stays in `customDomain`, because it is still the
+   * customer's: the domains window still lists it and `Connect` puts it back. The
+   * registrant-email clock goes with the connection it belonged to.
+   *
+   * ⚠️ No confirmation step, and that is a question for the designer rather than a
+   * decision: the board draws one button and no dialog, and a prototype that asks twice
+   * teaches a flow the product may not have.
+   */
+  const unlinkDomain = () => set({ domain: 'staging', icann: false })
+
   /* The second attempt, after support has cleared the address. The prototype cannot model
      the clearing, so this one lands — a demo that dead-ends teaches nothing. */
   const retryPublish = () => {
@@ -628,6 +680,10 @@ export function PublishPanel() {
    * counting something the press does not do.
    */
   const publishesChanges = publishes && !ready && world.published
+  /* ⚠️ THE DISABLED BUTTON KEEPS THE SAME WORDS (board 30282:52600, the "everything is
+     published" state): a live site with nothing queued shows `Publish changes`, greyed —
+     not a different verb. Only a site that has never been out, or a `ready` domain waiting
+     for its first press, says plain `Publish`. */
   const primary = settleLabel
     ? { en: 'Published', uk: 'Опубліковано' }
     /* ⚠️ NOTHING TO PUBLISH = A DIMMED, INACTIVE `Publish` (designer, 14.09.2026: "что за
@@ -638,7 +694,7 @@ export function PublishPanel() {
        after, which made the footer read as an exit instead of the action. Do not bring it
        back; the ways out are Escape, a click outside, and the topbar button. */
     : !publishes
-      ? { en: 'Publish', uk: 'Опублікувати' }
+      ? (world.published ? { en: 'Publish changes', uk: 'Опублікувати зміни' } : { en: 'Publish', uk: 'Опублікувати' })
       /* ⚠️ THE COUNT IS NOT IN THE LABEL (Figma 28071:53189). The board puts it on its
          own line at the far left of this bar and leaves the button a plain verb phrase —
          see the bar below. A button that carries its own subtotal has to be re-read every
@@ -679,12 +735,12 @@ export function PublishPanel() {
            * FIXED, not absolute: mounted inside <main>, so an absolute "right" would resolve
            * against the centre column and the panel would drift with the chat's width.
            *
-           * ⚠️ 480 WIDE, not the old 548: every visible frame on 29697:36970 is laid
-           * out at 480 (card 468, field 436), and the banner's copy breaks into the two
-           * lines the board draws only in the 324px text column that width gives. The
-           * 548 frames are still in the file, switched off.
+           * ⚠️ 432 WIDE — board 30282:18491, the designer's own correction (14.09.2026:
+           * "вот макет правильный"). `Frame 22` sits at x=2072 in a 2560 frame, so top 8 /
+           * right 56, and every frame inside is laid out on 432 (card 420, field 388). It
+           * supersedes 480 from 29697:36970, which itself superseded 548.
            */
-          className="fixed right-[55px] top-2 z-40 w-[480px] origin-top-right rounded-[20px] bg-[var(--gray-850)]"
+          className="fixed right-[56px] top-2 z-40 w-[432px] origin-top-right rounded-[20px] bg-[var(--gray-850)]"
           /* The rim is an INSET SHADOW, not a border, here and on the card, the banner and
              the URL field inside: Figma's 1px stroke sits inside the geometry and does not
              shrink a frame's children, while a CSS border does — four nested borders had
@@ -759,35 +815,117 @@ export function PublishPanel() {
                 </motion.div>
               )}
             </AnimatePresence>
+            {/* ------------------------------- the in-flight cards, board 30282:54233:
+                ABOVE the address field, in the shape that board draws. See ProgressCard. */}
+              {connecting && (
+                <ProgressCard
+                  title={t({
+                    en: `Connecting ${world.customDomain}`,
+                    uk: `Підключаємо ${world.customDomain}`,
+                  })}
+                  sub={t({
+                    en: 'Usually quick, sometimes a few hours. Keep editing — we’ll keep checking.',
+                    uk: 'Зазвичай швидко, іноді кілька годин. Працюйте далі — ми перевіряємо.',
+                  })}
+                />
+              )}
+              {registering && (
+                <ProgressCard
+                  title={t({
+                    en: `Registering ${world.customDomain}`,
+                    uk: `Реєструємо ${world.customDomain}`,
+                  })}
+                  sub={t({
+                    en: 'Usually under 15 minutes. Nothing for you to do.',
+                    uk: 'Зазвичай менш ніж 15 хвилин. Від вас нічого не потрібно.',
+                  })}
+                />
+              )}
+              {propagating && (
+                <ProgressCard
+                  title={t({
+                    en: `${world.customDomain} is on its way`,
+                    uk: `${world.customDomain} уже в дорозі`,
+                  })}
+                  sub={t({
+                    en: 'Most visitors will reach your site within a few hours. It can take up to 72 hours to work everywhere in the world — that part is the internet, not us.',
+                    uk: 'Більшість відвідувачів побачать сайт за кілька годин. По всьому світу це може зайняти до 72 годин — це вже інтернет, а не ми.',
+                  })}
+                />
+              )}
+              {padlock && (
+                <ProgressCard
+                  title={t({ en: 'Secure padlock is switching on', uk: 'Вмикається захисний замок' })}
+                  sub={t({
+                    en: 'Nothing for you to do · usually ten to thirty minutes',
+                    uk: 'Від вас нічого не потрібно · зазвичай десять–тридцять хвилин',
+                  })}
+                />
+              )}
             {/* --------------------------------------------- the fields, 29697:37003 */}
             <div className="px-4 pb-4 pt-[19px]">
               {/* website URL */}
               <div className="flex flex-col gap-[7px]">
                 <p className="px-0.5 text-[14px] font-medium leading-[1.4] text-[var(--white-500)]">
-                  {t({ en: 'Your website URL', uk: 'Адреса вашого сайту' })}
+                  {t({ en: 'Website URL', uk: 'Адреса сайту' })}
                 </p>
-                {settled ? (
-                  /* The domain, once it opens the site — and the only face that wears
-                     the green pill. One branch, one slot: the field cannot show this name
-                     without the all-clear, nor the all-clear without this name. */
-                  <UrlField value={world.customDomain} slot="live" />
+                {/*
+                  * WHICH ADDRESS THE FIELD CARRIES.
+                  *
+                  * The custom name in exactly two states: `live`/`multiple` with the mail
+                  * confirmed (`settled`), and `ready` — the domain is set up and only a
+                  * press stands between it and the site (designer, 14.09.2026: "кастомный
+                  * домен уже полностью настроен и работает? какого черта я вижу
+                  * fit-ration.remixer.ai?"). It used to show the free address at `ready`
+                  * on the rule "the field carries the address that actually serves the
+                  * site" — true, and unreadable: a heading that says "Your website URL"
+                  * over somebody else's address while your own is finished.
+                  *
+                  * The free address everywhere else, INCLUDING while a custom domain is
+                  * registering, travelling, connecting, switching its padlock on or
+                  * waiting on a registrant-email confirmation — that is precisely when
+                  * "where IS my site right now" is the question, and through all of it
+                  * the answer is: here, and only here.
+                  */}
+                {settled || readyCard ? (
+                  <UrlField value={world.customDomain} />
                 ) : (
-                  /* The free address — through the whole walk, not just before it. It
-                     gets the marker the moment the site is out on it, INCLUDING while a
-                     custom domain is registering, travelling, connecting, switching its
-                     padlock on or waiting on a registrant-email confirmation, because
-                     that is precisely when "where IS my site right now" is the question,
-                     and through all of it the answer is: here, and only here. */
-                  <UrlField
-                    value={STAGING_NAME}
-                    suffix={STAGING_SUFFIX}
-                    slot={world.published ? 'published' : 'bare'}
-                    publishedLabel={justPublished
-                      ? t({ en: 'Published · just now', uk: 'Опубліковано · щойно' })
-                      : t({ en: 'Published', uk: 'Опубліковано' })}
-                  />
+                  <UrlField value={STAGING_NAME} suffix={STAGING_SUFFIX} />
                 )}
               </div>
+
+              {/*
+                * THE DOMAIN CARD — board 30282:18491, the state where a custom domain is
+                * carrying the site: a card of its own under the field (border `#313133`,
+                * radius 16, pl 8 / pr 16 / py 16), the domain's own status on the left and
+                * the one action that belongs to a domain on the right.
+                *
+                * ⚠️ `Unlink` IS THE DESIGNER'S (14.09.2026: "справа будет кнопка отвязать
+                * домен"), and it is the panel's only amber-on-text control: #f57c00 is the
+                * board's literal, not one of our tokens — the product has no other
+                * destructive-but-reversible verb to share a colour with yet.
+                *
+                * ⚠️ The left line no longer says "anyone can visit" (his question: "это
+                * как? в дримхосте есть такие настройки?"). There is no visibility setting
+                * anywhere in DreamHost, so that half named a control that does not exist.
+                * What survives is the half that is true and that the success checklist
+                * promises — the padlock.
+                */}
+              {settled && (
+                <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
+                  <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
+                    {t({ en: 'Secure padlock on', uk: 'Замок увімкнено' })}
+                  </p>
+                  <button
+                    onClick={unlinkDomain}
+                    className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[#f57c00] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#f57c0014]"
+                  >
+                    {t({ en: 'Unlink', uk: 'Відв’язати' })}
+                    <IconUnlink size={20} />
+                  </button>
+                </div>
+              )}
+
 
               {/* ------------------------------------------------- the state card
                   Copy comes from docs/features/domains/states.md wherever that document
@@ -835,72 +973,23 @@ export function PublishPanel() {
                   phrase (variant B); it replaces "it goes live on its own" because that
                   reads as a countdown, and there is nothing to count down — we cannot know
                   when a given visitor's cached "nothing here" expires. */}
-              {connecting && (
-                <StatusCard
-                  tone="amber"
-                  title={t({
-                    en: `Connecting ${world.customDomain}`,
-                    uk: `Підключаємо ${world.customDomain}`,
-                  })}
-                  sub={t({
-                    en: 'Usually quick, sometimes a few hours. Keep editing — we’ll keep checking.',
-                    uk: 'Зазвичай швидко, іноді кілька годин. Працюйте далі — ми перевіряємо.',
-                  })}
-                />
-              )}
 
               {/* `registering`, states.md §5. The registry, and only the registry: fifteen
                   minutes is verified ("within 15 minutes of completing the purchase form")
                   and it is NOT the same event as a working website — that is the next
                   card. No action: there is none. */}
-              {registering && (
-                <StatusCard
-                  tone="amber"
-                  title={t({
-                    en: `Registering ${world.customDomain}`,
-                    uk: `Реєструємо ${world.customDomain}`,
-                  })}
-                  sub={t({
-                    en: 'Usually under 15 minutes. Nothing for you to do.',
-                    uk: 'Зазвичай менш ніж 15 хвилин. Від вас нічого не потрібно.',
-                  })}
-                />
-              )}
 
               {/* `propagating`, states.md §5 — verbatim, including the last clause, which
                   is the only honest way to own a 72-hour wait. This is the state the
                   checkout sheet's "connects automatically after checkout" was silently
                   promising away. No action: there is none, and the free address works the
                   whole time. */}
-              {propagating && (
-                <StatusCard
-                  tone="amber"
-                  title={t({
-                    en: `${world.customDomain} is on its way`,
-                    uk: `${world.customDomain} уже в дорозі`,
-                  })}
-                  sub={t({
-                    en: 'Most visitors will reach your site within a few hours. It can take up to 72 hours to work everywhere in the world — that part is the internet, not us.',
-                    uk: 'Більшість відвідувачів побачать сайт за кілька годин. По всьому світу це може зайняти до 72 годин — це вже інтернет, а не ми.',
-                  })}
-                />
-              )}
 
               {/* `securing`, states.md. The padlock is the LAST wait and it cannot start
                   early — a certificate needs the address to answer here first — which is
                   why this is its own card and not a line inside the one above.
                   ⚠️ The old sub said "the site already works". On the way to `ready` it
                   does not: nobody has published it yet. */}
-              {padlock && (
-                <StatusCard
-                  tone="amber"
-                  title={t({ en: 'Secure padlock is switching on', uk: 'Вмикається захисний замок' })}
-                  sub={t({
-                    en: 'Nothing for you to do · usually ten to thirty minutes',
-                    uk: 'Від вас нічого не потрібно · зазвичай десять–тридцять хвилин',
-                  })}
-                />
-              )}
 
               {/* `ready`, states.md — verbatim, and the state nobody had drawn. Everything
                   is correct and nothing is happening; the customer concludes the product
@@ -1092,11 +1181,8 @@ export function PublishPanel() {
                   panel offered to leave in the middle of the one thing the panel is for.
                   Do not put it back. */}
 
-              {settled && (
-                <p className="mt-[19px] px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
-                  {t({ en: 'Padlock on · anyone can visit', uk: 'Замок увімкнено · сайт доступний усім' })}
-                </p>
-              )}
+              {/* ⚠️ NO "Padlock on · anyone can visit" HERE ANY MORE — see the status line
+                  under the address field, which replaced it. */}
 
               {/* ⚠️ NO STAGING-ADDRESS BLOCK. It used to sit here, under the card, the way
                   the designer's states were drawn — and he took it out on sight
@@ -1202,12 +1288,21 @@ export function PublishPanel() {
             * "everything is published" sentence was invented to fill the space.
             */}
           <div className="flex items-center justify-end py-4 pl-6 pr-4">
-            {publishesChanges && (
+            {/* ⚠️ AND THE ZERO STATE IS DRAWN NOW (board 30282:52600): the same row, a GREEN
+                dot `#50b97b`, and "Your website is up to date". The note that used to stand
+                here — "the board draws only the pending state, so at zero the line is simply
+                absent" — is spent: the designer drew the other half. */}
+            {publishesChanges ? (
               <span className="flex items-center gap-1.5 text-[12px] leading-[1.4] text-[#c7ccd6]">
                 <span className="h-2 w-2 flex-none rounded-full bg-[var(--action)]" aria-hidden />
                 {t(edits)}
               </span>
-            )}
+            ) : world.published && !publishes ? (
+              <span className="flex items-center gap-1.5 text-[12px] leading-[1.4] text-[#c7ccd6]">
+                <span className="h-2 w-2 flex-none rounded-full bg-[#50b97b]" aria-hidden />
+                {t({ en: 'Your website is up to date', uk: 'Ваш сайт актуальний' })}
+              </span>
+            ) : null}
             <span className="flex-1" />
             <button
               onClick={() => { if (publishes) publishNow() }}
@@ -1218,9 +1313,11 @@ export function PublishPanel() {
                   ? 'h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]'
                   : settleLabel
                     ? 'h-10 cursor-default rounded-[10px] border border-[var(--white-100)] px-5 text-[14px] font-semibold text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std'
-                    /* the product's one "not yet": `--white-100` plate, 24%-white label —
-                       the same pair the topbar's Publish and Home's Build wear. */
-                    : 'h-10 cursor-not-allowed rounded-[10px] bg-[var(--white-100)] px-5 text-[14px] font-semibold text-[#ffffff3d]'
+                    /* ⚠️ The board's own disabled variant (30282:52600 → component
+                       36:727): an OUTLINE, `Neutral Alpha/200` rim with a 32%-white label,
+                       no fill. Not the filled dim plate the topbar and Home's Build wear —
+                       those sit on the shell's ground, this sits on a panel. */
+                    : 'h-10 cursor-not-allowed rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-semibold text-[#ffffff52]'
               }
             >
               {t(primary)}

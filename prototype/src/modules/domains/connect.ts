@@ -49,7 +49,7 @@
  *
  * Three rules, all borrowed from the engines that already exist here:
  *
- *  · WAITS ARE COMPRESSED BUT PROPORTIONAL (state/flows.ts). Not "how long is 72 hours" —
+ *  · WAITS ARE COMPRESSED BUT PROPORTIONAL. Not "how long is 72 hours" —
  *    a demo cannot hold that — but "which of these is the long one". See TIMELINES.
  *
  *  · A TICK RE-READS THE STORE AND STANDS DOWN IF THE WORLD MOVED (modules/chat/build.ts).
@@ -416,9 +416,8 @@ export function resumeConnect() {
  * The confirmation landed — let the bought walk go.
  *
  * NO TICKET, NO WALK, exactly as at load. A world staged at `registering` + `icann` from
- * the console, a flow or a shared link has never been through `startConnect`, so flipping
- * the clock off there leaves it standing — which is what staging is for, and what keeps
- * the flow engine (state/flows.ts) the only thing driving its own steps. A domain the
+ * the console or a shared link has never been through `startConnect`, so flipping the
+ * clock off there leaves it standing — which is what staging is for. A domain the
  * customer actually bought carries the ticket the park re-issued, and that one moves.
  *
  * ⚠️ THE ANCHOR IS RE-CUT, NOT REUSED. `startedAt` is wall clock and the park is open
