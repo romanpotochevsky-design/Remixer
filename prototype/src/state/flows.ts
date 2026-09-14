@@ -39,6 +39,7 @@ import { BRIEF_INTRO, BRIEF_STATUS, briefAck, briefDone, type BriefAnswers } fro
  *    mismatch. No invented price, no invented duration, and none of the jargon the
  *    product itself bans from primary paths (DNS, nameserver, records, certificate).
  */
+
 /**
  * WHERE THE CAMERA POINTS for a step — the half of "what is on screen" the world does
  * not carry.
@@ -317,7 +318,7 @@ export const FLOWS: Flow[] = [
     label: { en: 'Buy a new domain', uk: 'Купити новий домен' },
     note: {
       en: 'The longer of the two: the customer has no name of their own, so they search for one, find their first choice registered to somebody else, buy the one they settle on at the DreamHost till and watch it come up. It ends with the one thing a bought name owes that an attached one does not.',
-      uk: 'Довший із двох шляхів: власного імені немає, тож клієнт шукає його, бачить, що перше вже комусь належить, купує обране на касі DreamHost і дивиться, як воно піднімається. Наприкінці — те єдине, що винен куплений домен і не винен підключений.',
+      uk: 'Довший із двох шляхів: власного імені немає, тож клієнт шукає його, бачить, що перше вже комусь належить, купує обране на касі DreamHost і дивиться, як воно оживає. Наприкінці — те єдине, що винен куплений домен і не винен підключений.',
     },
     /*
      * A paid account with nothing of its own, and a site that has never been out.
