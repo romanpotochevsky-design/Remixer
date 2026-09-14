@@ -57,12 +57,38 @@ import { useUI } from '@/state/ui'
 import { startConnect } from './connect'
 import { useT, type Text } from '@/i18n'
 import { priceFor, registrarOf } from '@/data/domains'
-import type { CartLine } from '@/data/cart'
+import { domainAmount, termYears, tldOf, type CartLine } from '@/data/cart'
 import { LogoRemixer, IconClose, IconGlobeLarge, IconLink } from '@/ui/icons'
 import { modalScrim, modalSheet } from '@/ui/motion'
 
 /** The two ways to pay for the plan, priced off the verified product facts. */
 type Term = 'yearly' | 'monthly'
+
+/**
+ * "2 роки" / "5 років" — agreement for the term line below.
+ *
+ * ⚠️ A SECOND COPY of the rule in data/domains.ts (`ukYears`, which generates the
+ * search row's note). It is duplicated rather than imported because that helper is
+ * module-private there; exporting it is the right fix and belongs to that file's
+ * owner. Both are generated from `n`, so neither can drift into a wrong number —
+ * only into a different wording, and there is one wording here.
+ */
+const ukYears = (n: number) => {
+  const one = n % 10
+  const teen = n % 100 >= 11 && n % 100 <= 14
+  if (!teen && one === 1) return 'рік'
+  if (!teen && one >= 2 && one <= 4) return 'роки'
+  return 'років'
+}
+
+/**
+ * "for 2 years" — the term the figure beside it covers, or null when it covers one.
+ *
+ * Null is the whole of the normal case: nine of the ten verified endings have no
+ * minimum, so nothing renders and their sheets are the sheets they were.
+ */
+const termCovered = (years: number): Text | null =>
+  years > 1 ? { en: `for ${years} years`, uk: `на ${years} ${ukYears(years)}` } : null
 
 /* ------------------------------------------------------------------ pieces */
 
@@ -460,8 +486,30 @@ export function DomainModal() {
      DomainsSurface's OwnScreen makes. */
   const inUse = world.inventory === 'dh-in-use'
   const domain = domainModal?.domain ?? ''
-  const tld = domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : '.com'
+  /*
+   * THE FIGURE ON THIS SHEET IS THE ONE THE CART IS ABOUT TO CHARGE, AND IT IS
+   * COMPUTED BY THE CART'S OWN ARITHMETIC.
+   *
+   * `.ai` is sold in two-year blocks (TLD_PRICES `minYears`, verified — a one-year
+   * `.ai` is an order DreamHost cannot place), and the search row a click earlier
+   * prints "2-year minimum". This sheet used to read `$89.99 · auto-renews at
+   * $89.99`, which is the shape of an ordinary one-year registration: it named a
+   * price nobody is charged, over a term nobody is sold, between two screens that
+   * both said otherwise — the cart one click later reads 2 Years / $179.98.
+   *
+   * So every number below comes from data/cart.ts, the module the cart itself
+   * reads: `tldOf` for the ending (multi-label aware, so `.co.uk` is not priced off
+   * `.uk`), `termYears` for the shortest term the registry will sell, `domainAmount`
+   * for the sum over it (first year at the promo price, the rest at renewal — the
+   * panel's own formula). Recomputing any of that here is how the two screens got
+   * out of step in the first place.
+   */
+  const tld = tldOf(domain)
   const price = priceFor(tld) ?? priceFor('.com')!
+  /* One for every normal ending; more only where the registry says so. */
+  const years = termYears(tld)
+  const amount = domainAmount(tld, years)
+  const covers = termCovered(years)
 
   /* The plan chooser is what makes the sheet tall, and it is present exactly when the
      account cannot go live yet — on EVERY kind, connect-owned included. It briefly was
@@ -558,7 +606,12 @@ export function DomainModal() {
     }
 
     const lines: CartLine[] = []
-    if (buying) lines.push({ kind: 'domreg', domain, years: 1 })
+    /* `years`, not 1. The cart clamps a short term to the registry's minimum on
+       arrival (data/cart.ts, `termYears`) and would have corrected this, but a sheet
+       that has just printed a two-year total has no business asserting one year on
+       its way out — and the correction would be invisible to the next caller that
+       reads this line back. */
+    if (buying) lines.push({ kind: 'domreg', domain, years })
     if (showPlans) lines.push({ kind: 'remixer', term })
 
     if (lines.length === 0) {
@@ -660,8 +713,21 @@ export function DomainModal() {
                         {domain}
                       </p>
                       {buying && !showPlans && (
-                        <p className="flex-none font-display text-[18px] font-medium leading-none text-[#f5f5fa]">
-                          ${price.register.toFixed(2)}
+                        /* The figure, and — only where a term longer than a year is
+                           being bought — what it covers, sitting on the same
+                           baseline in the sub-label's 13px grey. The renewal stays
+                           on the line directly below, where it has always been: the
+                           renewal figure never travels apart from the figure above
+                           it (house rule, and the audit's). */
+                        <p className="flex flex-none items-baseline gap-1.5">
+                          <span className="font-display text-[18px] font-medium leading-none text-[#f5f5fa]">
+                            ${amount.toFixed(2)}
+                          </span>
+                          {covers && (
+                            <span className="whitespace-nowrap text-[13px] leading-none text-[#ffffff7a]">
+                              {t(covers)}
+                            </span>
+                          )}
                         </p>
                       )}
                     </div>
@@ -708,9 +774,18 @@ export function DomainModal() {
                   {/* the tall sheet parks the price in its own right-hand column */}
                   {buying && showPlans && (
                     <div className="flex w-[137px] flex-none flex-col items-end justify-center gap-1.5 self-stretch pt-0.5">
+                      {/* Same pair as the lean sheet, stacked instead of strung out:
+                          this column is 137px and the term will not share a line
+                          with the figure inside it. The order is the sentence —
+                          what you pay, what it covers, what it renews at. */}
                       <p className="font-display text-[18px] font-medium leading-none text-[#f5f5fa]">
-                        ${price.register.toFixed(2)}
+                        ${amount.toFixed(2)}
                       </p>
+                      {covers && (
+                        <p className="whitespace-nowrap text-[13px] leading-none text-[#ffffff7a]">
+                          {t(covers)}
+                        </p>
+                      )}
                       <p className="whitespace-nowrap text-[13px] leading-none text-[#ffffff7a]">
                         {t({ en: 'auto-renews at ', uk: 'автопродовження ' })}
                         <span className="font-display font-medium">${price.renew.toFixed(2)}</span>

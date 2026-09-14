@@ -333,7 +333,7 @@ function Summary({
   submitting: boolean
   /**
    * The order cannot be placed, and this is the domain it would have stranded.
-   * Null the rest of the time — see `planMissing` in `PanelCart` for the rule.
+   * Null the rest of the time — see `blocker` in `PanelCart` for the rule.
    */
   blocker: { domain: string } | null
   onSubmit: () => void
@@ -377,7 +377,11 @@ function Summary({
               {blocker.domain} can only go live on the Remixer Build plan — add it back to
               place this order.
             </span>
-            <button className="dh-reco__add ml-3 flex-none" onClick={onRestorePlan}>
+            {/* `[&>svg]:mr-0` because the strip styles its own mark (`.dh-renewal svg`
+                gets 12px of clearance) and that selector reaches into this button too —
+                without the reset this Add sits 12px wider than the identical one in the
+                recommendation card below, measured. */}
+            <button className="dh-reco__add ml-3 flex-none [&>svg]:mr-0" onClick={onRestorePlan}>
               <DhCartAdd />Add
             </button>
           </motion.div>
@@ -473,7 +477,8 @@ export function rememberPendingConnect(domain: string) {
   try { localStorage.setItem(PENDING_KEY, domain) } catch { /* storage may be walled off */ }
 }
 
-/** Drop it: the customer left without paying, or the plan it was waiting on is gone. */
+/** Drop it: the customer left without paying, a purchase hand-off superseded it, or the
+ *  builder came back up around a trip that no longer exists. */
 export function clearPendingConnect() {
   pendingConnect = null
   try { localStorage.removeItem(PENDING_KEY) } catch { /* storage may be walled off */ }
@@ -519,8 +524,8 @@ export function PanelCart() {
    *
    * A domain reaches this page two ways — bought here as a registration line, or already
    * owned and parked above — and in both cases what actually puts it in front of the site
-   * is the PLAN, not the name. That is a product fact, not a preference: `world.
-   * violations()` lists a custom domain on an unpaid account as a combination the real
+   * is the PLAN, not the name. That is a product fact, not a preference: the world's own
+   * `violations()` lists a custom domain on an unpaid account as a combination the real
    * product cannot produce ("A custom domain needs a paid plan — checkout comes first").
    *
    * The panel's cart, faithfully, lets you delete any line you like. So a trial customer

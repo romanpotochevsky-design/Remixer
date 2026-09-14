@@ -20,7 +20,7 @@ import { useT, type Text } from '@/i18n'
 import {
   AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, TLD_PRICES, priceFor,
   exactMatch, featuredEndings, popularEndings, nameIdeas, type ResultRow,
-  closeAlternatives, takenIdeas, registrarOf,
+  closeAlternatives, takenIdeas, registrarOf, endingNotice,
 } from '@/data/domains'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
@@ -371,6 +371,31 @@ function SectionTitle({ label }: { label: Text }) {
 }
 
 /**
+ * "We answered about a different ending than you typed" — one line, above the answer.
+ *
+ * Only ten endings have a verified price (`TLD_PRICES`), and a row may only carry a
+ * price we can stand behind, so a search for `brand.xyz` is answered with `brand.com`.
+ * That substitution used to happen in silence, which is the same category error as
+ * burying the exact match under AI ideas: the person asked about THAT name, and an
+ * answer about a different one has to say so. The string is `endingNotice` in
+ * data/domains.ts — rendered as written, not paraphrased here, so the sentence has one
+ * home.
+ *
+ * It sits ABOVE the hero because it is a condition on everything below it, and it is
+ * quiet type rather than a warning tone: nothing has gone wrong, we simply do not sell
+ * that ending.
+ */
+function EndingNotice({ notice }: { notice: Text | null }) {
+  const { t } = useT()
+  if (!notice) return null
+  return (
+    <motion.div variants={listSwapItem}>
+      <p className="px-2 pb-1 pt-2 text-[13px] leading-normal text-[var(--white-500)]">{t(notice)}</p>
+    </motion.div>
+  )
+}
+
+/**
  * The footer bar under every result list — redesigned Sep 2026 (Figma 27729:16043).
  *
  * "Show more" is CENTRED in the bar while the left label counts what we can sell.
@@ -464,12 +489,23 @@ function ResultBlock({
  * The registrar, on the other hand, is fair game: RDAP returns the sponsoring
  * registrar as registry-level data and WHOIS privacy does not hide it.
  *
+ * ⚠️ …WHEN WE ACTUALLY HAVE IT. `registrar` is optional, and a card without one
+ * simply says the name is taken and says nothing about where. This screen used to
+ * print `registrarOf(domain) ?? 'GoDaddy'`, which meant any name marked taken
+ * without an attribution told the room it was registered at GoDaddy — a fabricated
+ * claim about a real company, on stage. It also capped how honest the search could
+ * be: names could only be marked taken where a registrar claim had a basis, which is
+ * why half the internet was still on sale at $9.99. The line is conditional so the
+ * data can mark far more names taken without anybody having to invent a company.
+ * The rest of the card — chip, "This is my domain", the alternatives below — is the
+ * same in both cases; nothing else on it depends on knowing the registrar.
+ *
  * Material is the results screen's, not the mid-fi board's flat greys: the taken
  * answer and the available answer are the same screen wearing two faces.
  */
 function TakenCard({
   domain, registrar, onClaim,
-}: { domain: string; registrar: string; onClaim: () => void }) {
+}: { domain: string; registrar?: string | null; onClaim: () => void }) {
   const { t } = useT()
   return (
     <div className="flex min-h-[88px] items-center justify-between gap-6 rounded-[16px] border border-[#ffffff0a] bg-[#ffffff08] px-6 py-4">
@@ -481,9 +517,11 @@ function TakenCard({
             {t({ en: 'Taken', uk: 'Зайнятий' })}
           </span>
         </div>
-        <p className="mt-1.5 text-[13px] leading-none text-[#ffffff7a]">
-          {t({ en: `Registered at ${registrar}`, uk: `Зареєстровано на ${registrar}` })}
-        </p>
+        {registrar && (
+          <p className="mt-1.5 text-[13px] leading-none text-[#ffffff7a]">
+            {t({ en: `Registered at ${registrar}`, uk: `Зареєстровано на ${registrar}` })}
+          </p>
+        )}
       </div>
       <RowButton label={{ en: 'This is my domain', uk: 'Це мій домен' }} onClick={onClaim} />
     </div>
@@ -881,6 +919,8 @@ function ResultsScreen() {
 
   return (
     <ResultsSheet onBack={() => goDomains('home')}>
+      {/* Said before the hero, because the hero may not be the ending they typed. */}
+      <EndingNotice notice={endingNotice(term)} />
       <motion.div variants={listSwapItem}>
         <BestMatchCard row={exact} onBuy={() => buy(exact.domain)} />
       </motion.div>
@@ -928,12 +968,17 @@ function TakenResults({
      name. */
   const forSale = (rows: ResultRow[]) =>
     rows.filter((r) => !mine.has(r.domain) && r.domain !== exact.domain)
-  /* The list is what made the row taken, so the registrar is always there; the
-     fallback only exists so a hand-set `taken` row can never render "undefined". */
-  const registrar = registrarOf(exact.domain) ?? 'GoDaddy'
+  /* Whatever the data knows, and NOTHING when it knows nothing — no `?? 'GoDaddy'`.
+     See TakenCard: an invented registrar is a claim about a real company. */
+  const registrar = registrarOf(exact.domain)
+  /* We may have answered about a different ending than the one they typed — say so. */
+  const notice = endingNotice(term)
 
   return (
     <ResultsSheet onBack={() => goDomains('home')}>
+      {/* The ending swap is announced on the taken answer too: `brand.xyz` reaching a
+          taken `brand.com` is still an answer about a name they did not type. */}
+      <EndingNotice notice={notice} />
       <motion.div variants={listSwapItem}>
         {/*
          * `This is my domain` is drawn on board 27270:5623; where it LANDS is board
@@ -1187,12 +1232,21 @@ function ExternalScreen() {
   const { activeDomain, goDomains, openDomainModal } = useUI()
   const { t } = useT()
   const domain = activeDomain ?? 'emberandoak.com'
-  /* The one thing the taken screen hands over: a name it already detected a
-     registrar for arrives naming THAT company, not a second one. Everything else
-     on this screen is still written for a single registrar and stays that way
-     until iteration 2 — this substitutes a name, it does not make the screen
-     registrar-aware. */
-  const registrar = registrarOf(domain) ?? 'GoDaddy'
+  /*
+   * The one thing the taken screen hands over: a name it already detected a
+   * registrar for arrives naming THAT company, not a second one. Everything else on
+   * this screen is still written for a single registrar and stays that way until
+   * iteration 2 — this substitutes a name, it does not make the screen registrar-aware.
+   *
+   * ⚠️ AND WHEN WE DO NOT KNOW, THE SCREEN SAYS SO RATHER THAN GUESSING. It used to
+   * read `registrarOf(domain) ?? 'GoDaddy'`, so a customer arriving from a taken card
+   * that had deliberately said nothing about where the name lives was told, one click
+   * later, that it lives at GoDaddy — the same invented claim about a real company,
+   * only further into the flow. `another provider` is the degradation states.md
+   * already prescribes for `{registrar}` when the registry does not show one.
+   */
+  const registrar = registrarOf(domain)
+  const where = registrar ?? t({ en: 'another provider', uk: 'іншого провайдера' })
 
   const start = () => {
     /* The inventory axis is true from this press on — the customer is attaching a
@@ -1211,18 +1265,23 @@ function ExternalScreen() {
       <h2 className="font-display text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">{domain}</h2>
       {/* The detection bar: registrar identity is registry-level data (RDAP) — reliable. */}
       <p className="mt-2 text-[14px] leading-[1.5] text-[var(--white-500)]">
-        {t({
-          en: `Registered at ${registrar}. It stays there — no transfer needed.`,
-          uk: `Зареєстровано на ${registrar}. Він там і залишиться — переносити не треба.`,
-        })}
+        {registrar
+          ? t({
+            en: `Registered at ${registrar}. It stays there — no transfer needed.`,
+            uk: `Зареєстровано на ${registrar}. Він там і залишиться — переносити не треба.`,
+          })
+          : t({
+            en: 'It stays where it is registered — no transfer needed.',
+            uk: 'Він залишиться там, де зареєстрований — переносити не треба.',
+          })}
       </p>
 
       {/* De-jargoned records card: two named values, copy buttons, inline guide. */}
       <div className="mt-5 rounded-control border border-[var(--gray-800)] bg-[var(--gray-850)] p-4">
         <p className="text-[13px] font-semibold text-[var(--white-700)]">
           {t({
-            en: `Point your domain to us — 2 lines to paste at ${registrar}`,
-            uk: `Спрямуйте домен до нас — 2 рядки вставити на ${registrar}`,
+            en: `Point your domain to us — 2 lines to paste at ${where}`,
+            uk: `Спрямуйте домен до нас — 2 рядки вставити на ${where}`,
           })}
         </p>
         {[
@@ -1240,13 +1299,20 @@ function ExternalScreen() {
           </div>
         ))}
         <p className="mt-3 text-[12.5px] leading-[1.5] text-[var(--white-400)]">
-          {t({
-            /* ⚠️ The path itself is GoDaddy's own menu and is NOT generic — it is
-               right only while `registrar` is GoDaddy, which is the demo case.
-               Iteration 2 owns per-registrar instructions. */
-            en: `In ${registrar}: My Products → your domain → DNS. Paste both lines, save, come back here.`,
-            uk: `На ${registrar}: My Products → ваш домен → DNS. Вставте обидва рядки, збережіть і поверніться сюди.`,
-          })}
+          {/* ⚠️ The path is GoDaddy's own menu and is NOT generic — it is right only
+              while `registrar` IS GoDaddy, which is the demo case. With no registrar
+              detected there is no menu to name, so the line describes the destination
+              instead of pretending to know the route. Iteration 2 owns per-registrar
+              instructions. */}
+          {registrar
+            ? t({
+              en: `In ${registrar}: My Products → your domain → DNS. Paste both lines, save, come back here.`,
+              uk: `На ${registrar}: My Products → ваш домен → DNS. Вставте обидва рядки, збережіть і поверніться сюди.`,
+            })
+            : t({
+              en: 'Open your domain’s settings where it is registered. Paste both lines, save, come back here.',
+              uk: 'Відкрийте налаштування домену там, де він зареєстрований. Вставте обидва рядки, збережіть і поверніться сюди.',
+            })}
         </p>
       </div>
 
