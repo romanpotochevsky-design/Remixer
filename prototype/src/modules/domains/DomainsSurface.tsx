@@ -14,7 +14,7 @@
  */
 import { AnimatePresence, motion } from 'motion/react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { useWorld, isCustomDomainActive, type DomainState } from '@/state/world'
+import { useWorld, isCustomDomainActive, registrantUnconfirmed, type DomainState } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import {
@@ -754,10 +754,23 @@ const CONNECTION_CHIP: Record<DomainState, { label: Text; tone: { fill: string; 
   multiple: { label: IS_LIVE, tone: CHIP_LIVE },
 }
 
-/** The Publish panel's own Live pill (PublishPanel `UrlField`), wearing four tones. */
+/**
+ * The Publish panel's own Live pill (PublishPanel `UrlField`), wearing four tones.
+ *
+ * ⚠️ AND ONE THING IT TAKES FROM THE WORLD RATHER THAN FROM ITS PROP. A registration
+ * still owing its registrant confirmation does not open at all (state/world.ts,
+ * `registrantUnconfirmed`), so green is simply false there whatever the axis reads — the
+ * same defect the topbar chip carried until tonight, on a third surface. It falls back to
+ * the amber `Connecting`, which is the honest headline for a name that is not finished;
+ * WHY it is not finished is the line under it (`ATTACHED_LINE`), because a chip this size
+ * can carry a state and not a reason.
+ */
 function ConnectionChip({ state }: { state: DomainState }) {
+  const { world } = useWorld()
   const { t } = useT()
-  const chip = CONNECTION_CHIP[state]
+  const chip = registrantUnconfirmed(world)
+    ? { label: CONNECTING, tone: CHIP_FLIGHT }
+    : CONNECTION_CHIP[state]
   if (!chip) return null
   return (
     <span
@@ -826,11 +839,15 @@ const ATTACHED_LINE: Record<DomainState, Text | null> = {
     uk: 'Домен цього сайту — він перестав показувати ваш сайт.',
   },
   /* ⚠️ NOT the panel's "Padlock on · anyone can visit", tempting as the borrow is: that
-     is its `settled` line, and `settled` is live AND no ICANN confirmation outstanding.
-     A record keyed by the domain axis alone cannot see `world.icann`, so in the one world
-     where the panel replaces that sentence with "Confirm your email to keep this domain"
-     the hero would still be printing it. What is true of every live world is the plain
-     fact, and the green chip beside it is the panel's pill anyway. */
+     is its `settled` line, and `settled` is live AND no registrant confirmation
+     outstanding.
+     ⚠️ AND THIS RECORD NO LONGER CARRIES THAT WORLD AT ALL. Keyed by the domain axis
+     alone it could not see `world.icann`, and it said so here and printed "your site is
+     live on it" anyway — over a name that, on the developer's answer (14.09.2026), does
+     not resolve until the mail is confirmed. The reading is now taken one level up, in
+     `OwnedAnswer`: a confirmation outstanding replaces the line below with `MAIL_OWED`,
+     so what stays in this table is what is true of every live world where nothing is
+     owed. */
   live: {
     en: 'This site’s domain — your site is live on it.',
     uk: 'Домен цього сайту — ваш сайт працює на ньому.',
@@ -839,6 +856,19 @@ const ATTACHED_LINE: Record<DomainState, Text | null> = {
     en: 'This site’s domain — your site is live on it.',
     uk: 'Домен цього сайту — ваш сайт працює на ньому.',
   },
+}
+
+/**
+ * …and the one line that overrides every entry above.
+ *
+ * ONE SENTENCE, AND NO WAY OUT ON THIS SCREEN. The escape belongs to the Publish panel —
+ * its amber card names the domain, says what is owed and carries the Resend — and this is
+ * a row in a list: it has to be true and it has to be short. A second control here would
+ * be a second door to a state the product deliberately reports in one place (D3).
+ */
+const MAIL_OWED: Text = {
+  en: 'This site’s domain — it opens once you confirm your email.',
+  uk: 'Домен цього сайту — запрацює, щойно ви підтвердите email.',
 }
 
 /* ------------------------------------------------------------------ screens */
@@ -1220,7 +1250,10 @@ function OwnedAnswer({ domain }: { domain: string }) {
   const attached = isCustomDomainActive(world) && world.customDomain === domain
     ? world.domain
     : null
-  const standing = attached ? ATTACHED_LINE[attached] : null
+  /* A confirmation outstanding outranks the axis: the name does not open at all until it
+     lands, so every sentence in `ATTACHED_LINE` — "on its way", "padlock switching on",
+     "live on it" — would be describing progress towards an address nobody can reach. */
+  const standing = attached ? (registrantUnconfirmed(world) ? MAIL_OWED : ATTACHED_LINE[attached]) : null
 
   return (
     <ResultsSheet onBack={() => goDomains('home')}>

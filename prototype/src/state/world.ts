@@ -332,12 +332,29 @@ export interface World {
   /**
    * A newly REGISTERED domain whose registrant email is still unconfirmed.
    *
-   * Its own axis rather than a `domain` value, because it is orthogonal to everything
-   * that axis tracks: the site can be registering, travelling, switching its padlock on
-   * or fully live and still be sitting on this clock. Miss it and the registrar SUSPENDS
-   * the domain — the site and its email both stop. That is why the Publish panel carries
-   * it in an amber card with its own way out (Resend) rather than as a line of prose
-   * (designer's state ⑤, 13.09.2026).
+   * ⚠️ AND UNTIL IT IS CONFIRMED THE NAME DOES NOT RESOLVE AT ALL. A DreamHost developer,
+   * asked directly (14.09.2026): the domain can be connected and publishing probably goes
+   * through, but «вебсайт поідеї не буде працювати якщо запаблішити» — and, on "so you can
+   * publish, but without confirming the email the link will not work", «так».
+   *
+   * That REFUTES what this comment said for one draft — that the site "can be registering,
+   * travelling, switching its padlock on or fully live and still be sitting on this clock",
+   * a fresh registration resolving immediately and being suspended only after a deadline.
+   * It came from a search summariser (the session proxy blocks help.dreamhost.com); a
+   * developer on the product beats it. Do not reinstate it: the walk was built from that
+   * sentence, which is how the product came to paint a green live domain in front of a
+   * name nobody could open.
+   *
+   * So this is not a clock running BESIDE the connection — it is a GATE ON it. The bought
+   * walk registers the name and then holds at `registering` until this clears
+   * (modules/domains/connect.ts, THE GATE), which is why `live`, `multiple` and `verifying`
+   * alongside it are listed in `violations` as combinations the product cannot produce.
+   * Its own axis all the same, because it is a fact about the REGISTRATION and not a place
+   * on the walk: it outlives `registering`, and only a name bought through us ever has it.
+   *
+   * Miss it and the registrar SUSPENDS the domain — the site and its email both stop. That
+   * is why the Publish panel carries it in an amber card with its own way out (Resend)
+   * rather than as a line of prose (designer's state ⑤, 13.09.2026).
    *
    * ⚠️ THE RULE IS REAL, THE NUMBER IS NOT. "15 days" traces in our own research to
    * SQUARESPACE's unlink rule, not to a DreamHost or ICANN page, so no countdown is
@@ -438,6 +455,18 @@ export const canConnectDomain = (w: World) => hasPlan(w)
  *  except the three states where the project still has only its free address. */
 export const isCustomDomainActive = (w: World) =>
   w.domain !== 'staging' && w.domain !== 'searching' && w.domain !== 'checkout'
+/**
+ * A registration is waiting on its registrant to confirm their email — which means the
+ * name does not open AT ALL yet (see `World.icann`).
+ *
+ * A selector and not three copies of `attached && w.icann`, because it is the fact that
+ * overrides the domain axis on every surface that reports on a domain: the topbar chip's
+ * dot (App.tsx `domainStatus`), the domains window's row chip and its line under the name
+ * (DomainsSurface), and the Publish panel's card. Written out per surface it drifted
+ * exactly once and that was enough — the chip went green over a panel saying the address
+ * did not work.
+ */
+export const registrantUnconfirmed = (w: World) => isCustomDomainActive(w) && w.icann
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
 /** First run on the Home page: nothing generated yet, so the dock shows templates. */
 export const hasProjects = (w: World) => w.projects.length > 0
@@ -519,6 +548,30 @@ export function violations(w: World): Violation[] {
       reason: {
         en: 'Nobody registered a domain here, so there is no registrant email to confirm.',
         uk: 'Домен тут не реєстрували — підтверджувати email реєстранта нема чого.',
+      },
+    })
+  }
+  /*
+   * THE ONE THE PRODUCT USED TO MANUFACTURE. An unconfirmed registrant email means the
+   * name does not resolve at all (see `World.icann`), so it cannot be the address a
+   * visitor reaches (`live`, `multiple`) and a certificate cannot be issued against it
+   * (`verifying`). The walk is gated on exactly that now, which is what makes these
+   * pairings unreachable rather than merely wrong — so the only way to see one is to
+   * stage it by hand, and the console should say so in red instead of letting the topbar
+   * paint it green.
+   *
+   * ⚠️ `ready` is NOT on the list, and deliberately. The Publish panel handles that pair
+   * on purpose (`readyCard = ready && !world.icann`): the confirmation card takes the slot
+   * because "publish and visitors will see your site" is false while the mail is owed. A
+   * violation here would declare that handling dead code.
+   */
+  if (w.icann && (w.domain === 'live' || w.domain === 'multiple' || w.domain === 'verifying')) {
+    out.push({
+      field: 'icann',
+      value: 'true',
+      reason: {
+        en: 'Until the registrant email is confirmed the domain does not open at all — it cannot be live or getting its padlock.',
+        uk: 'Доки email реєстранта не підтверджено, домен не відкривається зовсім — він не може бути живим чи отримувати замок.',
       },
     })
   }

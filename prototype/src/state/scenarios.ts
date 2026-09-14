@@ -278,18 +278,22 @@ export const PRESETS: Preset[] = [
    *
    * The stalls are not a judgement call either: PublishPanel.tsx names them itself,
    * `const stalled = ready || oldSite || unreachable` — nothing is moving and the hold-up
-   * is this name. `icann` joins them as the fourth, because it is the one state where the
-   * site works perfectly and can still be switched off.
+   * is this name. `icann` joins them as the fourth — and NOT, as this note claimed for one
+   * draft, because "the site works perfectly and can still be switched off". That was the
+   * refuted reading (state/world.ts, `World.icann`): a DreamHost developer, asked directly
+   * on 14.09.2026, says the name does not resolve at all while the confirmation is owed.
+   * It is a stall in the plainest sense — the bought walk stops dead at `registering` and
+   * one click in somebody's inbox is the only thing that starts it again.
    *
    * ⚠️ EVERY TILE BELOW NAMES `icann`, INCLUDING THE ONES THAT WANT IT OFF. The clock is
    * only auto-cleared when the domain axis walks back to a state with no custom domain in
-   * it (world.ts `set`), so between two domain presets it is STICKY: click "Just bought —
-   * on its way" (which stages the pair on purpose) and then "Live site", and the live site
-   * arrived owing a registrant email — the amber card was on the panel and the tile's own
-   * name was no longer true. Nothing in the world is wrong there; a patch that leaves an
-   * axis out is simply not staging it. So a domain preset states the clock the way it
-   * states the domain, and the console's summary line now says which of the two you are
-   * looking at (`describe`).
+   * it (world.ts `set`), so between two domain presets it is STICKY: click "Email not
+   * confirmed yet" (which stages the pair on purpose) and then "Live site", and the live
+   * site arrived owing a registrant email — a pairing `violations` now calls impossible in
+   * red, and which the tile's own name flatly contradicts. Nothing in the world is wrong
+   * there; a patch that leaves an axis out is simply not staging it. So a domain preset
+   * states the clock the way it states the domain, and the console's summary line says
+   * which of the two you are looking at (`describe`).
    */
   {
     id: 'dh-zero-record',
@@ -333,8 +337,10 @@ export const PRESETS: Preset[] = [
       en: 'Bought a minute ago: the registry has the order and the name is not theirs yet. Minutes — and not the same thing as a working website',
       uk: 'Куплено хвилину тому: реєстр має замовлення, імені ще немає. Це хвилини — і це не те саме, що працюючий сайт',
     },
-    /* The registrant-email clock is its own axis: flip "Email unconfirmed" on to see the
-       two cards stacked, which is what a real purchase looks like. */
+    /* ⚠️ THE CONFIRMED HALF OF THIS BEAT, and a real purchase reaches it second: the
+       walk holds at `registering` until the registrant confirms (see "Email not confirmed
+       yet" below, and modules/domains/connect.ts). This tile is what the registry wait
+       looks like once that is out of the way. */
     patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'registering', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
@@ -342,10 +348,15 @@ export const PRESETS: Preset[] = [
     group: PG.domain,
     label: { en: 'Just bought — on its way', uk: 'Щойно куплено — у дорозі' },
     note: {
-      en: 'Registered, now travelling the world — hours, up to 72, the longest wait anywhere in the flow. The confirm-your-email card sits under it',
-      uk: 'Зареєстровано, тепер розходиться світом — години, до 72: найдовше очікування в усьому флоу. Під ним — картка підтвердження пошти',
+      en: 'Registered and confirmed, now travelling the world — hours, up to 72, the longest wait anywhere in the flow',
+      uk: 'Зареєстровано й підтверджено, тепер розходиться світом — години, до 72: найдовше очікування в усьому флоу',
     },
-    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'propagating', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    /* ⚠️ `icann: false`, AND THAT IS THE FACT AND NOT A TIDY-UP. This tile used to stage
+       the pair, so the panel read "Most visitors will reach your site within a few hours"
+       directly above "the address starts working once you confirm" — two sentences that
+       cannot both be true. A name only reaches this beat once the confirmation is in
+       (modules/domains/connect.ts, THE GATE); the tile below stages the wait BEFORE it. */
+    patch: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'propagating', icann: false, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'connecting',
@@ -402,10 +413,25 @@ export const PRESETS: Preset[] = [
     group: PG.domain,
     label: { en: 'Email not confirmed yet', uk: 'Пошту ще не підтверджено' },
     note: {
-      en: 'Live on its own name, and one amber card left: confirm the registrant email, or the domain gets switched off',
-      uk: 'Живий на власному імені, і лишилась одна бурштинова картка: підтвердити пошту реєстранта, інакше домен вимкнуть',
+      en: 'Bought, registered, and going no further until the registrant confirms their email: the site stays on its free address, and the letter beside the panel is the way on',
+      uk: 'Куплено, зареєстровано — і далі нічого не відбувається, доки реєстрант не підтвердить пошту: сайт лишається на безкоштовній адресі, а вихід — лист поруч із панеллю',
     },
-    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'live', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    /*
+     * ⚠️ `live` UNTIL TONIGHT, AND THAT WAS THE BUG STAGED AS A TILE. A DreamHost
+     * developer, asked directly (14.09.2026): without the confirmation «вебсайт поідеї не
+     * буде працювати якщо запаблішити». So a live domain owing one cannot exist — the
+     * walk now holds at `registering` until it lands (modules/domains/connect.ts) and
+     * `violations` calls the old pairing impossible. This tile stages where the walk
+     * actually stops.
+     *
+     * ⚠️ AND IT DOES NOT WALK ON WHEN THE LETTER IS PRESSED, because nothing started it:
+     * a staged state carries no ticket, which is the console's oldest rule (a clock that
+     * re-armed itself would drift the state out from under the person looking at it).
+     * Confirming here clears the card and the letter and leaves the world at
+     * `registering`; the resuming version of this beat is the buy FLOW, or a real
+     * purchase through the cart.
+     */
+    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'registering', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
   },
   {
     id: 'live',
@@ -688,11 +714,11 @@ export function describe(w: World): Text {
   en.push(domain[w.domain].en); uk.push(domain[w.domain].uk)
 
   /*
-   * The registrant-email clock has no word of its own above, and it is the ONLY thing
-   * separating "Live site" from "Email not confirmed yet" — two presets whose line would
-   * otherwise read identically, one of them describing a domain that can be switched off.
-   * A summary that cannot tell the room which of the two is on screen is worse than no
-   * summary, because it is read out with confidence.
+   * The registrant-email clock has no word of its own above, and the domain axis cannot
+   * speak for it: "domain being registered" is the line for both the tile that is simply
+   * waiting on the registry and the tile that is waiting on somebody's inbox — and only
+   * the second one is stuck. A summary that cannot tell the room which of the two is on
+   * screen is worse than no summary, because it is read out with confidence.
    */
   if (w.icann) { en.push('email not confirmed'); uk.push('пошту не підтверджено') }
 

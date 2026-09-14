@@ -163,17 +163,6 @@ export const domainIsHome = (w: World) =>
   (w.domain === 'live' || w.domain === 'multiple') && !w.icann
 
 /**
- * ⚠️ THE INHERITED NAME, kept only because App.tsx imports it and that file belongs to
- * another pair of hands tonight. It was written for "does the address answer", which
- * `verifying` also satisfied; the test is now "does the domain open the site", so the
- * name is close enough to mislead and should go. Rename both sides in the one commit
- * that can touch both. What must NOT happen is a second predicate growing in App.tsx:
- * the chip's address and this field's address are one decision, and splitting them is
- * the bug this export exists to prevent.
- */
-export const domainAnswers = domainIsHome
-
-/**
  * A hostname never breaks mid-word.
  *
  * `fit-ration.remixer.ai` was wrapping as `fit-` / `ration.remixer.ai`: a hyphen is a

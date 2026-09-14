@@ -12,14 +12,14 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useWorld, canUseAI, hasPlan, isCustomDomainActive, type DomainState } from '@/state/world'
+import { useWorld, canUseAI, hasPlan, registrantUnconfirmed, type World } from '@/state/world'
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
-/* `domainAnswers` rides along with the panel deliberately: it is the panel's own reading
-   of "does this address answer with the site", and the chip must not grow a second one. */
-import { PublishPanel, domainAnswers } from '@/modules/publish/PublishPanel'
+/* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading
+   of "does this domain open the site", and the chip must not grow a second one. */
+import { PublishPanel, domainIsHome } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
@@ -70,8 +70,26 @@ const DOMAIN_STATUS = {
   live: { dot: 'bg-[var(--live)]', note: { en: 'Live', uk: 'Онлайн' } },
 } as const
 
-function domainStatus(d: DomainState): keyof typeof DOMAIN_STATUS | null {
-  switch (d) {
+/**
+ * ⚠️ IT TAKES THE WORLD, NOT THE AXIS, AND THAT IS THE WHOLE FIX (14.09.2026).
+ *
+ * Keyed on `world.domain` alone this could not see `world.icann`, so a live domain whose
+ * registrant email was still unconfirmed came out `live` — a green dot and a "Live"
+ * tooltip, directly above a Publish panel withholding its all-clear and an amber card
+ * saying the address does not work yet. The chip was the loudest thing on the screen and
+ * it was the thing that was wrong: on the developer's answer (see `domainIsHome`) the
+ * name does not resolve at all until the mail is confirmed.
+ *
+ * So a confirmation outstanding takes the dot to amber wherever it stands. One rule, not
+ * a second opinion: the address beside the dot is `domainIsHome`'s decision and stays so,
+ * and this says the same thing in the dot's own vocabulary — nothing about this domain is
+ * done. The walk cannot produce those states any more either (modules/domains/connect.ts,
+ * THE GATE; `violations` calls the rest impossible), so this is the belt to that braces:
+ * a hand-staged world, or a shared `?d=live&k=true` link, still cannot show green.
+ */
+function domainStatus(w: World): keyof typeof DOMAIN_STATUS | null {
+  if (registrantUnconfirmed(w)) return 'working'
+  switch (w.domain) {
     /* both walks: the registry, the world, our records, the padlock — in flight, and
        nothing the customer can do about any of them */
     case 'registering': case 'propagating': case 'connecting': case 'verifying': return 'working'
@@ -243,7 +261,10 @@ function SimulatedEmail() {
    * that could take it back. Asking the panel's question is also what stops the two from
    * ever disagreeing about whether this state exists at all.
    */
-  const due = isCustomDomainActive(world) && world.icann
+  /* …and it is the shell's one selector for that question now (`registrantUnconfirmed`,
+     state/world.ts), shared with the topbar dot below and with the domains window, so the
+     three cannot drift the way this one already did once. */
+  const due = registrantUnconfirmed(world)
 
   /*
    * WHILE THE PREVIEW'S EDGE GLOW IS RUNNING, THE LETTER STOPS WAVING.
@@ -488,15 +509,15 @@ export default function App() {
    * The test used to be spelled out here as live-or-multiple, and the panel's was written
    * separately one file away — so through the whole padlock beat the panel printed the
    * custom domain and this chip printed the staging one: two addresses on screen at once,
-   * for the ~6.6 seconds `verifying` lasts. Both now ask `domainAnswers`, which is the
+   * for the ~6.6 seconds `verifying` lasts. Both now ask `domainIsHome`, which is the
    * panel's own function. Swapping the branches here would be the same bug mirrored: the
    * domain DOES answer by this beat (a certificate cannot be issued before it does), it
    * simply is not secured yet — and the amber dot beside it is what says so.
    */
-  const address = domainAnswers(world) ? world.customDomain || CUSTOM_DOMAIN : STAGING_HOST
+  const address = domainIsHome(world) ? world.customDomain || CUSTOM_DOMAIN : STAGING_HOST
 
   /** …and HOW that address is doing, in the Publish panel's tones. See DOMAIN_STATUS. */
-  const status = domainStatus(world.domain)
+  const status = domainStatus(world)
 
   /* "Update" only means something once the site is live: it is the word for pushing
      edits out to visitors who already have the old version. A site that has never been
@@ -665,7 +686,15 @@ export default function App() {
                  Publish panel, in its own card with its own way out — in flight, waiting
                  on the first press (`ready`), or stuck. So the chip opens that panel, not
                  the domains window; there is no status page any more. A live address has
-                 nothing left to report, so it goes back to the domains dashboard. */
+                 nothing left to report, so it goes back to the domains dashboard.
+
+                 ⚠️ WHICH IS WHY THE DOOR FOLLOWS THE DOT AND IS NOT A SECOND TEST. A live
+                 domain still owing a registrant confirmation used to read `live` here and
+                 land the customer on the domains dashboard — a list of names, while the
+                 one thing they can actually do about it (the card, its Resend, the letter
+                 beside it) was in the panel they had just been sent away from. It reads
+                 `working` now, so this same ternary routes it to the panel with every
+                 other unfinished state. The fix lives in `domainStatus`, once. */
               ? togglePublish(true)
               : openDomains('home'))}
             title={status ? t(DOMAIN_STATUS[status].note) : undefined}

@@ -36,6 +36,13 @@
  *    world). It is the slow path, and it must survive the customer closing the tab —
  *    which it does, because every state of it is world state, not a variable in here.
  *
+ *    ⚠️ AND IT DOES NOT START AT ALL UNTIL THE REGISTRANT EMAIL IS CONFIRMED. A DreamHost
+ *    developer, asked directly (14.09.2026): the domain can be connected, publishing
+ *    probably goes through, but «вебсайт поідеї не буде працювати якщо запаблішити» — and,
+ *    on "so you can publish, but without confirming the email the link will not work",
+ *    «так». The name does not resolve AT ALL while the confirmation is owed. So the
+ *    confirmation is a GATE on this walk, not a clock beside it — see THE GATE below.
+ *
  * The padlock is a THIRD wait and it cannot start early: a certificate cannot be issued
  * until the address already answers at DreamHost, so `verifying` only ever follows one of
  * the two walks above, never runs beside it (10–30 minutes, product facts).
@@ -56,7 +63,7 @@
  *    reconciled by the same idea: the clock only ever picks up work it can prove it left
  *    behind itself.
  */
-import { useWorld, type DomainState } from '@/state/world'
+import { useWorld, type DomainState, type World } from '@/state/world'
 import { useUI } from '@/state/ui'
 
 /**
@@ -95,6 +102,34 @@ const BUY: Leg[] = [
   ['verifying', 'finish', 17600],
 ]
 const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY }
+
+/*
+ * ─────────────────────────────── THE GATE ───────────────────────────────
+ *
+ * WHERE THE BOUGHT WALK STOPS UNTIL SOMEBODY OPENS THEIR MAIL.
+ *
+ * The registrant-email confirmation used to run as a SECOND clock beside this one:
+ * `startConnect` set `icann` in the same write as `registering` and then nothing in the
+ * walk ever read it again, so the walk carried straight on to `propagating`, `verifying`
+ * and `live` while the confirmation was still owed. The product therefore manufactured,
+ * reliably and on its happy path, a domain the topbar painted green and the panel called
+ * live — in front of a name that, on the developer's answer (see the header), does not
+ * resolve at all. It also ran `verifying`, which is a certificate being issued for an
+ * address that cannot be validated.
+ *
+ * So the flag is a GATE. The registry beat still runs — the order is placed, the name is
+ * written, and that much is true whatever the inbox says — and the walk then HOLDS at
+ * `registering` for as long as `icann` stands. Clearing it (the simulated letter in
+ * App.tsx, or the console's own toggle — both are one `set`) releases the park and the
+ * remaining beats play at their true remaining distance.
+ *
+ * The consequence worth stating, because it is the point: `propagating`, `verifying`,
+ * `ready` and `live` are now UNREACHABLE with a confirmation outstanding. The defect the
+ * designer caught cannot be produced by the product any more, only staged by hand in the
+ * console — where `violations()` marks it red (state/world.ts).
+ */
+const PARKED_AT: DomainState = 'registering'
+const parked = (w: World) => w.domain === PARKED_AT && w.icann
 
 let timers: number[] = []
 
@@ -225,6 +260,19 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
           forget()
           return clear()
         }
+        /*
+         * THE GATE. The beat is due and the confirmation is not in, so the walk stops
+         * here rather than settling — see THE GATE above. The remaining timers come
+         * down with it (left armed, the next one would fire against a world still
+         * reading `registering`, mistake it for a staged state and destroy the ticket
+         * this park depends on), and the ticket is re-issued AT THIS LEG: it is still
+         * owed, which is exactly what makes a reload come back parked instead of
+         * running the rest of the walk off a stale anchor.
+         */
+        if (parked(s.world)) {
+          clear()
+          return remember({ domain, path, startedAt, leg: i })
+        }
         settle(to)
         if (to === 'finish') forget()
         else remember({ domain, path, startedAt, leg: next })
@@ -239,6 +287,11 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
  * `bought` marks a domain REGISTERED through us just now. It picks the timeline (the slow
  * one) and it is the only thing that starts the registrant-email clock (see world.icann):
  * attaching a domain you already own never does.
+ *
+ * ⚠️ Which means this call does not walk a bought name to `live` on its own any more. It
+ * walks it to `registering` and stops there, because the flag it sets in the same write
+ * is the gate on the very next beat (see THE GATE). Nothing else has to know: the walk
+ * arms exactly as before and parks itself when the beat comes due.
  */
 export function startConnect(domain: string, opts: { bought?: boolean } = {}) {
   clear()
@@ -333,6 +386,17 @@ export function resumeConnect() {
   if (world.customDomain !== t.domain) return
   if (world.domain !== legs[t.leg][0]) return
 
+  /*
+   * ⚠️ A PARKED WALK IS NOT A LATE ONE, AND THE ARITHMETIC BELOW CANNOT TELL THEM APART.
+   * `startedAt` is wall clock, so after an hour at the gate every beat reads as owed and
+   * the block below would settle the lot in one step — landing `live` on a name that does
+   * not resolve, which is the whole defect, re-entered through the resume door. The park
+   * is world truth (`registering` + `icann`), so it survives a reload by simply being
+   * read: re-issue the ticket at the same leg and stand down. `resumeFromPark` is the
+   * only thing that may pick it up again, and only when the confirmation lands.
+   */
+  if (parked(world)) return remember(t)
+
   const elapsed = Math.max(0, Date.now() - t.startedAt)
   let due = legs.findIndex(([, , at]) => at > elapsed)
   if (due < 0) due = legs.length
@@ -345,6 +409,52 @@ export function resumeConnect() {
 
   walk(t.domain, t.path, t.startedAt, from)
 }
+
+/* -------------------------------------------------------- releasing the gate */
+
+/**
+ * The confirmation landed — let the bought walk go.
+ *
+ * NO TICKET, NO WALK, exactly as at load. A world staged at `registering` + `icann` from
+ * the console, a flow or a shared link has never been through `startConnect`, so flipping
+ * the clock off there leaves it standing — which is what staging is for, and what keeps
+ * the flow engine (state/flows.ts) the only thing driving its own steps. A domain the
+ * customer actually bought carries the ticket the park re-issued, and that one moves.
+ *
+ * ⚠️ THE ANCHOR IS RE-CUT, NOT REUSED. `startedAt` is wall clock and the park is open
+ * ended: keep the original and every remaining beat is already owed, so the walk would
+ * jump straight to its end state the instant the letter is pressed — the customer would
+ * watch a purchase go from "registering" to "live" in one frame. Anchoring so that the
+ * PARKED leg falls due now replays the rest at its true remaining length: the registry
+ * beat is genuinely finished (it ran before the gate), and what is left — the world, then
+ * the padlock — plays as measured.
+ */
+function resumeFromPark() {
+  const t = recall()
+  if (!t) return
+
+  const { world } = useWorld.getState()
+  const legs = LEGS[t.path]
+  if (t.leg < 0 || t.leg >= legs.length) return
+  if (world.customDomain !== t.domain) return
+  if (world.domain !== legs[t.leg][0]) return
+
+  clear()
+  walk(t.domain, t.path, Date.now() - legs[t.leg][2], t.leg)
+}
+
+/*
+ * The one edge that matters, watched at the store rather than at either button: the
+ * simulated letter (App.tsx) and the console's "Email unconfirmed" toggle write the same
+ * `set({ icann: false })`, and a third way out — a flow step, a shared link — would write
+ * it too. Subscribing here means the gate has ONE release, wherever the press happens,
+ * instead of a `resumeFromPark()` call that has to be remembered at every call site.
+ */
+useWorld.subscribe((s, prev) => {
+  if (!parked(prev.world) || s.world.icann) return
+  if (s.world.domain !== PARKED_AT) return
+  resumeFromPark()
+})
 
 /*
  * Self-starting, because there is nowhere else for it to live: the Publish panel is the

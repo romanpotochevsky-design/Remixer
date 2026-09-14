@@ -320,8 +320,8 @@ export const FLOWS: Flow[] = [
     id: 'buy-domain',
     label: { en: 'Buy a new domain', uk: 'Купити новий домен' },
     note: {
-      en: 'The longer of the two: the customer has no name of their own, so they search for one, find their first choice registered to somebody else, buy the one they settle on at the DreamHost till and watch it come up. It ends with the one thing a bought name owes that an attached one does not.',
-      uk: 'Довший із двох шляхів: власного імені немає, тож клієнт шукає його, бачить, що перше вже комусь належить, купує обране на касі DreamHost і дивиться, як воно оживає. Наприкінці — те єдине, що винен куплений домен і не винен підключений.',
+      en: 'The longer of the two: the customer has no name of their own, so they search for one, find their first choice registered to somebody else, buy the one they settle on at the DreamHost till and watch it come up. Halfway through, the one thing a bought name owes that an attached one does not — and until it is paid, nothing else moves.',
+      uk: 'Довший із двох шляхів: власного імені немає, тож клієнт шукає його, бачить, що перше вже комусь належить, купує обране на касі DreamHost і дивиться, як воно оживає. Посередині — те єдине, що винен куплений домен і не винен підключений: доки цього не зроблено, далі не рухається ніщо.',
     },
     /*
      * A paid account with nothing of its own, and a site that has never been out.
@@ -381,8 +381,28 @@ export const FLOWS: Flow[] = [
         patch: { domain: 'registering', customDomain: BUY_NAME, icann: true, cart: [] },
         view: { panel: null, surface: 'preview', publish: true }, ms: 3000,
         note: {
-          en: 'Back in the builder, and from here the whole connection is read in one place: the Publish panel. Two cards — where it has got to, and the confirmation the registrar has just posted. The letter arrives with the registration; the last step is about it.',
-          uk: 'Назад у білдер — і далі все підключення читається в одному місці, у панелі Publish. Дві картки: де воно зараз і підтвердження, яке щойно надіслав реєстратор. Лист приходить разом із реєстрацією; про нього — останній крок.',
+          en: 'Back in the builder, and from here the whole connection is read in one place: the Publish panel. Two cards — where it has got to, and the confirmation the registrar has just posted. The letter arrives with the registration, and the next step is about it.',
+          uk: 'Назад у білдер — і далі все підключення читається в одному місці, у панелі Publish. Дві картки: де воно зараз і підтвердження, яке щойно надіслав реєстратор. Лист приходить разом із реєстрацією, і наступний крок — про нього.',
+        } },
+      /*
+       * ⚠️ THIS BEAT USED TO BE LAST, AND THAT ORDER WAS THE REFUTED FACT MADE INTO A FILM.
+       * The walk played registered → travelling → padlock → published → live and only then
+       * asked for the confirmation, on the belief that a fresh registration resolves at
+       * once and is merely suspended later. A DreamHost developer, asked directly
+       * (14.09.2026): without it «вебсайт поідеї не буде працювати якщо запаблішити». So
+       * the name opens for nobody until this lands, and every beat after it was a screen
+       * being narrated over a lie. It is second now, which is also what the product does —
+       * the bought walk holds at `registering` until the flag clears
+       * (modules/domains/connect.ts, THE GATE).
+       *
+       * It keeps `awaitUser`: this is the one step in the walk that happens outside
+       * Remixer altogether, and the room should watch somebody press it.
+       */
+      { id: 'confirmed', label: { en: 'Nothing moves until the email is confirmed — one click, in their inbox', uk: 'Доки пошту не підтверджено, нічого не рухається — один клік у поштовій скриньці' },
+        patch: { icann: false }, view: { publish: true }, awaitUser: true,
+        note: {
+          en: 'Until it lands the new name opens for nobody, so the walk stops here and the site stays on its free address. The letter beside the panel is the prototype standing in for the inbox; press it and the rest of the walk runs. A name attached from the DreamHost account never sees this step — nobody registered anything, so there is nothing to confirm.',
+          uk: 'Доки він не надійде, нове ім’я ні для кого не відкривається, тож шлях спиняється тут, а сайт лишається на безкоштовній адресі. Лист поруч із панеллю — це прототип замість поштової скриньки: натисніть — і решта шляху піде далі. Ім’я, підключене з акаунта DreamHost, цього кроку не бачить: ніхто нічого не реєстрував, підтверджувати нема чого.',
         } },
       /* The beat that makes the two walks different lengths, so it is the long one here
          too. Nothing to press and nothing to promise: the card owns the wait out loud.
@@ -416,22 +436,14 @@ export const FLOWS: Flow[] = [
           en: 'The state a first-timer reads as "it’s broken": everything is right and the site was simply never put out. So the panel says which press is missing, and carries it.',
           uk: 'Стан, який новачок читає як «усе зламалося»: усе правильно, просто сайт жодного разу не публікували. Тому панель каже, якого натискання бракує, і сама його пропонує.',
         } },
-      /* Published and live — and the panel deliberately withholds its all-clear, because
-         the registrant clock is still outstanding. The subtitle is written about the CARD
-         and about that withheld all-clear rather than about the address field: which
-         address the field prints while a confirmation is owed is a live argument in
-         PublishPanel and has been answered both ways this week. */
-      { id: 'live', label: { en: 'Published — and one card is still up', uk: 'Опубліковано — і одна картка ще лишилася' },
+      /* The end of the walk, and the first beat in it where the field hands the customer
+         their own name: the free address carried the site through every state above, which
+         is why the swap here reads as an arrival rather than as a label changing. */
+      { id: 'live', label: { en: 'Published — and the site answers on their own name', uk: 'Опубліковано — і сайт відповідає за власним іменем' },
         patch: { domain: 'live', published: true, unpublished: 0 }, view: { publish: true }, awaitUser: true,
         note: {
-          en: 'Only a bought name ever gets it: the registrar has to hear back from the person who registered it, and until it does the panel holds back its all-clear — no green tag, no "anyone can visit". The card carries its own way out, and so does the letter beside it.',
-          uk: 'Її отримує лише куплене ім’я: реєстратор має почути відповідь від того, хто його зареєстрував, і доки не почує, панель тримає остаточне «все гаразд» — ні зеленої позначки, ні «доступно всім». У картки є свій вихід, і в листа поруч теж.',
-        } },
-      { id: 'confirmed', label: { en: 'Confirmed — and the panel gives its all-clear', uk: 'Підтверджено — і панель дає остаточне «все гаразд»' },
-        patch: { icann: false }, view: { publish: true }, awaitUser: true,
-        note: {
-          en: 'Padlock on, anyone can visit, and the address wears its green tag. A name attached from the DreamHost account never passes this card at all — nobody registered anything, so there is nothing to confirm.',
-          uk: 'Замок увімкнено, сайт доступний усім, а адреса отримує зелену позначку. Ім’я, підключене з акаунта DreamHost, цієї картки не бачить узагалі: ніхто нічого не реєстрував, підтверджувати нема чого.',
+          en: 'Padlock on, anyone can visit, and the address wears its green tag. Everything above this beat was served from the free address, because that was the only one that worked.',
+          uk: 'Замок увімкнено, сайт доступний усім, а адреса отримує зелену позначку. Усе, що було вище, віддавалося з безкоштовної адреси — бо працювала тільки вона.',
         } },
     ],
   },
