@@ -444,16 +444,27 @@ function resumeFromPark() {
 }
 
 /*
- * The one edge that matters, watched at the store rather than at either button: the
- * simulated letter (App.tsx) and the console's "Email unconfirmed" toggle write the same
- * `set({ icann: false })`, and a third way out — a flow step, a shared link — would write
- * it too. Subscribing here means the gate has ONE release, wherever the press happens,
- * instead of a `resumeFromPark()` call that has to be remembered at every call site.
+ * THE PARK'S ONLY WATCHER — it does the two jobs a running beat does for itself.
+ *
+ * Watched at the store rather than at either button: the simulated letter (App.tsx) and
+ * the console's "Email unconfirmed" toggle write the same `set({ icann: false })`, and a
+ * third way out — a flow step, a shared link — would write it too. One release, wherever
+ * the press happens, instead of a `resumeFromPark()` call remembered at every call site.
+ *
+ * ⚠️ AND IT ALSO STANDS DOWN WHEN THE WORLD MOVES, which is the header's second rule and
+ * which a parked walk cannot obey on its own: it has no timers left, so nothing of its own
+ * ever re-reads the store. Its ticket would simply sit in storage — and then a scenario or
+ * a flow that staged `registering` on the same name again would hand that stale note to
+ * the release below and start a real clock racing the steps somebody is presenting. A
+ * running walk already gets this for free (every tick checks, and drops the ticket if the
+ * world moved past it); the park gets it here.
  */
 useWorld.subscribe((s, prev) => {
-  if (!parked(prev.world) || s.world.icann) return
-  if (s.world.domain !== PARKED_AT) return
-  resumeFromPark()
+  if (!parked(prev.world) || parked(s.world)) return
+  const released =
+    s.world.domain === PARKED_AT && !s.world.icann && s.world.customDomain === prev.world.customDomain
+  if (released) resumeFromPark()
+  else { clear(); forget() }
 })
 
 /*

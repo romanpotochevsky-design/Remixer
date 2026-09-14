@@ -80,26 +80,36 @@ const DOMAIN_STATUS = {
  * it was the thing that was wrong: on the developer's answer (see `domainIsHome`) the
  * name does not resolve at all until the mail is confirmed.
  *
- * So a confirmation outstanding takes the dot to amber wherever it stands. One rule, not
+ * So a confirmation outstanding withdraws the two tones that claim the domain is FINISHED
+ * — green ("live") and blue ("nothing wrong, your move") — and leaves amber. One rule, not
  * a second opinion: the address beside the dot is `domainIsHome`'s decision and stays so,
- * and this says the same thing in the dot's own vocabulary — nothing about this domain is
- * done. The walk cannot produce those states any more either (modules/domains/connect.ts,
- * THE GATE; `violations` calls the rest impossible), so this is the belt to that braces:
- * a hand-staged world, or a shared `?d=live&k=true` link, still cannot show green.
+ * and this says the same thing in the dot's own vocabulary. The walk cannot produce those
+ * states any more either (modules/domains/connect.ts, THE GATE; `violations` calls the
+ * rest impossible), so this is the belt to that braces: a hand-staged world, or a shared
+ * `?d=live&k=true` link, still cannot show green.
+ *
+ * ⚠️ AND IT WITHDRAWS ONLY THOSE TWO — red survives it. Written as a leading `return
+ * 'working'` this quietly repainted `old-site` and `unreachable` amber, i.e. "in flight,
+ * nothing for you to do", over a panel showing a red card that needs them. A domain that
+ * is stuck AND owes a confirmation is still stuck; the mail is the smaller of its two
+ * problems and the panel stacks both cards in that order anyway.
  */
 function domainStatus(w: World): keyof typeof DOMAIN_STATUS | null {
-  if (registrantUnconfirmed(w)) return 'working'
-  switch (w.domain) {
-    /* both walks: the registry, the world, our records, the padlock — in flight, and
-       nothing the customer can do about any of them */
-    case 'registering': case 'propagating': case 'connecting': case 'verifying': return 'working'
-    case 'ready': return 'ready'
-    case 'old-site': case 'unreachable': return 'stuck'
-    case 'live': case 'multiple': return 'live'
-    /* staging · searching · checkout — the project still has only its free address, and
-       there is no domain to report on yet */
-    default: return null
-  }
+  const dot = ((): keyof typeof DOMAIN_STATUS | null => {
+    switch (w.domain) {
+      /* both walks: the registry, the world, our records, the padlock — in flight, and
+         nothing the customer can do about any of them */
+      case 'registering': case 'propagating': case 'connecting': case 'verifying': return 'working'
+      case 'ready': return 'ready'
+      case 'old-site': case 'unreachable': return 'stuck'
+      case 'live': case 'multiple': return 'live'
+      /* staging · searching · checkout — the project still has only its free address, and
+         there is no domain to report on yet */
+      default: return null
+    }
+  })()
+  if (registrantUnconfirmed(w) && (dot === 'live' || dot === 'ready')) return 'working'
+  return dot
 }
 
 const RAIL = [
