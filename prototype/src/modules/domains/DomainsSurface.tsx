@@ -20,8 +20,9 @@ import { useT, type Text } from '@/i18n'
 import {
   AI_SUGGESTIONS, OWNED_DOMAINS, CUSTOM_DOMAIN, TLD_PRICES, priceFor,
   exactMatch, featuredEndings, popularEndings, nameIdeas, type ResultRow,
-  closeAlternatives, takenIdeas, registrarOf, endingNotice,
+  closeAlternatives, takenIdeas, registrarOf, endingNotice, minTermYears,
 } from '@/data/domains'
+import { domainAmount, money } from '@/data/cart'
 import { ScrollArea } from '@/ui/ScrollArea'
 import {
   IconSearch, IconArrowRight, IconArrowLeft, IconGlobe, IconClose, IconSparkleAI,
@@ -220,24 +221,51 @@ function RowButton({ label, onClick }: { label: Text; onClick?: () => void }) {
  * in the narrower hero (where the struck list price joins them) it falls onto two by
  * itself, and neither case ever drops the renewal figure — the one number this project
  * will not hide.
+ *
+ * ⚠️ THE BIG FIGURE IS WHAT THE CUSTOMER IS CHARGED, WHICH IS NOT ALWAYS ONE YEAR.
+ * `.ai` cannot be registered for less than two (TLD_PRICES `minYears`), so the row used
+ * to print $89.99 — a true per-year rate, and the only screen in the chain that never
+ * named the $179.98 the customer would actually pay. The checkout sheet says
+ * "$179.98 · for 2 years" and the cart "First 2 years $179.98 total"; this is the screen
+ * where the decision is made, and the rule here is price before the cart with nothing
+ * about the bill hidden. So the figure is `domainAmount`, the SAME arithmetic those two
+ * screens use — imported rather than repeated, because recomputing it in a third place
+ * is exactly what let these screens drift apart. For the other nine endings
+ * `domainAmount(tld, 1)` returns the registration price unchanged, so there is no branch
+ * and no second code path: the big figure is always "what you pay now".
+ *
+ * The `/yr` on the renewal appears only alongside a multi-year figure, where "Renews at
+ * $89.99" would otherwise be ambiguous about the period. Nine rows keep their exact
+ * wording. The "2-year minimum" note is the data's own (`minTermNote`) and still rides
+ * the renewal line: it says WHY the term is two years, which the total cannot.
+ *
+ * The struck list price is a PROMO device and now needs a promo to exist — `.ai` renews
+ * at what it registers for, so the hero was drawing "$89.99 $89.99", one struck, one not.
  */
 function PriceStack({
-  register, renew, strike, note, inline,
-}: { register: number; renew: number; strike?: boolean; note?: Text; inline?: boolean }) {
+  tld, strike, inline,
+}: { tld: string; strike?: boolean; inline?: boolean }) {
   const { t } = useT()
+  const price = priceFor(tld) ?? priceFor('.com')!
+  /* The whole registration, over the shortest term the registry will sell. */
+  const total = domainAmount(price.tld, 1)
+  const multiYear = minTermYears(price.tld) > 1
+  const renews = multiYear
+    ? t({ en: `Renews at ${money(price.renew)}/yr`, uk: `Продовження ${money(price.renew)}/рік` })
+    : t({ en: `Renews at ${money(price.renew)}`, uk: `Продовження ${money(price.renew)}` })
   return (
     <div className={inline
       ? 'flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1'
       : 'flex flex-col items-end gap-1.5'}>
       <p className="flex items-baseline gap-1 leading-none">
-        {strike && (
-          <span className="font-display text-[15px] text-[#ffffff7a] line-through">${renew.toFixed(2)}</span>
+        {strike && price.register !== price.renew && (
+          <span className="font-display text-[15px] text-[#ffffff7a] line-through">{money(price.renew)}</span>
         )}
-        <span className="font-display text-[18px] font-medium text-[#f5f5fa]">${register.toFixed(2)}</span>
+        <span className="font-display text-[18px] font-medium text-[#f5f5fa]">{money(total)}</span>
       </p>
       <p className="whitespace-nowrap font-display text-[12px] font-medium leading-none text-[#ffffff7a]">
-        {t({ en: `Renews at $${renew.toFixed(2)}`, uk: `Продовження $${renew.toFixed(2)}` })}
-        {note && ` · ${t(note)}`}
+        {renews}
+        {price.note && ` · ${t(price.note)}`}
       </p>
     </div>
   )
@@ -257,7 +285,6 @@ function PriceStack({
  */
 function BestMatchCard({ row, onBuy, tight = false }: { row: ResultRow; onBuy: () => void; tight?: boolean }) {
   const { t } = useT()
-  const price = priceFor(row.tld) ?? priceFor('.com')!
   const buy = (
     <button
       onClick={onBuy}
@@ -293,7 +320,7 @@ function BestMatchCard({ row, onBuy, tight = false }: { row: ResultRow; onBuy: (
           <p className="min-w-0 truncate text-[22px] font-medium leading-normal text-white">{row.domain}</p>
           <div className="flex min-w-0 items-center justify-between gap-4">
             {/* the promo says itself: list price struck, first year large */}
-            <PriceStack register={price.register} renew={price.renew} note={price.note} strike inline />
+            <PriceStack tld={row.tld} strike inline />
             {buy}
           </div>
         </div>
@@ -301,7 +328,7 @@ function BestMatchCard({ row, onBuy, tight = false }: { row: ResultRow; onBuy: (
         <div className="flex h-[88px] items-center justify-between gap-6 rounded-[14px] border border-[#ffffff0a] bg-[var(--gray-850)] px-6 py-4">
           <p className="min-w-0 flex-1 truncate text-[22px] font-medium leading-normal text-white">{row.domain}</p>
           <div className="flex h-10 flex-none items-center gap-8">
-            <PriceStack register={price.register} renew={price.renew} note={price.note} strike />
+            <PriceStack tld={row.tld} strike />
             {buy}
           </div>
         </div>
@@ -321,7 +348,6 @@ function BestMatchCard({ row, onBuy, tight = false }: { row: ResultRow; onBuy: (
 function DomainRow({
   row, onBuy, size = 16, tight = false,
 }: { row: ResultRow; onBuy: () => void; size?: 16 | 17; tight?: boolean }) {
-  const price = priceFor(row.tld) ?? priceFor('.com')!
   const buy = <RowButton label={{ en: 'Buy', uk: 'Купити' }} onClick={onBuy} />
   /* TIGHT: name on its own line at full width, both prices under it, verb still on the
      right — and the row keeps its drawn 72px, because the price line is shorter than the
@@ -334,7 +360,7 @@ function DomainRow({
           <p className="min-w-0 truncate font-medium leading-normal text-white" style={{ fontSize: size }}>
             {row.domain}
           </p>
-          <PriceStack register={price.register} renew={price.renew} note={price.note} inline />
+          <PriceStack tld={row.tld} inline />
         </div>
         {buy}
       </div>
@@ -349,7 +375,7 @@ function DomainRow({
         {row.domain}
       </p>
       <div className="flex h-10 flex-none items-center gap-8">
-        <PriceStack register={price.register} renew={price.renew} note={price.note} />
+        <PriceStack tld={row.tld} />
         {buy}
       </div>
     </div>

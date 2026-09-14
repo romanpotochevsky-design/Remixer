@@ -499,8 +499,17 @@ function takePendingConnect(): string | null {
  * three moments in a trip, and every one of them is either before this page is on screen
  * (the hand-off) or is accompanied by a world write that re-renders it anyway (`writeCart`
  * dropping the plan, `back`, the submit effect).
+ *
+ * EXPORTED FOR THE BUILDER'S OWN HALF OF THE SAME TRIP (14.09.2026). The Publish panel
+ * draws the card for a customer who reached the till and left without paying, and it read
+ * the cart to find out which name was waiting — so it could only ever see a PURCHASE.
+ * The connect-what-you-own trip puts no line in the cart at all (that is the whole reason
+ * this key exists), so that customer came back to a panel offering "Buy or connect a
+ * domain" over a loaded cart they could not see and had no route back into. The panel
+ * needs the name; it must not spend it — the till spends it once, at Submit Order — so
+ * what it gets is this read and not `takePendingConnect`.
  */
-function peekPendingConnect(): string | null {
+export function peekPendingConnect(): string | null {
   return pendingConnect
 }
 

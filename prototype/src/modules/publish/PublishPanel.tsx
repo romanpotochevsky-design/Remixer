@@ -41,6 +41,7 @@ import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
 import { IconPlus, IconClose } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
+import { peekPendingConnect } from '@/modules/panel/PanelCart'
 import { cardInBody, cardInBodyFade, popover, popoverContent } from '@/ui/motion'
 
 /*
@@ -371,8 +372,35 @@ export function PublishPanel() {
   const oldSite = world.domain === 'old-site'
   const confirmEmail = attached && world.icann
   const settled = liveish && !world.icann
-  /** A name left standing at the till — see the card for how this maps to board state ⑦. */
-  const cartDomain = world.cart.find((l) => l.kind === 'domreg')?.domain
+  /*
+   * A NAME LEFT STANDING AT THE TILL — see the card for how this maps to board state ⑦.
+   *
+   * TWO TRIPS REACH CHECKOUT AND ONLY ONE OF THEM PUTS THE NAME IN THE CART. Buying one
+   * leaves a registration line; connecting one the customer ALREADY OWNS is free, so that
+   * order is the plan and nothing else, and the name rides across checkout as the intent
+   * parked in `PanelCart` (its PENDING_KEY note). This read was the cart alone, so the
+   * connect-owned customer who walked out came back to the dashed "Buy or connect a
+   * domain" card as if the trip had never happened, over a cart they could not see and
+   * had no way back into (14.09.2026 — the visible half of that night's blocker).
+   *
+   * ⚠️ PEEK, NEVER TAKE. The intent is spent exactly once, by the till at Submit Order.
+   * A panel that merely renders must not consume it, or this card would destroy the
+   * connection it is announcing. Reading it during render is safe for the reason given
+   * where it is defined: it only ever moves alongside a world write, which re-renders
+   * this panel anyway.
+   *
+   * ⚠️ AND THE FALLBACK STAYS NARROW. The parked name counts only while the PLAN is still
+   * in the cart, which is exactly the abandoned trip and exactly the shape `PanelCart`'s
+   * own re-entry check keeps alive (a checkout with no plan line drops the intent as
+   * money waiting to be spent). A cart holding a plan for some other reason has nothing
+   * parked, so there is no name, and this card does not appear.
+   */
+  const cartRegistration = world.cart.find((l) => l.kind === 'domreg')?.domain
+  const parkedConnect =
+    !cartRegistration && world.cart.some((l) => l.kind === 'remixer')
+      ? peekPendingConnect() ?? undefined
+      : undefined
+  const cartDomain = cartRegistration ?? parkedConnect
   const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
   /**
    * Does the domain answer WITH THE SITE? That is which ADDRESS the field prints — and
@@ -797,14 +825,31 @@ export function PublishPanel() {
               {waitingOnCheckout && (
                 <StatusCard
                   tone="amber"
-                  title={t({
-                    en: `${cartDomain} is waiting in your cart`,
-                    uk: `${cartDomain} чекає у вашому кошику`,
-                  })}
-                  sub={t({
-                    en: 'It connects on its own once checkout is done.',
-                    uk: 'Він підключиться сам, щойно ви завершите оплату.',
-                  })}
+                  /* Two sentences for the two trips, because the cart holds a different
+                     thing in each and the card is read WITH the cart open a press later.
+                     A bought name really is sitting there as a line. An owned one is not
+                     — it is free, the cart shows the plan alone — so telling that
+                     customer their domain is in the cart would be contradicted by the
+                     very screen the button opens. Same card, same verb, same route back;
+                     only the claim is made true. */
+                  title={parkedConnect
+                    ? t({
+                        en: `${cartDomain} connects as soon as you check out`,
+                        uk: `${cartDomain} підключиться, щойно ви завершите оплату`,
+                      })
+                    : t({
+                        en: `${cartDomain} is waiting in your cart`,
+                        uk: `${cartDomain} чекає у вашому кошику`,
+                      })}
+                  sub={parkedConnect
+                    ? t({
+                        en: 'Your Remixer plan is waiting in your cart.',
+                        uk: 'Ваш план Remixer чекає у вашому кошику.',
+                      })
+                    : t({
+                        en: 'It connects on its own once checkout is done.',
+                        uk: 'Він підключиться сам, щойно ви завершите оплату.',
+                      })}
                   action={{
                     label: t({ en: 'Finish checkout', uk: 'Завершити оплату' }),
                     onClick: () => openPanel('cart'),
