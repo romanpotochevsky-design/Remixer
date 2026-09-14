@@ -22,8 +22,6 @@ export function ScenarioPanel() {
   const [open, setOpen] = useState(false)
   const [presenter, setPresenter] = useState(false)
   const [copied, setCopied] = useState<'ok' | 'fail' | false>(false)
-  /** Reset asks first — see the footer. */
-  const [armed, setArmed] = useState(false)
   const { world, preset, set, reset } = useWorld()
   const { t } = useT()
 
@@ -35,15 +33,6 @@ export function ScenarioPanel() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-
-  /* An armed Reset disarms itself. Otherwise the second half of the confirmation waits
-     around indefinitely, and the click that lands on it ten minutes later is the very
-     accident the arming exists to prevent. */
-  useEffect(() => {
-    if (!armed) return
-    const id = window.setTimeout(() => setArmed(false), 3000)
-    return () => window.clearTimeout(id)
-  }, [armed])
 
   const problems = violations(world)
 
@@ -330,22 +319,22 @@ export function ScenarioPanel() {
                 {copied === 'ok' ? 'Link copied' : copied === 'fail' ? 'Copy it from the address bar' : 'Copy link to this state'}
               </button>
               {/*
-                * RESET ASKS FIRST. It throws away whatever was staged, there is no undo,
-                * and it sits one button away from the one people press all the time — in
-                * front of a room, a mis-click used to blank the demo with no way back.
-                * Two clicks, and the armed state says what the second one will do; it
-                * disarms itself after three seconds (see the effect above).
+                * ⚠️ RESET IS ONE PRESS (14.09.2026). It used to ask first — arm on the first
+                * click, fire on the second, disarm itself after three seconds — because a
+                * mis-click in front of a room blanks the demo with no way back. The cost was
+                * worse than the accident: the designer pressed it once, went to look at the
+                * Publish panel, and found the world he thought he had thrown away still
+                * standing ("я нажимаю ресет, потом иду в окно публиша, у меня там уже типа
+                * привязывается домен"), because the arming had quietly timed out behind him.
+                * A console control that sometimes does nothing is worse than one that always
+                * does what it says; re-staging a world is one click away in this same panel.
                 */}
               <button
-                onClick={() => { if (armed) { reset(); setArmed(false) } else setArmed(true) }}
-                title={armed ? 'Click again to throw the staged state away' : 'Back to the default demo world'}
-                className={
-                  armed
-                    ? 'rounded-md border border-[#A33] px-3 py-2 text-[12.5px] text-[#A33] transition-colors duration-150'
-                    : 'rounded-md px-3 py-2 text-[12.5px] text-neutral-500 transition-colors duration-150 hover:bg-black/5'
-                }
+                onClick={() => reset()}
+                title="Back to the default demo world"
+                className="rounded-md px-3 py-2 text-[12.5px] text-neutral-500 transition-colors duration-150 hover:bg-black/5"
               >
-                {armed ? 'Reset — sure?' : 'Reset'}
+                Reset
               </button>
             </footer>
           </motion.aside>

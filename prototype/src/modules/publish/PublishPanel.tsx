@@ -163,6 +163,26 @@ export const domainIsHome = (w: World) =>
   (w.domain === 'live' || w.domain === 'multiple') && !w.icann
 
 /**
+ * IS THERE ANYTHING TO PUBLISH RIGHT NOW? — read by this panel's footer button AND by the
+ * topbar's (App.tsx), because they are the same press and must not disagree.
+ *
+ * ⚠️ The topbar's used to be blue whenever a site existed, so a live site with nothing
+ * pending still invited the press (designer, 14.09.2026: "когда нет изменений для
+ * паблишинга, то кнопка серая… когда есть изменения то синяя и есть индикатор"). Blue is
+ * this product's colour for an action that will do something; there it did nothing.
+ *
+ * Three ways there IS something:
+ *  · the site has never been published — the whole site is the pending thing, which is why
+ *    a freshly generated page still offers a live blue Publish;
+ *  · edits are queued on a site that is already out there;
+ *  · `ready` — the domain is set up and the site has never stood on it.
+ * And one way there is not, even with all of the above: `old-site`, where publishing is
+ * precisely what failed and the recovery lives inside the card.
+ */
+export const canPublish = (w: World) =>
+  w.domain !== 'old-site' && (w.domain === 'ready' || w.unpublished > 0 || !w.published)
+
+/**
  * A hostname never breaks mid-word.
  *
  * `fit-ration.remixer.ai` was wrapping as `fit-` / `ration.remixer.ai`: a hyphen is a
@@ -512,25 +532,13 @@ export function PublishPanel() {
   const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
   /** Is a connection state showing? The email card stacks under it when so. */
   const stageCard = unreachable || connecting || registering || propagating || padlock || readyCard || oldSite
-  /**
-   * …and while one is up, THIS PANEL IS THE ONLY DOOR IN THE SHELL (D3, 14.09.2026).
-   *
-   * The topbar chip routes every one of these states here rather than to the domains
-   * window (App.tsx: "the chip opens that panel, not the domains window"), and the dashed
-   * "Connect your own domain" card below is gone the moment a domain is attached — so
-   * from `ready`, `old-site` or `propagating` there was no way back to the dashboard at
-   * all: press the chip, get this panel, close it, press again, get this panel.
-   *
-   * The way out is a quiet one, on purpose. Every non-terminal state already carries its
-   * own verb inside its card, and a second button of equal weight would compete with it;
-   * this is a text row under the card, in the kit's own small text button (`Text / Small
-   * / Dark`, 32px, 56% white, no fill and no rim). It is NOT the shared footer button
-   * that was removed — it belongs to the card above it, it appears only while that card
-   * is up, and a state that needs nothing from the customer still asks for nothing.
+  /*
+   * ⚠️ AND WHILE ONE IS UP, THIS PANEL HAS NO DOOR OF ITS OWN — on purpose (designer,
+   * 14.09.2026). A quiet text row under the card used to offer "See all your domains" /
+   * "Use a different domain"; he threw it out on sight. The topbar chip routes these
+   * states here rather than to the domains window (App.tsx), so the way to the dashboard
+   * is the topbar, not a second door inside the one window that is doing the work.
    */
-  /* `readyCard`, not `ready`: while the mail is owed the hold-up is not the NAME — it is
-     one click in an inbox — so offering a different domain would be the wrong escape. */
-  const stalled = readyCard || oldSite || unreachable
 
   /*
    * Our own KB, on publishing to a domain that already serves something: the target "must
@@ -603,7 +611,7 @@ export function PublishPanel() {
      has never been on it, so there is always something to do here — reading it through
      the edit count could leave the one state that exists to be published with no way to
      publish. */
-  const publishes = !oldSite && (ready || world.unpublished > 0 || !world.published)
+  const publishes = canPublish(world)
   /*
    * …AND FOR ONE BEAT AFTER A PRESS IT SAYS WHAT HAPPENED (see PUBLISH_SETTLE_MS).
    * The slot is the same one the press was made in, so the answer arrives under the
@@ -622,8 +630,15 @@ export function PublishPanel() {
   const publishesChanges = publishes && !ready && world.published
   const primary = settleLabel
     ? { en: 'Published', uk: 'Опубліковано' }
+    /* ⚠️ NOTHING TO PUBLISH = A DIMMED, INACTIVE `Publish` (designer, 14.09.2026: "что за
+       Keep editing? тут должна быть серая неактивная кнопка Publish"). The slot keeps the
+       panel's own verb in every state and says "not yet" the way the whole product says it
+       — the same dimmed pair the topbar's Publish and Home's Build wear when they are not
+       armed. "Keep editing" was ours: a second verb in the one slot the panel is named
+       after, which made the footer read as an exit instead of the action. Do not bring it
+       back; the ways out are Escape, a click outside, and the topbar button. */
     : !publishes
-      ? { en: 'Keep editing', uk: 'Далі редагувати' }
+      ? { en: 'Publish', uk: 'Опублікувати' }
       /* ⚠️ THE COUNT IS NOT IN THE LABEL (Figma 28071:53189). The board puts it on its
          own line at the far left of this bar and leaves the button a plain verb phrase —
          see the bar below. A button that carries its own subtotal has to be re-read every
@@ -1069,27 +1084,13 @@ export function PublishPanel() {
                   (`SimulatedEmail`, App.tsx), which is where an email belongs. Do not put
                   a confirm control back inside this panel. */}
 
-              {/* ------------------------------------- the way back to the domains window
-                  See `stalled` upstairs for why this is here and why it is quiet.
-                  Two labels, because the honest offer is not the same in both halves:
-                   · stalled — `ready`, `old-site`, `unreachable`. Nothing is moving and
-                     the hold-up is this NAME (at `old-site` a website they have to clear
-                     first), so the escape is the one a person actually wants: another one.
-                   · in flight — `connecting`, `registering`, `propagating`, `verifying`.
-                     Offering a different domain there would read as "abandon this", over a
-                     card that just said there is nothing to do, and on the bought path over
-                     a name they have already paid for. So it is plain navigation.
-                  `openDomains` closes this panel on its way (state/ui.ts) — one write. */}
-              {(stageCard || confirmEmail) && (
-                <button
-                  onClick={() => openDomains('home')}
-                  className="mt-2 flex h-8 items-center rounded-[8px] px-0.5 text-[13px] font-semibold leading-[1.4] text-[var(--white-560)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
-                >
-                  {stalled
-                    ? t({ en: 'Use a different domain', uk: 'Використати інший домен' })
-                    : t({ en: 'See all your domains', uk: 'Переглянути всі ваші домени' })}
-                </button>
-              )}
+              {/* ⚠️ NO LINK BACK TO THE DOMAINS WINDOW. A quiet "See all your domains" /
+                  "Use a different domain" sat here and the designer threw it out on sight
+                  (14.09.2026: "что это за говно?"). It was ours, on no board, and it broke
+                  his own standing rule for this window — one link, the address at the top.
+                  The domains window is a click away in the topbar; a second door inside the
+                  panel offered to leave in the middle of the one thing the panel is for.
+                  Do not put it back. */}
 
               {settled && (
                 <p className="mt-[19px] px-0.5 text-[13px] leading-[1.4] text-[var(--white-400)]">
@@ -1209,18 +1210,17 @@ export function PublishPanel() {
             )}
             <span className="flex-1" />
             <button
-              onClick={() => {
-                if (publishes) return publishNow()
-                if (settleLabel) return
-                togglePublish(false)
-              }}
+              onClick={() => { if (publishes) publishNow() }}
+              disabled={!publishes && !settleLabel}
               aria-disabled={settleLabel || undefined}
               className={
                 publishes
                   ? 'h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]'
                   : settleLabel
                     ? 'h-10 cursor-default rounded-[10px] border border-[var(--white-100)] px-5 text-[14px] font-semibold text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std'
-                    : 'h-10 rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white'
+                    /* the product's one "not yet": `--white-100` plate, 24%-white label —
+                       the same pair the topbar's Publish and Home's Build wear. */
+                    : 'h-10 cursor-not-allowed rounded-[10px] bg-[var(--white-100)] px-5 text-[14px] font-semibold text-[#ffffff3d]'
               }
             >
               {t(primary)}

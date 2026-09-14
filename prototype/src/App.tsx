@@ -19,7 +19,7 @@ import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { FlowRunner } from '@/devtools/FlowPlayer'
 /* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading
    of "does this domain open the site", and the chip must not grow a second one. */
-import { PublishPanel, domainIsHome } from '@/modules/publish/PublishPanel'
+import { PublishPanel, domainIsHome, canPublish } from '@/modules/publish/PublishPanel'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
@@ -755,6 +755,17 @@ export default function App() {
               * Publish through the whole brief and the whole build invites the one press
               * that cannot work, right where the flow is trying to teach a sequence.
               *
+              * ⚠️ …AND IT IS BLUE ONLY WHILE THERE IS SOMETHING TO PUBLISH (designer,
+              * 14.09.2026: "когда нет изменений для паблишинга, то кнопка серая… когда
+              * есть изменения то синяя и есть индикатор"). A live site with nothing queued
+              * used to carry the same blue as one with three edits waiting — the product's
+              * colour for "this will do something", on a press that would do nothing. The
+              * test is `canPublish`, the panel's own, so the two buttons cannot disagree.
+              *
+              * It still OPENS when it is grey, and only the empty project disables it: this
+              * button is the door to the window that carries the address and the domain, and
+              * the grey says "nothing pending", not "nothing here".
+              *
               * Greyed with the same pair the Home page's Build uses when it is not armed
               * (`--white-100` plate, 24%-white label), so "not yet" looks the same
               * everywhere in the product.
@@ -768,9 +779,11 @@ export default function App() {
                   : undefined
               }
               className={`h-9 rounded-[10px] px-4 text-[13px] font-semibold leading-[1.4] transition-colors duration-[var(--dur-fast)] ease-std ${
-                world.project === 'built'
-                  ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
-                  : 'cursor-not-allowed bg-[var(--white-100)] text-[#ffffff3d]'
+                world.project !== 'built'
+                  ? 'cursor-not-allowed bg-[var(--white-100)] text-[#ffffff3d]'
+                  : canPublish(world)
+                    ? 'bg-[var(--action)] text-white hover:bg-[var(--action-hover)]'
+                    : 'bg-[var(--white-100)] text-[#ffffff3d] hover:bg-[var(--white-200)]'
               }`}
             >
               {t(publishLabel)}
