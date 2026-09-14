@@ -14,6 +14,9 @@
 import { create } from 'zustand'
 import type { World, Message } from './world'
 import { useWorld, EMPTY_BRIEF } from './world'
+import type { DomainModalKind, DomainScreen, PanelPage, Surface } from './ui'
+import { useUI } from './ui'
+import { termYears, tldOf } from '../data/cart'
 import type { Text } from '../i18n'
 import { BRIEF_INTRO, BRIEF_STATUS, briefAck, briefDone, type BriefAnswers } from '../modules/chat/brief'
 
@@ -36,11 +39,52 @@ import { BRIEF_INTRO, BRIEF_STATUS, briefAck, briefDone, type BriefAnswers } fro
  *    mismatch. No invented price, no invented duration, and none of the jargon the
  *    product itself bans from primary paths (DNS, nameserver, records, certificate).
  */
+/**
+ * WHERE THE CAMERA POINTS for a step — the half of "what is on screen" the world does
+ * not carry.
+ *
+ * A flow used to be able to move the WORLD only (`useWorld.set`), and navigation lives in
+ * a different store on purpose (state/ui.ts: the world is product truth, this is merely
+ * where the camera points). So a step whose subtitle read "The Domains screen — their own
+ * names on the left" played with the site preview still filling the canvas, and the room
+ * read a description of a screen nobody could see (14.09.2026).
+ *
+ * The fields are the ui store's own names rather than invented place-words, so a step is
+ * greppable against the actions the product itself calls. Each is optional and each is
+ * applied ONLY when present: a step that says nothing about the camera leaves it exactly
+ * where the step before put it, which is what makes a five-beat walk through one screen
+ * name that screen once.
+ *
+ * ⚠️ IT SAYS WHAT THE STEP NEEDS, NOT WHAT THE PRODUCT ALREADY DOES. Several surfaces open
+ * themselves off the world — the canvas collapses through a brief and a build and opens on
+ * the page it is a preview of (App.tsx), the connect clock raises the Publish panel
+ * (modules/domains/connect.ts) — and a flow that re-stated those would be a second opinion
+ * about the same thing. What a flow has to add is only what nobody else does: a flow patches
+ * the domain axis straight, so nothing is calling the clock, and nothing opens the panel the
+ * next four subtitles describe.
+ */
+export interface FlowView {
+  /** Which module fills the canvas. `'domains'` is implied by `domainScreen`. */
+  surface?: Surface
+  /** Which screen inside the domains window. */
+  domainScreen?: DomainScreen
+  /** The name that screen — or the sheet below — is acting on. */
+  domain?: string
+  /** The checkout sheet over the whole app; `null` takes it down. */
+  modal?: DomainModalKind | null
+  /** A page outside Remixer over the whole window; `null` comes back. */
+  panel?: PanelPage | null
+  /** The Publish panel over the builder. */
+  publish?: boolean
+}
+
 export interface FlowStep {
   id: string
   /** Narratable: what is happening on screen right now, in plain product language. */
   label: Text
   patch?: Partial<World>
+  /** Which screen this beat needs open. See FlowView — absent means "leave it alone". */
+  view?: FlowView
   /** Dwell before auto-advancing, in ms at speed 1. */
   ms?: number
   /** Stop here until the user actually does something. */
@@ -55,6 +99,16 @@ export interface Flow {
   /** The one-sentence description in the flow picker — what this flow shows, for a
    *  reader who has never seen the prototype. Not the argument for why we built it. */
   note: Text
+  /**
+   * Set when the walk behind this flow is deliberately unfinished. Drawn ON the row,
+   * before anybody clicks: the console can afford to disappoint a designer who knows
+   * what is half-built, but not a product owner who does not.
+   *
+   * The same field, the same words and the same dashed treatment as `Preset.tag` in
+   * state/scenarios.ts — the two lists sit one above the other in one panel, and two
+   * phrasings for one status would read as two tools stapled together.
+   */
+  tag?: Text
   /** World state the flow begins from. */
   setup: Partial<World>
   steps: FlowStep[]
@@ -90,6 +144,30 @@ const THIN_DONE: Message = { id: 6, who: 'ai', text: briefDone(THIN_ANSWERS) }
 const THIN_BUILDING = [THIN_PROMPT, THIN_ASK, THIN_CARD, THIN_ACK, THIN_BUILD]
 const THIN_BRIEF_READY = { status: 'ready' as const, step: 3, answers: THIN_ANSWERS }
 
+/*
+ * THE THREE NAMES THE DOMAIN WALKS USE, AND WHY EACH IS THE ONE IT IS.
+ *
+ * Every one of them comes out of data/domains.ts rather than out of a sentence in here,
+ * because that file is where the answers are decided: which names are already registered
+ * and by whom (`TAKEN_DOMAINS`), which are kept buyable whatever availability rule lands
+ * next (`DEMO_NAMES`), and which endings can be priced at all (`TLD_PRICES` — ten verified,
+ * and an eleventh would be an invented number under a real name). Pick a name this file
+ * likes and the screens do the rest; pick one it does not and the walk plays against a
+ * screen that disagrees with the subtitle.
+ */
+/** The attach walk's name: the first row of the DreamHost inventory the dashboard lists. */
+const DH_OWNED = 'fit-ration.com'
+/** The buy walk's first try. Registered — one of the handful the data answers "taken" for,
+ *  and a plain one-word `.com` is the try every room recognises. */
+const BUY_TAKEN = 'coffee.com'
+/** …and the name they settle on. In `DEMO_NAMES`, so it stays buyable, and its ending is
+ *  one of the ten with a verified first-year AND renewal figure — which is what lets the
+ *  cards below quote both without this file ever naming a number. */
+const BUY_NAME = 'emberandoak.com'
+/** The iteration-2 walk's name: registered, and registered at the company that walk is
+ *  named after — so the taken card, the records screen and the topbar chip agree. */
+const EXTERNAL_NAME = 'trulieve.com'
+
 export const FLOWS: Flow[] = [
   {
     id: 'thin-prompt',
@@ -98,7 +176,11 @@ export const FLOWS: Flow[] = [
       en: 'Someone types "Build me a website." and nothing is built: Remixer asks four questions, writes a build plan from the answers and waits for Start Building. No site preview until the build begins.',
       uk: 'Людина пише «Build me a website.», і нічого не будується: Remixer ставить чотири запитання, складає з відповідей план збірки й чекає на Start Building. Прев’ю сайту немає, доки не почнеться збірка.',
     },
-    setup: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], brief: EMPTY_BRIEF, domain: 'staging', inventory: 'none', unpublished: 0 },
+    /* A setup is a PATCH over whatever the last flow left behind, not a fresh world, so the
+       axes another flow moves have to be named here even when they are the default —
+       `published`, `icann` and the cart all belong to walks below this one, and an empty
+       project inheriting any of them is a contradiction the console prints in red. */
+    setup: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], brief: EMPTY_BRIEF, domain: 'staging', inventory: 'none', unpublished: 0, published: false, icann: false, cart: [] },
     steps: [
       { id: 'typed', label: { en: '"Build me a website." is sent — Remixer thinks', uk: 'Надіслано «Build me a website.» — Remixer думає' },
         patch: { sent: [THIN_PROMPT], chat: 'working', brief: EMPTY_BRIEF }, ms: 5200,
@@ -170,10 +252,14 @@ export const FLOWS: Flow[] = [
   },
   /*
    * ITERATION 1 SHIPS TWO DOMAIN PATHS — attach a name already in the DreamHost account,
-   * and buy a new one — so the finished one leads. The third (a name held at another
-   * company) is iteration 2 and sits at the bottom of the list, marked in the first words
-   * of its own note — the console renders a flow as label + note and has no "coming
-   * later" affordance of its own, so the note is the only place this file can say it.
+   * and buy a new one — so the two of them run together, in that order, ahead of
+   * everything else. They are one product promise in two lengths: attaching is ours to
+   * write and takes one wait, buying has to be registered and then wait for the world, so
+   * it is twice the walk (modules/domains/connect.ts). Showing only the short one would
+   * teach the room a speed the bought path cannot keep.
+   *
+   * The third (a name held at another company) is iteration 2, sits at the bottom of the
+   * list and carries `tag` — the console draws that on the row, before the click.
    */
   {
     id: 'connect-dreamhost',
@@ -186,16 +272,22 @@ export const FLOWS: Flow[] = [
        nobody ever published (world.violations), and without it the console showed the
        room a red contradiction under "On screen now" at the end of the flow. The site
        here is one that has been out on its free address and is now getting its own name. */
-    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'staging', unpublished: 0, published: true },
+    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'staging', customDomain: DH_OWNED, icann: false, unpublished: 0, published: true, cart: [] },
     steps: [
-      { id: 'open', label: { en: 'The Domains screen — their own names on the left, names for sale on the right', uk: 'Екран Domains — ліворуч власні імена, праворуч імена на продаж' }, patch: { domain: 'searching' }, awaitUser: true,
+      { id: 'open', label: { en: 'The Domains screen — their own names on the left, names for sale on the right', uk: 'Екран Domains — ліворуч власні імена, праворуч імена на продаж' },
+        patch: { domain: 'searching' }, view: { surface: 'domains', domainScreen: 'home' }, awaitUser: true,
         note: { en: 'Opened from the Publish panel, "Buy or connect a domain". A name they already own carries Connect and no price — attaching it costs nothing.', uk: 'Відкривається з панелі Publish — «Buy or connect a domain». У власного імені кнопка Connect і жодної ціни: підключення нічого не коштує.' } },
-      { id: 'pick', label: { en: 'A name from their own account is chosen', uk: 'Обрано ім’я з власного акаунта' }, ms: 700,
+      /* The sheet this opens is the one the Connect button above opens, on the name the
+         board's own list leads with — so a presenter who presses it for real and a
+         presenter who presses Continue are looking at the same screen. */
+      { id: 'pick', label: { en: 'A name from their own account is chosen', uk: 'Обрано ім’я з власного акаунта' },
+        view: { modal: 'connect-owned', domain: DH_OWNED }, ms: 2800,
         note: { en: 'The confirmation says it plainly: it is already in the DreamHost account, so there is nothing to change anywhere else', uk: 'Підтвердження каже прямо: ім’я вже в акаунті DreamHost, тож більше ніде нічого міняти не треба' } },
-      { id: 'connect', label: { en: 'Connecting — Remixer sets it up on its own side', uk: 'Підключення — Remixer усе налаштовує на своєму боці' }, patch: { domain: 'connecting' }, ms: 1600,
+      { id: 'connect', label: { en: 'Connecting — Remixer sets it up on its own side', uk: 'Підключення — Remixer усе налаштовує на своєму боці' },
+        patch: { domain: 'connecting' }, view: { surface: 'preview', modal: null, publish: true }, ms: 2600,
         note: { en: 'Nothing is asked of the customer, and the site stays reachable on its free address throughout. The dot beside the address turns amber.', uk: 'Від клієнта нічого не потрібно, і сайт увесь цей час доступний за безкоштовною адресою. Крапка біля адреси стає бурштиновою.' } },
-      { id: 'ssl', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 1800,
-        note: { en: 'The last wait, and it can only begin once the address already answers here', uk: 'Останнє очікування, і воно починається лише тоді, коли адреса вже відповідає тут' } },
+      { id: 'ssl', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2200,
+        note: { en: 'The last wait, and it can only begin once the address answers here. Nothing is asked of the customer.', uk: 'Останнє очікування, і воно починається лише тоді, коли адреса вже відповідає тут. Від клієнта нічого не потрібно.' } },
       { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 900,
         note: { en: 'The topbar now shows their own name with a green dot, and the panel says the padlock is on and anyone can visit', uk: 'У верхній панелі тепер їхнє власне ім’я із зеленою крапкою, а панель каже, що замок увімкнено і сайт доступний усім' } },
       { id: 'done', label: { en: 'Done — one screen, nothing to paste, no second tab', uk: 'Готово — один екран, нічого вставляти, жодної другої вкладки' }, awaitUser: true,
@@ -206,22 +298,136 @@ export const FLOWS: Flow[] = [
     ],
   },
   {
+    id: 'buy-domain',
+    label: { en: 'Buy a new domain', uk: 'Купити новий домен' },
+    note: {
+      en: 'The longer of the two: the customer has no name of their own, so they search for one, find their first choice registered to somebody else, buy the one they settle on at the DreamHost till and watch it come up. It ends with the one thing a bought name owes that an attached one does not.',
+      uk: 'Довший із двох шляхів: власного імені немає, тож клієнт шукає його, бачить, що перше вже комусь належить, купує обране на касі DreamHost і дивиться, як воно піднімається. Наприкінці — те єдине, що винен куплений домен і не винен підключений.',
+    },
+    /*
+     * A paid account with nothing of its own, and a site that has never been out.
+     *
+     *  · `inventory: 'none'` — with no DreamHost names in the account the dashboard has no
+     *    left-hand column at all, so the whole screen is the shop. That is the situation
+     *    this walk is about; the other one has its own flow directly above.
+     *  · `account: 'paid'` — this walk is about the DOMAIN. A trial account would grow the
+     *    plan chooser inside the sheet and put a second line on the order, which is the
+     *    subject of "Trial expires → buying a plan" below.
+     *  · `published: false` — and it is what makes the end of this walk worth watching: a
+     *    bought name that comes up in front of a site nobody has published lands in
+     *    `ready`, the state a novice reads as "it's broken" (docs/features/domains/
+     *    failures.md №8). Publishing is the last press of the flow.
+     */
+    setup: { account: 'paid', billing: 'yearly', credits: 1000, project: 'built', chat: 'long', inventory: 'none', domain: 'staging', customDomain: BUY_NAME, icann: false, unpublished: 0, published: false, cart: [] },
+    steps: [
+      { id: 'open', label: { en: 'The Domains screen — nothing of their own here, so the whole screen is the shop', uk: 'Екран Domains — власного тут нічого, тож увесь екран — це вітрина' },
+        patch: { domain: 'searching' }, view: { surface: 'domains', domainScreen: 'home' }, awaitUser: true,
+        note: {
+          en: 'Opened from the Publish panel, "Buy or connect a domain". The ideas are taken from the site itself, and every row carries both figures — what the first year costs and what it renews at.',
+          uk: 'Відкривається з панелі Publish — «Buy or connect a domain». Ідеї беруться із самого сайту, і в кожному рядку обидві суми: скільки коштує перший рік і скільки — продовження.',
+        } },
+      { id: 'taken', label: { en: 'The first name they try is already registered', uk: 'Перше ім’я, яке вони пробують, уже зареєстроване' },
+        view: { domainScreen: 'results', domain: BUY_TAKEN }, ms: 3800,
+        note: {
+          en: 'No price and no Buy on somebody else’s name — the card names the company holding it and offers the one honest thing left, "This is my domain". Under it: the same name in endings that are free, then other names.',
+          uk: 'На чужому імені немає ні ціни, ні кнопки Buy — картка називає компанію, яка ним володіє, і пропонує єдине чесне: «This is my domain». Під нею — те саме ім’я у вільних доменах, а далі інші імена.',
+        } },
+      { id: 'free', label: { en: 'The name they had in mind is free', uk: 'Ім’я, яке вони мали на думці, вільне' },
+        view: { domainScreen: 'results', domain: BUY_NAME }, awaitUser: true,
+        note: {
+          en: 'Best match at the top, in the ending they asked for, with both figures on the card. The renewal is never the small print: a first-year price on its own is the pattern this product refuses.',
+          uk: 'Найкращий збіг угорі, у тому домені, який просили, і обидві суми на картці. Ціна продовження ніколи не дрібним шрифтом: сума лише за перший рік — це прийом, від якого продукт відмовляється.',
+        } },
+      { id: 'sheet', label: { en: 'The checkout sheet — the name, the term, the total', uk: 'Аркуш оплати — ім’я, строк, сума' },
+        view: { modal: 'buy', domain: BUY_NAME }, ms: 3400,
+        note: {
+          en: 'It names the shortest term that ending is actually sold for, and totals it. Nothing has been charged: the next press leaves Remixer altogether.',
+          uk: 'Тут названо найкоротший строк, на який цей домен узагалі продається, і підсумок за нього. Нічого ще не списано: наступне натискання виводить із Remixer.',
+        } },
+      /*
+       * The seam, and the prototype shows it rather than papering over it: buying anything
+       * today happens in the hosting panel, on its own page, in its own light theme
+       * (modules/panel/PanelCart.tsx). The world's word for standing there is `checkout`,
+       * and the line is built by the cart's own arithmetic — `termYears` clamps an ending
+       * the registry only sells in blocks, so no number is asserted here.
+       */
+      { id: 'cart', label: { en: 'Checkout is not ours — the DreamHost cart, with the name on it', uk: 'Оплата — не наша: кошик DreamHost, і в ньому це ім’я' },
+        patch: { domain: 'checkout', cart: [{ kind: 'domreg', domain: BUY_NAME, years: termYears(tldOf(BUY_NAME)) }] },
+        view: { modal: null, panel: 'cart' }, awaitUser: true,
+        note: {
+          en: 'A different company’s page, and it looks like one. Walking out without paying is a real outcome here, and the builder says so when they come back.',
+          uk: 'Сторінка іншої компанії, і виглядає вона саме так. Піти звідси, не заплативши, — теж справжній результат, і білдер це скаже, коли вони повернуться.',
+        } },
+      { id: 'order', label: { en: 'The order is placed — and the registry writes the name first', uk: 'Замовлення оформлено — спершу ім’я записує реєстр' },
+        patch: { domain: 'registering', customDomain: BUY_NAME, icann: true, cart: [] },
+        view: { panel: null, surface: 'preview', publish: true }, ms: 3000,
+        note: {
+          en: 'Back in the builder, and from here the whole connection is read in one place: the Publish panel. Usually under fifteen minutes, and nothing for the customer to do.',
+          uk: 'Назад у білдер — і далі все підключення читається в одному місці, у панелі Publish. Зазвичай менш ніж чверть години, і від клієнта нічого не потрібно.',
+        } },
+      /* The beat that makes the two walks different lengths, so it is the long one here
+         too. Nothing to press and nothing to promise: the card owns the wait out loud. */
+      { id: 'propagating', label: { en: 'Registered — and now it has to reach the rest of the world', uk: 'Зареєстровано — тепер ім’я має дійти до решти світу' },
+        patch: { domain: 'propagating' }, ms: 5200,
+        note: {
+          en: 'Most visitors reach a new name within hours; everywhere in the world can take days. The card says that plainly instead of counting down to a moment nobody can promise.',
+          uk: 'Більшість відвідувачів побачать нове ім’я за кілька годин; по всьому світу це може тривати кілька днів. Картка каже це прямо, замість відліку до моменту, якого ніхто не може пообіцяти.',
+        } },
+      { id: 'padlock', label: { en: 'The secure padlock is switching on', uk: 'Вмикається захисний замок' },
+        patch: { domain: 'verifying' }, ms: 2600,
+        note: {
+          en: 'The last wait, and it cannot start earlier: the padlock is issued for an address that already answers here. Still nothing for the customer to do.',
+          uk: 'Останнє очікування, і раніше воно початися не може: замок видають на адресу, яка вже відповідає тут. Від клієнта й далі нічого не потрібно.',
+        } },
+      /*
+       * `ready`, and the one state in this walk that is a person's move rather than a wait.
+       * Everything is correct, nothing is happening, and nobody has published — so the card
+       * is the only blue thing in the panel and carries the verb itself. The press is real:
+       * the button in that card writes exactly what the next step patches.
+       */
+      { id: 'ready', label: { en: 'The address is set up — and nothing is at it until they publish', uk: 'Адресу налаштовано — але за нею нічого немає, доки не опублікують' }, awaitUser: true,
+        patch: { domain: 'ready' },
+        note: {
+          en: 'The state a first-timer reads as "it’s broken": everything is right and the site was simply never put out. So the panel says which press is missing, and carries it.',
+          uk: 'Стан, який новачок читає як «усе зламалося»: усе правильно, просто сайт жодного разу не публікували. Тому панель каже, якого натискання бракує, і сама його пропонує.',
+        } },
+      { id: 'live', label: { en: 'Published — the site answers on their own name', uk: 'Опубліковано — сайт відповідає за їхнім власним іменем' },
+        patch: { domain: 'live', published: true, unpublished: 0 }, awaitUser: true,
+        note: {
+          en: 'One card is still up, and only a bought name ever gets it: the registrar has to hear back from the person who registered it. Miss that and the name is suspended — so it is a card with its own way out, not a line of prose.',
+          uk: 'Одна картка ще лишилася, і її отримує лише куплене ім’я: реєстратор має почути відповідь від того, хто його зареєстрував. Пропустиш — ім’я призупинять, тому це картка з власним виходом, а не рядок тексту.',
+        } },
+      { id: 'confirmed', label: { en: 'Confirmed — the panel settles to one line', uk: 'Підтверджено — панель зводиться до одного рядка' },
+        patch: { icann: false }, awaitUser: true,
+        note: {
+          en: 'Padlock on, anyone can visit. A name attached from the DreamHost account never passes through this last card at all — nobody registered anything, so there is nothing to confirm.',
+          uk: 'Замок увімкнено, сайт доступний усім. Ім’я, підключене з акаунта DreamHost, цієї останньої картки не бачить узагалі: ніхто нічого не реєстрував, підтверджувати нема чого.',
+        } },
+    ],
+  },
+  {
     id: 'trial-to-paid',
     label: { en: 'Trial expires → buying a plan', uk: 'Тріал завершився → купівля плану' },
     note: {
       en: 'The last days of the free trial: the credits run out, editing with AI switches off, and the site itself stays exactly where it was. Buying the Remixer Build plan turns AI back on.',
       uk: 'Останні дні безкоштовного тріалу: кредити закінчуються, редагування з AI вимикається, а сам сайт лишається на місці. Купівля плану Remixer Build знову вмикає AI.',
     },
-    setup: { account: 'trial', trialDay: 29, credits: 40, project: 'built', chat: 'long', domain: 'staging', inventory: 'dh-free', unpublished: 2 },
+    setup: { account: 'trial', trialDay: 29, credits: 40, project: 'built', chat: 'long', domain: 'staging', customDomain: DH_OWNED, inventory: 'dh-free', unpublished: 2, published: false, icann: false, cart: [] },
     steps: [
       { id: 'low', label: { en: 'The credits run down — the count in the topbar reaches ten', uk: 'Кредити добігають кінця — лічильник у верхній панелі показує десять' }, patch: { credits: 10 }, ms: 1600,
         note: { en: 'The balance is on screen the whole time, next to Publish — it is never a page you have to go and find', uk: 'Баланс увесь час на екрані, поруч із Publish — по нього ніколи не треба кудись іти' } },
       { id: 'expired', label: { en: 'Day 30 — AI is off; the site and hand editing are not', uk: 'День 30 — AI вимкнено; сайт і ручні правки — ні' }, patch: { account: 'trial-expired', credits: 0, trialDay: 30 }, ms: 2400,
         note: { en: 'The message field now reads "AI is off — a plan is required" and the count is zero. The site is untouched: nothing was taken away, and it can still be edited by hand.', uk: 'У полі введення тепер «AI is off — a plan is required», а лічильник на нулі. Сайт неторканий: нічого не забрали, і його й далі можна правити руками.' } },
-      { id: 'gate', label: { en: 'What is needed is named in plain words: Remixer Build, $9.99 a month', uk: 'Потрібне названо прямо: Remixer Build, $9.99 на місяць' }, awaitUser: true,
+      { id: 'gate', label: { en: 'What is needed is named in plain words: Remixer Build, $9.99 a month', uk: 'Потрібне названо прямо: Remixer Build, $9.99 на місяць' },
+        view: { publish: true }, awaitUser: true,
         note: { en: 'It is said at every door the expired trial now closes — under the domain row in the Publish panel, and inside the checkout sheet, which folds the plan chooser in', uk: 'Це сказано в кожних дверях, які тепер зачинив тріал: під рядком про домен у панелі Publish і в аркуші оплати, що розгортає вибір плану' } },
-      { id: 'checkout', label: { en: 'Checkout — yearly or monthly', uk: 'Оплата — річний або щомісячний' }, ms: 1400 },
-      { id: 'paid', label: { en: 'The plan is active and the month’s credits are in the topbar', uk: 'План активний, місячні кредити — у верхній панелі' }, patch: { account: 'paid', billing: 'yearly', credits: 1000 }, ms: 1200 },
+      /* The chooser is drawn in ONE place in the product — inside the domain sheet, which
+         grows to carry it whenever the account cannot go live yet (DomainModal, `showPlans`)
+         — so this is the screen the note above is describing, on one of their own names. */
+      { id: 'checkout', label: { en: 'Checkout — yearly or monthly', uk: 'Оплата — річний або щомісячний' },
+        view: { modal: 'connect-owned', domain: DH_OWNED }, ms: 3000 },
+      { id: 'paid', label: { en: 'The plan is active and the month’s credits are in the topbar', uk: 'План активний, місячні кредити — у верхній панелі' },
+        patch: { account: 'paid', billing: 'yearly', credits: 1000 }, view: { modal: null, panel: null, publish: false }, ms: 1600 },
       { id: 'done', label: { en: 'Back in the builder — AI available again', uk: 'Повернулись у білдер — AI знову доступний' }, awaitUser: true,
         note: { en: 'Nothing was lost on the way through: the same site, the same conversation, the message field working again', uk: 'Дорогою нічого не загубилося: той самий сайт, та сама переписка, поле введення знову працює' } },
     ],
@@ -235,9 +441,14 @@ export const FLOWS: Flow[] = [
     },
     /* Live in front of a site that was never published is a contradiction the console
        flags in red (world.violations) — this flow is about a site that IS out. */
-    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', unpublished: 4, published: true },
+    /* `icann: false` is not decoration either: the domain axis is live here, so the store's
+       own tidy-up (which clears that clock whenever the project falls back to its free
+       address) never fires — and a registrant-email card left over from the bought walk
+       would sit in this panel over a domain nobody registered tonight. */
+    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'dh-free', domain: 'live', customDomain: DH_OWNED, icann: false, unpublished: 4, published: true, cart: [] },
     steps: [
-      { id: 'panel', label: { en: 'The Publish panel is open over the builder', uk: 'Над білдером відкрито панель Publish' }, awaitUser: true,
+      { id: 'panel', label: { en: 'The Publish panel is open over the builder', uk: 'Над білдером відкрито панель Publish' },
+        view: { surface: 'preview', publish: true }, awaitUser: true,
         note: { en: 'Opened from Update in the topbar, which carries the number of waiting edits. The panel shows the address the site answers on and the same number again.', uk: 'Відкривається кнопкою Update у верхній панелі, на якій стоїть кількість правок у черзі. У панелі — адреса, за якою відповідає сайт, і те саме число.' } },
       { id: 'publishing', label: { en: 'Publish pressed — the waiting edits go out to visitors', uk: 'Натиснуто Publish — правки з черги виходять до відвідувачів' }, ms: 2600,
         note: { en: 'Nothing is blocked: the panel stays open and the builder underneath it keeps working', uk: 'Нічого не блокується: панель лишається відкритою, а білдер під нею працює далі' } },
@@ -250,31 +461,36 @@ export const FLOWS: Flow[] = [
    *
    * The screens exist but the path is unfinished: the instructions are written for one
    * company only and the first of the two lines is still a raw address. Nobody should
-   * start it expecting a finished path, so the note says so in its first words — the
-   * console has no other way to mark a flow today.
+   * start it expecting a finished path — which `tag` now says on the row itself, before
+   * the click, so the note is free to describe the walk like every other note here.
    */
   {
     id: 'connect-external',
     label: { en: 'Connect a domain registered at another company (GoDaddy)', uk: 'Підключити домен, зареєстрований в іншій компанії (GoDaddy)' },
     note: {
-      en: 'Iteration 2, unfinished — not part of today’s demo. A name registered elsewhere stays registered there; we never ask for a transfer. The customer copies two lines into the other company’s settings and comes back.',
-      uk: 'Ітерація 2, не завершено — сьогодні не показуємо. Ім’я, зареєстроване в іншій компанії, там і лишається: переносити не просимо. Клієнт копіює два рядки в налаштування тієї компанії й повертається.',
+      en: 'A name registered elsewhere stays registered there; we never ask for a transfer. The customer copies two lines into the other company’s settings and comes back.',
+      uk: 'Ім’я, зареєстроване в іншій компанії, там і лишається: переносити не просимо. Клієнт копіює два рядки в налаштування тієї компанії й повертається.',
     },
+    tag: { en: 'Not this iteration', uk: 'Не ця ітерація' },
     /* The name is the one the data holds at GoDaddy, so the panel, the topbar chip and
        this narration all say the same domain even when the flow is stepped through
        without touching the screens. And `published: true` for the reason the two flows
        above carry it: a live domain in front of an unpublished site is a contradiction. */
-    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'staging', unpublished: 0, published: true, customDomain: 'trulieve.com' },
+    setup: { account: 'paid', credits: 1000, project: 'built', chat: 'long', inventory: 'external-manual', domain: 'staging', unpublished: 0, published: true, icann: false, cart: [], customDomain: EXTERNAL_NAME },
     steps: [
-      { id: 'open', label: { en: 'The Domains screen — the customer types a name they already own', uk: 'Екран Domains — клієнт вводить ім’я, яким уже володіє' }, patch: { domain: 'searching' }, awaitUser: true,
+      { id: 'open', label: { en: 'The Domains screen — the customer types a name they already own', uk: 'Екран Domains — клієнт вводить ім’я, яким уже володіє' },
+        patch: { domain: 'searching' }, view: { surface: 'domains', domainScreen: 'home' }, awaitUser: true,
         note: { en: 'Opened from the Publish panel, "Buy or connect a domain". With no DreamHost names in the account there is no list of their own to pick from, so the search field is the only way in.', uk: 'Відкривається з панелі Publish — «Buy or connect a domain». Якщо в акаунті немає імен DreamHost, власного списку для вибору теж немає, тож єдиний вхід — поле пошуку.' } },
-      { id: 'typed', label: { en: 'The name comes back taken, and names the company it is registered at', uk: 'Ім’я повертається зайнятим і називає компанію, де воно зареєстроване' }, ms: 1400,
+      { id: 'typed', label: { en: 'The name comes back taken, and names the company it is registered at', uk: 'Ім’я повертається зайнятим і називає компанію, де воно зареєстроване' },
+        view: { domainScreen: 'results', domain: EXTERNAL_NAME }, ms: 3000,
         note: { en: 'A taken name carries no price and no Buy — the only thing offered on it is "This is my domain"', uk: 'У зайнятого імені немає ні ціни, ні кнопки Buy — пропонується лише «This is my domain»' } },
-      { id: 'detected', label: { en: 'Confirmed: it stays where it is registered, no transfer needed', uk: 'Підтверджено: ім’я лишається там, де зареєстроване, переносити не треба' }, ms: 1400,
+      { id: 'detected', label: { en: 'Confirmed: it stays where it is registered, no transfer needed', uk: 'Підтверджено: ім’я лишається там, де зареєстроване, переносити не треба' },
+        view: { domainScreen: 'external', domain: EXTERNAL_NAME }, ms: 2400,
         note: { en: 'The screen names the other company only when it actually knows it, and says nothing about it when it does not', uk: 'Екран називає іншу компанію лише тоді, коли справді її знає, і мовчить, коли не знає' } },
       { id: 'records', label: { en: 'Two lines to paste at the other company, a Copy button on each', uk: 'Два рядки, які треба вставити в іншій компанії, з кнопкою Copy біля кожного' }, awaitUser: true,
         note: { en: 'The steps are on the screen rather than behind a link. Unfinished here: they are written for one company only, and the first line is still a raw address.', uk: 'Кроки — на екрані, а не за посиланням. Тут не завершено: вони написані лише під одну компанію, а перший рядок — це досі сира адреса.' } },
-      { id: 'saved', label: { en: 'Saved — the domain is now connecting', uk: 'Збережено — домен підключається' }, patch: { domain: 'connecting' }, ms: 3400,
+      { id: 'saved', label: { en: 'Saved — the domain is now connecting', uk: 'Збережено — домен підключається' },
+        patch: { domain: 'connecting' }, view: { surface: 'preview', modal: null, publish: true }, ms: 3400,
         note: { en: 'It persists: the customer can close the tab and this carries on without them. The wait is longer than for a name already at DreamHost, because the change has to travel from the other company.', uk: 'Це зберігається: можна закрити вкладку — і все триває без них. Очікування довше, ніж для імені, яке вже в DreamHost: зміна має пройти шлях від іншої компанії.' } },
       { id: 'verifying', label: { en: 'The address answers here — the secure padlock switches on', uk: 'Адреса вже відповідає тут — вмикається захисний замок' }, patch: { domain: 'verifying' }, ms: 2600 },
       { id: 'live', label: { en: 'The site answers on the customer’s own address', uk: 'Сайт відповідає за власною адресою клієнта' }, patch: { domain: 'live' }, ms: 1200 },
@@ -306,10 +522,70 @@ interface FlowStore {
   setSpeed: (s: Speed) => void
 }
 
-/** Apply a step's world patch, if it has one. */
+/**
+ * Point the camera where a step asks for it — see FlowView.
+ *
+ * ORDER MATTERS, because these actions clear each other by design: `openDomains` and
+ * `openSurface` close the Publish panel, `openPanel` closes the panel AND the sheet (the
+ * hosting panel is a full-window takeover and nothing of ours may show through the seam).
+ * So the canvas is placed first, then the foreign page, then the sheet, and the Publish
+ * panel last — otherwise a step asking for two of them would have the first silently
+ * undone by the second.
+ */
+function applyView(v: FlowView) {
+  const ui = useUI.getState()
+  if (v.surface || v.domainScreen) {
+    const surface = v.surface ?? 'domains'
+    if (surface === 'domains') ui.openDomains(v.domainScreen ?? 'home', v.domain ?? null)
+    else ui.openSurface(surface)
+  }
+  if (v.panel !== undefined) v.panel ? ui.openPanel(v.panel) : ui.closePanel()
+  if (v.modal !== undefined) v.modal ? ui.openDomainModal(v.modal, v.domain ?? '') : ui.closeDomainModal()
+  if (v.publish !== undefined) ui.togglePublish(v.publish)
+}
+
+/**
+ * The camera before a flow starts: the builder, nothing open over it.
+ *
+ * A flow is a restaging, so it cannot inherit the last one's screens — the buy walk ends
+ * with the Publish panel up and a sheet two steps behind it, and the next flow's first
+ * subtitle would be read over them. Every flow's first step then only has to name what it
+ * actually needs, instead of closing four things it knows nothing about.
+ *
+ * ⚠️ THE PAGE IS SET, NOT NAVIGATED TO. `openBuilder` is the product's own door and it
+ * plays the three-phase corridor (state/ui.ts, ~3.6s of curtain and edge glow) — which is
+ * right when somebody presses Build, and wrong here: it would bury the first beat of the
+ * flow under an opaque cover for longer than the beat lasts. Staging a situation has never
+ * played that corridor, the same way the scenario presets never have.
+ */
+function resetView() {
+  const ui = useUI.getState()
+  ui.closePanel()
+  ui.closeDomainModal()
+  ui.closeSurface()
+  ui.togglePublish(false)
+  /* `publishHintOpen` comes back with it: waving the nudge away is this session's UI, and a
+     flow re-run in front of a room has to play the same both times. `goHome` restores it
+     for the same reason. */
+  useUI.setState({ page: 'builder', boot: null, publishHintOpen: true })
+}
+
+/** Apply a step's world patch and the screen it needs, in that order — the same order the
+ *  product writes them in (the sheet writes the world while it is still up, then
+ *  navigates), so nothing renders against a world that has not moved yet. */
 function applyStep(flow: Flow, i: number) {
   const step = flow.steps[i]
-  if (step?.patch) useWorld.getState().set(step.patch)
+  if (!step) return
+  if (step.patch) useWorld.getState().set(step.patch)
+  if (step.view) applyView(step.view)
+}
+
+/** Replay from the setup up to `target` — the world AND the camera, since both are
+ *  written step by step and neither can be un-applied. */
+function replay(flow: Flow, target: number) {
+  resetView()
+  useWorld.getState().set(flow.setup, null)
+  for (let k = 0; k <= target; k++) applyStep(flow, k)
 }
 
 export const useFlow = create<FlowStore>((set, get) => ({
@@ -321,8 +597,7 @@ export const useFlow = create<FlowStore>((set, get) => ({
   start: (id) => {
     const flow = flowById(id)
     if (!flow) return
-    useWorld.getState().set(flow.setup, null)
-    applyStep(flow, 0)
+    replay(flow, 0)
     set({ flowId: id, index: 0, playing: true })
   },
   stop: () => set({ flowId: null, index: 0, playing: false }),
@@ -343,8 +618,7 @@ export const useFlow = create<FlowStore>((set, get) => ({
     if (!flow) return
     const i = Math.max(index - 1, 0)
     // Replay from the start so the world matches the step, rather than un-applying patches.
-    useWorld.getState().set(flow.setup, null)
-    for (let k = 0; k <= i; k++) applyStep(flow, k)
+    replay(flow, i)
     set({ index: i, playing: false })
   },
   goTo: (i) => {
@@ -352,8 +626,7 @@ export const useFlow = create<FlowStore>((set, get) => ({
     const flow = flowId ? flowById(flowId) : null
     if (!flow) return
     const target = Math.max(0, Math.min(i, flow.steps.length - 1))
-    useWorld.getState().set(flow.setup, null)
-    for (let k = 0; k <= target; k++) applyStep(flow, k)
+    replay(flow, target)
     set({ index: target, playing: false })
   },
   setSpeed: (s) => set({ speed: s }),
