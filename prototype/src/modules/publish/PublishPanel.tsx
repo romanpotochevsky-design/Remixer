@@ -327,11 +327,21 @@ function UrlField({ value, suffix }: { value: string; suffix?: string }) {
  * figma.com asset URL), so this is the spinning arc the generation card already uses for
  * a step that is working — one idiom for "this is moving on its own".
  */
-function ProgressCard({ title, sub }: { title: string; sub: string }) {
+function ProgressCard({ title, sub, done }: { title: string; sub: string; done?: boolean }) {
   return (
     <div className="px-1.5 pt-1.5">
       <div className="rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]">
         <div className="flex items-center gap-3 py-4 pl-4 pr-3">
+          {/* ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up
+              and only a press is left, the arc becomes a filled green tick. One shape for
+              "this is moving" and "this is done" — the icon is the whole difference, which
+              is what makes the finish read as the end of the thing that was moving. */}
+          {done ? (
+            <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
+              <circle cx="12" cy="12" r="11" fill="var(--live)" />
+              <path d="m7.5 12.4 3 3 6-6.4" stroke="var(--gray-950)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
           <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
             <circle cx="12" cy="12" r="8" stroke="var(--white-200)" strokeWidth="1.8" />
             <path
@@ -344,6 +354,7 @@ function ProgressCard({ title, sub }: { title: string; sub: string }) {
               className="step-spin"
             />
           </svg>
+          )}
           <p className="min-w-0 flex-1 break-words text-[15px] font-semibold leading-[1.2] text-white">
             {keepHostsWhole(title)}
           </p>
@@ -709,7 +720,12 @@ export function PublishPanel() {
          "Update" is gone from the product. */
       : publishesChanges
         ? { en: 'Publish changes', uk: 'Опублікувати зміни' }
-        : { en: 'Publish', uk: 'Опублікувати' }
+        /* ⚠️ AND AT `ready` IT NAMES THE ADDRESS (board 30289:59972): "Publish to
+           {domain}". This is the one press in the product that moves a site onto a new
+           address, and the button is where that is worth saying out loud. */
+        : readyCard
+          ? { en: `Publish to ${world.customDomain}`, uk: `Опублікувати на ${world.customDomain}` }
+          : { en: 'Publish', uk: 'Опублікувати' }
 
   return (
     <AnimatePresence>
@@ -872,6 +888,21 @@ export function PublishPanel() {
                   })}
                 />
               )}
+              {/* The walk's last frame — board 30289:59972. Same card, green tick, and the
+                  sentence says where the press is rather than what is happening. */}
+              {readyCard && (
+                <ProgressCard
+                  done
+                  title={t({
+                    en: `${world.customDomain} is connected`,
+                    uk: `${world.customDomain} підключено`,
+                  })}
+                  sub={t({
+                    en: 'Your new custom address is fully set up. Just hit the publish button to make your site live.',
+                    uk: 'Вашу нову адресу повністю налаштовано. Натисніть «Опублікувати», щоб сайт запрацював.',
+                  })}
+                />
+              )}
               {propagating && (
                 <ProgressCard
                   title={t({
@@ -1014,19 +1045,7 @@ export function PublishPanel() {
                   stays BLUE and now earns it twice: blue is this project's colour for an
                   action, the state IS an action waiting to be taken, and the card is
                   pointing straight at the only blue thing on screen. */}
-              {readyCard && (
-                <StatusCard
-                  tone="blue"
-                  title={t({
-                    en: `${world.customDomain} is ready — publish to put your site on it`,
-                    uk: `${world.customDomain} готовий — опублікуйте, щоб сайт став на нього`,
-                  })}
-                  sub={t({
-                    en: 'Your address is set up. Visitors will see your site the moment you publish.',
-                    uk: 'Адресу налаштовано. Відвідувачі побачать сайт тієї ж миті, коли ви опублікуєте.',
-                  })}
-                />
-              )}
+
 
               {/* The dirty-domain publish failure — failures.md №15, "дырки нет даже на
                   бумаге": no board, no state, and on a WordPress customer base the likely
@@ -1268,7 +1287,7 @@ export function PublishPanel() {
             {/* ⚠️ A SIBLING OF THE FIELD BLOCK, not a child of it (board 30282:53241):
                 the Text Input block carries px 16, this card does not — so it spans the
                 body card's full 420 while the field inside sits at 388. */}
-            {settled && (
+            {(settled || readyCard) && (
               <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
                 <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
                   {t({ en: 'Secure padlock on', uk: 'Замок увімкнено' })}
