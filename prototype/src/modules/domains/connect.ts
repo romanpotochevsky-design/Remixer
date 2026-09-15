@@ -68,13 +68,22 @@ import { useUI } from '@/state/ui'
 
 /**
  * One leg of a walk: hold `from` for `at` ms from the start, then move to `to`.
- * `'finish'` is the last leg — where it lands depends on the SITE, see `settle`.
+ * `'finish'` marks the LAST leg — every walk ends in the same place, see `settle`, so the
+ * word says "this is the end of the walk" and nothing about where it lands.
  */
 type Leg = [from: DomainState, to: DomainState | 'finish', at: number]
 
-/** Which of the two walks. Never a boolean: `retryConnect` takes the fast one for a name
- *  that was bought, so "bought" and "which timeline" are two different questions. */
-type Path = 'attach' | 'buy'
+/**
+ * Which walk. Never a boolean: `retryConnect` takes the fast one for a name that was
+ * bought, so "bought" and "which timeline" are two different questions.
+ *
+ * ⚠️ AND `repair` SHARES ATTACH'S LEGS WHILE ENDING SOMEWHERE ELSE, so it cannot just be
+ * `attach` again (see `settle`). A repair puts back a connection that was ALREADY carrying
+ * the site; a fresh connect hands the customer a working address and waits for the press.
+ * Same six seconds, two different endings — and the ending has to survive a reload, so it
+ * is the WALK's identity that carries it, not a flag somebody sets beside it.
+ */
+type Path = 'attach' | 'buy' | 'repair'
 
 /*
  * THE TWO TIMELINES, and what each beat stands for.
@@ -117,7 +126,7 @@ const BUY: Leg[] = [
   ['propagating', 'ready', 17600],
   ['ready', 'finish', 17600],
 ]
-const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY }
+const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY, repair: ATTACH }
 
 /*
  * ─────────────────────────────── THE GATE ───────────────────────────────
@@ -149,9 +158,15 @@ const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY }
  * complete; what the unconfirmed mail withholds is the name ANSWERING, which is exactly
  * what `ready` means — connected, correct, and not yet open.
  *
- * The consequence worth stating: `live` and `multiple` remain UNREACHABLE with a
- * confirmation outstanding, which is what `violations()` declares (state/world.ts) — the
- * hold at `ready` is what keeps that true even for a customer who had already published.
+ * ⚠️ AND SINCE 15.09.2026 THE GATE NO LONGER GUARDS `live` — IT GUARDS THE WALK. It used
+ * to be the only thing standing between an unconfirmed name and a green chip, because the
+ * last leg landed on `live` for anyone who had published before. That landing is gone
+ * (see `settle`): no walk reaches `live` at all now, so `live` + `icann` is out of this
+ * clock's reach whatever the gate does, and the one door left carries its own guard
+ * (`publishNow`). What the gate still does is keep the walk from writing over a park —
+ * the ticket stays honest across a reload, and a release replays the remainder at its
+ * true remaining length instead of settling an hour of owed beats in one frame.
+ *
  * `ready` + `icann` is the pairing that panel has always been written for, and it is now
  * the one the product produces rather than one only the console could stage.
  */
@@ -249,25 +264,46 @@ function recall(): Ticket | null {
 /**
  * Where a leg puts the world.
  *
- * THE PADLOCK IS THE LAST WAIT, AND WHAT IT LANDS ON IS A FACT ABOUT THE SITE.
- * A project that has never been published has nothing for a visitor to see, so the walk
- * ends in `ready` — domain correct, nothing wrong, one button left to press. That is the
- * state Lovable ships and the one a novice is most likely to sit in (failures.md №8). This
- * used to write `published: true` on the way past, which meant `ready` could not exist at
- * all: the clock published the site on the customer's behalf and the panel then titled
- * itself as if they had.
+ * ⚠️ EVERY WALK ENDS AT `ready`, WHOEVER THE CUSTOMER IS — CONNECTING IS NOT PUBLISHING
+ * (designer, 15.09.2026, watching an attach on a site he had already published: «почему
+ * после привязки кастомного домена, у меня в окне паблиш статус Опубликовано? типа как
+ * будто сразу после привязки кастомного домена произошла сразу публикация автоматически
+ * перед капотом?»). It had: this function read `published && !icann ? 'live' : 'ready'`,
+ * so a site that had ever been out went LIVE on the new name the moment the pointing
+ * finished — a release nobody asked for, announced by a panel that then titled itself
+ * "Published" for a publish that never happened.
+ *
+ * The two acts are different things. This walk makes the ADDRESS work; putting the site
+ * on it is a press. Nobody would accept a registrar that moved their site the instant a
+ * record was written, and the customer who attaches a domain is the one person in the
+ * flow who already has something to lose by it.
+ *
+ * Which is also what the boards say. 30289:59972 draws the END of a connect as a green
+ * "{domain} is connected" card over a button reading `Publish to {domain}` — a drawn
+ * state that the old landing made unreachable for the commonest customer of all (the one
+ * who had already published) and reachable only by the one who had not. Same walk, two
+ * different endings, and the one that skipped the press was the default.
+ *
+ * So `live` now has exactly ONE door in this product: that button (`publishNow` in
+ * PublishPanel, where the `!icann` guard this branch used to carry already lives, for the
+ * same reason — a name owing its registrant confirmation does not answer, so publishing
+ * puts the site out on the FREE address and must not move the domain axis at all).
+ *
+ * `ready` is therefore the terminal state of both timelines: domain correct, nothing
+ * wrong, one button left to press. It is the state Lovable ships and the one a novice is
+ * most likely to sit in (failures.md №8).
+ *
+ * ⚠️ WITH ONE EXCEPTION, AND IT IS THE OPPOSITE CASE, NOT A LOOPHOLE: a REPAIR. `Fix this`
+ * on `unreachable` is "it worked and it stopped" — the site was published on that name and
+ * the address broke under it — so bringing the address back is not a release, it is the end
+ * of an outage, and asking for a press to "move your site onto it" would be false about a
+ * site that is already there. So a repair lands where it came from: `live` if the site has
+ * been published, `ready` if it never has (`live` in front of a site that was never
+ * published is the pairing `violations()` calls impossible, and rightly).
  */
-function settle(to: DomainState | 'finish') {
+function settle(to: DomainState | 'finish', path: Path) {
   const s = useWorld.getState()
-  /*
-   * ⚠️ AND `!icann` ON THE FINISH BRANCH, for the same reason the panel's Publish carries
-   * it: a name owing its registrant confirmation does not answer, so it cannot land on
-   * `live` however published the site is. THE GATE above already holds the bought walk
-   * short of this, so the guard is for the OTHER door — `retryConnect` takes the attach
-   * timeline, which has no gate, and would settle an unreachable-but-unconfirmed name
-   * straight to live.
-   */
-  const finish = s.world.published && !s.world.icann ? 'live' : 'ready'
+  const finish: DomainState = path === 'repair' && s.world.published ? 'live' : 'ready'
   s.set({ domain: to === 'finish' ? finish : to })
 }
 
@@ -309,7 +345,7 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
           clear()
           return remember({ domain, path, startedAt, leg: i })
         }
-        settle(to)
+        settle(to, path)
         if (to === 'finish') forget()
         else remember({ domain, path, startedAt, leg: next })
       }, Math.max(at - elapsed, 0)),
@@ -324,10 +360,10 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
  * one) and it is the only thing that starts the registrant-email clock (see world.icann):
  * attaching a domain you already own never does.
  *
- * ⚠️ Which means this call does not walk a bought name to `live` on its own any more. It
- * walks it through all three stages and stops at `ready`, because the flag it sets in the
- * same write is the gate on the LAST beat (see THE GATE). Nothing else has to know: the
- * walk arms exactly as before and parks itself when that beat comes due.
+ * ⚠️ Neither call walks a domain to `live` any more — that is a press, not a clock (see
+ * `settle`). A bought name goes through all three stages and stops at `ready`, and while
+ * the flag this write sets still stands it stops there with the letter as the only thing
+ * on screen (see THE GATE). Nothing else has to know: the walk arms exactly as before.
  */
 export function startConnect(domain: string, opts: { bought?: boolean } = {}) {
   clear()
@@ -357,7 +393,7 @@ export function retryConnect(domain: string) {
   clear()
   useWorld.getState().set({ domain: 'connecting', customDomain: domain })
   useUI.getState().togglePublish(true)
-  walk(domain, 'attach', Date.now())
+  walk(domain, 'repair', Date.now())
 }
 
 /** Stop the clock — the domain was detached, or a scenario is being staged. */
@@ -416,7 +452,8 @@ export function resumeConnect() {
   forget()
 
   const legs = LEGS[t.path]
-  if (t.leg < 0 || t.leg >= legs.length) return
+  /* A ticket written by an older build can name a walk this one does not have. */
+  if (!legs || t.leg < 0 || t.leg >= legs.length) return
 
   const { world } = useWorld.getState()
   if (world.customDomain !== t.domain) return
@@ -440,7 +477,7 @@ export function resumeConnect() {
 
   // Everything the reload ran past, settled in one step: the intermediate states are
   // already history, and replaying them would be theatre rather than a resume.
-  if (from > t.leg) settle(legs[from - 1][1])
+  if (from > t.leg) settle(legs[from - 1][1], t.path)
   if (from >= legs.length) return
 
   walk(t.domain, t.path, t.startedAt, from)
@@ -470,7 +507,7 @@ function resumeFromPark() {
 
   const { world } = useWorld.getState()
   const legs = LEGS[t.path]
-  if (t.leg < 0 || t.leg >= legs.length) return
+  if (!legs || t.leg < 0 || t.leg >= legs.length) return
   if (world.customDomain !== t.domain) return
   if (world.domain !== legs[t.leg][0]) return
 

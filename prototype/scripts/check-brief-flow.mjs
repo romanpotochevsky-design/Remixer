@@ -2011,6 +2011,47 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.keyboard.press('Escape')
     await p.waitForTimeout(300)
   }
+  /*
+   * ⚠️ THE UNLINK CARD HANGS ON THE CONNECTION TOO (designer, 15.09.2026: «нам нужно на
+   * этой стадии под уведомлением о почте показать этот элемент с кнопкой для отвязки»),
+   * and it sits UNDER the letter's card as the body card's last child. Before this a
+   * domain that was connected, set up and merely waiting on a letter could not be taken
+   * off the site from the window that owns the connection.
+   *
+   * The status half of that row is EMPTY on purpose — `Secure padlock on` was a claim
+   * about a certificate that does not exist until the name answers, and the renewal line
+   * proposed to replace it was rejected as not worth seeing on every publish. So this also
+   * asserts the padlock line is gone from the whole panel.
+   */
+  for (const [q, want, label] of [
+    ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order'],
+    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads'],
+    ['d=ready&k=true&n=fitration.shop&v=false&u=0', true, 'yes with the letter still owed'],
+    ['d=live&n=fitration.shop&v=true&u=0', true, 'yes on a live domain'],
+  ]) {
+    await openPublish(`p=built&a=paid&${q}`)
+    const row = await p.evaluate(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      const card = [...d.querySelectorAll('div')].find((e) => /Unlink|Відв/.test(e.textContent || '')
+        && getComputedStyle(e).borderTopWidth === '1px' && Math.round(e.getBoundingClientRect().width) === 420)
+      const mail = [...d.querySelectorAll('div')].find((e) => /^One last step for/.test((e.textContent || '').trim()))
+      const body = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).backgroundColor === 'rgba(255, 255, 255, 0.04)')
+      return {
+        card: !!card,
+        parented: card ? card.parentElement === body && body.lastElementChild === card : null,
+        belowMail: card && mail ? Math.round(card.getBoundingClientRect().top - mail.getBoundingClientRect().bottom) : null,
+        padlock: /Secure padlock on/.test(d.innerText),
+      }
+    })
+    check(`the Unlink row is there: ${label}`, row.card === want && !row.padlock, JSON.stringify(row))
+    if (want) {
+      check('…as the body card’s last child, under whatever card is above it',
+        row.parented && (row.belowMail === null || row.belowMail === 16), JSON.stringify(row))
+    }
+    await p.keyboard.press('Escape')
+    await p.waitForTimeout(300)
+  }
+
   /* …and the letter is announced from the beat the domain is connected, not before it */
   for (const [q, want, label] of [
     ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order'],
@@ -2024,6 +2065,124 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.keyboard.press('Escape')
     await p.waitForTimeout(300)
   }
+
+  /*
+   * ⚠️ CONNECTING IS NOT PUBLISHING — THE WHOLE WALK, DRIVEN THROUGH THE UI (designer,
+   * 15.09.2026, on a screen recording of an attach on a site he had already published:
+   * «почему после привязки кастомного домена, у меня в окне паблиш статус Опубликовано?
+   * типа как будто сразу после привязки кастомного домена произошла сразу публикация
+   * автоматически перед капотом?»). It had: the walk's last leg landed on `live` for
+   * anybody carrying `published`, so finishing a connect released the site onto the new
+   * name by itself, and the panel then titled itself for a press nobody made.
+   *
+   * A staged state cannot catch that, because it is a TRANSITION — so this one is the real
+   * thing: topbar chip → domains dashboard → Connect → the sheet, the six seconds of the
+   * attach timeline, and then the press. Run for BOTH customers, because the defect had
+   * exactly one of them: the site that had been published before, which is the commonest
+   * shape in the flow.
+   *
+   * The load-bearing assertion is the NEGATIVE one — `published` is the same after the
+   * walk as before it. Everything else here is what the customer sees because of it.
+   */
+  const world = () => p.evaluate(() => {
+    const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v3') || '{}')
+    return { domain: w.domain, published: w.published }
+  })
+  for (const [v, want, label] of [
+    ['true', 'Publish', 'a site that had published before'],
+    ['false', 'Not published', 'a site that never had'],
+  ]) {
+    await p.goto(at(`p=built&v=${v}&u=0&a=paid&i=dh-free&d=staging&t=22&c=640`), { waitUntil: 'networkidle' })
+    await p.waitForTimeout(800)
+    await p.click('.home-card-face')
+    await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 15000 })
+    await p.waitForTimeout(500)
+    /* the address chip with no domain on it is the door to the dashboard (App.tsx) */
+    await p.evaluate(() => [...document.querySelectorAll('header button')]
+      .find((e) => /remixer\.ai/.test(e.innerText)).click())
+    await p.waitForTimeout(800)
+    await p.locator('button:has-text("Connect")').first().click()
+    await p.waitForTimeout(800)
+    await p.locator('[role="dialog"] button:has-text("Connect domain")').last().click()
+    await p.waitForTimeout(900)
+    const flight = await world()
+    check(`the connect starts the walk and touches nothing else — ${label}`,
+      flight.domain === 'connecting' && String(flight.published) === v, JSON.stringify(flight))
+    /* ATTACH is one 6s leg (connect.ts, TIMELINES) */
+    await p.waitForTimeout(6400)
+    const landed = await world()
+    check('…and the walk ENDS AT `ready`, however published the site is',
+      landed.domain === 'ready', JSON.stringify(landed))
+    check('…having published nothing by itself', String(landed.published) === v, JSON.stringify(landed))
+    const seen = await p.evaluate(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      return { title: d.querySelector('h3').textContent.trim(), text: d.innerText.replace(/\s+/g, ' ') }
+    })
+    check(`…so the title is "${want}" — ${label}`, seen.title === want, JSON.stringify(seen.title))
+    check('…over the all-clear card naming the domain',
+      /fit-ration\.com is connected/.test(seen.text), JSON.stringify(seen.text.slice(0, 160)))
+    /* the card's sentence follows the same fact: a site already out there is MOVED, not
+       made live — the board's copy is written for the customer who has never published */
+    check(`…whose sentence says ${v === 'true' ? 'move' : 'make live'}`,
+      v === 'true' ? /Publish to move your site onto it/.test(seen.text)
+                   : /to make your site live/.test(seen.text), JSON.stringify(seen.text.slice(0, 220)))
+    check('…and the one blue verb names the address',
+      /Publish to fit-ration\.com/.test(seen.text), JSON.stringify(seen.text.slice(-120)))
+    /* ONE DOOR TO `live`, and this is it */
+    await p.evaluate(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      ;[...d.querySelectorAll('button')].find((e) => /^Publish to/.test(e.innerText.trim())).click()
+    })
+    await p.waitForTimeout(1200)
+    const out = await world()
+    check('…and the press is what puts the site on it', out.domain === 'live' && out.published === true,
+      JSON.stringify(out))
+    const after = await p.evaluate(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      return { title: d.querySelector('h3').textContent.trim(), card: /is connected/.test(d.innerText),
+        unlink: /Unlink|Відв/.test(d.innerText) }
+    })
+    check('…leaving the quiet terminal panel: titled Published, all-clear spent, Unlink in place',
+      after.title === 'Published' && !after.card && after.unlink, JSON.stringify(after))
+    await p.keyboard.press('Escape')
+    await p.waitForTimeout(300)
+  }
+
+  /*
+   * …AND THE ONE EXCEPTION IS THE OPPOSITE CASE: A REPAIR PUTS THE SITE BACK.
+   *
+   * `Fix this` on `unreachable` is "it worked and it stopped" — the site was published on
+   * that name and the address broke under it. Ending that walk at `ready` would ask for a
+   * press to "move your site onto it" about a site that is already there, so a repair
+   * lands where it came from. Same six seconds as an attach, different ending, which is
+   * why it is its own walk rather than a flag (connect.ts, `Path`).
+   *
+   * Only the published case is exercised: `unreachable` means it worked and stopped, so a
+   * never-published one is a hand-staged oddity, and there the code falls back to `ready`
+   * for the reason `violations()` gives — `live` cannot stand in front of a site nobody
+   * ever published.
+   */
+  await openPublish('p=built&v=true&u=0&a=paid&d=unreachable&n=fitration.shop&t=22&c=640')
+  await p.evaluate(() => {
+    const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+    ;[...d.querySelectorAll('button')].find((e) => /Fix this/.test(e.innerText)).click()
+  })
+  await p.waitForTimeout(900)
+  check('Fix this starts the same six-second walk', (await world()).domain === 'connecting',
+    JSON.stringify(await world()))
+  await p.waitForTimeout(6400)
+  const repaired = await world()
+  check('…and a REPAIR ends the outage rather than asking for a press',
+    repaired.domain === 'live' && repaired.published === true, JSON.stringify(repaired))
+  const quiet = await p.evaluate(() => {
+    const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+    return { title: d.querySelector('h3').textContent.trim(), card: /is connected/.test(d.innerText),
+      unlink: /Unlink|Відв/.test(d.innerText) }
+  })
+  check('…leaving the quiet panel, with no all-clear to act on',
+    quiet.title === 'Published' && !quiet.card && quiet.unlink, JSON.stringify(quiet))
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(300)
 
   /* the negative: a site that has been published gets neither, banner state or not */
   await openPublish('p=built&u=3&v=true&a=trial&t=22&c=640')

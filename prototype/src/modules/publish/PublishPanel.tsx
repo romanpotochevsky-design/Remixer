@@ -583,7 +583,20 @@ export function PublishPanel() {
    * two different faces: one with the green card and a button naming the address, one with
    * no card at all and a nameless `Publish`. The panel reads the situation now.
    */
-  const readyCard = (ready || domainSettled(world)) && !world.published && !world.icann
+  /*
+   * ⚠️ AND `!published` GUARDS ONLY THE STAGED HALF OF IT (designer, 15.09.2026: «что
+   * блять происходит? исчезла панель с кнопкой анлинк»). It used to guard both, which was
+   * right only while the walk auto-published: back then `ready` could not coexist with
+   * `published`, so the guard cost nothing. Since the walk stops at `ready` for everybody
+   * (connect.ts, `settle`) that pairing is the COMMONEST shape in the product — a customer
+   * who had published and then attached a domain — and the blanket guard put them in a
+   * panel with no cards at all: no green all-clear, no domain row, a nameless `Publish`.
+   * `ready` is the walk's own word for "connected, site not on it yet", so it earns the
+   * card on its own; `live`/`multiple` need the guard, because there the same situation is
+   * only ever STAGED (a preset, a shared link) and without it the terminal quiet state
+   * would carry an all-clear that has already been acted on.
+   */
+  const readyCard = (ready || (domainSettled(world) && !world.published)) && !world.icann
   const oldSite = world.domain === 'old-site'
   /*
    * ⚠️ AND IT IS THE WORLD'S OWN SELECTOR, NOT A FOURTH COPY OF IT. This read
@@ -595,13 +608,15 @@ export function PublishPanel() {
    */
   const confirmEmail = registrantUnconfirmed(world)
   /*
-   * THE ONE READING THE ADDRESS, THE PILL AND THE PROSE LINE SHARE — and the topbar chip
-   * reads it too, off the same exported function. The domain opens the site and nothing
-   * is outstanding: that single sentence is what puts the name in the field, the green on
-   * it, and "Padlock on · anyone can visit" under it. Three surfaces, one predicate, so
-   * none of them can end up arguing with the card — which is how this panel got here.
+   * ⚠️ `domainSettled` HAS ONE READER LEFT, AND THAT IS THE STATE OF THINGS, NOT AN
+   * OVERSIGHT. It used to be this panel's workhorse — the address in the field, the green
+   * pill, the prose line under it — and 15.09.2026 took all three away: the field follows
+   * the CONNECTION now (`domainIsHome`), the pill went to the header's copy button on the
+   * 14.09 boards, and the prose line is gone with the padlock claim. What is left of
+   * "finished and quiet" is one question — does the ready/green card belong here — so it
+   * is read where that is decided (`readyCard` above) and nowhere else. A local alias for
+   * a single use would only make it look like the panel still had a fourth opinion.
    */
-  const settled = domainSettled(world)
   /*
    * A NAME LEFT STANDING AT THE TILL — see the card for how this maps to board state ⑦.
    *
@@ -978,7 +993,14 @@ export function PublishPanel() {
                 />
               )}
               {/* The walk's last frame — board 30289:59972. Same card, green tick, and the
-                  sentence says where the press is rather than what is happening. */}
+                  sentence says where the press is rather than what is happening.
+                  ⚠️ AND THE SECOND HALF OF THE SENTENCE DEPENDS ON WHETHER THERE IS A SITE
+                  OUT THERE ALREADY. The board's copy — "to make your site live" — is
+                  written for the customer who has never published, and for the one who has
+                  it would be the same small lie the auto-publish used to tell: their site
+                  IS live, at the free address, and what this press does is move it. The
+                  card names the act it is asking for; the address it moves onto is in the
+                  field right under it and in the button. */}
               {readyCard && (
                 <ProgressCard
                   done
@@ -986,10 +1008,15 @@ export function PublishPanel() {
                     en: `${world.customDomain} is connected`,
                     uk: `${world.customDomain} підключено`,
                   })}
-                  sub={t({
-                    en: 'Your new custom address is fully set up. Just hit the publish button to make your site live.',
-                    uk: 'Вашу нову адресу повністю налаштовано. Натисніть «Опублікувати», щоб сайт запрацював.',
-                  })}
+                  sub={world.published
+                    ? t({
+                        en: 'Your new custom address is fully set up. Publish to move your site onto it.',
+                        uk: 'Вашу нову адресу повністю налаштовано. Опублікуйте, щоб перенести сайт на неї.',
+                      })
+                    : t({
+                        en: 'Your new custom address is fully set up. Just hit the publish button to make your site live.',
+                        uk: 'Вашу нову адресу повністю налаштовано. Натисніть «Опублікувати», щоб сайт запрацював.',
+                      })}
                 />
               )}
               {propagating && (
@@ -1390,7 +1417,18 @@ export function PublishPanel() {
                 dark wedge between them — a gap where the board has a seam. It spans the
                 body card's full 420 because it carries no px of its own; the field block
                 above it does (px 16), which is why the field is 388. */}
-            {(settled || readyCard) && (
+            {/*
+              * ⚠️ IT HANGS ON THE CONNECTION, NOT ON THE ALL-CLEAR (designer, 15.09.2026,
+              * answering the open question left by the address rule: «нам нужно на этой
+              * стадии под уведомлением о почте показать этот элемент с кнопкой для
+              * отвязки»). It used to read `settled || readyCard`, so a domain that was
+              * connected, set up and merely waiting on a letter could not be taken off the
+              * site from the one window that owns the connection. Same line as the field
+              * above it now: `domainIsHome`, i.e. connected — which also gives `unreachable`
+              * and `old-site` their Unlink, and those are the states where wanting out is
+              * likeliest.
+              */}
+            {domainIsHome(world) && (
               /*
                * ⚠️ THE SEAM IS `#313133`, A RAW HEX, AND THE DESIGNER SETTLED IT TWICE IN
                * ONE DAY (15.09.2026: first «у тебя не видно разделительного бордера, в
@@ -1412,10 +1450,32 @@ export function PublishPanel() {
                * that faint at 1:1. What was actually broken in the card he screenshotted
                * was the divider above it; see ProgressCard.
                */
-              <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
-                <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
-                  {t({ en: 'Secure padlock on', uk: 'Замок увімкнено' })}
-                </p>
+              /*
+                * ⚠️ THE STATUS SLOT IS EMPTY, AND THAT IS THE ANSWER (designer, 15.09.2026,
+                * on the renewal line I proposed for it: «я думаю что вставлять туда "Renews
+                * 15 Sep 2027 · $19.99/yr" это не та информация которая так важна для
+                * пользователя и имеет смысл ее всегда видеть там»). He is right, and the
+                * objection generalises into the rule for this slot:
+                *
+                *   THIS ROW IS SEEN ON EVERY PUBLISH, SO WHATEVER STANDS IN IT MUST BE
+                *   WORTH READING ON EVERY PUBLISH.
+                *
+                * A renewal date a year out fails that — it is true, it is ours to say, and
+                * it is news twice: when the domain is bought and when it is nearly due.
+                * `Secure padlock on` failed it the other way: always true, therefore never
+                * news, and a claim about a certificate that does not exist yet on
+                * `propagating`, on `ready`, or while a registrant letter is owed.
+                *
+                * Nothing else clears the bar either. The address is in the field above, the
+                * traffic is the header's counter, a second link is banned (one link in this
+                * window), and anything about the site being up is the bar's own job. So the
+                * row holds the ACTION alone, right-aligned, in every state — and the slot
+                * becomes a channel that speaks only when it has something: a renewal inside
+                * its last month, auto-renew switched off, a name at another registrar we
+                * cannot renew. None of those exists in the world yet, and inventing the
+                * calm case to fill space is what put the padlock there in the first place.
+                */
+              <div className="flex items-center justify-end rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
                 <button
                   onClick={unlinkDomain}
                   className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[#f57c00] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#f57c0014]"

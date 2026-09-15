@@ -558,25 +558,17 @@ export function violations(w: World): Violation[] {
     })
   }
   /*
-   * ⚠️ `&& !w.icann` — BECAUSE THE PARKED STATE IS THE ONE EXCEPTION, and it is a state the
-   * product now produces rather than one only the console could stage. This violation's own
-   * sentence is what qualifies it: "Ready is a domain waiting for the first publish" is true
-   * of every `ready` EXCEPT the one where a registrant confirmation is outstanding, where
-   * `ready` means connected-and-not-answering (modules/domains/connect.ts, THE GATE). A
-   * customer who had already published and then bought a domain lands exactly there, which
-   * is the commonest shape of all — so without this the console would paint the happy path
-   * red.
+   * ⚠️ `published` + `ready` IS NOT A VIOLATION, AND THE RULE THAT SAID SO IS GONE
+   * (15.09.2026). It read: "Ready is a domain waiting for the FIRST publish — once it
+   * happens the domain is live", which was true only of a product where finishing a
+   * connect published the site for you. It did, and the designer caught it: «типа как
+   * будто сразу после привязки кастомного домена произошла сразу публикация
+   * автоматически перед капотом?». Connecting is not publishing, so the walk now stops at
+   * `ready` for everybody (modules/domains/connect.ts, `settle`) and this pairing — a
+   * customer who had published and then attached a domain — is the commonest shape in the
+   * flow rather than an impossible one. The rule below it still holds and carries the real
+   * invariant: `live` cannot stand in front of a site that was never published.
    */
-  if (w.published && w.domain === 'ready' && !w.icann) {
-    out.push({
-      field: 'domain',
-      value: 'ready',
-      reason: {
-        en: '"Ready" is a domain waiting for the FIRST publish — once it happens the domain is live.',
-        uk: '«Ready» — це домен, який чекає на ПЕРШУ публікацію; після неї домен уже живий.',
-      },
-    })
-  }
   if (w.published === false && (w.domain === 'live' || w.domain === 'multiple')) {
     out.push({
       field: 'published',
