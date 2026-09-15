@@ -1805,7 +1805,11 @@ check('…and the typed prompt is built as given', await cardUp())
   await openPublish('p=built&u=1&v=true&d=live&n=adovasio.com&a=paid&t=22&c=640')
   const seam = await p.evaluate(() => {
     const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
-    const rim = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).borderColor === 'rgb(49, 49, 51)')
+    /* ⚠️ THE RIM IS THE TOKEN NOW, NOT THE BAKED HEX (designer, 15.09.2026: the seam was
+       invisible). `#313133` is `Neutral Alpha/100` flattened against the PANEL's ground,
+       and this card sits on the body card's lighter one — so it is bound to the token and
+       composites. Matching on the old literal found nothing and took the whole run down. */
+    const rim = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).borderColor === 'rgba(255, 255, 255, 0.08)')
     const body = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).backgroundColor === 'rgba(255, 255, 255, 0.04)')
     const field = [...d.querySelectorAll('p')].find((e) => e.textContent === 'Website URL').parentElement.querySelector('div')
     const w = (el) => Math.round(el.getBoundingClientRect().width)

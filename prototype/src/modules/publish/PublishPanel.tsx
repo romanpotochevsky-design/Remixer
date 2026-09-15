@@ -988,7 +988,9 @@ export function PublishPanel() {
 
               {/*
                 * THE DOMAIN CARD — board 30282:18491, the state where a custom domain is
-                * carrying the site: a card of its own under the field (border `#313133`,
+                * carrying the site: a card of its own under the field (rim `NA/100` = 8%
+                * white — the board's `#313133` is that token flattened against the panel's
+                * ground, see the seam note below;
                 * radius 16, pl 8 / pr 16 / py 16), the domain's own status on the left and
                 * the one action that belongs to a domain on the right.
                 *
@@ -1334,7 +1336,24 @@ export function PublishPanel() {
                 body card's full 420 because it carries no px of its own; the field block
                 above it does (px 16), which is why the field is 388. */}
             {(settled || readyCard) && (
-              <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
+              /*
+               * ⚠️ THE SEAM IS THE TOKEN, NOT THE BAKED HEX (designer, 15.09.2026: «у тебя
+               * не видно разделительного бордера, в макете он немножко светлее»).
+               *
+               * The board's export prints this stroke as a solid `#313133`, and we shipped
+               * it literally — but the arithmetic gives the game away: 8% white over the
+               * PANEL's own ground (`--gray-850` #1f1f22) flattens to 0.08·255 + 0.92·31 =
+               * 48.9, which is #313133 to the digit, and `Neutral Alpha/100` (8%) is right
+               * there in that node's own variable set. So the hex is `NA/100` frozen against
+               * the wrong backdrop: this card is the LAST CHILD of the body card, whose 4%
+               * fill lifts the ground to (39,39,42) — measured — and an opaque stroke picked
+               * for a darker ground arrives with half its contrast. Measured across the
+               * seam: baked hex (49,49,51) = Δ10 against that ground, where the address
+               * field's own `--white-200` rim reads (65,65,67) = Δ26 and is plainly visible.
+               * The token composites instead and lands (56,56,58) — Δ17, between the two,
+               * which is exactly the "a bit lighter" he asked for.
+               */
+              <div className="flex items-center justify-between rounded-[16px] border border-[var(--white-100)] py-4 pl-[18px] pr-4">
                 <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
                   {t({ en: 'Secure padlock on', uk: 'Замок увімкнено' })}
                 </p>

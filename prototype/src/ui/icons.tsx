@@ -260,10 +260,44 @@ export const IconThumbDown = ({ size = 16, className }: IconProps) => (
  * size; measure the ink in the render (design-system.md, the generation card's rings).
  * It was also mirrored: the board stacks the sheets the other way round.
  */
-export const IconCopy = ({ size = 16, className }: IconProps) => (
+/**
+ * Copy — two sheets, and the back one is OCCLUDED rather than welded to the front.
+ *
+ * ⚠️ THIRD PASS ON THIS GLYPH, and this time the difference is SHAPE, not size (designer,
+ * 15.09.2026: «иконка копировать адрес не как в макете», board 30289:59972). Measured off
+ * our own render, the ink was 16 square at stroke 1.5 against the 15 the board's earlier
+ * instance gave — one pixel, which is not what reads wrong. What read wrong is that the
+ * back sheet's path STARTED on the front square's stroke (9.5,9.5 is a point on its top
+ * edge) and ENDED on its top-right corner, so the two outlines shared ink and the mark
+ * came out as one chunky shape. The board draws two separate rounded squares with the
+ * front one in front.
+ *
+ * So the back square is a whole rect now, and the front square's own silhouette — grown by
+ * the 1.5 stroke and a 1.5 gap — is masked out of it. That is the occlusion every icon set
+ * uses for this glyph, and it costs one mask: the alternative, painting the front square's
+ * fill over the back one, is impossible here because the surface under it is the address
+ * field, which is transparent.
+ *
+ * Ink lands 4.5…19.5 = 15 square, centred in the 24 box, at stroke 1.5 — the board's own
+ * numbers from the note of 14.09.2026.
+ *
+ * ⚠️ WHAT COULD NOT BE MEASURED, so that the next session does not re-derive it: the
+ * board's glyph is an IMAGE in the export and figma.com's asset URLs are blocked by the
+ * session proxy, so there is no vector to read. `get_metadata` stops at a 20×20 frame
+ * inside the 24 Icon frame and exposes no path. Everything above is read off the 1:1
+ * renders and the designer's own zoom.
+ */
+export const IconCopy = ({ size = 24, className }: IconProps) => (
   <svg {...base(size)} strokeWidth={1.5} className={className}>
-    <rect x="4.5" y="9.5" width="10" height="10" rx="2.6" />
-    <path d="M9.5 9.5V7A2.5 2.5 0 0 1 12 4.5h5A2.5 2.5 0 0 1 19.5 7v5a2.5 2.5 0 0 1-2.5 2.5h-2.5" />
+    <defs>
+      {/* white keeps, black cuts — the front sheet's silhouette plus stroke plus gap */}
+      <mask id="icon-copy-occlusion" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect width="24" height="24" fill="#fff" />
+        <rect x="3.75" y="7.75" width="12.5" height="12.5" rx="4" fill="#000" />
+      </mask>
+    </defs>
+    <rect x="9.25" y="5.25" width="9.5" height="9.5" rx="2.5" mask="url(#icon-copy-occlusion)" />
+    <rect x="5.25" y="9.25" width="9.5" height="9.5" rx="2.5" />
   </svg>
 )
 

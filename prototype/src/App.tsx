@@ -243,7 +243,6 @@ const letterArrivesFade = {
 
 function SimulatedEmail() {
   const { world, set } = useWorld()
-  const previewOpen = useUI((s) => s.previewOpen)
   const reloading = useUI((s) => s.reloading)
   const reduce = useReducedMotion()
   const { t } = useT()
@@ -295,13 +294,28 @@ function SimulatedEmail() {
         <motion.aside
           key="sim-email"
           data-quiet={quiet ? 'true' : undefined}
-          /* TOP-left of the canvas, 16px in on both axes (see the header comment for the
-             measurements this width and this corner come from). `--chat-w` is written
-             straight to <html> by the resizer, so the letter follows a drag without a
-             React render; with the preview collapsed the chat owns the whole width and it
-             falls back to the page's own gutter. */
+          /*
+           * TOP-LEFT OF THE SCREEN, NOT OF THE PREVIEW (designer, 15.09.2026: «эта штука
+           * должна всплыть в левом верхнем углу экрана, а не превью»).
+           *
+           * The left edge used to be `calc(var(--chat-w) + 16px)` — the canvas's own
+           * corner — so the letter floated over the SITE, which is the one surface in the
+           * shell that belongs to the customer's own work. It also moved when the resizer
+           * moved, which made a prototype instrument behave like part of the layout. Now
+           * it is the window's gutter, over the chat column, and it stays put through a
+           * drag.
+           *
+           * ⚠️ THE TOP STAYS `topbar + 16`, AND THAT IS NOT A HALF-MEASURE. 68 is
+           * load-bearing for THE ARRIVAL (see the header): the travel is exactly the 16px
+           * between this seat and the bars' lower edge at 52, which is what lets the card
+           * come down OUT of the bar and never cover it, not even for one transparent
+           * frame. Seated at the literal 16 it would start above the window's edge and
+           * land on top of the mark and the history pill — losing the choreography the
+           * designer asked for on the 14th to satisfy the corner he asked for on the 15th.
+           * The axis he was correcting is the one that was keyed to the preview.
+           */
           style={{
-            left: previewOpen ? 'calc(var(--chat-w) + 16px)' : '16px',
+            left: '16px',
             top: 'calc(var(--topbar-h) + 16px)',
           }}
           className="sim-letter fixed z-[60] w-[280px] origin-top overflow-hidden rounded-[14px] bg-[#F7F7F5] text-neutral-900 shadow-[0_2px_6px_rgba(0,0,0,0.22),0_22px_48px_-12px_rgba(0,0,0,0.6)] ring-1 ring-black/15"
