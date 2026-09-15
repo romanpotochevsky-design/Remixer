@@ -6,9 +6,18 @@
  * должно всплыть подтверждение действия… это компонент для подтверждения чего либо").
  *
  * ANATOMY, straight off the board:
- *   · scrim — 50% black over the WHOLE shell (Rectangle 886 covers the 2560×1200 frame),
- *     so this is an app-modal like the checkout sheet: it is mounted at the top of the
- *     tree, not inside the panel that asked, or the panel's own z-40 would cap it.
+ *   · scrim — black over the WHOLE shell (Rectangle 886 covers the 2560×1200 frame), so
+ *     this is an app-modal like the checkout sheet: it is mounted at the top of the tree,
+ *     not inside the panel that asked, or the panel's own z-40 would cap it.
+ *     ⚠️ **70%, NOT THE BOARD'S 50%** (designer, 15.09.2026: «можно чуть сильнее затемнять
+ *     фон, чтобы каши такой не было»). At 50% the canvas keeps its full-strength colour —
+ *     in his screenshot a saturated green CTA and a grid of food cards were still the
+ *     loudest things on screen while a question waited for an answer, and the dialog's own
+ *     `Gray/800` surface sat at nearly the value of the dimmed site behind it. This is not
+ *     a guess at a number either: the checkout sheet, the product's other app-modal, has
+ *     always been 70% (DomainModal, its own board) — two app-modals with two scrims is the
+ *     drift, one scrim is the system. The board's 50% is what the picker and the home
+ *     surfaces use, and they dim a PAGE, not a question.
  *   · sheet 560 wide, shadow 0 16 28 rgba(0,0,0,.5), card `Gray/800` under an 8%-white
  *     rim at radius 24, clipped.
  *   · inside it, inset 4 on three sides, a second panel in `Gray/750` under a 4%-white rim
@@ -82,7 +91,7 @@ export function ConfirmHost() {
       {req && (
         <motion.div
           key="confirm"
-          className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(0,0,0,0.5)] px-4"
+          className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(0,0,0,0.7)] px-4"
           variants={confirmScrim}
           initial="initial"
           animate="animate"

@@ -13,7 +13,7 @@
  *  - no DNS jargon on primary paths; the canonical success checklist is fixed.
  */
 import { AnimatePresence, motion } from 'motion/react'
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useWorld, isCustomDomainActive, registrantUnconfirmed, type DomainState } from '@/state/world'
 import { useUI, type DomainScreen } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
@@ -35,6 +35,7 @@ import { surface, listSwap, listSwapItem } from '@/ui/motion'
 
 /** The content sheet under the top bar — every screen renders inside one. */
 function Screen({ children }: { children: React.ReactNode }) {
+  const onHead = useContext(HeadScroll)
   return (
     <motion.div
       variants={surface}
@@ -43,8 +44,17 @@ function Screen({ children }: { children: React.ReactNode }) {
       exit="exit"
       className="min-h-0 flex-1 rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)]"
     >
-      <ScrollArea className="h-full">
-        <div className="mx-auto w-full max-w-[560px] px-6 py-10">{children}</div>
+      <ScrollArea className="h-full" onMetrics={(m) => onHead(m.pos)}>
+        {/* `--dom-head-h` IS THE HEADER, as layout: the overlay above paints over
+            this band, and the scroller's own box stays the full height so the list
+            only ever moves with the scroll (see the law above SearchHeader). The
+            fallback is 0 for the screens that carry no header. */}
+        <div
+          className="mx-auto w-full max-w-[560px] px-6 pb-10"
+          style={{ paddingTop: 'calc(var(--dom-head-h, 0px) + 40px)' }}
+        >
+          {children}
+        </div>
       </ScrollArea>
     </motion.div>
   )
@@ -62,6 +72,7 @@ function Screen({ children }: { children: React.ReactNode }) {
  */
 function ResultsSheet({ children, onBack }: { children: React.ReactNode; onBack?: () => void }) {
   const { t } = useT()
+  const onHead = useContext(HeadScroll)
   return (
     <motion.div
       variants={listSwap}
@@ -71,8 +82,9 @@ function ResultsSheet({ children, onBack }: { children: React.ReactNode; onBack?
       className="flex min-h-0 flex-1 flex-col"
     >
       <div className="min-h-0 flex-1 rounded-t-[8px] border-r border-t border-[#ffffff0a] bg-[var(--gray-900)]">
-        <ScrollArea className="h-full">
-          <div className="px-8 pb-2 pt-8">
+        <ScrollArea className="h-full" onMetrics={(m) => onHead(m.pos)}>
+          {/* the header's rest height plus the page's own 32 — see Screen */}
+          <div className="px-8 pb-2" style={{ paddingTop: 'calc(var(--dom-head-h, 0px) + 32px)' }}>
             {/* 8px between blocks: the section titles carry their own 20px of air,
                 which is where the rest of the spacing comes from */}
             <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-2">
@@ -611,6 +623,152 @@ const brandLabel = (domain: string) => {
   return stem.charAt(0).toUpperCase() + stem.slice(1)
 }
 
+/* ─────────── THE HEADER THAT COLLAPSES WHILE THE ANSWER SCROLLS ───────────
+ *
+ * Designer, 15.09.2026: «я хочу чтобы при скроле красиво и плавно с анимацией
+ * заголовок "Find your domain name" прятался, сначала он уменьшался, а потом
+ * уходил плавно в прозрачность, и оставался прибитым к верху только поиск и
+ * меньше занимал места».
+ *
+ * ⚠️ THIS MECHANISM IS NOT NEW, AND THE SECOND COPY OF IT WOULD BE THE MISTAKE.
+ * The template picker's header does exactly this (TemplatePicker.tsx, «Шапка,
+ * которая сжимается при скролле» in design-system.md §5), and it was rewritten
+ * once already after a bug report — «когда скролишь, список дергается резко».
+ * Its law, carried here whole:
+ *
+ *   · THE HEIGHT IS A FUNCTION OF THE SCROLL, never a snap with a spring. A snap
+ *     hands the scroller N px of viewport in one commit, so at an unchanged
+ *     `scrollTop` every row jumps N px up; a spring only spreads that jump over
+ *     five frames (measured there: worst frame 16.6 px of content movement with
+ *     ΔscrollTop exactly 0). Absorbing it by scrolling back is arithmetically
+ *     impossible — cancelling the jump needs the whole travel in scroll and only
+ *     part of it exists at the trigger.
+ *   · THE HEADER IS AN OVERLAY, not a box above the list. Its rest height is the
+ *     scroller's `padding-top` (`--dom-head-h`, read by every sheet below), and
+ *     what you see shrinking is a PLATE scaled on Y. The scroller's box therefore
+ *     never resizes, so the list can only move with the scroll itself.
+ *   · THE RAMP'S LENGTH IS DERIVED, NOT CHOSEN:
+ *
+ *       header foot(S) = HEAD − TITLE · min(S / R, 1)     first row's y(S) = HEAD − S
+ *
+ *     which agree for every S ≤ R **iff R = TITLE** — the title block's own
+ *     height. Shorter and the foot outruns the content, opening a gap under the
+ *     pinned search; longer and the plate eats into the first row. So the collapse
+ *     is paid for, pixel for pixel, by the scroll that uncovers what it gives up.
+ *
+ * WHAT THE COMPACT STATE IS: the pill and its own air, nothing else — 8 above,
+ * 56 of pill, 24 below = 88, against 185 at rest. The title block (29 + line + 30)
+ * is the whole difference, which is why it is also the ramp.
+ */
+const HEAD_TOP = 8
+const TITLE_TOP = 29
+const TITLE_BOTTOM = 30
+/** The pill and the air under it — the part that survives the collapse. */
+const PILL_BAND = 56 + 24
+/** Pinned, not `leading-[1.2]`: a fractional line box would make the travel
+ *  fractional too, and the identity above only closes on whole pixels. 32 · 1.2
+ *  = 38.4 and 40 · 1.2 = 48, so this rounds the compact line down by .4 px. */
+const titleLine = (compact: boolean) => (compact ? 38 : 48)
+/** The title block = the travel = the ramp. 97 compact, 107 at the hero size. */
+const titleBlock = (compact: boolean) => TITLE_TOP + titleLine(compact) + TITLE_BOTTOM
+/** The header's rest height: 185 on an answer, 195 on the dashboard hero. */
+export const domHeadH = (compact: boolean) => HEAD_TOP + titleBlock(compact) + PILL_BAND
+
+/*
+ * THE TITLE'S OWN EXIT — «сначала уменьшался, а потом уходил в прозрачность».
+ *
+ * It shrinks from the first pixel of scroll and only then begins to fade, so the
+ * two read as one motion with a sequence rather than two effects. Both are over
+ * by `TITLE_GONE`, and that is not taste: the pill is rising into the band the
+ * title occupies (its rise is locked to the plate's foot, or it would poke out
+ * below the header), so the title has to be gone before the pill arrives. Its
+ * rise is DERIVED from that deadline — the line box's top (HEAD_TOP + TITLE_TOP)
+ * reaches the band's top edge exactly as the ink reaches zero, so it leaves under
+ * the window's own edge instead of being cut by it.
+ */
+const TITLE_GONE = 0.7
+const FADE_FROM = 0.34
+const TITLE_SHRINK = 0.62
+const TITLE_RISE = (HEAD_TOP + TITLE_TOP) / TITLE_GONE
+/** Zero slope at both ends: the eye reads a gradient's INFLECTION as an edge, so
+ *  a linear fade — the shallowest ramp there is — still shows two of them (the
+ *  drawn-ring lesson, design-system.md §7). */
+const smooth = (x: number) => x * x * (3 - 2 * x)
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
+
+type Part = React.MutableRefObject<HTMLElement | null>
+
+/**
+ * The ramp: one function of the scroll offset, written imperatively.
+ *
+ * Nothing here changes layout and nothing here is a spring — every part carries
+ * the difference between its two positions as a transform scaled by
+ * `u = min(pos / ramp, 1)`. Transform and opacity only. At `u === 0` every inline
+ * style is REMOVED, so a header sitting at the top of its list is byte-identical
+ * to the DOM this feature never touched.
+ *
+ * It is called from the scroller's own metrics callback — once per scroll event
+ * (the browser coalesces those to a frame) and once per resize — so it adds no
+ * layout read of its own and no second listener on the window.
+ *
+ * Reduced motion is deliberately NOT consulted: this is not an animation, it is a
+ * position that follows the reader's own gesture, like the scroll itself.
+ */
+function useHeadRamp(parts: { plate: Part; rule: Part; title: Part; pill: Part }, compact: boolean) {
+  const ramp = titleBlock(compact)
+  const head = domHeadH(compact)
+  /* The last u written. Deep in a list every frame reports a new offset while u
+     has been pinned at 1 for hundreds of pixels, and re-writing four identical
+     transforms per frame is exactly the per-frame work the contract is about. */
+  const wrote = useRef(-1)
+  /* Promoted only while the ramp is actually moving: `will-change` written every
+     frame is worse than not writing it at all. */
+  const hot = useRef(false)
+  return useCallback((pos: number) => {
+    const u = clamp01(pos / ramp)
+    if (u === wrote.current) return
+    wrote.current = u
+    const moving = [parts.title, parts.pill, parts.rule]
+    const mid = u > 0 && u < 1
+    if (mid !== hot.current) {
+      hot.current = mid
+      for (const r of moving) if (r.current) {
+        if (mid) r.current.style.willChange = 'transform'
+        else r.current.style.removeProperty('will-change')
+      }
+    }
+    if (u === 0) {
+      for (const r of [parts.plate, ...moving]) if (r.current) {
+        r.current.style.removeProperty('transform')
+        r.current.style.removeProperty('opacity')
+      }
+      return
+    }
+    /* The plate IS the header's visible height, top-anchored: 185 → 88. */
+    if (parts.plate.current) parts.plate.current.style.transform = `scaleY(${1 - (ramp / head) * u})`
+    /* The foot's hairline and the pill ride the foot exactly — the pill's own 24
+       of air below it is what keeps the line under the pill at every u. */
+    const lift = `translateY(${-ramp * u}px)`
+    if (parts.rule.current) parts.rule.current.style.transform = lift
+    if (parts.pill.current) parts.pill.current.style.transform = lift
+    if (parts.title.current) {
+      /* Geometric, as the house rule for a scale that crosses sizes (the flight's
+         note in TemplateFlight.tsx): equal ratios per unit of scroll. */
+      const shrink = Math.pow(TITLE_SHRINK, Math.min(1, u / TITLE_GONE))
+      parts.title.current.style.transform = `translateY(${-TITLE_RISE * Math.min(u, TITLE_GONE)}px) scale(${shrink})`
+      parts.title.current.style.opacity = String(1 - smooth(clamp01((u - FADE_FROM) / (TITLE_GONE - FADE_FROM))))
+    }
+  }, [ramp, head])
+}
+
+/**
+ * How the sheets below tell the header where the reader is. A context, because
+ * the header is mounted by the surface and the scrollers live inside each screen
+ * — and `ScrollArea` keeps `onMetrics` in a ref, so an inline arrow here costs
+ * nothing and never re-arms its observer.
+ */
+const HeadScroll = createContext<(pos: number) => void>(() => {})
+
 /**
  * The header both dashboard states share: a centred title over the search pill.
  *
@@ -628,51 +786,101 @@ const brandLabel = (domain: string) => {
  * wants the header frozen instead, freeze `compact`.
  */
 function SearchHeader({
-  title, compact, query, setQuery, onSubmit, placeholder,
+  title, compact, query, setQuery, onSubmit, placeholder, parts,
 }: {
   title: Text
-  /** true on the results screen: 32px title, larger glass submit. */
+  /** true on every ANSWER: 32px title, larger glass submit. */
   compact: boolean
   query: string
   setQuery: (v: string) => void
   onSubmit: () => void
   placeholder?: Text
+  /** The four elements the scroll ramp writes to — see `useHeadRamp`. */
+  parts: { plate: Part; rule: Part; title: Part; pill: Part }
 }) {
   const { t } = useT()
   return (
-    <div className="flex-none rounded-t-[8px] border-t border-[var(--white-100)] bg-[var(--gray-900)] pt-2">
-      <h2
-        /* one-off type-size transition on a single short line — the same
-           exception the "Thinking" shimmer gets, and for the same reason */
-        className="pb-[30px] pt-[29px] text-center font-display font-semibold leading-[1.2] text-white transition-[font-size] duration-[var(--dur-slow)] ease-std"
-        style={{ fontSize: compact ? 32 : 40 }}
-      >
-        {t(title)}
-      </h2>
-      <div className="flex justify-center px-8 pb-6">
-        {/* the 56px pill: gray-700 under an NA/50 rim, submit inside its right end */}
-        <div className="flex h-14 w-full max-w-[880px] items-center rounded-full border border-[#ffffff0a] bg-[var(--gray-700)] pl-4 pr-2">
-          <span className="flex-none text-white"><IconSearch size={20} /></span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
-            placeholder={placeholder ? t(placeholder) : undefined}
-            className="ml-4 h-full min-w-0 flex-1 bg-transparent text-[17px] text-white outline-none placeholder:text-[#ffffff7a]"
-          />
-          {/* ONE button in both states, never two — swapping elements here would
-              re-mount the control the user just pressed. */}
-          <button
-            onClick={onSubmit}
-            aria-label={t({ en: 'Search', uk: 'Шукати' })}
-            className={`grid flex-none place-items-center rounded-full transition-all duration-[var(--dur-slow)] ease-std ${
-              compact
-                ? 'h-10 w-10 border border-[#ffffff3d] bg-[#09090bcc] text-white backdrop-blur-[16px] hover:bg-[#09090b]'
-                : 'h-8 w-8 border border-transparent bg-white text-[#09090b] hover:bg-[#e4e4e7]'
-            }`}
+    /*
+     * AN OVERLAY over the sheet below, at the header's REST height for the whole
+     * gesture — the collapse is the plate's scale, never this box (see the law).
+     * Deaf to the pointer so a wheel that starts over the header still scrolls the
+     * list; only the pill takes events back.
+     */
+    <div
+      className="pointer-events-none absolute left-0 right-0 top-0 z-10 overflow-hidden rounded-t-[8px]"
+      style={{ height: domHeadH(compact) }}
+    >
+      {/* THE PLATE — the visible height, and the only thing that scales. Separate
+          from the header's own box for the reason the picker found: scaled to the
+          compact height as a background, it would leave the title and the pill
+          standing outside itself with the list showing between them.
+          Promoted for good: measured on the picker's plate at 38.7 → 43.5 fps, and
+          this is the same shape of layer — one big opaque rect under moving text. */}
+      <div
+        ref={(el) => { parts.plate.current = el }}
+        aria-hidden
+        className="absolute inset-0 origin-top border-t border-[var(--white-100)] bg-[var(--gray-900)]"
+        style={{ willChange: 'transform' }}
+      />
+      {/* The line the answer scrolls under. It rides the plate's foot as a
+          TRANSLATE of its own rather than sitting on the plate's border, which a
+          scaleY would squash — and at rest it stands exactly where the sheet's own
+          top hairline stood before the header became an overlay. */}
+      <div
+        ref={(el) => { parts.rule.current = el }}
+        aria-hidden
+        className="absolute bottom-0 left-0 right-0 h-px bg-[#ffffff0a]"
+      />
+      <div className="relative" style={{ paddingTop: HEAD_TOP }}>
+        {/* The padding is the WRAPPER's, so the heading's own box is exactly its
+            line box — which is what makes `origin-center` the centre of the words
+            and not the centre of the air around them. */}
+        <div style={{ paddingTop: TITLE_TOP, paddingBottom: TITLE_BOTTOM }}>
+          <h2
+            ref={(el) => { parts.title.current = el }}
+            className="origin-center text-center font-display font-semibold text-white"
+            style={{ fontSize: compact ? 32 : 40, lineHeight: `${titleLine(compact)}px` }}
           >
-            <IconArrowRight size={compact ? 24 : 18} />
-          </button>
+            {t(title)}
+          </h2>
+        </div>
+        {/*
+         * ⚠️ THE HERO'S SETTLE IS ONE COMMIT NOW, not a 300ms font-size transition.
+         * With the header an overlay of fixed height, that transition would animate
+         * the title for 300ms while the box — and with it the pill — flipped its 10px
+         * in a single frame: the one control the reader may be typing into, jumping
+         * under a shrinking title. The size change instead lands with the screen swap
+         * that causes it (`listSwap` carries the content out and in over the same
+         * beat), so the 10px is spent inside a cross-fade rather than under a cursor.
+         */}
+        <div
+          ref={(el) => { parts.pill.current = el }}
+          className="pointer-events-auto flex justify-center px-8 pb-6"
+        >
+          {/* the 56px pill: gray-700 under an NA/50 rim, submit inside its right end */}
+          <div className="flex h-14 w-full max-w-[880px] items-center rounded-full border border-[#ffffff0a] bg-[var(--gray-700)] pl-4 pr-2">
+            <span className="flex-none text-white"><IconSearch size={20} /></span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+              placeholder={placeholder ? t(placeholder) : undefined}
+              className="ml-4 h-full min-w-0 flex-1 bg-transparent text-[17px] text-white outline-none placeholder:text-[#ffffff7a]"
+            />
+            {/* ONE button in both states, never two — swapping elements here would
+                re-mount the control the user just pressed. */}
+            <button
+              onClick={onSubmit}
+              aria-label={t({ en: 'Search', uk: 'Шукати' })}
+              className={`grid flex-none place-items-center rounded-full transition-all duration-[var(--dur-slow)] ease-std ${
+                compact
+                  ? 'h-10 w-10 border border-[#ffffff3d] bg-[#09090bcc] text-white backdrop-blur-[16px] hover:bg-[#09090b]'
+                  : 'h-8 w-8 border border-transparent bg-white text-[#09090b] hover:bg-[#e4e4e7]'
+              }`}
+            >
+              <IconArrowRight size={compact ? 24 : 18} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -900,7 +1108,14 @@ function HomeScreen() {
       className="flex min-h-0 flex-1 flex-col"
     >
       {/* ------------------------------------ page sheet: the lists (27085:107102) */}
-      <div ref={listsRef} className="flex min-h-0 flex-1 justify-center gap-8 rounded-t-[8px] border-t border-[#ffffff0a] bg-[var(--gray-900)] px-8 pb-2 pt-2">
+      {/* The hero header overlays this sheet too, so its band is padding here — and
+          this screen has no page scroll of its own (each column scrolls inside its
+          own card), which is exactly why the header never collapses on it. */}
+      <div
+        ref={listsRef}
+        className="flex min-h-0 flex-1 justify-center gap-8 rounded-t-[8px] border-t border-[#ffffff0a] bg-[var(--gray-900)] px-8 pb-2"
+        style={{ paddingTop: 'calc(var(--dom-head-h, 0px) + 8px)' }}
+      >
         {/* Existing domains — only when the account holds any (26181:34790).
             Name + outlined Connect, nothing else: owned domains have no price.
 
@@ -1547,6 +1762,19 @@ export function DomainsSurface() {
      over the owned-domain card, and the card's own caption ("just keep typing")
      only means anything while it is there. */
   const searching = domainScreen === 'home' || domainScreen === 'results' || domainScreen === 'own'
+  /* The hero size, and with it the header's rest height and the ramp's length: the
+     dashboard draws the 40px title, every answer the 32px one. */
+  const compactHead = domainScreen !== 'home'
+  /* The four elements the scroll writes to. Held here, not in the header, because
+     the header is remounted by nothing and the ramp has to survive the screen swap
+     underneath it — and because the callback goes DOWN to the sheets by context. */
+  const headParts = {
+    plate: useRef<HTMLElement | null>(null),
+    rule: useRef<HTMLElement | null>(null),
+    title: useRef<HTMLElement | null>(null),
+    pill: useRef<HTMLElement | null>(null),
+  }
+  const headRamp = useHeadRamp(headParts, compactHead)
   /* The customer's own names — inventory AND whatever is attached to the project
      right now. The router below is the only thing that reads it here; see `submit`
      for why it cannot be left to the results screen. */
@@ -1655,31 +1883,47 @@ export function DomainsSurface() {
         </button>
       </div>
 
-      {/* The header is mounted ONCE, outside the swap below: searching must not
-          rebuild the field the user is typing into. */}
-      {searching && (
-        <SearchHeader
-          title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
-          /* Compact on every ANSWER, not only on the result lists: the hero
-             settles the moment the field has been used, the way a search engine's
-             home page settles into its results page, and the owned-domain answer
-             (27271:5564) is as much an answer as a list of prices. */
-          compact={domainScreen !== 'home'}
-          query={query}
-          setQuery={setQuery}
-          onSubmit={submit}
-          placeholder={{
-            en: 'Search a name to buy, or enter one you already own',
-            uk: 'Шукайте назву для купівлі або введіть свою',
-          }}
-        />
-      )}
+      {/*
+        * THE STAGE: the screens fill it and the header floats over them.
+        *
+        * The header is mounted ONCE, outside the swap below — searching must not
+        * rebuild the field the user is typing into — and it is now an OVERLAY, so
+        * the band it occupies is handed to the sheets as `--dom-head-h` and the
+        * scrollers keep their full height (the law above SearchHeader). The var is
+        * 0 when no header is up, which is what makes the fallback in each sheet
+        * enough to keep the headerless screens exactly as they were.
+        */}
+      <div
+        className="relative flex min-h-0 flex-1 flex-col"
+        style={{ '--dom-head-h': searching ? `${domHeadH(compactHead)}px` : '0px' } as React.CSSProperties}
+      >
+        {/* Only the lists change hands. mode="wait" keeps the two sets from
+            overlapping mid-flight, so the conveyor reads cleanly. */}
+        <AnimatePresence mode="wait">
+          <HeadScroll.Provider value={headRamp}>
+            <Current key={domainScreen} />
+          </HeadScroll.Provider>
+        </AnimatePresence>
 
-      {/* Only the lists change hands. mode="wait" keeps the two sets from
-          overlapping mid-flight, so the conveyor reads cleanly. */}
-      <AnimatePresence mode="wait">
-        <Current key={domainScreen} />
-      </AnimatePresence>
+        {searching && (
+          <SearchHeader
+            title={{ en: 'Find your domain name', uk: 'Знайдіть свій домен' }}
+            /* Compact on every ANSWER, not only on the result lists: the hero
+               settles the moment the field has been used, the way a search engine's
+               home page settles into its results page, and the owned-domain answer
+               (27271:5564) is as much an answer as a list of prices. */
+            compact={compactHead}
+            query={query}
+            setQuery={setQuery}
+            onSubmit={submit}
+            placeholder={{
+              en: 'Search a name to buy, or enter one you already own',
+              uk: 'Шукайте назву для купівлі або введіть свою',
+            }}
+            parts={headParts}
+          />
+        )}
+      </div>
     </div>
   )
 }

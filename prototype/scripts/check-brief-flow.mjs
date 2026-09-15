@@ -1835,8 +1835,112 @@ check('…and the typed prompt is built as given', await cardUp())
    */
   check('…and its seam is the board’s #313133, not a composited token',
     seam.seamColour === 'rgb(49, 49, 51)', seam.seamColour)
+
+  /*
+   * ⚠️ THE CONFIRM SCRIM IS 70%, AGAINST ITS OWN BOARD'S 50% (designer, 15.09.2026:
+   * «можно чуть сильнее затемнять фон, чтобы каши такой не было»). Guarded here because
+   * the board says 50 and a future session reading 30282:51628 would "fix" it back: at 50
+   * the canvas keeps full-strength colour under a question, and the product's other
+   * app-modal — the checkout sheet — has always been 70. Cancel is asserted too: a
+   * confirm that unlinks anyway is worse than no confirm.
+   */
+  await p.click('[role="dialog"][aria-label="Publish"] button:has-text("Unlink")')
+  await p.waitForTimeout(500)
+  const dlg = await p.evaluate(() => {
+    const sheet = document.querySelector('[role="alertdialog"]')
+    if (!sheet) return { err: 'no dialog' }
+    let scrim = sheet.parentElement
+    while (scrim && getComputedStyle(scrim).backgroundColor === 'rgba(0, 0, 0, 0)') scrim = scrim.parentElement
+    return {
+      title: sheet.getAttribute('aria-label'),
+      scrim: getComputedStyle(scrim).backgroundColor,
+      covers: Math.round(scrim.getBoundingClientRect().width) === window.innerWidth,
+    }
+  })
+  check('Unlink asks first, over a scrim that covers the whole shell at 70% black',
+    dlg.scrim === 'rgba(0, 0, 0, 0.7)' && dlg.covers && /^Disconnect /.test(dlg.title || ''), JSON.stringify(dlg))
+  await p.click('[role="alertdialog"] button:has-text("Cancel")')
+  await p.waitForTimeout(400)
+  const afterCancel = await p.evaluate(() => ({
+    gone: !document.querySelector('[role="alertdialog"]'),
+    field: document.querySelector('[role="dialog"][aria-label="Publish"] input, [role="dialog"][aria-label="Publish"] p')
+      ? document.querySelector('[role="dialog"][aria-label="Publish"]').innerText
+      : '',
+  }))
+  check('…and Cancel leaves the domain where it was',
+    afterCancel.gone && /adovasio\.com/.test(afterCancel.field), JSON.stringify({ gone: afterCancel.gone }))
+
   await p.keyboard.press('Escape')
   await p.waitForTimeout(400)
+
+  /*
+   * ⚠️ THE DOMAINS HEADER COLLAPSES AS A FUNCTION OF THE SCROLL (designer, 15.09.2026:
+   * «заголовок прятался, сначала он уменьшался, а потом уходил плавно в прозрачность…
+   * оставался прибитым к верху только поиск»). The assertion that matters is the LAST
+   * one: the answer may move ONLY with the scroll. A collapsing header that hands the
+   * scroller its band in one commit makes every row jump by that band at an unchanged
+   * scrollTop — the picker's rewrite of 26.08.2026 exists because of exactly that, and
+   * this header carries its law rather than a second mechanism.
+   */
+  await openPublish('p=built&u=1&v=true&a=paid&t=22&c=640')
+  await p.click('[role="dialog"][aria-label="Publish"] button:has-text("Buy or connect a domain")')
+  await p.waitForTimeout(900)
+  await p.fill('input[placeholder^="Search a name"]', 'maplewood')
+  await p.keyboard.press('Enter')
+  await p.waitForTimeout(1100)
+  await p.evaluate(() => {
+    window.__ansScroll = () => {
+      let el = [...document.querySelectorAll('h3')].find((e) => /^Featured$/.test((e.textContent || '').trim()))
+      while (el && !(el.scrollHeight - el.clientHeight > 40 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement
+      return el
+    }
+    window.__head = () => {
+      const h = [...document.querySelectorAll('div')].find((e) => e.style.height
+        && e.className.includes('pointer-events-none') && e.className.includes('absolute') && e.querySelector('h2'))
+      const hb = h.getBoundingClientRect()
+      const [plate, rule, inner] = h.children
+      const title = inner.querySelector('h2'), pill = inner.lastElementChild
+      const row = [...document.querySelectorAll('h3')].find((e) => /^Featured$/.test((e.textContent || '').trim()))
+      return {
+        pos: Math.round(window.__ansScroll().scrollTop),
+        headH: Math.round(hb.height),
+        foot: Math.round(plate.getBoundingClientRect().bottom - hb.top),
+        rule: Math.round(rule.getBoundingClientRect().top - hb.top),
+        pill: Math.round(pill.getBoundingClientRect().top - hb.top),
+        titleTop: +(title.getBoundingClientRect().top - hb.top).toFixed(2),
+        op: +getComputedStyle(title).opacity,
+        tf: getComputedStyle(title).transform,
+        rowY: +row.getBoundingClientRect().top.toFixed(2),
+      }
+    }
+  })
+  const head0 = await p.evaluate(() => window.__head())
+  check('the domains header rests on the board’s 185 with the pill at 105 and no inline transform',
+    head0.headH === 185 && head0.pill === 105 && head0.foot === 185 && head0.tf === 'none' && head0.op === 1,
+    JSON.stringify(head0))
+  const track = [head0]
+  for (let i = 0; i < 14; i++) {
+    await p.evaluate(() => { window.__ansScroll().scrollTop += 8 })
+    await p.waitForTimeout(80)
+    track.push(await p.evaluate(() => window.__head()))
+  }
+  let slip = 0
+  for (let i = 1; i < track.length; i++) {
+    slip = Math.max(slip, Math.abs((track[i].rowY - track[i - 1].rowY) + (track[i].pos - track[i - 1].pos)))
+  }
+  check('…and the answer under it moves ONLY with the scroll', slip < 0.6, JSON.stringify({ slip }))
+  const fading = track.filter((r) => r.op > 0.02 && r.op < 0.98)
+  check('…the title shrinks BEFORE it fades, and is gone before the top edge cuts it',
+    fading.length >= 2 && fading.every((r) => Number(/matrix\(([-\d.]+)/.exec(r.tf)[1]) < 0.95)
+    && track.every((r) => r.op < 0.02 || r.titleTop > -1),
+    JSON.stringify(fading.map((r) => ({ pos: r.pos, op: +r.op.toFixed(2) }))))
+  await p.evaluate(() => { window.__ansScroll().scrollTop += 400 })
+  await p.waitForTimeout(150)
+  const headEnd = await p.evaluate(() => window.__head())
+  check('…and it lands with only the search pinned: pill 8, plate 88, title gone',
+    headEnd.pill === 8 && headEnd.foot === 88 && headEnd.op === 0, JSON.stringify(headEnd))
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(500)
 
   /*
    * ⚠️ THE EXPLANATION BOX IS A FULL-WIDTH DIVIDER, NOT AN INSET BOX (board 30289:60956,
