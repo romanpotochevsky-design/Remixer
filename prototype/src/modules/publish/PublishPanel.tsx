@@ -361,7 +361,15 @@ function ProgressCard({ title, sub, done }: { title: string; sub: string; done?:
             {keepHostsWhole(title)}
           </p>
         </div>
-        <div className="rounded-[12px] border border-[#49494c] px-4 pb-[18px] pt-[19px]">
+        {/* ⚠️ ITS STROKE LIES ON THE CARD'S, which is what makes the top edge a
+            FULL-WIDTH DIVIDER (board 30289:60956: `w-full` inside the 408 card, and a
+            Figma stroke sits INSIDE the geometry, so both rims are drawn on the same
+            band). Left inset by the card's own border, this box put its rim one pixel
+            INSIDE the card's: a 2px rail down both sides and along the bottom, and a
+            divider that stopped short of the card's walls. Same medicine as the
+            generation card and chosen the same way — the box has arcs (r12), so the
+            CHILD is pulled out instead of the parent's border being removed. */}
+        <div className="-mx-px -mb-px rounded-[12px] border border-[#49494c] px-4 pb-[18px] pt-[19px]">
           <p className="text-[13px] leading-[1.4] text-[#ffffffa3]">{keepHostsWhole(sub)}</p>
         </div>
       </div>
@@ -845,7 +853,14 @@ export function PublishPanel() {
               * Raised: what it should count (all time? today?) and whether it opens the
               * Analytics rail, which is where that number lives today.
               */}
-            <span className="flex h-8 items-center gap-0.5 rounded-[8px] pl-1 pr-4 text-[13px] font-medium leading-[1.4] text-[var(--white-720)]">
+              {/* ⚠️ AND IT IS NOT CENTRED IN THE HEADER: board 30289:59982 seats it at
+                  `pt 19` with `pr 16`, so it hangs 3px below the bar's axis and keeps a
+                  16px margin off the panel's edge — on top of the `pr 16` the button
+                  carries inside itself, so the number lands 32 off the edge. Centred and
+                  flush, where it stood, it sat 3px high and 16px too far right.
+                  Reproduced literally, like the plan card's pt20/pb18 title: the optical
+                  nudge is the designer's, not a rounding error. */}
+            <span className="flex h-8 items-center gap-0.5 self-start mt-[19px] mr-4 rounded-[8px] pl-1 pr-4 text-[13px] font-medium leading-[1.4] text-[var(--white-720)]">
               <IconVisitors size={20} className="mx-0.5" />
               <span className="tabular-nums">0</span>
             </span>
@@ -1337,23 +1352,27 @@ export function PublishPanel() {
                 above it does (px 16), which is why the field is 388. */}
             {(settled || readyCard) && (
               /*
-               * ⚠️ THE SEAM IS THE TOKEN, NOT THE BAKED HEX (designer, 15.09.2026: «у тебя
-               * не видно разделительного бордера, в макете он немножко светлее»).
+               * ⚠️ THE SEAM IS `#313133`, A RAW HEX, AND THE DESIGNER SETTLED IT TWICE IN
+               * ONE DAY (15.09.2026: first «у тебя не видно разделительного бордера, в
+               * макете он немножко светлее», then, against my fix, «теперь у тебя бордер
+               * слишком светлый — в макете этот бордер объекта внутри которого Unlink
+               * кнопка имеет цвет бордера 313133»).
                *
-               * The board's export prints this stroke as a solid `#313133`, and we shipped
-               * it literally — but the arithmetic gives the game away: 8% white over the
-               * PANEL's own ground (`--gray-850` #1f1f22) flattens to 0.08·255 + 0.92·31 =
-               * 48.9, which is #313133 to the digit, and `Neutral Alpha/100` (8%) is right
-               * there in that node's own variable set. So the hex is `NA/100` frozen against
-               * the wrong backdrop: this card is the LAST CHILD of the body card, whose 4%
-               * fill lifts the ground to (39,39,42) — measured — and an opaque stroke picked
-               * for a darker ground arrives with half its contrast. Measured across the
-               * seam: baked hex (49,49,51) = Δ10 against that ground, where the address
-               * field's own `--white-200` rim reads (65,65,67) = Δ26 and is plainly visible.
-               * The token composites instead and lands (56,56,58) — Δ17, between the two,
-               * which is exactly the "a bit lighter" he asked for.
+               * The arithmetic that argued for a token is true and beside the point: 8%
+               * white over the panel's ground (`--gray-850` #1f1f22) does flatten to 48.9
+               * = #313133, so the hex LOOKS like `NA/100` frozen against a darker
+               * backdrop. But board 30289:60056 binds this stroke to no variable at all
+               * while binding everything else in the card (the text to
+               * Text/Default/Secondary), and an unbound stroke in a file whose tokens are
+               * otherwise complete is a decision, not a leftover. Composited, it came out
+               * (56,56,58) — brighter than the board, which is what he saw.
+               *
+               * So the low contrast is the design: (49,49,51) on the body card's 4% fill
+               * (39,39,42) is Δ10 — a seam, not a line, and the board renders it exactly
+               * that faint at 1:1. What was actually broken in the card he screenshotted
+               * was the divider above it; see ProgressCard.
                */
-              <div className="flex items-center justify-between rounded-[16px] border border-[var(--white-100)] py-4 pl-[18px] pr-4">
+              <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
                 <p className="text-[13px] leading-[1.4] text-[var(--white-480)]">
                   {t({ en: 'Secure padlock on', uk: 'Замок увімкнено' })}
                 </p>

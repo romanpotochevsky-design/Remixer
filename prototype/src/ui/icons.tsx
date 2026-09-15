@@ -272,20 +272,32 @@ export const IconThumbDown = ({ size = 16, className }: IconProps) => (
  * came out as one chunky shape. The board draws two separate rounded squares with the
  * front one in front.
  *
- * So the back square is a whole rect now, and the front square's own silhouette — grown by
- * the 1.5 stroke and a 1.5 gap — is masked out of it. That is the occlusion every icon set
- * uses for this glyph, and it costs one mask: the alternative, painting the front square's
- * fill over the back one, is impossible here because the surface under it is the address
- * field, which is transparent.
+ * So the back square is a whole rect now, and the front square's own silhouette is masked
+ * out of it. That is the occlusion every icon set uses for this glyph, and it costs one
+ * mask: the alternative, painting the front square's fill over the back one, is impossible
+ * here because the surface under it is the address field, which is transparent.
+ *
+ * ⚠️ FOURTH PASS: THE CUT IS FLUSH, NOT GROWN (designer again, 15.09.2026: «эта иконка не
+ * как в макете»). The mask used to be the front square grown by the stroke AND another
+ * 0.75, which left three quarters of a pixel of ground between the back sheet's cut ends
+ * and the front square's outline — at dpr 2 that is a 1.5px slot, and the back sheet reads
+ * as floating rather than tucked behind. The occluder is now exactly the front square's
+ * OUTER stroke edge (4.5, 8.5, 11×11, r 3.25 = 2.5 + half the stroke), so the two outlines
+ * meet on the same pixel, the way a stroked copy glyph is built.
  *
  * Ink lands 4.5…19.5 = 15 square, centred in the 24 box, at stroke 1.5 — the board's own
  * numbers from the note of 14.09.2026.
  *
  * ⚠️ WHAT COULD NOT BE MEASURED, so that the next session does not re-derive it: the
  * board's glyph is an IMAGE in the export and figma.com's asset URLs are blocked by the
- * session proxy, so there is no vector to read. `get_metadata` stops at a 20×20 frame
- * inside the 24 Icon frame and exposes no path. Everything above is read off the 1:1
- * renders and the designer's own zoom.
+ * session proxy (`connect_rejected`, organisation policy) — `download_assets` names three
+ * SVGs and every URL is unreachable. `get_metadata` stops at a `Frame` 20×20 centred in
+ * the 24 Icon frame and exposes no path, and `get_screenshot` refuses instance-path ids
+ * and never upscales, so the finest view of the board's glyph is 32 real pixels. What IS
+ * known from the board: Icon box 24 → glyph canvas 20 → artwork inside that. Squares,
+ * offset and radius come from the 1:1 renders and the designer's zoom, so if a pass is
+ * ever needed again, the answer is the SVG itself, not another reading of a 24px raster —
+ * the candidates measured this round are in `scratchpad/copy-candidates.png`.
  */
 export const IconCopy = ({ size = 24, className }: IconProps) => (
   <svg {...base(size)} strokeWidth={1.5} className={className}>
@@ -293,7 +305,7 @@ export const IconCopy = ({ size = 24, className }: IconProps) => (
       {/* white keeps, black cuts — the front sheet's silhouette plus stroke plus gap */}
       <mask id="icon-copy-occlusion" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
         <rect width="24" height="24" fill="#fff" />
-        <rect x="3.75" y="7.75" width="12.5" height="12.5" rx="4" fill="#000" />
+        <rect x="4.5" y="8.5" width="11" height="11" rx="3.25" fill="#000" />
       </mask>
     </defs>
     <rect x="9.25" y="5.25" width="9.5" height="9.5" rx="2.5" mask="url(#icon-copy-occlusion)" />

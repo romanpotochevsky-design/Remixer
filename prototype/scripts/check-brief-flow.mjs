@@ -1805,16 +1805,19 @@ check('…and the typed prompt is built as given', await cardUp())
   await openPublish('p=built&u=1&v=true&d=live&n=adovasio.com&a=paid&t=22&c=640')
   const seam = await p.evaluate(() => {
     const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
-    /* ⚠️ THE RIM IS THE TOKEN NOW, NOT THE BAKED HEX (designer, 15.09.2026: the seam was
-       invisible). `#313133` is `Neutral Alpha/100` flattened against the PANEL's ground,
-       and this card sits on the body card's lighter one — so it is bound to the token and
-       composites. Matching on the old literal found nothing and took the whole run down. */
-    const rim = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).borderColor === 'rgba(255, 255, 255, 0.08)')
+    /* ⚠️ FOUND BY CONTENT, NEVER BY COLOUR. This selector matched a baked hex, then a
+       token, and each time the value moved the selector found NOTHING and took the whole
+       run down with a TypeError — a check that dies when the thing it guards changes is
+       worse than no check. The card is the one holding `Unlink`; its colour is asserted
+       separately below, so a change is REPORTED instead of fatal. */
+    const rim = [...d.querySelectorAll('div')].find((e) => /Unlink|Відв/.test(e.textContent || '')
+      && getComputedStyle(e).borderTopWidth === '1px' && Math.round(e.getBoundingClientRect().width) === 420)
     const body = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).backgroundColor === 'rgba(255, 255, 255, 0.04)')
     const field = [...d.querySelectorAll('p')].find((e) => e.textContent === 'Website URL').parentElement.querySelector('div')
     const w = (el) => Math.round(el.getBoundingClientRect().width)
     return {
       parented: rim.parentElement === body,
+      seamColour: getComputedStyle(rim).borderTopColor,
       card: w(rim), body: w(body), field: w(field),
       flush: Math.round(rim.getBoundingClientRect().bottom) === Math.round(body.getBoundingClientRect().bottom),
     }
@@ -1823,6 +1826,50 @@ check('…and the typed prompt is built as given', await cardUp())
     seam.parented && seam.flush, JSON.stringify(seam))
   check('…and so it spans 420 where the field spans 388',
     seam.card === 420 && seam.body === 420 && seam.field === 388, JSON.stringify(seam))
+  /*
+   * ⚠️ AND THE SEAM IS `#313133`, THE BOARD'S RAW HEX — the designer settled this against
+   * my own arithmetic (15.09.2026): 8% white over the panel's ground flattens to exactly
+   * that, so the hex LOOKS derived, but board 30289:60056 leaves this stroke bound to no
+   * variable while binding everything else in the card. Δ10 against the body card's fill
+   * is the design: a seam, not a line.
+   */
+  check('…and its seam is the board’s #313133, not a composited token',
+    seam.seamColour === 'rgb(49, 49, 51)', seam.seamColour)
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(400)
+
+  /*
+   * ⚠️ THE EXPLANATION BOX IS A FULL-WIDTH DIVIDER, NOT AN INSET BOX (board 30289:60956,
+   * read the day the designer complained the dividing border was wrong). Its stroke lies
+   * ON the progress card's, so the line under the headline runs wall to wall; inset by the
+   * card's own border it drew a 2px rail down both sides and along the bottom — the double
+   * border this project has now been bitten by three times.
+   */
+  await openPublish('p=built&u=0&v=false&d=ready&n=fit-ration.com&a=paid&t=22&c=640')
+  const divider = await p.evaluate(() => {
+    const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+    const box = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).borderTopColor === 'rgb(73, 73, 76)')
+    const card = box.parentElement
+    const r = (el) => { const b = el.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), b: Math.round(b.bottom), w: Math.round(b.width) } }
+    const t = box.querySelector('p').getBoundingClientRect()
+    return { box: r(box), card: r(card), textFromCard: Math.round(t.left - card.getBoundingClientRect().left), measure: Math.round(t.width) }
+  })
+  check('the explanation box spans the progress card wall to wall, stroke on stroke',
+    divider.box.w === 408 && divider.card.w === 408
+    && divider.box.l === divider.card.l && divider.box.r === divider.card.r
+    && divider.box.b === divider.card.b, JSON.stringify(divider))
+  check('…with the board’s own inset: text 17 in from the card, measure 374',
+    divider.textFromCard === 17 && divider.measure === 374, JSON.stringify(divider))
+  /* VISITORS sit where board 30289:59982 seats them: `pt 19`, and `pr 16` off the panel
+     edge on top of the button's own `pr 16` — not centred and not flush. */
+  const seat = await p.evaluate(() => {
+    const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+    const pill = d.querySelector('h3').parentElement.lastElementChild
+    const pb = pill.getBoundingClientRect(), db = d.getBoundingClientRect()
+    return { top: Math.round(pb.top - db.top), right: Math.round(db.right - pb.right), h: Math.round(pb.height) }
+  })
+  check('the visitors pill hangs at pt 19 with 16 off the panel’s edge',
+    seat.top === 19 && seat.right === 16 && seat.h === 32, JSON.stringify(seat))
   await p.keyboard.press('Escape')
   await p.waitForTimeout(400)
 
