@@ -93,10 +93,20 @@ type Path = 'attach' | 'buy'
  *   BUY      provisioning 2.6s   the registry: "within 15 minutes" (verified)
  *            connecting   6.0s   the same pointing, once the name exists
  *            propagating 17.6s   the world: hours, up to 72 — the LONGEST beat, as in life
+ *            ready       17.6s   not a beat at all: the same instant, and the state the
+ *                                gate below holds while a confirmation is owed
  *            ──────────── 17.6s total
  *
  * Buying is three times the walk of attaching, and the beat that makes the difference is
  * the one that really does take days. That proportion is the point; the seconds are not.
+ *
+ * ⚠️ THE FOURTH BUY LEG CARRIES NO TIME. It is due at the same 17.6s as the one before it
+ * — two `setTimeout`s at one delay, which the spec runs in the order they were armed — and
+ * it exists so that the park has a leg of its own to be re-armed at: `resumeFromPark`
+ * matches the ticket's leg against the state the world is actually reading, so a walk
+ * parked at `ready` needs a leg whose `from` is `ready`. Without it the release found the
+ * world at `ready` where the ticket said `propagating` and quietly stood down, leaving a
+ * confirmed registration stuck one press short of live.
  */
 const ATTACH: Leg[] = [
   ['connecting', 'finish', 6000],
@@ -104,7 +114,8 @@ const ATTACH: Leg[] = [
 const BUY: Leg[] = [
   ['provisioning', 'connecting', 2600],
   ['connecting', 'propagating', 8600],
-  ['propagating', 'finish', 17600],
+  ['propagating', 'ready', 17600],
+  ['ready', 'finish', 17600],
 ]
 const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY }
 
@@ -122,18 +133,29 @@ const LEGS: Record<Path, Leg[]> = { attach: ATTACH, buy: BUY }
  * resolve at all. It also ran the whole spread, which is the world being told about an
  * address that cannot be validated.
  *
- * So the flag is a GATE. The registry beat still runs — the order is placed, the name is
- * written, and that much is true whatever the inbox says — and the walk then HOLDS at
- * `provisioning` for as long as `icann` stands. Clearing it (the simulated letter in
- * App.tsx, or the console's own toggle — both are one `set`) releases the park and the
- * remaining beats play at their true remaining distance.
+ * So the flag is a GATE: the walk HOLDS while `icann` stands, and clearing it (the
+ * simulated letter in App.tsx, or the console's own toggle — both are one `set`) releases
+ * the park so the remaining beats play at their true remaining distance.
  *
- * The consequence worth stating, because it is the point: `connecting`, `propagating`,
- * `ready` and `live` are now UNREACHABLE with a confirmation outstanding. The defect the
- * designer caught cannot be produced by the product any more, only staged by hand in the
- * console — where `violations()` marks it red (state/world.ts).
+ * ⚠️ AND THE GATE STANDS AT THE END OF THE WALK, NOT AT ITS FIRST BEAT (designer,
+ * 14.09.2026: the confirmation notice is shown only once the domain has connected — while
+ * it has not, we do not mention the mail at all). It used to hold at `provisioning`, which
+ * put the one card the customer must act on in the one window where the product had also
+ * just promised to be busy on its own: the panel said "the registry has the order" and,
+ * under it, "the address starts working once you confirm your email" — the second of which
+ * asks for a press while the first says there is nothing to do. Holding at the END puts
+ * the letter where it is the ONLY thing left, and it costs nothing in honesty: the three
+ * stages are OUR side of the work (the order, the pointing, the spread) and they really do
+ * complete; what the unconfirmed mail withholds is the name ANSWERING, which is exactly
+ * what `ready` means — connected, correct, and not yet open.
+ *
+ * The consequence worth stating: `live` and `multiple` remain UNREACHABLE with a
+ * confirmation outstanding, which is what `violations()` declares (state/world.ts) — the
+ * hold at `ready` is what keeps that true even for a customer who had already published.
+ * `ready` + `icann` is the pairing that panel has always been written for, and it is now
+ * the one the product produces rather than one only the console could stage.
  */
-const PARKED_AT: DomainState = 'provisioning'
+const PARKED_AT: DomainState = 'ready'
 const parked = (w: World) => w.domain === PARKED_AT && w.icann
 
 let timers: number[] = []
@@ -237,7 +259,16 @@ function recall(): Ticket | null {
  */
 function settle(to: DomainState | 'finish') {
   const s = useWorld.getState()
-  s.set({ domain: to === 'finish' ? (s.world.published ? 'live' : 'ready') : to })
+  /*
+   * ⚠️ AND `!icann` ON THE FINISH BRANCH, for the same reason the panel's Publish carries
+   * it: a name owing its registrant confirmation does not answer, so it cannot land on
+   * `live` however published the site is. THE GATE above already holds the bought walk
+   * short of this, so the guard is for the OTHER door — `retryConnect` takes the attach
+   * timeline, which has no gate, and would settle an unreachable-but-unconfirmed name
+   * straight to live.
+   */
+  const finish = s.world.published && !s.world.icann ? 'live' : 'ready'
+  s.set({ domain: to === 'finish' ? finish : to })
 }
 
 /**
@@ -269,7 +300,7 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
          * THE GATE. The beat is due and the confirmation is not in, so the walk stops
          * here rather than settling — see THE GATE above. The remaining timers come
          * down with it (left armed, the next one would fire against a world still
-         * reading `provisioning`, mistake it for a staged state and destroy the ticket
+         * reading `ready`, mistake it for a staged state and destroy the ticket
          * this park depends on), and the ticket is re-issued AT THIS LEG: it is still
          * owed, which is exactly what makes a reload come back parked instead of
          * running the rest of the walk off a stale anchor.
@@ -294,9 +325,9 @@ function walk(domain: string, path: Path, startedAt: number, from = 0) {
  * attaching a domain you already own never does.
  *
  * ⚠️ Which means this call does not walk a bought name to `live` on its own any more. It
- * walks it to `provisioning` and stops there, because the flag it sets in the same write
- * is the gate on the very next beat (see THE GATE). Nothing else has to know: the walk
- * arms exactly as before and parks itself when the beat comes due.
+ * walks it through all three stages and stops at `ready`, because the flag it sets in the
+ * same write is the gate on the LAST beat (see THE GATE). Nothing else has to know: the
+ * walk arms exactly as before and parks itself when that beat comes due.
  */
 export function startConnect(domain: string, opts: { bought?: boolean } = {}) {
   clear()

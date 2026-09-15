@@ -455,6 +455,20 @@ export const canConnectDomain = (w: World) => hasPlan(w)
 export const isCustomDomainActive = (w: World) =>
   w.domain !== 'staging' && w.domain !== 'searching' && w.domain !== 'checkout'
 /**
+ * THE NAME IS CONNECTED — the three stages of getting there are behind it.
+ *
+ * `provisioning`, `connecting` and `propagating` are the whole of "getting there"
+ * (designer, 14.09.2026), so a domain past all three is connected: set up, pointed at this
+ * project, spread. Whether it ANSWERS is a further question — `ready` is connected and not
+ * yet answering, `old-site` and `unreachable` are connected and answering wrongly — which
+ * is why this is a separate predicate from `domainIsHome` in the Publish panel.
+ */
+export const isCustomDomainConnected = (w: World) =>
+  isCustomDomainActive(w) &&
+  w.domain !== 'provisioning' &&
+  w.domain !== 'connecting' &&
+  w.domain !== 'propagating'
+/**
  * A registration is waiting on its registrant to confirm their email — which means the
  * name does not open AT ALL yet (see `World.icann`).
  *
@@ -464,8 +478,18 @@ export const isCustomDomainActive = (w: World) =>
  * (DomainsSurface), and the Publish panel's card. Written out per surface it drifted
  * exactly once and that was enough — the chip went green over a panel saying the address
  * did not work.
+ *
+ * ⚠️ AND IT WAITS FOR THE CONNECTION (designer, 14.09.2026: «мы его показываем только
+ * после того как домен уже законекился, пока кастомный домен не законекчен, мы не
+ * показываем уведомление о почте»). This read `isCustomDomainActive && icann`, which
+ * fired from the first beat of the walk — so the letter was announced while the registry
+ * still had the order, on top of a card already saying what was happening. Two answers to
+ * "where has this got to" at once, and the one the customer can act on was the quieter of
+ * the two. The confirmation is the LAST step, not a parallel one, so it is announced where
+ * it is the only thing left: `connect.ts` now walks a bought name through all three stages
+ * and parks it at `ready`, and this is the predicate that card reads.
  */
-export const registrantUnconfirmed = (w: World) => isCustomDomainActive(w) && w.icann
+export const registrantUnconfirmed = (w: World) => isCustomDomainConnected(w) && w.icann
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
 /** First run on the Home page: nothing generated yet, so the dock shows templates. */
 export const hasProjects = (w: World) => w.projects.length > 0
@@ -520,7 +544,17 @@ export function violations(w: World): Violation[] {
       reason: { en: 'There is no site yet, so nothing can be live.', uk: 'Сайту ще немає — публікувати нічого.' },
     })
   }
-  if (w.published && w.domain === 'ready') {
+  /*
+   * ⚠️ `&& !w.icann` — BECAUSE THE PARKED STATE IS THE ONE EXCEPTION, and it is a state the
+   * product now produces rather than one only the console could stage. This violation's own
+   * sentence is what qualifies it: "Ready is a domain waiting for the first publish" is true
+   * of every `ready` EXCEPT the one where a registrant confirmation is outstanding, where
+   * `ready` means connected-and-not-answering (modules/domains/connect.ts, THE GATE). A
+   * customer who had already published and then bought a domain lands exactly there, which
+   * is the commonest shape of all — so without this the console would paint the happy path
+   * red.
+   */
+  if (w.published && w.domain === 'ready' && !w.icann) {
     out.push({
       field: 'domain',
       value: 'ready',

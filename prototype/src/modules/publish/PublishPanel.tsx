@@ -35,7 +35,7 @@
  */
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { useWorld, hasPlan, isCustomDomainActive, type World } from '@/state/world'
+import { useWorld, hasPlan, isCustomDomainActive, registrantUnconfirmed, type World } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
@@ -505,13 +505,16 @@ export function PublishPanel() {
    *   confirmEmail the registrant-email clock on a freshly registered name (world.icann)
    *   settled      live and nothing pending: no card at all, one line of prose
    *
-   * ⚠️ confirmEmail NO LONGER WAITS ITS TURN. The old rule gave the slot to the padlock
-   * because "it clears in half an hour and the other has a fortnight" — but the only path
-   * that sets this flag is the BOUGHT one, which now spends hours in `registering` and
-   * `propagating`, so the fortnight card would have been invisible for exactly the window
-   * in which it is the one thing the customer must act on. It is a different question from
-   * "where has the connection got to", so it is a second card under the first, not a
-   * competitor for one slot.
+   * ⚠️ confirmEmail COMES LAST, AND ONLY ONCE THE DOMAIN HAS CONNECTED (designer,
+   * 14.09.2026: «мы его показываем только после того как домен уже законекился, пока
+   * кастомный домен не законекчен, мы не показываем уведомление о почте»). It used to
+   * appear from the walk's first beat, as a second card under whichever stage card was up —
+   * so the panel said "the registry has the order, there is nothing for you to do" and,
+   * directly beneath it, "the address starts working once you confirm your email". Two
+   * answers to one question, and the actionable one was the quieter. The confirmation is
+   * the LAST step rather than a parallel one, and `connect.ts` now walks a bought name
+   * through all three stages before parking it at `ready` — so this card is the only thing
+   * on screen when it is the only thing left to do.
    */
   const attached = isCustomDomainActive(world)
   const unreachable = world.domain === 'unreachable'
@@ -539,7 +542,15 @@ export function PublishPanel() {
    */
   const readyCard = (ready || domainIsHome(world)) && !world.published && !world.icann
   const oldSite = world.domain === 'old-site'
-  const confirmEmail = attached && world.icann
+  /*
+   * ⚠️ AND IT IS THE WORLD'S OWN SELECTOR, NOT A FOURTH COPY OF IT. This read
+   * `attached && world.icann` — the same sentence the topbar chip, the domains window's
+   * row chip and its line under the name each wrote out for themselves, which is precisely
+   * the drift `registrantUnconfirmed` exists to stop (state/world.ts). It also now carries
+   * the designer's rule of 14.09.2026: the letter is not mentioned until the domain has
+   * CONNECTED, so the card no longer competes with the three stage cards above it.
+   */
+  const confirmEmail = registrantUnconfirmed(world)
   /*
    * THE ONE READING THE ADDRESS, THE PILL AND THE PROSE LINE SHARE — and the topbar chip
    * reads it too, off the same exported function. The domain opens the site and nothing
@@ -605,7 +616,16 @@ export function PublishPanel() {
   const markPublished = () => { setSettling(true); setJustPublished(true) }
   const publishNow = () => {
     if (ready && world.inventory === 'dh-in-use') return set({ domain: 'old-site' })
-    set({ unpublished: 0, published: true, ...(ready ? { domain: 'live' as const } : null) })
+    /*
+     * ⚠️ `!world.icann` — PUBLISHING DOES NOT WALK THE DOMAIN PAST THE MAIL. The press is
+     * allowed while a registrant confirmation is owed, and its result is a site out on the
+     * FREE address (the note on `readyCard` says so in full), so what must not happen is
+     * the domain axis advancing with it: `live` + `icann` is the one pairing
+     * `world.violations()` calls impossible, and this write produced it unconditionally.
+     * The domain stays `ready` — connected, correct, not yet answering — until the letter
+     * lands, which is exactly what the card above the button is asking for.
+     */
+    set({ unpublished: 0, published: true, ...(ready && !world.icann ? { domain: 'live' as const } : null) })
     markPublished()
   }
   /*
@@ -1152,8 +1172,11 @@ export function PublishPanel() {
                 />
               )}
 
-              {/* The registrant-email step (state ⑤ on board 28206:66756). A SECOND card
-                  under whichever one is above it — see the precedence note upstairs.
+              {/* The registrant-email step (state ⑤ on board 28206:66756). THE ONLY CARD
+                  ON SCREEN when it is up, and no longer a second one under a stage card:
+                  the rule of 14.09.2026 gives it the slot only once the domain has
+                  connected, which is the one window where nothing else has anything to
+                  report — see the precedence note upstairs.
                   ⚠️ NO COUNTDOWN. The board draws "14 days left" and the world comment used
                   to say fifteen; the digit traces to Squarespace's unlink rule, not to
                   DreamHost or ICANN (states.md §5), so no figure is printed. The inbox

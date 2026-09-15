@@ -9,7 +9,7 @@
  * Ukrainian is the second language.
  */
 import type { World } from './world'
-import { DEFAULT_WORLD, DEMO_PROJECTS, isCustomDomainActive } from './world'
+import { DEFAULT_WORLD, DEMO_PROJECTS, isCustomDomainActive, registrantUnconfirmed } from './world'
 import type { Text } from '../i18n'
 import { leadingDone } from '../modules/chat/autopilot'
 
@@ -403,25 +403,30 @@ export const PRESETS: Preset[] = [
     group: PG.domain,
     label: { en: 'Email not confirmed yet', uk: 'Пошту ще не підтверджено' },
     note: {
-      en: 'Bought, registered, and going no further until the registrant confirms their email: the site stays on its free address, and the letter beside the panel is the way on',
-      uk: 'Куплено, зареєстровано — і далі нічого не відбувається, доки реєстрант не підтвердить пошту: сайт лишається на безкоштовній адресі, а вихід — лист поруч із панеллю',
+      en: 'Bought, connected, and going no further until the registrant confirms their email: the address does not answer yet, the site stays on its free one, and the letter beside the panel is the way on',
+      uk: 'Куплено, підключено — і далі нічого не відбувається, доки реєстрант не підтвердить пошту: адреса ще не відповідає, сайт лишається на безкоштовній, а вихід — лист поруч із панеллю',
     },
     /*
      * ⚠️ `live` UNTIL TONIGHT, AND THAT WAS THE BUG STAGED AS A TILE. A DreamHost
      * developer, asked directly (14.09.2026): without the confirmation «вебсайт поідеї не
      * буде працювати якщо запаблішити». So a live domain owing one cannot exist — the
-     * walk now holds at `registering` until it lands (modules/domains/connect.ts) and
-     * `violations` calls the old pairing impossible. This tile stages where the walk
-     * actually stops.
+     * walk holds until the letter lands (modules/domains/connect.ts) and `violations`
+     * calls the old pairing impossible. This tile stages where the walk actually stops.
+     *
+     * ⚠️ AND WHERE IT STOPS IS `ready`, NOT `provisioning` (designer, 14.09.2026: the mail
+     * is not mentioned until the domain has connected). Staged at the first beat this tile
+     * would now show the provisioning card and NO letter at all — the one thing it exists
+     * to show. `published: false` for the same reason: it makes the tile's after-state the
+     * real one, the green "connected, one press to go" card, instead of a panel with
+     * nothing on it.
      *
      * ⚠️ AND IT DOES NOT WALK ON WHEN THE LETTER IS PRESSED, because nothing started it:
      * a staged state carries no ticket, which is the console's oldest rule (a clock that
      * re-armed itself would drift the state out from under the person looking at it).
-     * Confirming here clears the card and the letter and leaves the world at
-     * `registering`; the resuming version of this beat is the buy FLOW, or a real
-     * purchase through the cart.
+     * Confirming here clears the card and the letter and leaves the world at `ready`; the
+     * resuming version of this beat is a real purchase through the cart.
      */
-    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'provisioning', icann: true, unpublished: 0, published: true, projects: DEMO_PROJECTS },
+    patch: { account: 'paid', credits: 960, project: 'built', chat: 'long', inventory: 'none', domain: 'ready', icann: true, unpublished: 0, published: false, projects: DEMO_PROJECTS },
   },
   {
     id: 'live',
@@ -709,7 +714,13 @@ export function describe(w: World): Text {
    * the second one is stuck. A summary that cannot tell the room which of the two is on
    * screen is worse than no summary, because it is read out with confidence.
    */
-  if (w.icann) { en.push('email not confirmed'); uk.push('пошту не підтверджено') }
+  /* ⚠️ THE SELECTOR, NOT THE RAW FLAG (designer, 14.09.2026). `icann` is genuinely true
+     from the moment a name is bought, but nothing on any product surface mentions the mail
+     until the domain has CONNECTED — so a summary read off the flag made the console the
+     one place that announced the letter before the product did, and it is the line that
+     gets read out loud in a demo. The console's own toggle stays visible throughout, which
+     is right: it is the instrument, not a surface. */
+  if (registrantUnconfirmed(w)) { en.push('email not confirmed'); uk.push('пошту не підтверджено') }
 
   if (!w.projects.length) { en.push('no sites yet'); uk.push('сайтів ще немає') }
   if (w.brief.status === 'asking') { en.push('asking for direction'); uk.push('уточнює напрямок') }
