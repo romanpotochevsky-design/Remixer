@@ -16,8 +16,12 @@ import { useWorld, canUseAI, hasPlan, registrantUnconfirmed, type World } from '
 import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
-/* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading
-   of "does this domain open the site", and the chip must not grow a second one. */
+/* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading of
+   WHICH ADDRESS THIS PRODUCT PRINTS, and the chip must not grow a second one. Since
+   15.09.2026 that reading is "the domain is connected" — so the chip names the customer's
+   own domain from `propagating` on, while its DOT keeps the truth about the domain not
+   answering yet (`domainStatus` below, off `registrantUnconfirmed`). Two facts, two
+   channels, one predicate each. */
 import { PublishPanel, domainIsHome, canPublish } from '@/modules/publish/PublishPanel'
 import { ConfirmHost } from '@/ui/ConfirmDialog'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
@@ -82,8 +86,10 @@ const DOMAIN_STATUS = {
  *
  * So a confirmation outstanding withdraws the two tones that claim the domain is FINISHED
  * — green ("live") and blue ("nothing wrong, your move") — and leaves amber. One rule, not
- * a second opinion: the address beside the dot is `domainIsHome`'s decision and stays so,
- * and this says the same thing in the dot's own vocabulary. The walk cannot produce those
+ * a second opinion: the address beside the dot is `domainIsHome`'s decision and stays so.
+ * ⚠️ And since 15.09.2026 that decision prints the customer's own domain while the letter
+ * is still owed, which makes THIS the only thing left saying the name does not open yet.
+ * Do not soften it to match the address: they are answering different questions. The walk cannot produce those
  * states any more either (modules/domains/connect.ts, THE GATE; `violations` calls the
  * rest impossible), so this is the belt to that braces: a hand-staged world, or a shared
  * `?d=live&k=true` link, still cannot show green.

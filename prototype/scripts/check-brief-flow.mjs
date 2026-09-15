@@ -1977,6 +1977,54 @@ check('…and the typed prompt is built as given', await cardUp())
   await p.keyboard.press('Escape')
   await p.waitForTimeout(400)
 
+  /*
+   * ⚠️ WHICH ADDRESS THE PANEL PRINTS, STATE BY STATE (designer, 15.09.2026: «когда
+   * происходит пропагейтинг, кастомный домен уже по факту подключен, а это значит что
+   * отображается в этом окне уже кастомный домен!»).
+   *
+   * The rule is his of 14.09 — swap to the custom name once it is ATTACHED — applied where
+   * he draws that line: `provisioning` and `connecting` are the attaching, `propagating` is
+   * the address spreading, so the swap happens at `propagating`. The letter being owed no
+   * longer holds the free address in the field: the amber card under it is what says the
+   * name does not open yet, and it is on screen in every state that can produce that.
+   * Checked as a table because the two halves used to be one predicate and drifted.
+   */
+  for (const [q, expect, label] of [
+    ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', 'staging', 'the registry still has the order'],
+    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', 'custom', 'the address is spreading'],
+    ['d=ready&k=true&n=fitration.shop&v=false&u=0', 'custom', 'set up, waiting on the letter'],
+    ['d=live&n=fitration.shop&v=true&u=0', 'custom', 'live and confirmed'],
+  ]) {
+    await openPublish(`p=built&a=paid&${q}`)
+    const seen = await p.evaluate(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      const field = [...d.querySelectorAll('div')].find((e) => Math.round(e.getBoundingClientRect().width) === 388)
+      return {
+        field: field.innerText.replace(/\s+/g, ''),
+        mail: /One last step for/.test(d.innerText),
+      }
+    })
+    const custom = /fitration\.shop$/.test(seen.field)
+    const staging = /remixer\.ai$/.test(seen.field)
+    check(`the field prints the ${expect} address — ${label}`,
+      expect === 'custom' ? custom : staging, JSON.stringify(seen))
+    await p.keyboard.press('Escape')
+    await p.waitForTimeout(300)
+  }
+  /* …and the letter is announced from the beat the domain is connected, not before it */
+  for (const [q, want, label] of [
+    ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order'],
+    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads'],
+    ['d=ready&k=true&n=fitration.shop&v=false&u=0', true, 'yes once it is set up'],
+  ]) {
+    await openPublish(`p=built&a=paid&${q}`)
+    const mail = await p.evaluate(() => /One last step for/.test(
+      document.querySelector('[role="dialog"][aria-label="Publish"]').innerText))
+    check(`the registrant letter is announced: ${label}`, mail === want, JSON.stringify({ mail }))
+    await p.keyboard.press('Escape')
+    await p.waitForTimeout(300)
+  }
+
   /* the negative: a site that has been published gets neither, banner state or not */
   await openPublish('p=built&u=3&v=true&a=trial&t=22&c=640')
   check('a published site’s panel is titled by the action', (await title()) === 'Publish', await title())

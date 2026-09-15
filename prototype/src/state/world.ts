@@ -455,19 +455,26 @@ export const canConnectDomain = (w: World) => hasPlan(w)
 export const isCustomDomainActive = (w: World) =>
   w.domain !== 'staging' && w.domain !== 'searching' && w.domain !== 'checkout'
 /**
- * THE NAME IS CONNECTED — the three stages of getting there are behind it.
+ * THE NAME IS CONNECTED — the work of connecting it is behind it.
  *
- * `provisioning`, `connecting` and `propagating` are the whole of "getting there"
- * (designer, 14.09.2026), so a domain past all three is connected: set up, pointed at this
- * project, spread. Whether it ANSWERS is a further question — `ready` is connected and not
- * yet answering, `old-site` and `unreachable` are connected and answering wrongly — which
- * is why this is a separate predicate from `domainIsHome` in the Publish panel.
+ * ⚠️ PROPAGATION IS NOT PART OF CONNECTING (designer, 15.09.2026, looking at the mail
+ * card over a field still showing the free address: «когда происходит пропагейтинг,
+ * кастомный домен уже по факту подключен»). This used to exclude `propagating` as well,
+ * on my reading of his three stages as "the whole of getting there" — but the three are
+ * not three stages of one thing. `provisioning` is the registry taking the order and
+ * `connecting` is the pointing; by `propagating` both are DONE and what is left is the
+ * address travelling the world, which is the domain's own business and not ours. So a
+ * domain in `propagating` is connected — and that is why the card announcing the letter
+ * appears there, and why the field prints the customer's own name from that beat on.
+ *
+ * Whether it ANSWERS is a further question, and a different predicate: `ready` is
+ * connected and not yet answering, `old-site` and `unreachable` are connected and
+ * answering wrongly. See `domainSettled` in the Publish panel.
  */
 export const isCustomDomainConnected = (w: World) =>
   isCustomDomainActive(w) &&
   w.domain !== 'provisioning' &&
-  w.domain !== 'connecting' &&
-  w.domain !== 'propagating'
+  w.domain !== 'connecting'
 /**
  * A registration is waiting on its registrant to confirm their email — which means the
  * name does not open AT ALL yet (see `World.icann`).
@@ -486,8 +493,14 @@ export const isCustomDomainConnected = (w: World) =>
  * still had the order, on top of a card already saying what was happening. Two answers to
  * "where has this got to" at once, and the one the customer can act on was the quieter of
  * the two. The confirmation is the LAST step, not a parallel one, so it is announced where
- * it is the only thing left: `connect.ts` now walks a bought name through all three stages
- * and parks it at `ready`, and this is the predicate that card reads.
+ * it is the only thing left: `connect.ts` walks a bought name through all three stages and
+ * parks it at `ready`, and this is the predicate that card reads.
+ *
+ * ⚠️ …AND "CONNECTED" INCLUDES `propagating` (designer, 15.09.2026: «это уведомление
+ * появляется во время пропагейтинга»). Same rule as above, one beat earlier, because the
+ * connecting is what has to be done — not the spreading. There the mail card stacks under
+ * the propagating card, which the panel has always been built to do, and the pair says the
+ * true thing twice over: the address is on its way, and one step of it is yours.
  */
 export const registrantUnconfirmed = (w: World) => isCustomDomainConnected(w) && w.icann
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)

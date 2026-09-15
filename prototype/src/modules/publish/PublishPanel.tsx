@@ -35,7 +35,7 @@
  */
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { useWorld, hasPlan, isCustomDomainActive, registrantUnconfirmed, type World } from '@/state/world'
+import { useWorld, hasPlan, isCustomDomainActive, isCustomDomainConnected, registrantUnconfirmed, type World } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
@@ -121,12 +121,34 @@ const PUBLISH_FRESH_MS = 60000
 
 
 /**
- * IS THE CUSTOM DOMAIN THE ADDRESS WE HAND OVER? — the one reading, for the whole shell.
+ * IS THE CUSTOM DOMAIN THE ADDRESS WE PRINT? — the one reading, for the whole shell.
  *
  * The designer's rule, 14.09.2026: «мы убираем первый домен и вместо него вставляем
- * кастомный, только тогда, когда кастомный домен уже привязан». The field keeps the free
- * *.remixer.ai address for the WHOLE of the connection walk and swaps to the customer's
- * own name only once that name genuinely opens the site.
+ * кастомный, только тогда, когда кастомный домен уже привязан» — swap when the name is
+ * ATTACHED.
+ *
+ * ⚠️ AND ATTACHED MEANS CONNECTED, NOT ANSWERING (designer, 15.09.2026, at a panel whose
+ * amber card said "It's bought and set up" over a field still reading fit-ration.remixer.ai:
+ * «когда происходит пропагейтинг, кастомный домен уже по факту подключен, а это значит что
+ * отображается в этом окне уже кастомный домен!»). Same rule of his, applied where he
+ * actually draws the line — so this is now simply `isCustomDomainConnected`, and the field
+ * carries the customer's own name from `propagating` on.
+ *
+ * WHAT CARRIES THE TRUTH INSTEAD, because the name genuinely does not open yet: the amber
+ * card directly beneath it, whose sentence is exactly that («the address starts working
+ * once you confirm your email»), and the absence of any green. The field answers "what is
+ * my address"; the card answers "why can nobody open it yet". Printing the free address
+ * there answered the second question in the first question's slot, and contradicted the
+ * card sitting under it — which is the thing he spotted.
+ *
+ * ⚠️ The copy button therefore hands over a link that will not open until the letter is
+ * confirmed. That is a real cost and it is accepted with the card on screen in every state
+ * that can produce it (`registrantUnconfirmed` is what puts it there), never silently.
+ *
+ * The paragraphs below are the history of the OLD reading. They are kept because each one
+ * refutes a plausible way of putting the free address back — and none of them is an
+ * argument about which address to PRINT once the domain is connected, which is what this
+ * predicate now decides.
  *
  * Exported because the topbar chip prints an address too (App.tsx), off this same
  * function. The two used to derive it separately and disagreed for the length of a state,
@@ -160,7 +182,20 @@ const PUBLISH_FRESH_MS = 60000
  * consequence is only that the site is out on the free address and the custom name does
  * not answer yet, which is exactly what the field and its marker then say.
  */
-export const domainIsHome = (w: World) =>
+export const domainIsHome = (w: World) => isCustomDomainConnected(w)
+
+/**
+ * IS THE CONNECTION FINISHED AND QUIET? — the other half of what `domainIsHome` used to
+ * be, and the reason it had to be split (designer, 15.09.2026).
+ *
+ * One predicate was answering two questions: WHICH ADDRESS DO WE PRINT, and IS ANYTHING
+ * OUTSTANDING. They parted company the moment the custom name went into the field while
+ * the letter was still owed, so they are two functions now. This one is the old reading,
+ * unchanged: the domain answers and nothing is outstanding. It puts the quiet card under
+ * the field and decides the "connected, never published" situation — neither of which may
+ * appear over a domain that does not open yet.
+ */
+export const domainSettled = (w: World) =>
   (w.domain === 'live' || w.domain === 'multiple') && !w.icann
 
 /**
@@ -548,7 +583,7 @@ export function PublishPanel() {
    * two different faces: one with the green card and a button naming the address, one with
    * no card at all and a nameless `Publish`. The panel reads the situation now.
    */
-  const readyCard = (ready || domainIsHome(world)) && !world.published && !world.icann
+  const readyCard = (ready || domainSettled(world)) && !world.published && !world.icann
   const oldSite = world.domain === 'old-site'
   /*
    * ⚠️ AND IT IS THE WORLD'S OWN SELECTOR, NOT A FOURTH COPY OF IT. This read
@@ -566,7 +601,7 @@ export function PublishPanel() {
    * it, and "Padlock on · anyone can visit" under it. Three surfaces, one predicate, so
    * none of them can end up arguing with the card — which is how this panel got here.
    */
-  const settled = domainIsHome(world)
+  const settled = domainSettled(world)
   /*
    * A NAME LEFT STANDING AT THE TILL — see the card for how this maps to board state ⑦.
    *
@@ -994,7 +1029,12 @@ export function PublishPanel() {
                   * "where IS my site right now" is the question, and through all of it
                   * the answer is: here, and only here.
                   */}
-                {settled || readyCard ? (
+                {/* ⚠️ THE FIELD FOLLOWS THE CONNECTION, NOT THE ALL-CLEAR — see
+                    `domainIsHome`. It used to follow `settled || readyCard`, i.e. "the
+                    domain answers and nothing is outstanding", which left the free address
+                    standing under a card that had just said the domain was bought and set
+                    up. */}
+                {domainIsHome(world) ? (
                   <UrlField value={world.customDomain} />
                 ) : (
                   <UrlField value={STAGING_NAME} suffix={STAGING_SUFFIX} />
