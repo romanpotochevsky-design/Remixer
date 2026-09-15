@@ -654,9 +654,16 @@ export function PublishPanel() {
   })
 
   /* The second attempt, after support has cleared the address. The prototype cannot model
-     the clearing, so this one lands — a demo that dead-ends teaches nothing. */
+     the clearing, so this one lands — a demo that dead-ends teaches nothing.
+     ⚠️ AND IT CARRIES THE SAME `!icann` GUARD AS `publishNow`, because it is the THIRD door
+     to `live` + a confirmation still owed and the only one reachable without leaving the
+     product: park at `ready` + `icann` (the organic end of every purchase) → Publish, which
+     is allowed → on a `dh-in-use` domain that lands `old-site` → this card's "Try again" →
+     `live`. `world.violations()` calls that pairing impossible. Here the address is cleared
+     but the name still does not answer, so the site goes out and the domain waits at
+     `ready` for the letter. */
   const retryPublish = () => {
-    set({ domain: 'live', published: true, unpublished: 0 })
+    set({ domain: world.icann ? 'ready' : 'live', published: true, unpublished: 0 })
     markPublished()
   }
 

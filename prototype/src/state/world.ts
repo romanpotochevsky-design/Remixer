@@ -345,7 +345,7 @@ export interface World {
    * name nobody could open.
    *
    * So this is not a clock running BESIDE the connection — it is a GATE ON it. The bought
-   * walk registers the name and then holds at `provisioning` until this clears
+   * walk plays all three stages and then holds at `ready` until this clears
    * (modules/domains/connect.ts, THE GATE), which is why `live` and `multiple`
    * alongside it are listed in `violations` as combinations the product cannot produce.
    * Its own axis all the same, because it is a fact about the REGISTRATION and not a place
