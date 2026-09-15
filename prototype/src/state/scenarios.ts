@@ -332,7 +332,11 @@ export const PRESETS: Preset[] = [
   {
     id: 'registering',
     group: PG.domain,
-    label: { en: 'Just bought — registering', uk: 'Щойно куплено — реєструється' },
+    /* ⚠️ THE TILE SPEAKS THE AXIS'S WORD. It read "registering" — the axis's old name,
+       renamed to `provisioning` on 14.09.2026 when the designer named the three statuses —
+       while the axis, its hints and the panel's own card all said Provisioning. One word,
+       and the console is the panel a designer opens in front of a room. */
+    label: { en: 'Just bought — provisioning', uk: 'Щойно куплено — реєстрація' },
     note: {
       en: 'Bought a minute ago: the registry has the order and the name is not theirs yet. Minutes — and not the same thing as a working website',
       uk: 'Куплено хвилину тому: реєстр має замовлення, імені ще немає. Це хвилини — і це не те саме, що працюючий сайт',
