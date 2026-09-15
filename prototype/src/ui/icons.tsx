@@ -367,6 +367,27 @@ export const IconClose = ({ size = 12, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * The design system's own `Close M` glyph — the one the checkout sheets' 32px disc carries
+ * (Figma 27328:11602 / 11628 / 11633), measured off the vector inside it: the Icon frame is
+ * 24 and the INK is 9.018 square, dead centre, which is an arm span of 7.5 under a 1.5
+ * stroke. It renders at `size={24}`, the frame's own size.
+ *
+ * ⚠️ WHY THIS IS NOT `IconClose` AT SOME OTHER SIZE, which is the third time this project
+ * has had to learn that a Figma icon FRAME is not its glyph. `IconClose` is drawn span 9
+ * under stroke 1.5 — ratio 6:1, where this one is 5:1 — so no single `size` can land both
+ * numbers: the sheet's disc was carrying it at 9, which is ink 7.875 under a 1.125 stroke,
+ * 13% short and a quarter too thin, and reading (as the designer put it about the copy
+ * glyph) as an object of another weight beside its neighbours. Seven other callers are
+ * tuned to `IconClose`'s proportions and have no board evidence for a change, so the DS
+ * component gets its own export rather than its ratio imposed on all of them.
+ */
+export const IconCloseM = ({ size = 24, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+    <path d="M8.25 8.25l7.5 7.5M15.75 8.25l-7.5 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 /* ---- checkout sheet set (Figma 27254:11737 / 27275:33023) ---- */
 
 /**
