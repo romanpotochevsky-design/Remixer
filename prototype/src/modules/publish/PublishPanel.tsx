@@ -33,7 +33,7 @@
  * account it says what the plan covers — publishing on a custom domain, never the name
  * itself, which is a purchase on every plan (see the card).
  */
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useWorld, hasPlan, isCustomDomainActive, isCustomDomainConnected, registrantUnconfirmed, type World } from '@/state/world'
 import { useUI } from '@/state/ui'
@@ -46,7 +46,8 @@ import { Chip } from '@/ui/Chip'
 import { useShimmerPhase } from '@/ui/shimmer'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
 import { useConfirm } from '@/ui/ConfirmDialog'
-import { popover, popoverContent } from '@/ui/motion'
+import { popover, popoverContent, swapText } from '@/ui/motion'
+import { Reveal } from '@/ui/Reveal'
 
 /*
  * The free address, split at its FIRST dot: the name is white, the host behind it grey.
@@ -323,8 +324,15 @@ function UrlField({ value, suffix }: { value: string; suffix?: string }) {
        the card's own 4% white is the surface. pl 16 / pr 8, the address at 15px. */
     <div className="flex h-12 items-center justify-between rounded-[12px] py-1 pl-4 pr-2 shadow-[inset_0_0_0_1px_var(--white-200)]">
       <p className="min-w-0 truncate text-[15px]">
-        <span className="text-[var(--white-900)]">{value}</span>
-        {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
+        {/* The address changing under a label that stays (the free name → the custom one at
+            `propagating`): the old one leaves, then the new one comes up — the panel's
+            hand-off (motion.ts `swapText`), never two addresses printed over each other. */}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={value + (suffix ?? '')} variants={swapText} initial="initial" animate="animate" exit="exit">
+            <span className="text-[var(--white-900)]">{value}</span>
+            {suffix && <span className="text-[var(--white-500)]">{suffix}</span>}
+          </motion.span>
+        </AnimatePresence>
       </p>
       {/* The board's Icon button: a 32 box around a 24 glyph, radius 8, no label. The
           answer to a press is the glyph itself — a tick when the clipboard took it, the
@@ -365,7 +373,10 @@ function UrlField({ value, suffix }: { value: string; suffix?: string }) {
  * figma.com asset URL), so this is the spinning arc the generation card already uses for
  * a step that is working — one idiom for "this is moving on its own".
  */
-function ProgressCard({ title, sub, done }: { title: string; sub: string; done?: boolean }) {
+/** The stages the one in-flight card can be in — see ProgressCard. */
+type ProgressVariant = 'provisioning' | 'connecting' | 'propagating' | 'ready'
+
+function ProgressCard({ variant, title, sub, done }: { variant: ProgressVariant; title: string; sub: string; done?: boolean }) {
   /*
    * WHILE IT MOVES, THE HEADLINE SHIMMERS AND THE ARC FOLLOWS ITS HUE (designer,
    * 16.09.2026, on this very card: «вставляем градиентную плашку в текст, там где идут
@@ -379,71 +390,85 @@ function ProgressCard({ title, sub, done }: { title: string; sub: string; done?:
    */
   const phase = useShimmerPhase()
   return (
-    <div className="px-1.5 pt-1.5">
-      {/* While it moves, the card's own wash carries the flash too — board 30425:27467, a
-          brighter band crossing the whole card in the headline's sweep window (`.shimmer-card`
-          in index.css). The band is a child, not a pseudo: the card must stay overflow-visible
-          for the explanation box's one-pixel pull onto its stroke. */}
-      <div className={`rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]${done ? '' : ' shimmer-card'}`} style={done ? undefined : phase}>
-        {!done && <span className="shimmer-card-band" aria-hidden />}
-        <div className={`flex items-center gap-3 py-4 pl-4 pr-3${done ? '' : ' shimmer-hue'}`} style={done ? undefined : phase}>
-          {/* ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up
-              and only a press is left, the arc becomes a filled green tick. One shape for
-              "this is moving" and "this is done" — the icon is the whole difference, which
-              is what makes the finish read as the end of the thing that was moving. */}
-          {done ? (
+    /* While it moves, the card's own wash carries the flash too — board 30425:27467, a
+       brighter band crossing the whole card in the headline's sweep window (`.shimmer-card`
+       in index.css). The band is a child, not a pseudo: the card must stay overflow-visible
+       for the explanation box's one-pixel pull onto its stroke. `relative` for the band's
+       stacking context whichever way `done` is. The 6px of air around the card belong to the
+       Reveal that unfolds it (`pad`), not to this box. */
+    <div className={`relative rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]${done ? '' : ' shimmer-card'}`} style={done ? undefined : phase}>
+      {!done && <span className="shimmer-card-band" aria-hidden />}
+      {/*
+       * ⚠️ ONE CARD, ITS WORDS CHANGING — NOT FOUR CARDS TAKING TURNS (designer, 16.09.2026,
+       * from a recording of the walk: «внутри формы появляются и исчезают объекты, и высота
+       * формы резко меняется»). The panel used to mount a separate card per stage, so
+       * `Connecting…` → `Propagating…` was one card vanishing and another appearing in the
+       * same place, and the panel's height snapped with it. The card is now ONE element for
+       * the whole walk — wash, rim, band — and only the group inside it is keyed by stage.
+       * The hand-off is sequential (`mode="wait"`, motion.ts `swapText`): the old words are
+       * gone in 120 ms before the new ones come up, so two stages are never printed over
+       * each other (the question dock's double-exposure lesson). The height difference
+       * between two stages' sentences is what the Reveal around this card animates.
+       */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div key={variant} variants={swapText} initial="initial" animate="animate" exit="exit">
+          <div className={`flex items-center gap-3 py-4 pl-4 pr-3${done ? '' : ' shimmer-hue'}`} style={done ? undefined : phase}>
+            {/* ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up
+                and only a press is left, the arc becomes a filled green tick. One shape for
+                "this is moving" and "this is done" — the icon is the whole difference, which
+                is what makes the finish read as the end of the thing that was moving. */}
+            {done ? (
+              <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
+                {/* A filled green disc with a WHITE tick, as the board draws it — the ink
+                    the eye reads as "done" everywhere else in the product. */}
+                <circle cx="12" cy="12" r="11" fill="var(--live)" />
+                <path d="m7.4 12.3 3.1 3.1 6.1-6.6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
             <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
-              {/* A filled green disc with a WHITE tick, as the board draws it — the ink
-                  the eye reads as "done" everywhere else in the product. */}
-              <circle cx="12" cy="12" r="11" fill="var(--live)" />
-              <path d="m7.4 12.3 3.1 3.1 6.1-6.6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="12" cy="12" r="8" stroke="var(--white-200)" strokeWidth="1.8" />
+              <path
+                d="M12 4a8 8 0 0 1 8 8"
+                /* ⚠️ THE MOVING ARC WAS `--action` #1587FF (designer, 14.09.2026: "я хочу
+                   чтобы цвет в спинере был синий вот такой 1587FF") and now takes the
+                   shimmer's hue — see the note above the component. The ring behind it
+                   stays neutral so the arc is the only thing the eye follows. */
+                stroke="var(--sh-hue)" strokeWidth="1.8" strokeLinecap="round"
+                className="step-spin"
+              />
             </svg>
-          ) : (
-          <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
-            <circle cx="12" cy="12" r="8" stroke="var(--white-200)" strokeWidth="1.8" />
-            <path
-              d="M12 4a8 8 0 0 1 8 8"
-              /* ⚠️ THE MOVING ARC IS `--action` #1587FF (designer, 14.09.2026: "я хочу
-                 чтобы цвет в спинере был синий вот такой 1587FF"). Blue is this product's
-                 colour for something happening; the ring behind it stays neutral so the
-                 arc is the only thing the eye follows. */
-              stroke="var(--sh-hue)" strokeWidth="1.8" strokeLinecap="round"
-              className="step-spin"
-            />
-          </svg>
-          )}
-          <p
-            className={`min-w-0 flex-1 break-words text-[15px] font-semibold leading-[1.2] ${done ? 'text-white' : 'shimmer-ink shimmer-ink--white'}`}
-            style={done ? undefined : phase}
-          >
-            {keepHostsWhole(title)}
-          </p>
-        </div>
-        {/* ⚠️ ITS STROKE LIES ON THE CARD'S, which is what makes the top edge a
-            FULL-WIDTH DIVIDER (board 30289:60956: `w-full` inside the 408 card, and a
-            Figma stroke sits INSIDE the geometry, so both rims are drawn on the same
-            band). Left inset by the card's own border, this box put its rim one pixel
-            INSIDE the card's: a 2px rail down both sides and along the bottom, and a
-            divider that stopped short of the card's walls. Same medicine as the
-            generation card and chosen the same way — the box has arcs (r12), so the
-            CHILD is pulled out instead of the parent's border being removed. */}
-        <div className="-mx-px -mb-px rounded-[12px] border border-[#49494c] px-4 pb-[18px] pt-[19px]">
-          <p className="text-[13px] leading-[1.4] text-[#ffffffa3]">{keepHostsWhole(sub)}</p>
-        </div>
-      </div>
+            )}
+            <p
+              className={`min-w-0 flex-1 break-words text-[15px] font-semibold leading-[1.2] ${done ? 'text-white' : 'shimmer-ink shimmer-ink--white'}`}
+              style={done ? undefined : phase}
+            >
+              {keepHostsWhole(title)}
+            </p>
+          </div>
+          {/* ⚠️ ITS STROKE LIES ON THE CARD'S, which is what makes the top edge a
+              FULL-WIDTH DIVIDER (board 30289:60956: `w-full` inside the 408 card, and a
+              Figma stroke sits INSIDE the geometry, so both rims are drawn on the same
+              band). Left inset by the card's own border, this box put its rim one pixel
+              INSIDE the card's: a 2px rail down both sides and along the bottom, and a
+              divider that stopped short of the card's walls. Same medicine as the
+              generation card and chosen the same way — the box has arcs (r12), so the
+              CHILD is pulled out instead of the parent's border being removed. */}
+          <div className="-mx-px -mb-px rounded-[12px] border border-[#49494c] px-4 pb-[18px] pt-[19px]">
+            <p className="text-[13px] leading-[1.4] text-[#ffffffa3]">{keepHostsWhole(sub)}</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }
 
 function StatusCard({
-  tone, title, sub, action, stacked, subject,
+  tone, title, sub, action, subject,
 }: {
   tone: 'amber' | 'red' | 'blue'
   title: string
   sub: string
   action?: { label: string; onClick?: () => void; primary?: boolean; disabled?: boolean }
-  /** Sits under another card rather than under the field — a tighter gap. */
-  stacked?: boolean
   /**
    * THE NAME IN THE TITLE IS THE SUBJECT OF THE NOTICE — ink it in the card's own colour
    * (designer, 14.09.2026: «нам нужно просто в этом уведомлении добавить кастомный домен
@@ -469,7 +494,9 @@ function StatusCard({
   }[tone]
   return (
     <div
-      className={`${stacked ? 'mt-2' : 'mt-[19px]'} flex items-center gap-3 rounded-[12px] px-4 py-3.5`}
+      /* No top margin of its own: the 19px under the field (8 under another card) belongs to
+         the Reveal that unfolds this card, so the air arrives and leaves with it. */
+      className="flex items-center gap-3 rounded-[12px] px-4 py-3.5"
       style={{ background: skin.fill, boxShadow: `inset 0 0 0 1px ${skin.rim}` }}
     >
       <span
@@ -507,7 +534,6 @@ export function PublishPanel() {
   const { publishOpen, togglePublish, openDomains, openPanel, publishHintOpen, dismissPublishHint } = useUI()
   const { t } = useT()
   const panelRef = useRef<HTMLDivElement>(null)
-  const reduce = useReducedMotion()
   /* Has the confirmation mail just been sent again? The button's second state, and it
      stands down on its own — see RESEND_COOLDOWN_MS. Session state, not world state: it
      describes this press, not the customer's situation. */
@@ -542,7 +568,12 @@ export function PublishPanel() {
   useEffect(() => {
     if (!publishOpen || confirming) return
     const onDown = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) togglePublish(false)
+      const el = e.target as Element
+      /* The prototype console is a staging tool, not "outside": a designer moving the world
+         from it while watching this panel must see the panel ANSWER — the walk unfolding,
+         the cards handing over — not close under the first click (16.09.2026). */
+      if (el.closest?.('[data-console]')) return
+      if (panelRef.current && !panelRef.current.contains(el)) togglePublish(false)
     }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') togglePublish(false) }
     document.addEventListener('mousedown', onDown)
@@ -844,6 +875,62 @@ export function PublishPanel() {
           ? { en: `Publish to ${world.customDomain}`, uk: `Опублікувати на ${world.customDomain}` }
           : { en: 'Publish', uk: 'Опублікувати' }
 
+  /*
+   * THE ONE IN-FLIGHT CARD'S WORDS, BY STAGE — see ProgressCard for why it is one card. The
+   * copy is the boards' (30282:54233 for the three moving stages, 30289:59972 for the end);
+   * `null` when nothing is in flight, and the Reveal around the card folds it away.
+   *
+   * ⚠️ THE END CARD'S SECOND SENTENCE DEPENDS ON WHETHER THERE IS A SITE OUT THERE ALREADY.
+   * The board's copy — "to make your site live" — is written for the customer who has never
+   * published; for the one who has, it would be the same small lie the auto-publish used to
+   * tell: their site IS live, at the free address, and what this press does is MOVE it. The
+   * card names the act it is asking for; the address it moves onto is in the field right
+   * under it and in the button.
+   */
+  const progress: { variant: ProgressVariant; title: string; sub: string; done?: boolean } | null = connecting
+    ? {
+        variant: 'connecting',
+        title: t({ en: `Connecting ${world.customDomain}`, uk: `Підключаємо ${world.customDomain}` }),
+        sub: t({
+          en: 'Pointing the domain at your site. Usually quick, sometimes a few hours — keep editing, we’ll keep checking.',
+          uk: 'Спрямовуємо домен на ваш сайт. Зазвичай швидко, іноді кілька годин — працюйте далі, ми перевіряємо.',
+        }),
+      }
+    : provisioning
+      ? {
+          variant: 'provisioning',
+          title: t({ en: `Provisioning ${world.customDomain}`, uk: `Реєструємо ${world.customDomain}` }),
+          sub: t({
+            en: 'Registering the name in your account. Usually under 15 minutes — nothing for you to do.',
+            uk: 'Реєструємо ім’я у вашому акаунті. Зазвичай менш ніж 15 хвилин — від вас нічого не потрібно.',
+          }),
+        }
+      : propagating
+        ? {
+            variant: 'propagating',
+            title: t({ en: `Propagating ${world.customDomain}`, uk: `Пропагуємо ${world.customDomain}` }),
+            sub: t({
+              en: 'The address is set and spreading across the internet. Most visitors reach your site within a few hours; up to 72 to reach everyone.',
+              uk: 'Адресу налаштовано, вона розходиться інтернетом. Більшість відвідувачів побачать сайт за кілька годин; до 72, щоб побачили всі.',
+            }),
+          }
+        : readyCard
+          ? {
+              variant: 'ready',
+              done: true,
+              title: t({ en: `${world.customDomain} is connected`, uk: `${world.customDomain} підключено` }),
+              sub: world.published
+                ? t({
+                    en: 'Your new custom address is fully set up. Publish to move your site onto it.',
+                    uk: 'Вашу нову адресу повністю налаштовано. Опублікуйте, щоб перенести сайт на неї.',
+                  })
+                : t({
+                    en: 'Your new custom address is fully set up. Just hit the publish button to make your site live.',
+                    uk: 'Вашу нову адресу повністю налаштовано. Натисніть «Опублікувати», щоб сайт запрацював.',
+                  }),
+            }
+          : null
+
   return (
     <AnimatePresence>
       {publishOpen && (
@@ -952,18 +1039,13 @@ export function PublishPanel() {
                 inset it had by carrying it itself (`px-2 pt-2 pb-2` on the banner). */}
             <div className="flex flex-col rounded-[16px] bg-[#ffffff0a] shadow-[inset_0_0_0_1px_#ffffff0a]">
             {/* ------------------------------------------------ the nudge, 29697:37264 */}
-            <AnimatePresence initial={false}>
+            {/* ⚠️ IT USED TO FADE OUT AND LET THE CARD TIGHTEN IN ONE SNAP, on the dock's rule
+                that layout is never animated. The designer's recording of 16.09.2026 is what
+                that snap looks like from the outside, and the rule's reason (the thread's
+                scroller relaying out under a moving dock) does not hold in a fixed overlay —
+                see ui/Reveal.tsx. The nudge now folds away like every other block here. */}
+            <Reveal show={!world.published && !attached && publishHintOpen} pad="px-2 pb-2 pt-2" radius={12}>
               {!world.published && !attached && publishHintOpen && (
-                <motion.div
-                  key="hint"
-                  /* Fades and lifts out, then the card tightens in one snap — the layout
-                     is never animated (the dock's rule, ui/motion.ts). Under reduce the
-                     offset itself goes, or the frame would jump into it. */
-                  initial={false}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                  transition={{ duration: 0.16, ease: [0.4, 0, 1, 1] }}
-                  className="px-2 pb-2 pt-2"
-                >
                   <div className="relative flex h-[120px] items-center overflow-hidden rounded-[12px] bg-[var(--gray-900)] px-6 shadow-[inset_0_0_0_1px_#ffffff0a]">
                     {/* the brand's dot field, dying out to the left — index.css */}
                     <span className="pub-hint-dots" aria-hidden />
@@ -988,74 +1070,15 @@ export function PublishPanel() {
                       <IconClose size={11} />
                     </button>
                   </div>
-                </motion.div>
               )}
-            </AnimatePresence>
-            {/* ------------------------------- the in-flight cards, board 30282:54233:
-                ABOVE the address field, in the shape that board draws. See ProgressCard. */}
-              {connecting && (
-                <ProgressCard
-                  title={t({
-                    en: `Connecting ${world.customDomain}`,
-                    uk: `Підключаємо ${world.customDomain}`,
-                  })}
-                  sub={t({
-                    en: 'Pointing the domain at your site. Usually quick, sometimes a few hours — keep editing, we’ll keep checking.',
-                    uk: 'Спрямовуємо домен на ваш сайт. Зазвичай швидко, іноді кілька годин — працюйте далі, ми перевіряємо.',
-                  })}
-                />
-              )}
-              {provisioning && (
-                <ProgressCard
-                  title={t({
-                    en: `Provisioning ${world.customDomain}`,
-                    uk: `Реєструємо ${world.customDomain}`,
-                  })}
-                  sub={t({
-                    en: 'Registering the name in your account. Usually under 15 minutes — nothing for you to do.',
-                    uk: 'Реєструємо ім’я у вашому акаунті. Зазвичай менш ніж 15 хвилин — від вас нічого не потрібно.',
-                  })}
-                />
-              )}
-              {/* The walk's last frame — board 30289:59972. Same card, green tick, and the
-                  sentence says where the press is rather than what is happening.
-                  ⚠️ AND THE SECOND HALF OF THE SENTENCE DEPENDS ON WHETHER THERE IS A SITE
-                  OUT THERE ALREADY. The board's copy — "to make your site live" — is
-                  written for the customer who has never published, and for the one who has
-                  it would be the same small lie the auto-publish used to tell: their site
-                  IS live, at the free address, and what this press does is move it. The
-                  card names the act it is asking for; the address it moves onto is in the
-                  field right under it and in the button. */}
-              {readyCard && (
-                <ProgressCard
-                  done
-                  title={t({
-                    en: `${world.customDomain} is connected`,
-                    uk: `${world.customDomain} підключено`,
-                  })}
-                  sub={world.published
-                    ? t({
-                        en: 'Your new custom address is fully set up. Publish to move your site onto it.',
-                        uk: 'Вашу нову адресу повністю налаштовано. Опублікуйте, щоб перенести сайт на неї.',
-                      })
-                    : t({
-                        en: 'Your new custom address is fully set up. Just hit the publish button to make your site live.',
-                        uk: 'Вашу нову адресу повністю налаштовано. Натисніть «Опублікувати», щоб сайт запрацював.',
-                      })}
-                />
-              )}
-              {propagating && (
-                <ProgressCard
-                  title={t({
-                    en: `Propagating ${world.customDomain}`,
-                    uk: `Пропагуємо ${world.customDomain}`,
-                  })}
-                  sub={t({
-                    en: 'The address is set and spreading across the internet. Most visitors reach your site within a few hours; up to 72 to reach everyone.',
-                    uk: 'Адресу налаштовано, вона розходиться інтернетом. Більшість відвідувачів побачать сайт за кілька годин; до 72, щоб побачили всі.',
-                  })}
-                />
-              )}
+            </Reveal>
+            {/* ------------------------------- the in-flight card, board 30282:54233:
+                ABOVE the address field, in the shape that board draws. One card for the
+                whole walk — see ProgressCard and `progress` above; the Reveal unfolds it when
+                a stage begins and folds it when the last one ends. */}
+            <Reveal show={progress !== null} pad="px-1.5 pt-1.5" radius={12}>
+              {progress && <ProgressCard {...progress} />}
+            </Reveal>
             {/* --------------------------------------------- the fields, 29697:37003 */}
             <div className="px-4 pb-4 pt-[19px]">
               {/* website URL */}
@@ -1128,6 +1151,7 @@ export function PublishPanel() {
                   ⚠️ states.md opens the sub with "Something changed at {registrar} on
                   {date}." — dropped, not reworded: the world carries neither a registrar
                   name nor a date, and inventing either is how a demo starts lying. */}
+              <Reveal show={unreachable} pad="pt-[19px]" radius={12}>
               {unreachable && (
                 <StatusCard
                   tone="red"
@@ -1145,6 +1169,7 @@ export function PublishPanel() {
                   }}
                 />
               )}
+              </Reveal>
 
               {/* `connecting · in-account`, states.md variant A — the records are ours to
                   write, so this is the fast path and the only variant of three allowed to
@@ -1209,6 +1234,7 @@ export function PublishPanel() {
                   contact support. The first two are an SFTP session — no builder customer
                   is doing that from this card — so the card names the one they can act on
                   and keeps the verb for afterwards. */}
+              <Reveal show={oldSite} pad="pt-[19px]" radius={12}>
               {oldSite && (
                 <StatusCard
                   tone="red"
@@ -1243,6 +1269,7 @@ export function PublishPanel() {
                   }}
                 />
               )}
+              </Reveal>
 
               {/* Board 28206:66756 draws a seventh state, `7 not paid`, and this is our
                   reading of it: the domain was chosen, the cart was filled and the
@@ -1253,6 +1280,7 @@ export function PublishPanel() {
                   ⚠️ The mapping is OURS — the board's own frame has not been re-read — so
                   the card claims nothing beyond what the world says and hands straight
                   back to the till, which is where the price lives. */}
+              <Reveal show={waitingOnCheckout} pad="pt-[19px]" radius={12}>
               {waitingOnCheckout && (
                 <StatusCard
                   tone="amber"
@@ -1287,6 +1315,7 @@ export function PublishPanel() {
                   }}
                 />
               )}
+              </Reveal>
 
               {/* The registrant-email step (state ⑤ on board 28206:66756). THE ONLY CARD
                   ON SCREEN when it is up, and no longer a second one under a stage card:
@@ -1316,9 +1345,9 @@ export function PublishPanel() {
                   ⚠️ AND IT NAMES THE DOMAIN, inked as the subject (see StatusCard's
                   `subject`): the field above shows the FREE address in every state this card
                   is up in, so "this domain" pointed at nothing on screen. */}
+              <Reveal show={confirmEmail} pad={stageCard ? 'pt-2' : 'pt-[19px]'} radius={12}>
               {confirmEmail && (
                 <StatusCard
-                  stacked={stageCard}
                   tone="amber"
                   subject
                   title={t({
@@ -1341,6 +1370,7 @@ export function PublishPanel() {
                     : { label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => setResent(true) }}
                 />
               )}
+              </Reveal>
               {/* ⚠️ NO PROTOTYPE STAND-IN UNDER THIS CARD. A dashed "Confirm email" strip
                   used to sit here, and the designer threw it out on sight (14.09.2026:
                   "зачем ты это ставил в окно? это же не часть интерфейса?!!!!!"). He is
@@ -1378,6 +1408,7 @@ export function PublishPanel() {
                   Not while a name is standing at the till: the card above is about that
                   name, and offering to start again under it reads as "your purchase went
                   nowhere". */}
+              <Reveal show={!attached && !waitingOnCheckout} pad="pt-[19px]" radius={16}>
               {!attached && !waitingOnCheckout && (
                 <button
                   onClick={() => openDomains('home')}
@@ -1385,7 +1416,7 @@ export function PublishPanel() {
                      NA/300) and the "+" disc fills WHITE with a dark plus — the
                      row itself keeps its fill. Colours ease over the base duration
                      so the state melts in rather than snapping. */
-                  className="group mt-[19px] flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std hover:border-[var(--white-300)]"
+                  className="group flex w-full items-center gap-4 rounded-[16px] border border-dashed border-[var(--white-200)] py-4 pl-5 pr-8 text-left backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std hover:border-[var(--white-300)]"
                 >
                   {/* Figma 26125:3802: NA/100 fill + 15%-white rim, not the shell glass */}
                   <span className="grid h-8 w-8 flex-none place-items-center rounded-[12px] border border-[#ffffff26] bg-[#ffffff14] text-[var(--white-700)] backdrop-blur-[16px] transition-colors duration-[var(--dur-base)] ease-std group-hover:border-[#ffffff40] group-hover:bg-white group-hover:text-[#09090b]">
@@ -1433,6 +1464,7 @@ export function PublishPanel() {
                   </span>
                 </button>
               )}
+              </Reveal>
             </div>
             {/* ⚠️ THE BODY CARD'S LAST CHILD, and that is the difference the designer kept
                 pointing at (14.09.2026, five times): on board 30282:19132 this card is a
@@ -1453,6 +1485,7 @@ export function PublishPanel() {
               * and `old-site` their Unlink, and those are the states where wanting out is
               * likeliest.
               */}
+            <Reveal show={domainIsHome(world)} radius={16}>
             {domainIsHome(world) && (
               /*
                * ⚠️ THE SEAM IS `#313133`, A RAW HEX, AND THE DESIGNER SETTLED IT TWICE IN
@@ -1511,7 +1544,19 @@ export function PublishPanel() {
                 * `domainRowStatus`, the table the topbar chip reads, so the two cannot disagree.
                 */
               <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
-                {rowStatus && <Chip label={rowStatus.word} tone={rowStatus.tone} />}
+                {/* The word changing inside the row (Setting up → Waiting on your email → Live):
+                    the old chip leaves, the new one comes up (motion.ts `swapText`). The slot
+                    around them is always there, so `Unlink` keeps its end of the row while the
+                    left is empty for a beat. */}
+                <span className="flex min-w-0 items-center">
+                  <AnimatePresence mode="wait" initial={false}>
+                    {rowStatus && (
+                      <motion.span key={rowStatus.word.en} className="flex" variants={swapText} initial="initial" animate="animate" exit="exit">
+                        <Chip label={rowStatus.word} tone={rowStatus.tone} />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </span>
                 <button
                   onClick={unlinkDomain}
                   className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[#f57c00] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#f57c0014]"
@@ -1521,6 +1566,7 @@ export function PublishPanel() {
                 </button>
               </div>
             )}
+            </Reveal>
             </div>
           </div>
 

@@ -3598,6 +3598,9 @@ html[data-drag] .shell-aside { transition: none; }
  * that has just been sent; a restored one never carries it, so at rest the overlay does
  * not exist. Under reduced motion the global rule kills the keyframes and the overlay's
  * base opacity is 0.
+ * The same light is worn by a block ARRIVING inside the Publish panel (`ui/Reveal.tsx`,
+ * 16.09.2026): the Reveal's glass wrapper takes the class with the block's own radius, so
+ * the glint follows the card's rim there too. One glint for every surface that forms.
  * ---------------------------------------------------------------------- */
 .card-arrive { position: relative; }
 .card-arrive::after {

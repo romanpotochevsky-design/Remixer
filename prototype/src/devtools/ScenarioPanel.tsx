@@ -84,6 +84,7 @@ export function ScenarioPanel() {
                      hover:bg-white/10 hover:opacity-100 focus-visible:opacity-100"
           title="Prototype console · ⌘."
           aria-label="Prototype console"
+          data-console=""
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
             <path d="M1 3.5h10M1 8.5h10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" className="text-white/70" />
@@ -100,6 +101,9 @@ export function ScenarioPanel() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 24, opacity: 0 }}
             transition={{ duration: 0.2, ease: EASE }}
+            /* `data-console`: the Publish panel's outside-click closer skips this tree — a designer
+               staging the world here while watching the panel must see it answer, not close. */
+            data-console=""
             className="fixed right-0 top-0 z-[9999] flex h-full w-[400px] flex-col
                        border-l border-black/10 bg-[#F7F7F5] text-neutral-900 shadow-2xl"
           >

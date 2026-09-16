@@ -320,6 +320,70 @@ export const FIELD_GROW = { type: 'spring', duration: 0.5, bounce: 0.12 } as con
 export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
 
 /*
+ * A BLOCK UNFOLDING INSIDE A PANEL — the Publish panel's cards, its domain row, its nudge
+ * (`ui/Reveal.tsx`; designer, 16.09.2026, from a recording of the connection walk: «внутри
+ * формы появляются и исчезают объекты, и высота формы резко меняется… нужно чтобы оно не
+ * резко прыгало, а плавно и красиво с плавной анимацией меняло высоту, а те объекты что
+ * внутри появляются и пропадают тоже должны иметь плавную и красивую анимацию. в стиле
+ * apple liquid glass!» — and, pointing at the brief's question dock, «с bounce effect»).
+ *
+ * The block's EDGE is the thing that moves. Its box springs from nothing to the content's
+ * measured height with one soft overshoot — the same damping the dock's piston has
+ * (ζ ≈ .68, about 5 % past the mark), because that is the bounce the designer accepted
+ * there after two cuts with less («не хватает отдачи»). The glass rides in a beat behind
+ * the edge (rule 3), coming up from slightly small and slightly HIGH — it is born at the
+ * seam it unfolds from, so it slides out from under the block above rather than rising out
+ * of nowhere — and it catches the light as it forms (`.card-arrive`, the thread cards'
+ * glint). Leaving is quicker and flat (rule 4): the glass is gone in 140 ms, the edge
+ * closes in 300, and nothing on the way out bounces.
+ *
+ * ⚠️ THIS ANIMATES `height`, AND THAT IS A MEASURED EXCEPTION to this file's rule, taken
+ * the way `.shell-aside`'s width took it. The panel is a fixed 432px overlay: the per-frame
+ * layout is the panel's own few dozen boxes and nothing else on the page — the numbers are
+ * in `ui/Reveal.tsx`. A transform cannot do this job: a card growing by `scaleY` stretches
+ * its text, and a FLIP of the rows below would still leave the panel's own bottom edge —
+ * the one thing the eye follows — to snap. Not a licence for anything else: the thread's
+ * dock stays on its piston, the composer's field on its snap-once slide.
+ */
+export const REVEAL_OPEN = { type: 'spring', duration: 0.62, bounce: 0.32 } as const
+export const REVEAL_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
+export const revealBody = {
+  initial: { opacity: 0, scale: 0.96, y: -6 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      duration: 0.62,
+      bounce: 0.24,
+      delay: 0.06,
+      opacity: { duration: 0.26, delay: 0.1, ease: [0.2, 0, 0, 1] },
+    },
+  },
+  exit: { opacity: 0, scale: 0.98, transition: { duration: 0.14, ease: [0.4, 0, 1, 1] } },
+} as const
+/* Reduced motion: the offsets and the scale are DROPPED, not jumped into (the shelf-of-the-dock
+   lesson) — the block simply comes up in place while its edge opens without a spring. */
+export const revealBodyFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.24, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.12 } },
+} as const
+/**
+ * WORDS CHANGING INSIDE A BLOCK THAT STAYS — the in-flight card's stage, the address in the
+ * URL field, the status chip in the domain row. A sequential hand-off under
+ * `AnimatePresence mode="wait"`: the old words are gone in 120 ms before the new ones come
+ * up, so two stages are never printed over each other (the question dock's double-exposure
+ * lesson). The box's height difference, if any, is the Reveal around it.
+ */
+export const swapText = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+} as const
+
+/*
  * The question dock's sheet (BriefPanel, PlanCard). The dock itself grows as a PISTON
  * (index.css "THE BUBBLE", driven by modules/chat/dock.ts): the shell's edge, rim and
  * corners travel up out of the collar around the field on one damped spring, and the
