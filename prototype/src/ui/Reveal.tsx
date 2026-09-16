@@ -50,11 +50,11 @@
  * (`revealBodyFade`): the offsets are dropped, not jumped into.
  */
 import { AnimatePresence, motion, usePresence, useReducedMotion } from 'motion/react'
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { REVEAL_CLOSE, REVEAL_OPEN, revealBody, revealBodyFade } from '@/ui/motion'
 
 export function Reveal({
-  show, pad, radius = 12, className, children,
+  show, pad, radius = 12, className, follow = 'spring', children,
 }: {
   /** Is the block up? Flipping it unfolds or folds the block; the panel's height follows. */
   show: boolean
@@ -64,6 +64,15 @@ export function Reveal({
   radius?: number
   /** Classes for the clip itself — layout only, never paint. */
   className?: string
+  /**
+   * How the edge answers a change of the CONTENT'S height while the block is up. `spring`
+   * (default): a sentence grows and the edge glides after it. `instant`: the edge tracks the
+   * content frame by frame — for a block whose contents animate their own height (the
+   * in-flight card folding its explanation, 16.09.2026): two springs on one edge chase each
+   * other, the outer lagging the inner and clipping its rim on the way open. Showing and
+   * hiding the block itself always springs.
+   */
+  follow?: 'spring' | 'instant'
   children: ReactNode
 }) {
   /* Has this block ever been down while the Reveal was mounted? Only then is an appearance an
@@ -73,7 +82,7 @@ export function Reveal({
   return (
     <AnimatePresence initial={false}>
       {show && (
-        <RevealBox key="box" pad={pad} radius={radius} className={className} arriving={wasDown.current}>
+        <RevealBox key="box" pad={pad} radius={radius} className={className} follow={follow} arriving={wasDown.current}>
           {children}
         </RevealBox>
       )}
@@ -82,12 +91,15 @@ export function Reveal({
 }
 
 function RevealBox({
-  pad, radius, className, arriving, children,
-}: { pad?: string; radius: number; className?: string; arriving: boolean; children: ReactNode }) {
+  pad, radius, className, follow, arriving, children,
+}: { pad?: string; radius: number; className?: string; follow: 'spring' | 'instant'; arriving: boolean; children: ReactNode }) {
   const reduce = useReducedMotion()
   const [present, safeToRemove] = usePresence()
   const sizer = useRef<HTMLDivElement>(null)
   const removed = useRef(false)
+  /* Has the edge been given a measured height once? From then on, under `follow="instant"`,
+     a change of the content's height is tracked without a spring of its own. */
+  const measured = useRef(false)
   /* The content's natural height, from the ResizeObserver's LAYOUT size (`borderBoxSize`) —
      delivered once on observe() and again on every change, before the frame paints. Null
      only for the first commit, where 'auto' stands in.
@@ -107,12 +119,16 @@ function RevealBox({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  useEffect(() => {
+    if (present && natural !== null) measured.current = true
+  }, [present, natural])
+  const tracking = follow === 'instant' && present && measured.current
   return (
     <motion.div
       className={`overflow-hidden${className ? ` ${className}` : ''}`}
       initial={{ height: 0 }}
       animate={{ height: present ? natural ?? 'auto' : 0 }}
-      transition={reduce ? { duration: 0 } : present ? REVEAL_OPEN : REVEAL_CLOSE}
+      transition={reduce || tracking ? { duration: 0 } : present ? REVEAL_OPEN : REVEAL_CLOSE}
       onAnimationComplete={() => {
         if (present || removed.current) return
         removed.current = true

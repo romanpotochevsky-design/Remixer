@@ -34,13 +34,13 @@
  * itself, which is a purchase on every plan (see the card).
  */
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useWorld, hasPlan, isCustomDomainActive, isCustomDomainConnected, registrantUnconfirmed, type World } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
-import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck, IconVisitors } from '@/ui/icons'
-import { retryConnect } from '@/modules/domains/connect'
+import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck, IconVisitors, IconChevronDown } from '@/ui/icons'
+import { connectProgress, retryConnect } from '@/modules/domains/connect'
 import { domainRowStatus } from '@/modules/domains/status'
 import { Tooltip } from '@/ui/Tooltip'
 import { Chip } from '@/ui/Chip'
@@ -71,6 +71,17 @@ const STAGING_SUFFIX = STAGING_DOT > 0 ? STAGING_HOST.slice(STAGING_DOT) : ''
  * so the designer can watch it return instead of timing it.
  */
 const RESEND_COOLDOWN_MS = 9000
+
+/**
+ * THE FIVE SECONDS (designer, 16.09.2026, boards 30425:28847): while the address is spreading,
+ * the in-flight card's explanation stands open for this long, and the letter card below is
+ * held back — «пока описание для Propagating раскрыто эти 5 секунд, мы не показываем One last
+ * step, чтобы не создавать каши на экране из текста». Then the explanation folds, and after
+ * the fold the letter unfolds: two motions in sequence, not one pile.
+ */
+const PROPAGATING_READ_MS = 5000
+/** The fold (Reveal's REVEAL_CLOSE, .3 s edge) is given this long before the letter arrives. */
+const LETTER_AFTER_FOLD_MS = 260
 
 /**
  * "1 unpublished change", not "1 changes" — the button bar's own line (Figma 28071:53189,
@@ -377,7 +388,30 @@ function UrlField({ value, suffix }: { value: string; suffix?: string }) {
 /** The stages the one in-flight card can be in — see ProgressCard. */
 type ProgressVariant = 'provisioning' | 'connecting' | 'propagating' | 'ready'
 
-function ProgressCard({ variant, title, sub, done }: { variant: ProgressVariant; title: string; sub: string; done?: boolean }) {
+/** The explanation's words handing over inside the box — old ones gone in 120 ms, new ones up
+ *  after them (sequential, the dock's lesson). `popLayout` keeps the incoming paragraph IN the
+ *  flow from its first frame, so the box's height goes straight to its new value once and the
+ *  Reveal around it glides there — no dip through an empty box between the two. */
+const subSwap = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, delay: 0.12, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.12 } },
+}
+
+function ProgressCard({ variant, title, sub, done, percent, collapsible, open = true, onToggle }: {
+  variant: ProgressVariant
+  title: string
+  sub: string
+  done?: boolean
+  /** How far the beat has come, 0–100 — drawn beside the title (board 30425:28847, `27%`). */
+  percent?: number | null
+  /** Can the explanation fold? Only the spreading beat is drawn with the chevron. */
+  collapsible?: boolean
+  /** Is the explanation open (only read when `collapsible`)? */
+  open?: boolean
+  onToggle?: () => void
+}) {
+  const { t } = useT()
   /*
    * WHILE IT MOVES, THE HEADLINE SHIMMERS AND THE ARC FOLLOWS ITS HUE (designer,
    * 16.09.2026, on this very card: «вставляем градиентную плашку в текст, там где идут
@@ -390,6 +424,7 @@ function ProgressCard({ variant, title, sub, done }: { variant: ProgressVariant;
    * The finished card (green tick) shimmers nothing: nothing is moving.
    */
   const phase = useShimmerPhase()
+  const subOpen = !collapsible || open
   return (
     /* While it moves, the card's own wash carries the flash too — board 30425:27467, a
        brighter band crossing the whole card in the headline's sweep window (`.shimmer-card`
@@ -400,20 +435,22 @@ function ProgressCard({ variant, title, sub, done }: { variant: ProgressVariant;
     <div className={`relative rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]${done ? '' : ' shimmer-card'}`} style={done ? undefined : phase}>
       {!done && <span className="shimmer-card-band" aria-hidden />}
       {/*
+       * THE ROW — board 30425:28847: icon 24, then the title with the beat's percent on its
+       * baseline (`pr 4` before the button), then the fold button 32 — `pl 16 / pr 12`, and
+       * `py 12` around the 32 button, which is the same 56 the plain row keeps with `py 16`
+       * around its 24 icon, so the row's height does not move when the chevron comes and goes.
+       *
        * ⚠️ ONE CARD, ITS WORDS CHANGING — NOT FOUR CARDS TAKING TURNS (designer, 16.09.2026,
        * from a recording of the walk: «внутри формы появляются и исчезают объекты, и высота
-       * формы резко меняется»). The panel used to mount a separate card per stage, so
-       * `Connecting…` → `Propagating…` was one card vanishing and another appearing in the
-       * same place, and the panel's height snapped with it. The card is now ONE element for
-       * the whole walk — wash, rim, band — and only the group inside it is keyed by stage.
-       * The hand-off is sequential (`mode="wait"`, motion.ts `swapText`): the old words are
-       * gone in 120 ms before the new ones come up, so two stages are never printed over
-       * each other (the question dock's double-exposure lesson). The height difference
-       * between two stages' sentences is what the Reveal around this card animates.
+       * формы резко меняется»). The card is ONE element for the whole walk — wash, rim, band —
+       * and only the words inside are keyed by stage: the row's group hands over sequentially
+       * (`mode="wait"`, motion.ts `swapText`), the explanation's paragraph likewise (`subSwap`).
+       * The row's height is constant, so the only height that moves is the explanation box's,
+       * and the Reveal around it glides there (see below).
        */}
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={variant} variants={swapText} initial="initial" animate="animate" exit="exit">
-          <div className={`flex items-center gap-3 py-4 pl-4 pr-3${done ? '' : ' shimmer-hue'}`} style={done ? undefined : phase}>
+      <div className={`flex items-center gap-3 pl-4 pr-3 ${collapsible ? 'py-3' : 'py-4'}${done ? '' : ' shimmer-hue'}`} style={done ? undefined : phase}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={variant} variants={swapText} initial="initial" animate="animate" exit="exit" className="flex min-w-0 flex-1 items-center gap-3">
             {/* ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up
                 and only a press is left, the arc becomes a filled green tick. One shape for
                 "this is moving" and "this is done" — the icon is the whole difference, which
@@ -439,26 +476,66 @@ function ProgressCard({ variant, title, sub, done }: { variant: ProgressVariant;
               />
             </svg>
             )}
-            <p
-              className={`min-w-0 flex-1 break-words text-[15px] font-semibold leading-[1.2] ${done ? 'text-white' : 'shimmer-ink shimmer-ink--white'}`}
-              style={done ? undefined : phase}
-            >
-              {keepHostsWhole(title)}
-            </p>
-          </div>
-          {/* ⚠️ ITS STROKE LIES ON THE CARD'S, which is what makes the top edge a
-              FULL-WIDTH DIVIDER (board 30289:60956: `w-full` inside the 408 card, and a
-              Figma stroke sits INSIDE the geometry, so both rims are drawn on the same
-              band). Left inset by the card's own border, this box put its rim one pixel
-              INSIDE the card's: a 2px rail down both sides and along the bottom, and a
-              divider that stopped short of the card's walls. Same medicine as the
-              generation card and chosen the same way — the box has arcs (r12), so the
-              CHILD is pulled out instead of the parent's border being removed. */}
-          <div className="-mx-px -mb-px rounded-[12px] border border-[#49494c] px-4 pb-[18px] pt-[19px]">
-            <p className="text-[13px] leading-[1.4] text-[#ffffffa3]">{keepHostsWhole(sub)}</p>
-          </div>
-        </motion.div>
-      </AnimatePresence>
+            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3 pr-1">
+              <p
+                className={`min-w-0 break-words text-[15px] font-semibold leading-[1.2] ${done ? 'text-white' : 'shimmer-ink shimmer-ink--white'}`}
+                style={done ? undefined : phase}
+              >
+                {keepHostsWhole(title)}
+              </p>
+              {/* the beat's share — a NUMBER, so Gilroy (the house rule), 13 at 48 % white,
+                  on the title's baseline. Live it ticks with the walk's own clock; a staged
+                  world shows the board's figure. */}
+              {percent !== undefined && percent !== null && (
+                <span className="font-display flex-none text-[13px] leading-none tabular-nums text-[var(--white-480)]">{percent}%</span>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+        {/*
+         * THE FOLD BUTTON (board 30425:28847: 32 × 32, r10, 24 %-white rim, chevron 20 in a
+         * 24 box, turned 180° while the explanation is open). ⚠️ The board draws it with
+         * `backdrop-blur 16`; behind it is the card's own flat wash, so the blur would blur
+         * nothing — omitted on the standing rule (look at what is behind you before you
+         * blur). It takes the house press bloom; the chevron turns on `transform` only.
+         */}
+        {collapsible && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={subOpen}
+            aria-label={subOpen
+              ? t({ en: 'Hide the details', uk: 'Сховати подробиці' })
+              : t({ en: 'Show the details', uk: 'Показати подробиці' })}
+            className="press-bloom grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-[#ffffff3d] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
+          >
+            <IconChevronDown
+              size={20}
+              className={`transition-transform duration-[var(--dur-base)] ease-std${subOpen ? ' rotate-180' : ''}`}
+            />
+          </button>
+        )}
+      </div>
+      {/*
+       * THE EXPLANATION — and, on the spreading beat, the thing that FOLDS (designer,
+       * 16.09.2026: «через 5 секунд мы красиво и плавно с анимацией скрываем описание (его
+       * можно сворачивать, разворачивать, по макету видно)»). A Reveal of its own inside the
+       * card: the box's edge is a spring, the box rides in a beat behind it with the glint
+       * every forming surface wears, and the Reveal around the WHOLE card is told to follow
+       * this one frame by frame (`follow="instant"` where the card is mounted) — two springs
+       * on one edge would chase each other. The 1px pull onto the card's stroke (`-mx-px
+       * -mb-px`, board 30289:60956: a Figma stroke sits inside the geometry, so the box's rim
+       * and the card's are ONE line) sits on the clip, so the clip does not cut it off.
+       */}
+      <Reveal show={subOpen} className="-mx-px -mb-px" radius={12}>
+        <div className="relative rounded-[12px] border border-[#49494c] px-4 pb-[18px] pt-[19px]">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.p key={variant} variants={subSwap} initial="initial" animate="animate" exit="exit" className="text-[13px] leading-[1.4] text-[#ffffffa3]">
+              {keepHostsWhole(sub)}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+      </Reveal>
     </div>
   )
 }
@@ -526,6 +603,75 @@ function StatusCard({
           {action.label}
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * THE LETTER — «One last step for {domain}», board 30425:28847 (designer, 16.09.2026: «нужно
+ * сделать дизайн по этому макету перфект пиксель… эксклюзивно для этого кейса Unlink у нас
+ * находится внутри One last step, то есть пока есть уведомление, кнопка Unlink внутри этого
+ * блока как в макете»).
+ *
+ * It wears the in-flight card's own material — 8 % fill, 8 % rim, r12 — because it is the
+ * same kind of news as the stage above it, not an alarm; the amber `StatusCard` it wore until
+ * now made the one card that asks for a click look like a fault. Off the board: a 56 row
+ * (icon 24 · title 15 semibold white, `pl 16 / pr 12 / py 16`), the explanation in a box 4 px
+ * inside the card (`Black/300` fill, 4 %-white rim, r12, `pt 20 / pb 18 / px 16`, 14/1.4 at
+ * 72 % with the address in medium white), and a footer row 48 tall (`pl 8 / pr 12 / py 8`)
+ * holding the two things you can do about it: `Resend email` on the left (13 semibold, the
+ * board's own #3c9bff — a literal, flagged) and `Unlink` on the right (14 medium at 56 %,
+ * icon 20, the label trimmed to its cap band as drawn). While this card is up the domain row
+ * below is not: Unlink lives here. The card's own 6 px of air belong to the Reveal that
+ * unfolds it (`pad`).
+ *
+ * ⚠️ The icon is OURS — the board's vector is unreachable through the proxy: a filled white
+ * envelope with a blue dot on its corner, the way the board reads at 1×.
+ */
+function LastStepCard({ domain, sub, resent, onResend, onUnlink }: {
+  domain: string
+  sub: ReactNode
+  resent: boolean
+  onResend: () => void
+  onUnlink: () => void
+}) {
+  const { t } = useT()
+  return (
+    <div className="rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]">
+      <div className="flex items-center gap-3 py-4 pl-4 pr-3">
+        <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
+          <rect x="2" y="5" width="20" height="15" rx="2.5" fill="#fff" />
+          <path d="m3.6 7.4 8.4 6.4 8.4-6.4" stroke="#27272a" strokeWidth="1.5" strokeLinejoin="round" />
+          <circle cx="20" cy="5.5" r="4.2" fill="#2a2a2d" />
+          <circle cx="20" cy="5.5" r="2.9" fill="var(--action)" />
+        </svg>
+        <p className="min-w-0 flex-1 break-words text-[15px] font-semibold leading-normal text-white">
+          {keepHostsWhole(t({ en: `One last step for ${domain}`, uk: `Останній крок для ${domain}` }))}
+        </p>
+      </div>
+      <div className="px-1">
+        <div className="rounded-[12px] border border-[#ffffff0a] bg-[#09090b3d] px-4 pb-[18px] pt-5">
+          <p className="text-[14px] leading-[1.4] text-[var(--white-720)]">{sub}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between py-2 pl-2 pr-3">
+        <button
+          type="button"
+          onClick={onResend}
+          disabled={resent}
+          className="press-bloom h-8 flex-none rounded-[8px] px-3.5 text-[13px] font-semibold text-[#3c9bff] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] disabled:cursor-default disabled:text-[var(--white-480)] disabled:hover:bg-transparent"
+        >
+          {resent ? t({ en: 'Sent', uk: 'Надіслано' }) : t({ en: 'Resend email', uk: 'Надіслати лист ще раз' })}
+        </button>
+        <button
+          type="button"
+          onClick={onUnlink}
+          className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[var(--white-560)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+        >
+          <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Unlink', uk: 'Відв’язати' })}</span>
+          <IconUnlink size={20} />
+        </button>
+      </div>
     </div>
   )
 }
@@ -704,8 +850,57 @@ export function PublishPanel() {
       : undefined
   const cartDomain = cartRegistration ?? parkedConnect
   const waitingOnCheckout = world.domain === 'checkout' && !!cartDomain
-  /** Is a connection state showing? The email card stacks under it when so. */
-  const stageCard = unreachable || provisioning || connecting || propagating || readyCard || oldSite
+  /* (`stageCard` — "is a connection card up, so the letter stacks under it at 8" — is gone
+     with 16.09.2026: the letter no longer lives in the field block, see `LastStepCard`.) */
+  /*
+   * THE FIVE SECONDS — see PROPAGATING_READ_MS. Two pieces of SESSION state (they describe
+   * this viewing, not the customer's situation): is the in-flight card's explanation open,
+   * and has the letter earned its place. The clock is the beat's own: read off the walk's
+   * ticket when there is one (`connectProgress`), so a panel opened six seconds into the
+   * spread finds the explanation already folded and the letter up, instead of replaying the
+   * five seconds for it; a staged world (no ticket) counts from the moment it was staged.
+   * Folding it by hand before the time is up is the same signal as the clock — the text is
+   * out of the way, the letter may come; opening it again later does not take the letter
+   * back, that would be the panel arguing with a person who wants to read.
+   */
+  const [subOpen, setSubOpen] = useState(true)
+  const [letterDue, setLetterDue] = useState(false)
+  const autoFold = useRef<number[]>([])
+  const cancelAutoFold = () => { autoFold.current.forEach((id) => window.clearTimeout(id)); autoFold.current = [] }
+  useEffect(() => {
+    cancelAutoFold()
+    /* ⚠️ The five seconds are a VIEWING: they count from the panel being open on the beat, not
+       from the beat being staged. Armed while the panel was shut (a shared link, a preset set
+       with the panel closed) they ran out unseen, and the panel opened on a folded explanation
+       nobody had been given time to read. A live walk still reads the beat's own clock. */
+    if (!propagating || !publishOpen) { setSubOpen(true); setLetterDue(false); return }
+    const left = PROPAGATING_READ_MS - (connectProgress(world)?.elapsed ?? 0)
+    if (left <= 0) { setSubOpen(false); setLetterDue(true); return }
+    setSubOpen(true)
+    setLetterDue(false)
+    autoFold.current = [
+      window.setTimeout(() => setSubOpen(false), left),
+      window.setTimeout(() => setLetterDue(true), left + LETTER_AFTER_FOLD_MS),
+    ]
+    return cancelAutoFold
+  }, [propagating, publishOpen, world.customDomain])
+  const toggleSub = () => {
+    cancelAutoFold()
+    if (subOpen && !letterDue) autoFold.current = [window.setTimeout(() => setLetterDue(true), LETTER_AFTER_FOLD_MS)]
+    setSubOpen((o) => !o)
+  }
+  /* the beat's share, ticking with the walk's clock while it runs; the board's 27 when staged */
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!propagating || !connectProgress(world)) return
+    const id = window.setInterval(() => tick((n) => n + 1), 500)
+    return () => window.clearInterval(id)
+  }, [propagating, world.customDomain])
+  const percent = propagating ? Math.round((connectProgress(world)?.fraction ?? 0.27) * 100) : null
+  /** The letter is up: owed, and — while the address spreads — only once the explanation has folded. */
+  const letterUp = confirmEmail && (!propagating || letterDue)
+  /** The domain row (word + Unlink) — not while the letter is up: Unlink lives in the letter then. */
+  const showDomainRow = domainIsHome(world) && !confirmEmail
   /*
    * ⚠️ AND WHILE ONE IS UP, THIS PANEL HAS NO DOOR OF ITS OWN — on purpose (designer,
    * 14.09.2026). A quiet text row under the card used to offer "See all your domains" /
@@ -888,7 +1083,7 @@ export function PublishPanel() {
    * card names the act it is asking for; the address it moves onto is in the field right
    * under it and in the button.
    */
-  const progress: { variant: ProgressVariant; title: string; sub: string; done?: boolean } | null = connecting
+  const progress: { variant: ProgressVariant; title: string; sub: string; done?: boolean; collapsible?: boolean; percent?: number | null; open?: boolean; onToggle?: () => void } | null = connecting
     ? {
         variant: 'connecting',
         title: t({ en: `Connecting ${world.customDomain}`, uk: `Підключаємо ${world.customDomain}` }),
@@ -910,10 +1105,15 @@ export function PublishPanel() {
         ? {
             variant: 'propagating',
             title: t({ en: `Propagating ${world.customDomain}`, uk: `Пропагуємо ${world.customDomain}` }),
+            /* the designer's own sentence, board 30425:28847 — shorter than ours was */
             sub: t({
-              en: 'The address is set and spreading across the internet. Most visitors reach your site within a few hours; up to 72 to reach everyone.',
-              uk: 'Адресу налаштовано, вона розходиться інтернетом. Більшість відвідувачів побачать сайт за кілька годин; до 72, щоб побачили всі.',
+              en: 'Your address is updating across the web. Most visitors will see your site within hours, up to 72 max.',
+              uk: 'Ваша адреса оновлюється в мережі. Більшість відвідувачів побачать сайт за кілька годин, щонайбільше за 72.',
             }),
+            collapsible: true,
+            percent,
+            open: subOpen,
+            onToggle: toggleSub,
           }
         : readyCard
           ? {
@@ -1077,7 +1277,7 @@ export function PublishPanel() {
                 ABOVE the address field, in the shape that board draws. One card for the
                 whole walk — see ProgressCard and `progress` above; the Reveal unfolds it when
                 a stage begins and folds it when the last one ends. */}
-            <Reveal show={progress !== null} pad="px-1.5 pt-1.5" radius={12}>
+            <Reveal show={progress !== null} pad="px-1.5 pt-1.5" radius={12} follow="instant">
               {progress && <ProgressCard {...progress} />}
             </Reveal>
             {/* --------------------------------------------- the fields, 29697:37003 */}
@@ -1346,32 +1546,6 @@ export function PublishPanel() {
                   ⚠️ AND IT NAMES THE DOMAIN, inked as the subject (see StatusCard's
                   `subject`): the field above shows the FREE address in every state this card
                   is up in, so "this domain" pointed at nothing on screen. */}
-              <Reveal show={confirmEmail} pad={stageCard ? 'pt-2' : 'pt-[19px]'} radius={12}>
-              {confirmEmail && (
-                <StatusCard
-                  tone="amber"
-                  subject
-                  title={t({
-                    en: `One last step for ${world.customDomain}`,
-                    uk: `Останній крок для ${world.customDomain}`,
-                  })}
-                  /* The explanation is the STABLE half and the acknowledgement the moving
-                     one: `Resend` used to replace the whole sub, so for nine seconds the
-                     card stopped saying why any of this was happening. */
-                  sub={t({
-                    en: `It’s bought and set up — the address starts working once you confirm your email. ${resent
-                      ? 'Sent again to roman@example.com — check your inbox.'
-                      : 'We sent the link to roman@example.com.'}`,
-                    uk: `Він куплений і налаштований — адреса запрацює, щойно ви підтвердите email. ${resent
-                      ? 'Надіслали ще раз на roman@example.com — перевірте пошту.'
-                      : 'Посилання надіслали на roman@example.com.'}`,
-                  })}
-                  action={resent
-                    ? { label: t({ en: 'Sent', uk: 'Надіслано' }), disabled: true }
-                    : { label: t({ en: 'Resend', uk: 'Надіслати ще' }), onClick: () => setResent(true) }}
-                />
-              )}
-              </Reveal>
               {/* ⚠️ NO PROTOTYPE STAND-IN UNDER THIS CARD. A dashed "Confirm email" strip
                   used to sit here, and the designer threw it out on sight (14.09.2026:
                   "зачем ты это ставил в окно? это же не часть интерфейса?!!!!!"). He is
@@ -1467,6 +1641,47 @@ export function PublishPanel() {
               )}
               </Reveal>
             </div>
+            {/*
+              * THE LETTER — board 30425:28847, `LastStepCard`: OUTSIDE the field block (its 16 px
+              * side padding would make the card 388) and inside 6 px of the body card, like the
+              * in-flight card above (`pad`). Up once the domain has connected and the letter is
+              * owed — and, while the address spreads, only after the explanation has had its
+              * five seconds and folded (`letterUp`). Unlink lives inside it; the domain row
+              * below stays down while it is up.
+              *
+              * ⚠️ NO PROTOTYPE STAND-IN UNDER THIS CARD. A dashed "Confirm email" strip used to
+              * sit here, and the designer threw it out on sight (14.09.2026: "зачем ты это ставил
+              * в окно? это же не часть интерфейса?!!!!!"). The one move this state waits for
+              * happens in the customer's inbox; the stand-in floats ABOVE the shell as the
+              * simulated email itself (`SimulatedEmail`, App.tsx). Do not put a confirm control
+              * back inside this panel.
+              */}
+            <Reveal show={letterUp} pad="px-1.5 pb-1.5" radius={12}>
+              {letterUp && (
+                <LastStepCard
+                  domain={world.customDomain}
+                  resent={resent}
+                  onResend={() => setResent(true)}
+                  onUnlink={unlinkDomain}
+                  /* The explanation is the STABLE half and the acknowledgement the moving one:
+                     `Resend` used to replace the whole text, so for nine seconds the card stopped
+                     saying why any of this was happening. */
+                  sub={
+                    <>
+                      {t({
+                        en: 'It’s bought and set up — the address starts working once you confirm your email. ',
+                        uk: 'Він куплений і налаштований — адреса запрацює, щойно ви підтвердите email. ',
+                      })}
+                      {resent
+                        ? t({ en: 'Sent again to ', uk: 'Надіслали ще раз на ' })
+                        : t({ en: 'We sent the link to ', uk: 'Посилання надіслали на ' })}
+                      <span className="whitespace-nowrap font-medium text-white">roman@example.com</span>
+                      {resent ? t({ en: ' — check your inbox.', uk: ' — перевірте пошту.' }) : '.'}
+                    </>
+                  }
+                />
+              )}
+            </Reveal>
             {/* ⚠️ THE BODY CARD'S LAST CHILD, and that is the difference the designer kept
                 pointing at (14.09.2026, five times): on board 30282:19132 this card is a
                 child of the same card the field lives in, so its rim sits ON that card's
@@ -1486,8 +1701,8 @@ export function PublishPanel() {
               * and `old-site` their Unlink, and those are the states where wanting out is
               * likeliest.
               */}
-            <Reveal show={domainIsHome(world)} radius={16}>
-            {domainIsHome(world) && (
+            <Reveal show={showDomainRow} radius={16}>
+            {showDomainRow && (
               /*
                * ⚠️ THE SEAM IS `#313133`, A RAW HEX, AND THE DESIGNER SETTLED IT TWICE IN
                * ONE DAY (15.09.2026: first «у тебя не видно разделительного бордера, в

@@ -2078,9 +2078,11 @@ check('…and the typed prompt is built as given', await cardUp())
   const INK = { working: 'rgb(229, 195, 89)', stuck: 'rgb(239, 68, 68)', ready: 'rgb(81, 166, 255)', live: 'rgb(72, 186, 121)' }
   for (const [q, want, label, chip] of [
     ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order', null],
-    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads', ['Setting up', 'working']],
+    /* ⚠️ Since 16.09.2026 (board 30425:28847) the row stays DOWN while the letter is owed:
+       Unlink lives inside the letter's card then, and the word with it. */
+    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', false, 'not while the letter is owed — Unlink lives in the letter (30425:28847)', null],
     ['d=ready&n=fitration.shop&v=false&u=0', true, 'yes once it is connected, waiting on the press', ['Ready', 'ready']],
-    ['d=ready&k=true&n=fitration.shop&v=false&u=0', true, 'yes with the letter still owed', ['Waiting on your email', 'working']],
+    ['d=ready&k=true&n=fitration.shop&v=false&u=0', false, 'not while the letter is owed, even set up — Unlink is in the letter', null],
     ['d=live&n=fitration.shop&v=true&u=0', true, 'yes on a live domain', ['Live', 'live']],
     ['d=unreachable&n=fitration.shop&v=true&u=0', true, 'yes when it stopped answering', ['Not responding', 'stuck']],
     ['d=old-site&i=dh-in-use&n=fitration.shop&v=true&u=0', true, 'yes while an older site sits on it', ['Showing your old site', 'stuck']],
@@ -2177,35 +2179,47 @@ check('…and the typed prompt is built as given', await cardUp())
     /* a block that is up when the panel opens came in with the panel — no glint of its own */
     check('a card that is up when the panel opens wears no arrival glint',
       (await p.$$eval(`${panelSel} .card-arrive`, (els) => els.length)) === 0)
+    /*
+     * THE WORLD MOVES TO THE SPREADING BEAT. The in-flight card's words hand over; its
+     * explanation stands open for FIVE SECONDS with the letter held back (board 30425:28847,
+     * designer 16.09.2026: «пока описание для Propagating раскрыто эти 5 секунд, мы не
+     * показываем One last step, чтобы не создавать каши»); then the explanation FOLDS and,
+     * after it, the letter UNFOLDS below the field. Sampled through all of it.
+     */
     const trace = await p.evaluate(async () => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
       const btn = [...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === 'Propagating (bought)')
       const samples = []
-      let last = performance.now()
-      const t0 = last
-      const tick = () => { const now = performance.now(); samples.push({ t: Math.round(now - t0), dt: Math.round(now - last), h: +d.getBoundingClientRect().height.toFixed(1) }); last = now; if (now - t0 < 1400) requestAnimationFrame(tick) }
+      const t0 = performance.now()
+      const tick = () => { const now = performance.now(); samples.push({ t: Math.round(now - t0), h: +d.getBoundingClientRect().height.toFixed(1), sub: /updating across the web/.test(d.innerText), letter: /One last step/.test(d.innerText) }); if (now - t0 < 7400) requestAnimationFrame(tick) }
       requestAnimationFrame(tick)
       btn.click()
-      await new Promise((r) => setTimeout(r, 1500))
+      await new Promise((r) => setTimeout(r, 7500))
       return samples
     })
+    check('…and the console still moves the world while the panel stays open', !!(await p.$(panelSel)))
+    const early = trace.filter((s) => s.t > 300 && s.t < 4500)
+    check('for the first five seconds of the spreading beat the explanation stands open and the letter is held back (board 30425:28847)',
+      early.length > 40 && early.every((s) => s.sub && !s.letter), JSON.stringify({ n: early.length, subAll: early.every((s) => s.sub), letterAny: early.some((s) => s.letter) }))
     const h0 = trace[0].h, h1 = trace[trace.length - 1].h
-    const travel = h1 - h0
-    const between = trace.filter((s) => s.h > Math.min(h0, h1) + 2 && s.h < Math.max(h0, h1) - 2)
-    const worstStep = Math.max(...trace.slice(1).map((s, i) => Math.abs(s.h - trace[i].h)))
-    const settled = trace.filter((s) => s.t > 900).every((s) => Math.abs(s.h - h1) < 1)
-    check('…and the console still moves the world while the panel stays open — the walk grows the panel',
-      !!(await p.$(panelSel)) && travel > 120, JSON.stringify({ h0, h1, travel }))
+    const foldStart = trace.find((s) => s.t > 4500 && s.h < h0 - 2)
+    const letterAt = trace.find((s) => s.letter)
+    const hFolded = Math.min(...trace.filter((s) => s.t > 4500).map((s) => s.h))
+    check('…then, at five seconds, the explanation folds FIRST and the letter unfolds AFTER it — two motions in sequence, not one pile',
+      !!foldStart && !!letterAt && foldStart.t >= 4700 && foldStart.t <= 5700 && letterAt.t > foldStart.t && hFolded < h0 - 60,
+      JSON.stringify({ h0, foldStart: foldStart?.t, letterAt: letterAt?.t, hFolded, h1 }))
+    const between = trace.filter((s) => s.t > 4500 && s.h > hFolded + 2 && s.h < h1 - 2)
+    const settled = trace.filter((s) => s.t > 7000).every((s) => Math.abs(s.h - h1) < 1)
     check('the panel’s height TRAVELS to its new size — through intermediate frames, never in one snap',
-      between.length >= 6 && worstStep < Math.abs(travel) * 0.6, JSON.stringify({ intermediate: between.length, worstStep, travel }))
-    check('…and has settled within 900 ms', settled, JSON.stringify(trace.filter((s) => s.t > 900).slice(0, 3)))
-    /* the blocks that arrived carry the glint; the one that stayed does not */
+      between.length >= 6 && h1 > h0 + 100, JSON.stringify({ intermediate: between.length, h0, hFolded, h1 }))
+    check('…and has settled by the end', settled, JSON.stringify(trace.filter((s) => s.t > 7000).slice(0, 3)))
+    /* the block that arrived carries the glint; the card that stayed does not */
     const glints = await p.evaluate(() => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
       return [...d.querySelectorAll('.card-arrive')].map((e) => e.innerText.replace(/\s+/g, ' ').trim().slice(0, 24))
     })
-    check('the blocks that ARRIVED wear the glint — the letter and the domain row — and the in-flight card that stayed does not',
-      glints.length === 2 && glints.some((t) => /One last step/.test(t)) && glints.some((t) => /Setting up/.test(t)), JSON.stringify(glints))
+    check('the block that ARRIVED wears the glint — the letter — and the in-flight card that stayed does not',
+      glints.length === 1 && /One last step/.test(glints[0]), JSON.stringify(glints))
     /* the in-flight card is one element: the same node before and after the stage changed */
     const sameCard = await p.evaluate(() => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
@@ -2218,31 +2232,35 @@ check('…and the typed prompt is built as given', await cardUp())
     const after = await p.evaluate(() => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
       const card = d.querySelector('.shimmer-card')
-      return { same: card === window.__card, text: card?.innerText.replace(/\s+/g, ' ').slice(0, 30), letter: /One last step/.test(d.innerText) }
+      return { same: card === window.__card, text: card?.innerText.replace(/\s+/g, ' ').slice(0, 30), letter: /One last step/.test(d.innerText), sub: /Pointing the domain/.test(d.innerText) }
     })
     check('the in-flight card is ONE card whose words change, not a card per stage',
       after.same && /Propagating/.test(sameCard.text) && /Connecting/.test(after.text), JSON.stringify({ before: sameCard.text, after: after.text, same: after.same }))
-    check('…and the letter folded away when the stage stepped back', !after.letter)
-    /* leaving is quicker and flat: the fold settles under 400 ms and never dips past its end */
+    check('…and the letter folded away when the stage stepped back, the explanation standing again (only the spreading beat folds)', !after.letter && after.sub, JSON.stringify(after))
+    /* leaving is quicker and flat — measured on the explanation's own fold (the chevron): the
+       edge settles under 500 ms and never dips past its end; the letter is not taken back */
     const fold = await p.evaluate(async () => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
       const btn = [...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === 'Propagating (bought)')
       btn.click()
-      await new Promise((r) => setTimeout(r, 1500))
-      const back = [...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === 'Connecting')
+      await new Promise((r) => setTimeout(r, 6300))
+      const chevron = d.querySelector('.shimmer-card button[aria-expanded]')
+      chevron.click()
+      await new Promise((r) => setTimeout(r, 1000))
       const samples = []
       const t0 = performance.now()
       const tick = () => { const now = performance.now(); samples.push({ t: Math.round(now - t0), h: +d.getBoundingClientRect().height.toFixed(1) }); if (now - t0 < 1200) requestAnimationFrame(tick) }
       requestAnimationFrame(tick)
-      back.click()
+      chevron.click()
       await new Promise((r) => setTimeout(r, 1300))
-      return samples
+      return { samples, expanded: chevron.getAttribute('aria-expanded'), letter: /One last step/.test(d.innerText) }
     })
-    const fEnd = fold[fold.length - 1].h
-    const foldSettle = fold.findLast ? fold.findLast((s) => Math.abs(s.h - fEnd) > 1) : null
-    const dip = Math.min(...fold.map((s) => s.h)) - fEnd
-    check('folding is quicker than unfolding and does not bounce: settled under 500 ms, no dip past the end',
-      foldSettle && foldSettle.t < 500 && dip > -1.5, JSON.stringify({ lastMovingAt: foldSettle?.t, dip }))
+    const fEnd = fold.samples[fold.samples.length - 1].h
+    const foldSettle = fold.samples.findLast ? fold.samples.findLast((s) => Math.abs(s.h - fEnd) > 1) : null
+    const dip = Math.min(...fold.samples.map((s) => s.h)) - fEnd
+    check('the chevron folds the explanation by hand — quicker than unfolding, flat: settled under 500 ms, no dip past the end — and the letter stays',
+      !!foldSettle && foldSettle.t < 500 && dip > -1.5 && fold.expanded === 'false' && fold.letter && fold.samples[0].h > fEnd + 60,
+      JSON.stringify({ lastMovingAt: foldSettle?.t, dip, from: fold.samples[0].h, to: fEnd, letter: fold.letter }))
     await p.keyboard.press('Control+.')
     await p.waitForTimeout(300)
     await p.keyboard.press('Escape')
@@ -2354,17 +2372,90 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.keyboard.press('Escape'); await p.waitForTimeout(300)
   }
 
-  for (const [q, want, label] of [
-    ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order'],
-    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads'],
-    ['d=ready&k=true&n=fitration.shop&v=false&u=0', true, 'yes once it is set up'],
-  ]) {
-    await openPublish(`p=built&a=paid&${q}`)
-    const mail = await p.evaluate(() => /One last step for/.test(
-      document.querySelector('[role="dialog"][aria-label="Publish"]').innerText))
-    check(`the registrant letter is announced: ${label}`, mail === want, JSON.stringify({ mail }))
+  /*
+   * THE FIVE SECONDS AND THE LETTER — board 30425:28847 (designer, 16.09.2026: «вначале у нас
+   * видно процесс Propagating и описание… раскрыто секунд 5! и пока описание раскрыто эти 5
+   * секунд, мы не показываем One last step… через 5 секунд мы красиво и плавно скрываем описание
+   * (его можно сворачивать, разворачивать) и показываем уведомление… эксклюзивно для этого кейса
+   * Unlink находится внутри One last step»). Opened on the spreading beat: the row's percent and
+   * chevron, the explanation's box and words, no letter and no domain row; after the five
+   * seconds the explanation is gone, the letter stands in the board's anatomy with Unlink inside
+   * it, and the chevron brings the explanation back without taking the letter away.
+   */
+  {
+    const readPanel = () => p.evaluate(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      const card = d.querySelector('.shimmer-card')
+      const rowEl = card ? [...card.children].find((e) => e.tagName === 'DIV') : null
+      const btn = card?.querySelector('button[aria-expanded]')
+      const pct = card ? [...card.querySelectorAll('span')].find((e) => /%$/.test(e.textContent.trim())) : null
+      const subBox = card ? [...card.querySelectorAll('div')].find((e) => getComputedStyle(e).borderTopColor === 'rgb(73, 73, 76)') : null
+      const letterTitle = [...d.querySelectorAll('p')].find((e) => /^One last step for/.test(e.textContent.trim()))
+      const letter = letterTitle ? letterTitle.closest('.rounded-\\[12px\\].border') : null
+      const body = letter ? letter.children[1]?.firstElementChild : null
+      const resend = [...d.querySelectorAll('button')].find((e) => /Resend email|^Sent$/.test(e.textContent.trim()))
+      const unlink = [...d.querySelectorAll('button')].find((e) => /Unlink/.test(e.textContent))
+      const cs = (el) => getComputedStyle(el)
+      const box = (el) => el ? el.getBoundingClientRect() : null
+      return {
+        rowH: rowEl ? Math.round(box(rowEl).height) : null, rowPad: rowEl ? cs(rowEl).padding : null,
+        pct: pct?.textContent, pctFont: pct ? cs(pct).fontFamily : null, pctSize: pct ? cs(pct).fontSize : null, pctColor: pct ? cs(pct).color : null,
+        btn: btn ? { w: Math.round(box(btn).width), h: Math.round(box(btn).height), expanded: btn.getAttribute('aria-expanded'), border: cs(btn).borderTopColor, radius: cs(btn).borderRadius } : null,
+        sub: subBox ? { w: Math.round(box(subBox).width), pad: cs(subBox).padding, size: cs(subBox.querySelector('p')).fontSize, color: cs(subBox.querySelector('p')).color, text: subBox.innerText } : null,
+        letter: letter ? { w: Math.round(box(letter).width), h: +box(letter).height.toFixed(1), bg: cs(letter).backgroundColor, border: cs(letter).borderTopColor, kids: [...letter.children].map((c) => ({ h: +box(c).height.toFixed(1), pad: cs(c).padding })) } : null,
+        body: body ? { bg: cs(body).backgroundColor, border: cs(body).borderTopColor, pad: cs(body).padding, size: cs(body.querySelector('p')).fontSize, color: cs(body.querySelector('p')).color, text: body.innerText } : null,
+        resend: resend ? { text: resend.textContent.trim(), h: Math.round(box(resend).height), color: cs(resend).color, size: cs(resend).fontSize, pad: cs(resend).padding } : null,
+        unlink: unlink ? { inLetter: !!(letter && letter.contains(unlink)), color: cs(unlink).color, h: Math.round(box(unlink).height), icon: !!unlink.querySelector('svg') } : null,
+        domainRow: !![...d.querySelectorAll('div')].find((e) => /Unlink/.test(e.textContent || '') && cs(e).borderTopColor === 'rgb(49, 49, 51)'),
+        chip: !!d.querySelector('.liquid-glass--chip[data-tone]'),
+      }
+    })
+    await openPublish('p=built&a=paid&d=propagating&k=true&n=fit-ration.net&v=false&u=0&t=22&c=640')
+    const t1 = await readPanel()
+    check('opened on the spreading beat: the in-flight card’s row is 56 (pl 16 / pr 12 / py 12), the beat’s percent beside the title in Gilroy 13 at 48 %, and a 32 × 32 r10 fold button with a 24 %-white rim, open',
+      t1.rowH === 56 && t1.rowPad === '12px 12px 12px 16px' && t1.pct === '27%' && /^Gilroy/.test(t1.pctFont || '') && t1.pctSize === '13px' && t1.pctColor === 'rgba(255, 255, 255, 0.48)'
+        && !!t1.btn && t1.btn.w === 32 && t1.btn.h === 32 && t1.btn.radius === '10px' && t1.btn.border === 'rgba(255, 255, 255, 0.24)' && t1.btn.expanded === 'true',
+      JSON.stringify({ rowH: t1.rowH, rowPad: t1.rowPad, pct: t1.pct, pctFont: t1.pctFont, pctSize: t1.pctSize, pctColor: t1.pctColor, btn: t1.btn }))
+    check('…the explanation stands in its box — 408 wide, pt 19 / pb 18 / px 16, 13 px at 64 % — in the designer’s own sentence',
+      !!t1.sub && t1.sub.w === 408 && t1.sub.pad === '19px 16px 18px' && t1.sub.size === '13px' && t1.sub.color === 'rgba(255, 255, 255, 0.64)' && /^Your address is updating across the web\. Most visitors will see your site within hours, up to 72 max\.$/.test(t1.sub.text),
+      JSON.stringify(t1.sub))
+    check('…and neither the letter nor the domain row is up yet — nor the chip', !t1.letter && !t1.domainRow && !t1.chip && !t1.unlink, JSON.stringify({ letter: !!t1.letter, domainRow: t1.domainRow, chip: t1.chip, unlink: !!t1.unlink }))
+    await p.waitForTimeout(5900)
+    const t2 = await readPanel()
+    check('five seconds on: the explanation has folded (chevron down) and the letter is up — 408 wide in the in-flight card’s material (8 % fill and rim, r12): a 56 row (pl 16 / pr 12 / py 16), a body box 4 px in, a 48 footer (pl 8 / pr 12 / py 8)',
+      !t2.sub && t2.btn?.expanded === 'false' && !!t2.letter && t2.letter.w === 408 && t2.letter.h >= 203 && t2.letter.h <= 207
+        && t2.letter.bg === 'rgba(255, 255, 255, 0.08)' && t2.letter.border === 'rgba(255, 255, 255, 0.08)'
+        && t2.letter.kids.length === 3 && t2.letter.kids[0].h === 56 && t2.letter.kids[0].pad === '16px 12px 16px 16px' && t2.letter.kids[1].pad === '0px 4px' && t2.letter.kids[2].h === 48 && t2.letter.kids[2].pad === '8px 12px 8px 8px',
+      JSON.stringify({ sub: !!t2.sub, expanded: t2.btn?.expanded, letter: t2.letter }))
+    check('…its body: 24 % black under a 4 %-white rim, pt 20 / pb 18 / px 16, 14 px at 72 %, the address in white',
+      !!t2.body && t2.body.bg === 'rgba(9, 9, 11, 0.24)' && t2.body.border === 'rgba(255, 255, 255, 0.04)' && t2.body.pad === '20px 16px 18px' && t2.body.size === '14px' && t2.body.color === 'rgba(255, 255, 255, 0.72)' && /We sent the link to roman@example\.com\./.test(t2.body.text),
+      JSON.stringify(t2.body))
+    check('…`Resend email` on the left in the board’s #3c9bff (13 semibold, h 32, px 14) and `Unlink` on the right INSIDE the letter (14 at 56 %, icon 20) — no domain row, no chip',
+      !!t2.resend && t2.resend.text === 'Resend email' && t2.resend.h === 32 && t2.resend.color === 'rgb(60, 155, 255)' && t2.resend.size === '13px' && t2.resend.pad === '0px 14px'
+        && !!t2.unlink && t2.unlink.inLetter && t2.unlink.color === 'rgba(255, 255, 255, 0.56)' && t2.unlink.h === 32 && t2.unlink.icon && !t2.domainRow && !t2.chip,
+      JSON.stringify({ resend: t2.resend, unlink: t2.unlink, domainRow: t2.domainRow, chip: t2.chip }))
+    await p.click('[role="dialog"][aria-label="Publish"] .shimmer-card button[aria-expanded]')
+    await p.waitForTimeout(900)
+    const t3 = await readPanel()
+    check('the chevron opens the explanation again — and the letter stays', !!t3.sub && t3.btn?.expanded === 'true' && !!t3.letter, JSON.stringify({ sub: !!t3.sub, expanded: t3.btn?.expanded, letter: !!t3.letter }))
+    await p.click('[role="dialog"][aria-label="Publish"] button:has-text("Resend email")')
+    await p.waitForTimeout(300)
+    const t4 = await readPanel()
+    check('`Resend email` answers with `Sent`, and the body says so', t4.resend?.text === 'Sent' && /Sent again to roman@example\.com — check your inbox\./.test(t4.body?.text || ''), JSON.stringify({ resend: t4.resend?.text, body: t4.body?.text }))
     await p.keyboard.press('Escape')
     await p.waitForTimeout(300)
+    /* the letter's place in the other states, unchanged: not before the domain connects; at once when it is set up */
+    for (const [q, want, label] of [
+      ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order'],
+      ['d=ready&k=true&n=fitration.shop&v=false&u=0', true, 'at once, once it is set up'],
+    ]) {
+      await openPublish(`p=built&a=paid&${q}`)
+      const mail = await p.evaluate(() => /One last step for/.test(
+        document.querySelector('[role="dialog"][aria-label="Publish"]').innerText))
+      check(`the registrant letter is announced: ${label}`, mail === want, JSON.stringify({ mail }))
+      await p.keyboard.press('Escape')
+      await p.waitForTimeout(300)
+    }
   }
 
   /*

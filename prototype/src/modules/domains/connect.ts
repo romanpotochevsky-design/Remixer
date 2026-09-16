@@ -548,3 +548,29 @@ useWorld.subscribe((s, prev) => {
  * before this line by the import above.
  */
 resumeConnect()
+
+/* ------------------------------------------------------------ reading the clock */
+
+/**
+ * HOW FAR ALONG THE CURRENT BEAT IS — for the in-flight card (board 30425:28847 draws
+ * `27%` beside «Propagating fit-ration.net», and its explanation is open for the first
+ * five seconds of the beat). Read off the ticket the walk keeps for itself: which leg the
+ * world is on, and how much of it has passed. `fraction` is that share, capped short of 1
+ * (a beat that reads 100 % and is still running is a lie); `elapsed` is milliseconds into
+ * the leg, for anything timed from the beat's start.
+ *
+ * Null for a staged world — no ticket, nothing moving, the card shows a fixed figure — and
+ * for a ticket that does not describe this domain or this state. Read-only: it never
+ * touches the ticket, the world or the timers.
+ */
+export function connectProgress(world: World): { fraction: number; elapsed: number } | null {
+  const t = recall()
+  if (!t || t.domain !== world.customDomain) return null
+  const legs = LEGS[t.path]
+  const i = legs.findIndex(([from]) => from === world.domain)
+  if (i < 0) return null
+  const start = i === 0 ? 0 : legs[i - 1][2]
+  const span = Math.max(1, legs[i][2] - start)
+  const elapsed = Math.max(0, Date.now() - t.startedAt - start)
+  return { fraction: Math.min(0.99, elapsed / span), elapsed }
+}
