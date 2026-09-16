@@ -25,9 +25,22 @@ export function Chip({ label, tone }: { label: Text; tone?: ChipTone }) {
   return (
     <span
       data-tone={tone}
-      className={`liquid-glass liquid-glass--chip flex h-6 flex-none items-center whitespace-nowrap rounded-full px-2.5 text-[13px] font-medium leading-none${tone ? '' : ' text-[var(--white-720)]'}`}
+      className={`liquid-glass liquid-glass--chip flex h-6 flex-none items-center whitespace-nowrap rounded-full text-[13px] font-medium leading-none${
+        tone ? ' gap-2 pl-2 pr-2.5' : ' px-2.5 text-[var(--white-720)]'
+      }`}
     >
-      {t(label)}
+      {/*
+        * THE DOT (designer, 16.09.2026, on the amber `Waiting on your email`: «в пилюлю вставь
+        * внутри пилюли слева симметрично точку цветную, отступы слева, сверху и справа (между
+        * точкой и текстом) должны быть одинаковые»). A dyed chip carries it, the neutral one
+        * does not. The symmetry is arithmetic, not a feeling: the chip is 24 high and the dot
+        * 8, so the vertical inset is 8 — and the left inset (`pl-2`) and the gap to the word
+        * (`gap-2`) are set to the same 8. The trailing 10 (`pr-2.5`) stays the word's own
+        * optical margin, as on the neutral chip. The dot is the INK at full strength — the same
+        * colour as the word (on the blue chip that is `--action-ink`, not the glass's `--action`).
+        */}
+      {tone && <span className="h-2 w-2 flex-none rounded-full bg-[var(--chip-ink)]" aria-hidden />}
+      <span className="chip-label">{t(label)}</span>
     </span>
   )
 }

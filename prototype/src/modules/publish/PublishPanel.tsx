@@ -380,7 +380,12 @@ function ProgressCard({ title, sub, done }: { title: string; sub: string; done?:
   const phase = useShimmerPhase()
   return (
     <div className="px-1.5 pt-1.5">
-      <div className="rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]">
+      {/* While it moves, the card's own wash carries the flash too — board 30425:27467, a
+          brighter band crossing the whole card in the headline's sweep window (`.shimmer-card`
+          in index.css). The band is a child, not a pseudo: the card must stay overflow-visible
+          for the explanation box's one-pixel pull onto its stroke. */}
+      <div className={`rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]${done ? '' : ' shimmer-card'}`} style={done ? undefined : phase}>
+        {!done && <span className="shimmer-card-band" aria-hidden />}
         <div className={`flex items-center gap-3 py-4 pl-4 pr-3${done ? '' : ' shimmer-hue'}`} style={done ? undefined : phase}>
           {/* ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up
               and only a press is left, the arc becomes a filled green tick. One shape for

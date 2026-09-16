@@ -2027,7 +2027,8 @@ check('…and the typed prompt is built as given', await cardUp())
    * that fill, rim AND ink are dyed (not the neutral chip with green writing), and — on the
    * live panel — that the ONLY 8px dot left is the bar's.
    */
-  const INK = { working: 'rgb(229, 195, 89)', stuck: 'rgb(239, 68, 68)', ready: 'rgb(21, 135, 255)', live: 'rgb(72, 186, 121)' }
+  /* the ink per tone — `ready` reads in `--action-ink` #51a6ff (designer, 16.09.2026), not the glass's `--action` */
+  const INK = { working: 'rgb(229, 195, 89)', stuck: 'rgb(239, 68, 68)', ready: 'rgb(81, 166, 255)', live: 'rgb(72, 186, 121)' }
   for (const [q, want, label, chip] of [
     ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order', null],
     ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads', ['Setting up', 'working']],
@@ -2062,14 +2063,23 @@ check('…and the typed prompt is built as given', await cardUp())
         const el = rowEl.querySelector('.liquid-glass--chip[data-tone]')
         if (!el) return { chip: null }
         const cs = getComputedStyle(el), rim = getComputedStyle(el, '::before')
+        /* the dot lives INSIDE the pill (designer, 16.09.2026): 8px, in the tone, and 8 from the
+           left edge, 8 from the top, 8 to the word — one number three times */
+        const dot = el.querySelector('.h-2.w-2.rounded-full')
+        const label = el.querySelector('.chip-label')
+        const cb = el.getBoundingClientRect(), db = dot?.getBoundingClientRect(), lb = label?.getBoundingClientRect()
         return {
           chip: { word: el.textContent.trim(), tone: el.dataset.tone },
           ink: cs.color,
           fillDyed: cs.backgroundColor !== 'rgba(255, 255, 255, 0.08)' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)',
           rimDyed: /linear-gradient/.test(rim.backgroundImage) && !/rgba\(255, 255, 255/.test(rim.backgroundImage),
           h: Math.round(el.getBoundingClientRect().height),
-          rowDots: rowEl.querySelectorAll('.rounded-full.h-2.w-2, .rounded-full.h-1\\.5').length,
-          panelDots: d.querySelectorAll('.h-2.w-2.rounded-full').length,
+          dot: dot && db && lb ? {
+            color: getComputedStyle(dot).backgroundColor, size: Math.round(db.width),
+            left: Math.round(db.left - cb.left), top: Math.round(db.top - cb.top), gap: Math.round(lb.left - db.right),
+          } : null,
+          rowDotsOutside: [...rowEl.querySelectorAll('.h-2.w-2.rounded-full')].filter((n) => !el.contains(n)).length,
+          panelDotsOutside: [...d.querySelectorAll('.h-2.w-2.rounded-full')].filter((n) => !el.contains(n)).length,
           first: rowEl.firstElementChild === el,
         }
       })
@@ -2077,8 +2087,12 @@ check('…and the typed prompt is built as given', await cardUp())
         seen.chip && seen.chip.word === chip[0] && seen.chip.tone === chip[1], JSON.stringify(seen.chip))
       check('…as the Recommended chip dyed in the tone — fill, rim and ink, 24 high, first in the row',
         seen.ink === INK[chip[1]] && seen.fillDyed && seen.rimDyed && seen.h === 24 && seen.first, JSON.stringify(seen))
-      check('…with no dot of its own — the bar keeps the panel’s only one',
-        seen.rowDots === 0 && (chip[1] !== 'live' || seen.panelDots === 1), JSON.stringify({ rowDots: seen.rowDots, panelDots: seen.panelDots }))
+      check('…its dot inside the pill: 8px in the tone, 8 from the edge, 8 from the top, 8 to the word',
+        !!seen.dot && seen.dot.color === INK[chip[1]] && seen.dot.size === 8 && seen.dot.left === 8 && seen.dot.top === 8 && seen.dot.gap === 8,
+        JSON.stringify(seen.dot))
+      check('…and no loose dot beside it — outside the pill, the bar keeps the panel’s only one',
+        seen.rowDotsOutside === 0 && (chip[1] !== 'live' || seen.panelDotsOutside === 1),
+        JSON.stringify({ rowDotsOutside: seen.rowDotsOutside, panelDotsOutside: seen.panelDotsOutside }))
     }
     await p.keyboard.press('Escape')
     await p.waitForTimeout(300)

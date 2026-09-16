@@ -231,6 +231,9 @@
     --action: #1587ff;
     --action-hover: #3d9bff;
     --action-pressed: #0073ec;
+    /* blue INK on dark glass — the designer's own hex for the `Ready` chip's word (16.09.2026:
+       «вот цвет текста 51A6FF»); `--action` itself is too deep to read at 13px on a 14% tint */
+    --action-ink: #51a6ff;
 
     /* semantic */
     --live: #48ba79;
@@ -563,6 +566,62 @@
     animation: sh-hue 8.1s linear infinite;
     animation-delay: var(--sh-t, 0s);
   }
+  /*
+   * THE CARD'S OWN FLASH — board 30425:27467 (designer, 16.09.2026: «для всего фона этого
+   * блока анимированный фон… в такт с анимацией градиента в тексте… градиент с более
+   * яркой немного вспышкой по фону, как в макете»). The board's fill is one frame of it: a
+   * linear gradient from the card's bottom-left to its top-right, white 8% → 12% at 57% →
+   * 8% — the resting 8% wash with a soft brighter band across it (the board said 14% for an
+   * hour; the designer, on the live build: «сделай цвет блика у фона не 14% а 12%, слишком
+   * он яркий сейчас», and re-set the board's stop to 12%). Here the band MOVES,
+   * left to right, in the text's own sweep window (the first half of every 2.7 s period),
+   * on the same `--sh-t` phase the headline and the arc read, so all three breathe together.
+   *
+   * ⚠️ NOT a background-position animation. Repainting a 408×130 gradient every frame is
+   * exactly what the performance contract forbids on anything bigger than a line of text.
+   * The band is a layer three cards wide (`::before`), moved with `transform` alone —
+   * composited, no paint — inside a clipping wrapper that carries the card's radius.
+   * The wrapper is a real child and not a pseudo on the card, because the card itself
+   * must stay `overflow: visible`: its explanation box is pulled a pixel outward to lie
+   * ON the card's stroke (the third double-border of 15.09), and a clip would cut that.
+   * `z-index: -1` inside the card's own stacking context (`isolation: isolate`) puts the
+   * band above the card's wash and under its text.
+   *
+   * Geometry: the layer covers −W…2W; the band is the layer's middle third, so at
+   * translateX(−W) it lies wholly left of the card, at 0 exactly over it, at +W wholly
+   * right — the sweep is −33.3% → +33.3% of the layer. Tilt 72° = atan(408/130): the
+   * board's gradient line runs corner to corner. Peak 8% + 4% = the board's 12%.
+   */
+  .shimmer-card {
+    position: relative;
+    isolation: isolate;
+  }
+  .shimmer-card-band {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .shimmer-card-band::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -100%;
+    width: 300%;
+    background: linear-gradient(72deg, #ffffff00 33.3%, #ffffff0a 50%, #ffffff00 66.7%);
+    transform: translateX(-33.333%);
+    will-change: transform;
+    animation: sh-card 2.7s linear infinite;
+    animation-delay: var(--sh-t, 0s);
+  }
+  @keyframes sh-card {
+    0%   { transform: translateX(-33.333%); }
+    50%  { transform: translateX(33.333%); }
+    100% { transform: translateX(33.333%); }
+  }
   @keyframes sh-sweep {
     0%   { background-position: 100% 0; }
     50%  { background-position: 0% 0; }
@@ -584,6 +643,7 @@
       color: var(--sh-base);
     }
     .shimmer-hue { animation: none; }
+    .shimmer-card-band::before { animation: none; opacity: 0; }
   }
 
   /*
@@ -1086,8 +1146,9 @@
    * the one source, and there is no interpolation here for the Oklab trap to bite.
    */
   .liquid-glass--chip[data-tone] {
+    --chip-ink: var(--chip-tone);
     background: color-mix(in srgb, var(--chip-tone) 14%, transparent);
-    color: var(--chip-tone);
+    color: var(--chip-ink);
   }
   .liquid-glass--chip[data-tone]::before {
     background: linear-gradient(
@@ -1100,7 +1161,9 @@
   .liquid-glass--chip[data-tone='live'] { --chip-tone: var(--live); }
   .liquid-glass--chip[data-tone='working'] { --chip-tone: var(--attention); }
   .liquid-glass--chip[data-tone='stuck'] { --chip-tone: var(--danger); }
-  .liquid-glass--chip[data-tone='ready'] { --chip-tone: var(--action); }
+  /* the word and the dot on the blue chip read in `--action-ink` — the glass keeps `--action`
+     (designer, 16.09.2026, on the `Ready` chip: «вот цвет текста 51A6FF») */
+  .liquid-glass--chip[data-tone='ready'] { --chip-tone: var(--action); --chip-ink: var(--action-ink); }
   /*
  * THE BUILDER COMPOSER'S GLASS CIRCLES — the "+" and the mic beside the mode pill, from
  * the designer's own Figma inspector on the "+" (09.09.2026: "у кнопок этих в стиле Apple
