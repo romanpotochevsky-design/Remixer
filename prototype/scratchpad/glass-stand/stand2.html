@@ -1,0 +1,107 @@
+<!doctype html><meta charset="utf-8">
+<title>Chip glass — round 2: streaks</title>
+<style>
+  :root{--live:#48ba79;--attention:#e5c359;--danger:#ef4444;--action:#1587ff;--action-ink:#51a6ff;--white-100:#ffffff14;--white-720:#ffffffb8}
+  body{margin:0;background:#09090b;color:#fff;font:13px/1 -apple-system,Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .sheet{display:grid;grid-template-columns:150px repeat(5,1fr);gap:0 14px;padding:20px 24px;align-items:start}
+  .head{font:600 11px/1.4 ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#9a9aa3;padding:8px 0 6px}
+  .head b{display:block;color:#fff;font-size:12px;letter-spacing:0;text-transform:none;margin-top:2px}
+  .ground{border-radius:12px;padding:16px 14px;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+  .g1{background:rgb(16,16,18)} .g2{background:#232325} .g3{background:rgb(39,39,42)}
+  .label{font:11px/1.4 ui-monospace,monospace;color:#8a8a92;padding:6px 0}
+  .zoom{zoom:3}
+  .chip{position:relative;display:inline-flex;height:24px;align-items:center;gap:8px;padding:0 10px;border-radius:999px;font-weight:500;font-size:13px;line-height:1;white-space:nowrap;color:var(--white-720)}
+  .chip[data-tone]{padding:0 10px 0 8px;color:var(--chip-ink)}
+  .chip .dot{width:8px;height:8px;border-radius:50%;background:var(--chip-ink);flex:none}
+  .chip::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+    -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+  [data-tone=live]{--chip-tone:var(--live);--chip-ink:var(--live)}
+  [data-tone=working]{--chip-tone:var(--attention);--chip-ink:var(--attention)}
+  [data-tone=stuck]{--chip-tone:var(--danger);--chip-ink:var(--danger)}
+  [data-tone=ready]{--chip-tone:var(--action);--chip-ink:var(--action-ink)}
+  .r0{background:var(--white-100)}
+  .r0::before{background:linear-gradient(to bottom right,#ffffff33 0%,#ffffff0d 50%,#ffffff26 100%)}
+  .r0[data-tone]{background:color-mix(in srgb,var(--chip-tone) 14%,transparent)}
+  .r0[data-tone]::before{background:linear-gradient(to bottom right,color-mix(in srgb,var(--chip-tone) 40%,transparent) 0%,color-mix(in srgb,var(--chip-tone) 12%,transparent) 50%,color-mix(in srgb,var(--chip-tone) 32%,transparent) 100%)}
+
+  /* ── the glass badge, round 2 ──
+     --t        the tone (white on the neutral chip)
+     --hi       the highlight ink: the tone lifted towards white
+     streaks    two elongated highlights ON the rim: along the top edge out of the left end,
+                along the bottom edge into the right end (light in, light out)
+     arcs       the two other ends catch a faint trace
+     rim        otherwise nearly nothing
+     body       a breath of the tone, lighter on top; a thin dark band inside = thickness */
+  .gl{--t:#fff;--hi:#fff}
+  .gl[data-tone]{--t:var(--chip-tone);--hi:color-mix(in srgb,var(--chip-tone) 50%,#fff)}
+  .gl::before{
+    background:
+      /* top-left streak: peak near the left end, dying along the top edge */
+      radial-gradient(var(--streak-w,72px) 12px at 20px 0px,
+        color-mix(in srgb,var(--hi) var(--hi-a,95%),transparent) 0,
+        color-mix(in srgb,var(--hi) calc(var(--hi-a,95%) * .55),transparent) 35%,
+        transparent 100%),
+      /* bottom-right streak */
+      radial-gradient(var(--streak-w,72px) 12px at calc(100% - 20px) 100%,
+        color-mix(in srgb,var(--hi) var(--hi2-a,75%),transparent) 0,
+        color-mix(in srgb,var(--hi) calc(var(--hi2-a,75%) * .5),transparent) 35%,
+        transparent 100%),
+      /* the other two ends, faint */
+      radial-gradient(28px 14px at calc(100% - 12px) 0px, color-mix(in srgb,var(--hi) var(--arc-a,22%),transparent) 0, transparent 100%),
+      radial-gradient(28px 14px at 12px 100%, color-mix(in srgb,var(--hi) var(--arc-a,22%),transparent) 0, transparent 100%),
+      color-mix(in srgb,var(--t) var(--rim-a,6%),transparent);
+  }
+  .gl{
+    background:
+      radial-gradient(120% 90% at 50% -20%, color-mix(in srgb,var(--t) var(--fill-top,7%),transparent), transparent 70%),
+      color-mix(in srgb,var(--t) var(--fill-bot,2.5%),transparent);
+    box-shadow:
+      inset 0 0 var(--depth-blur,5px) rgba(0,0,0,var(--depth-a,.22)),
+      var(--outer, 0 0 0 0 transparent);
+  }
+  /* double edge: a faint second line inside the rim — the refracted edge of thick glass */
+  .gl.thick::after{content:"";position:absolute;inset:2px;border-radius:inherit;pointer-events:none;
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hi) var(--edge2-a,7%),transparent)}
+
+  /* S1 — clear streaks */
+  .s1{--fill-top:6%;--fill-bot:2%;--rim-a:6%;--hi-a:95%;--hi2-a:72%;--arc-a:18%;--depth-a:.20}
+  .s1[data-tone]{--fill-top:16%;--fill-bot:8%;--rim-a:18%;--hi-a:92%;--hi2-a:70%;--arc-a:26%;--depth-a:.22}
+  /* S2 — streaks, longer, and a lighter body */
+  .s2{--fill-top:9%;--fill-bot:3%;--rim-a:7%;--hi-a:95%;--hi2-a:75%;--arc-a:20%;--depth-a:.18;--streak-w:110px}
+  .s2[data-tone]{--fill-top:18%;--fill-bot:9%;--rim-a:20%;--hi-a:92%;--hi2-a:72%;--arc-a:28%;--depth-a:.20;--streak-w:110px}
+  /* S3 — thick glass: streaks + inner second edge + deeper band */
+  .s3{--fill-top:7%;--fill-bot:2.5%;--rim-a:8%;--hi-a:95%;--hi2-a:75%;--arc-a:20%;--depth-a:.34;--depth-blur:4px;--edge2-a:8%}
+  .s3[data-tone]{--fill-top:16%;--fill-bot:8%;--rim-a:20%;--hi-a:92%;--hi2-a:72%;--arc-a:28%;--depth-a:.30;--depth-blur:4px;--edge2-a:12%}
+  /* S4 — streaks + the faintest outer light along the lit sides */
+  .s4{--fill-top:6%;--fill-bot:2%;--rim-a:6%;--hi-a:95%;--hi2-a:72%;--arc-a:18%;--depth-a:.20;
+      --outer: -1px -1px 3px -1px rgba(255,255,255,.16), 1px 1px 3px -1px rgba(255,255,255,.12)}
+  .s4[data-tone]{--fill-top:16%;--fill-bot:8%;--rim-a:18%;--hi-a:92%;--hi2-a:70%;--arc-a:26%;--depth-a:.22;
+      --outer: -1px -1px 3px -1px color-mix(in srgb,var(--hi) 26%,transparent), 1px 1px 3px -1px color-mix(in srgb,var(--hi) 20%,transparent)}
+</style>
+<body>
+<div class="sheet" id="sheet"></div>
+<script>
+const recipes=[
+ ['r0','R0 · today','diagonal rim 20/5/15, flat 8% wash'],
+ ['s1','S1 · streaks','light in top-left, out bottom-right; rim nearly gone; clear body'],
+ ['s2','S2 · long streaks','streaks run further along the edges; body a touch lighter'],
+ ['s3','S3 · thick glass','S1 + a faint second edge inside + deeper inner band'],
+ ['s4','S4 · lit sides','S1 + the faintest outer light on the two lit sides'],
+];
+const rows=[
+ ['g1','answers card · rgb(16,16,18)',[{label:'Recommended'}]],
+ ['g2','decision card · #232325',[{label:"Remixer's pick"}]],
+ ['g3','domain row · rgb(39,39,42)',[{label:'Waiting on your email',tone:'working'},{label:'Ready',tone:'ready'},{label:'Live',tone:'live'},{label:'Not responding',tone:'stuck'}]],
+];
+const chip=(r,c)=>`<span class="chip ${r==='r0'?'r0':'gl '+r+(r==='s3'?' thick':'')}"${c.tone?` data-tone="${c.tone}"`:''}>${c.tone?'<span class="dot"></span>':''}<span>${c.label}</span></span>`;
+let h='<div></div>'+recipes.map(([r,t,d])=>`<div class="head">${t}<b>${d}</b></div>`).join('');
+for(const [g,name,chips] of rows){
+  h+=`<div class="label">${name}</div>`+recipes.map(([r])=>`<div class="ground ${g}">${chips.map(c=>chip(r,c)).join('')}</div>`).join('');
+}
+h+=`<div class="label">3× · amber</div>`+recipes.map(([r])=>`<div class="ground g3 zoom" style="padding:8px 10px">${chip(r,{label:'Waiting on your email',tone:'working'})}</div>`).join('');
+h+=`<div class="label">3× · Recommended</div>`+recipes.map(([r])=>`<div class="ground g1 zoom" style="padding:8px 10px">${chip(r,{label:'Recommended'})}</div>`).join('');
+h+=`<div class="label">3× · Live</div>`+recipes.map(([r])=>`<div class="ground g3 zoom" style="padding:8px 10px">${chip(r,{label:'Live',tone:'live'})}</div>`).join('');
+h+=`<div class="label">3× · Ready</div>`+recipes.map(([r])=>`<div class="ground g3 zoom" style="padding:8px 10px">${chip(r,{label:'Ready',tone:'ready'})}</div>`).join('');
+document.getElementById('sheet').innerHTML=h;
+</script>
+</body>

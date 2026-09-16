@@ -1,0 +1,100 @@
+<!doctype html><meta charset="utf-8">
+<title>Chip glass — recipes</title>
+<style>
+  :root{
+    --live:#48ba79; --attention:#e5c359; --danger:#ef4444; --action:#1587ff; --action-ink:#51a6ff;
+    --white-100:#ffffff14; --white-720:#ffffffb8;
+  }
+  body{margin:0;background:#09090b;color:#fff;font:13px/1 -apple-system,Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .sheet{display:grid;grid-template-columns:150px repeat(6,1fr);gap:0 14px;padding:20px 24px;align-items:start}
+  .head{font:600 11px/1.4 ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#9a9aa3;padding:8px 0 6px}
+  .head b{display:block;color:#fff;font-size:12px;letter-spacing:0;text-transform:none;margin-top:2px}
+  .ground{border-radius:12px;padding:16px 14px;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+  .g1{background:rgb(16,16,18)} .g2{background:#232325} .g3{background:rgb(39,39,42)}
+  .label{font:11px/1.4 ui-monospace,monospace;color:#8a8a92;padding:6px 0}
+  .zoom{zoom:3}
+  /* ───────── the chip, as in Chip.tsx ───────── */
+  .chip{position:relative;display:inline-flex;height:24px;align-items:center;gap:8px;padding:0 10px;border-radius:999px;font-weight:500;font-size:13px;line-height:1;white-space:nowrap;color:var(--white-720)}
+  .chip[data-tone]{padding:0 10px 0 8px;color:var(--chip-ink)}
+  .chip .dot{width:8px;height:8px;border-radius:50%;background:var(--chip-ink);flex:none}
+  .chip::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+    -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+  [data-tone=live]{--chip-tone:var(--live);--chip-ink:var(--live)}
+  [data-tone=working]{--chip-tone:var(--attention);--chip-ink:var(--attention)}
+  [data-tone=stuck]{--chip-tone:var(--danger);--chip-ink:var(--danger)}
+  [data-tone=ready]{--chip-tone:var(--action);--chip-ink:var(--action-ink)}
+  /* R0 — today */
+  .r0{background:var(--white-100)}
+  .r0::before{background:linear-gradient(to bottom right,#ffffff33 0%,#ffffff0d 50%,#ffffff26 100%)}
+  .r0[data-tone]{background:color-mix(in srgb,var(--chip-tone) 14%,transparent)}
+  .r0[data-tone]::before{background:linear-gradient(to bottom right,color-mix(in srgb,var(--chip-tone) 40%,transparent) 0%,color-mix(in srgb,var(--chip-tone) 12%,transparent) 50%,color-mix(in srgb,var(--chip-tone) 32%,transparent) 100%)}
+
+  /* ───────── the glass badge: shared machinery. `--t` is the tone (white for the neutral chip). ───────── */
+  .gl{--t:#fff}
+  .gl[data-tone]{--t:var(--chip-tone)}
+  /* specular: the light source top-left, its refraction exit bottom-right; the rim itself dim */
+  .gl::before{
+    background:
+      radial-gradient(circle at 13px 2px, color-mix(in srgb,var(--t) var(--hi-mix,100%),#fff) 0, color-mix(in srgb, color-mix(in srgb,var(--t) var(--hi-mix,100%),#fff) var(--hi-a,90%), transparent) 1px, color-mix(in srgb, color-mix(in srgb,var(--t) var(--hi-mix,100%),#fff) calc(var(--hi-a,90%) * .5), transparent) 9px, transparent var(--hi-r,20px)),
+      radial-gradient(circle at calc(100% - 13px) calc(100% - 2px), color-mix(in srgb, color-mix(in srgb,var(--t) var(--hi-mix,100%),#fff) var(--hi2-a,70%), transparent) 0, color-mix(in srgb, color-mix(in srgb,var(--t) var(--hi-mix,100%),#fff) calc(var(--hi2-a,70%) * .45), transparent) 8px, transparent var(--hi-r,20px)),
+      linear-gradient(180deg, color-mix(in srgb,var(--t) var(--top-a,16%),transparent) 0, transparent 45%),
+      linear-gradient(0deg, color-mix(in srgb,var(--t) var(--bot-a,8%),transparent) 0, transparent 40%),
+      color-mix(in srgb,var(--t) var(--rim-a,8%),transparent);
+  }
+  /* body: light enters from above; a hint of thickness at the inner edge */
+  .gl{
+    background:linear-gradient(180deg, color-mix(in srgb,var(--t) var(--fill-top,7%),transparent), color-mix(in srgb,var(--t) var(--fill-bot,3%),transparent));
+    box-shadow: inset 0 1px 0 color-mix(in srgb,var(--t) var(--inner-line,6%),transparent),
+                inset 0 0 var(--depth-blur,6px) rgba(0,0,0,var(--depth-a,.22));
+  }
+  /* bloom outside, at the two highlights */
+  .gl.bloom{isolation:isolate}
+  .gl.bloom::after{content:"";position:absolute;inset:-8px;border-radius:999px;pointer-events:none;z-index:-1;
+    background:
+      radial-gradient(circle at 21px 10px, color-mix(in srgb, color-mix(in srgb,var(--t) var(--hi-mix,100%),#fff) var(--bloom-a,26%), transparent) 0, transparent 16px),
+      radial-gradient(circle at calc(100% - 21px) calc(100% - 10px), color-mix(in srgb, color-mix(in srgb,var(--t) var(--hi-mix,100%),#fff) calc(var(--bloom-a,26%) * .7), transparent) 0, transparent 16px)}
+
+  /* R1 — specular, clear body */
+  .r1{--fill-top:6%;--fill-bot:2.5%;--rim-a:8%;--hi-a:92%;--hi2-a:70%;--top-a:14%;--bot-a:6%;--depth-a:.20}
+  .r1[data-tone]{--fill-top:16%;--fill-bot:9%;--rim-a:22%;--hi-mix:55%;--hi-a:90%;--hi2-a:70%;--top-a:24%;--bot-a:12%;--depth-a:.22}
+  /* R2 — specular + bloom outside */
+  .r2{--fill-top:6%;--fill-bot:2.5%;--rim-a:8%;--hi-a:95%;--hi2-a:75%;--top-a:14%;--bot-a:6%;--depth-a:.20;--bloom-a:28%}
+  .r2[data-tone]{--fill-top:16%;--fill-bot:9%;--rim-a:22%;--hi-mix:55%;--hi-a:92%;--hi2-a:72%;--top-a:24%;--bot-a:12%;--depth-a:.22;--bloom-a:30%}
+  /* R3 — thick glass: brighter rim, deeper inner band */
+  .r3{--fill-top:8%;--fill-bot:4%;--rim-a:16%;--hi-a:95%;--hi2-a:80%;--top-a:22%;--bot-a:12%;--depth-a:.38;--depth-blur:5px;--inner-line:10%}
+  .r3[data-tone]{--fill-top:18%;--fill-bot:10%;--rim-a:30%;--hi-mix:55%;--hi-a:92%;--hi2-a:78%;--top-a:30%;--bot-a:16%;--depth-a:.34;--depth-blur:5px;--inner-line:14%}
+  /* R4 — clearest: almost no body, the light does everything */
+  .r4{--fill-top:3.5%;--fill-bot:1%;--rim-a:6%;--hi-a:95%;--hi2-a:72%;--top-a:10%;--bot-a:4%;--depth-a:.14;--inner-line:4%}
+  .r4[data-tone]{--fill-top:11%;--fill-bot:5%;--rim-a:16%;--hi-mix:55%;--hi-a:92%;--hi2-a:72%;--top-a:18%;--bot-a:8%;--depth-a:.16;--inner-line:6%}
+  /* R5 — frosted: milkier body, softer specular */
+  .r5{--fill-top:11%;--fill-bot:6%;--rim-a:10%;--hi-a:70%;--hi2-a:50%;--top-a:18%;--bot-a:8%;--depth-a:.12;--inner-line:12%;--hi-r:24px}
+  .r5[data-tone]{--fill-top:22%;--fill-bot:12%;--rim-a:26%;--hi-mix:55%;--hi-a:72%;--hi2-a:52%;--top-a:28%;--bot-a:14%;--depth-a:.14;--inner-line:14%;--hi-r:24px}
+</style>
+<body>
+<div class="sheet" id="sheet"></div>
+<script>
+const recipes=[
+ ['r0','R0 · today','diagonal rim 20/5/15, flat 8% wash'],
+ ['r1','R1 · specular','two highlights (TL / BR), dim rim, clear body, inner shade'],
+ ['r2','R2 · specular + bloom','R1 + soft glow outside the two highlights'],
+ ['r3','R3 · thick glass','brighter rim, deeper inner band — a bevelled edge'],
+ ['r4','R4 · clearest','body almost gone, the light carries the pill'],
+ ['r5','R5 · frosted','milkier body, softer highlights'],
+];
+const rows=[
+ ['g1','answers card · rgb(16,16,18)',[{label:'Recommended'}]],
+ ['g2','decision card · #232325',[{label:"Remixer's pick"}]],
+ ['g3','domain row · rgb(39,39,42)',[{label:'Waiting on your email',tone:'working'},{label:'Ready',tone:'ready'},{label:'Live',tone:'live'},{label:'Not responding',tone:'stuck'}]],
+];
+const chip=(r,c)=>`<span class="chip gl ${r}${r==='r2'?' bloom':''}"${c.tone?` data-tone="${c.tone}"`:''}>${c.tone?'<span class="dot"></span>':''}<span>${c.label}</span></span>`.replace(' gl r0',' r0');
+let h='<div></div>'+recipes.map(([r,t,d])=>`<div class="head">${t}<b>${d}</b></div>`).join('');
+for(const [g,name,chips] of rows){
+  h+=`<div class="label">${name}</div>`+recipes.map(([r])=>`<div class="ground ${g}">${chips.map(c=>chip(r,c)).join('')}</div>`).join('');
+}
+// zoomed row: the amber chip + Recommended at 3×
+h+=`<div class="label">3× · amber on domain row</div>`+recipes.map(([r])=>`<div class="ground g3 zoom" style="padding:8px 10px">${chip(r,{label:'Waiting on your email',tone:'working'})}</div>`).join('');
+h+=`<div class="label">3× · Recommended</div>`+recipes.map(([r])=>`<div class="ground g1 zoom" style="padding:8px 10px">${chip(r,{label:'Recommended'})}</div>`).join('');
+h+=`<div class="label">3× · Live</div>`+recipes.map(([r])=>`<div class="ground g3 zoom" style="padding:8px 10px">${chip(r,{label:'Live',tone:'live'})}</div>`).join('');
+document.getElementById('sheet').innerHTML=h;
+</script>
+</body>

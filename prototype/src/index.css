@@ -1100,63 +1100,102 @@
    * plate: "ты можешь эту пилюлю сделать дизайн пилюли в стиле Apple liquid glass?",
    * and "сделай ее скругленной полностью").
    *
-   * It is the `--pill` member with two changes, and both are forced by where it sits.
+   * ⚠️ A BADGE IS NOT A BUTTON, AND ITS GLASS IS LIT DIFFERENTLY (designer, 16.09.2026, with
+   * four references of Apple's Liquid Glass capsules: «эти пилюли по своему эффекту
+   * стеклянности очень похожи на наши кнопки, мне не нравится что они похожи на кнопки…
+   * для подобных пилюль (не кнопок) эффект liquid glass стекла нужно сделать более
+   * реалистичным и стеклянным… мне нравится именно вот эта стильная прозрачность и
+   * стеклянность»). Until then the chip wore `--pill`'s diagonal rim over an 8% wash — the
+   * button recipe at a smaller size, which is exactly why it read as a button. The buttons
+   * are untouched («кнопки трогать не нужно»); this is the chip's own glass:
    *
-   * ⚠️ THE FILL IS LIGHT, NOT `Black/700`. Every other glass control in this product
-   * floats over the shell's own ground; this one sits INSIDE an answer row, on a card
-   * that is already `#09090b` at 56% over a near-black dock — measured, rgb(16 16 18).
-   * A dark fill there reads as a hole punched in the row rather than a chip lying on
-   * it. The wash stays the house 8%; what carries the glass is the rim.
+   *   LIGHT, NOT A RIM. What makes his references read as glass is that the edge is not a
+   *   uniform stroke: light enters at the top-left and leaves at the bottom-right, so two
+   *   bright SPECULAR STREAKS lie on the rim — along the top edge out of the left end, and
+   *   along the bottom edge into the right end — the other two ends catch a faint trace, and
+   *   between them the rim is nearly nothing (6–7%). The streaks are radial gradients centred
+   *   ON the edge (`20px 0` and `calc(100% - 20px) 100%`, i.e. on the straight edge just past
+   *   the end's arc), half the chip wide, so a long chip carries a long streak and `Live`
+   *   a short one, and the same rule fits every width.
+   *   A CLEAR BODY. The wash drops from a flat 8% to a breath: 3% with light gathering at
+   *   the top (a radial from above, 9% → 0). The chip is now mostly its ground — the
+   *   «прозрачность» he pointed at.
+   *   THICKNESS. A thin dark band just inside the rim (`inset 0 0 5px` black 18%): the edge
+   *   of a slab, not a line drawn on a plate.
+   *   NO BLUR, still: what is behind the chip is a flat colour in every one of its homes
+   *   (the answers card over the dock's baked `#1a1a1c`, the decision card's `#232325`, the
+   *   Publish panel's body card), and the canon's rule is to look at what is behind before
+   *   reaching for `backdrop-filter`.
    *
-   * ⚠️ AND NO BLUR. The canon's base carries `backdrop-filter: blur(16px)`, which here
-   * would buy a compositing layer and change nothing: what is behind this chip is a
-   * FLAT colour in every one of its homes — the answers card over the dock's baked
-   * `#1a1a1c` (the dock's own blur was baked out for the Chromium resize bug), and the
-   * plan's decision card at a solid `#232325`. CLAUDE.md's rule verbatim: before you
-   * reach for `backdrop-filter`, look at what is behind the element.
+   * ⚠️ NO SECOND EDGE. A faint inner line parallel to the rim (the refracted edge of thick
+   * glass, as on his light-ground reference) was built on the stand and read as a DOUBLE
+   * BORDER — the one thing this designer has sent back four times. The thickness is carried
+   * by the inner shade alone. And no glow outside the pill: a bloom beyond the rim read as a
+   * smudge at 1×. Stand with the rejected recipes: `prototype/scratchpad/glass-stand/`.
    *
-   * The rim is the `--pill`'s own diagonal, unchanged — a fifth set of numbers would be
-   * a fifth glass, and the point of the canon is that there is one.
+   * One rule, two inks: `--t` is the tone the glass is made of (white on the neutral chip),
+   * `--hi` the highlight ink. The DYED chip below only changes those two and the alphas.
    */
   .liquid-glass--chip {
-    background: var(--white-100);
+    --t: #fff;
+    --hi: #fff;
+    --chip-fill-top: 9%;
+    --chip-fill-bot: 3%;
+    --chip-rim-a: 7%;
+    --chip-hi-a: 95%;
+    --chip-hi2-a: 75%;
+    --chip-arc-a: 20%;
+    --chip-depth-a: 0.18;
+    background:
+      radial-gradient(120% 90% at 50% -20%, color-mix(in srgb, var(--t) var(--chip-fill-top), transparent), transparent 70%),
+      color-mix(in srgb, var(--t) var(--chip-fill-bot), transparent);
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, var(--chip-depth-a));
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
   .liquid-glass--chip::before {
-    background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
+    background:
+      /* light in: the streak along the top edge, born at the left end */
+      radial-gradient(50% 12px at 20px 0px,
+        color-mix(in srgb, var(--hi) var(--chip-hi-a), transparent) 0,
+        color-mix(in srgb, var(--hi) calc(var(--chip-hi-a) * 0.55), transparent) 35%,
+        transparent 100%),
+      /* light out: the streak along the bottom edge, into the right end */
+      radial-gradient(50% 12px at calc(100% - 20px) 100%,
+        color-mix(in srgb, var(--hi) var(--chip-hi2-a), transparent) 0,
+        color-mix(in srgb, var(--hi) calc(var(--chip-hi2-a) * 0.5), transparent) 35%,
+        transparent 100%),
+      /* the other two ends catch a trace */
+      radial-gradient(28px 14px at calc(100% - 12px) 0px, color-mix(in srgb, var(--hi) var(--chip-arc-a), transparent) 0, transparent 100%),
+      radial-gradient(28px 14px at 12px 100%, color-mix(in srgb, var(--hi) var(--chip-arc-a), transparent) 0, transparent 100%),
+      /* and the rim itself is nearly nothing */
+      color-mix(in srgb, var(--t) var(--chip-rim-a), transparent);
   }
   /*
-   * THE DYED CHIP — the same member wearing a status colour (designer, 16.09.2026, on the
+   * THE DYED CHIP — the same glass made of a status colour (designer, 16.09.2026, on the
    * Publish panel's domain row: «я хочу чтобы стекла были в цвет статуса … и текст … тоже
-   * должен быть оттенков статуса»). Fill, rim and ink all take ONE tone, so it reads as
-   * coloured glass and not as a grey chip with green writing:
-   *
-   *   fill   tone at 14% — the house 8% white wash, in colour, a touch denser because a
-   *          hue at 8% over this ground is not visible;
-   *   rim    the canon's diagonal (hot top-left, dim middle, warm bottom-right), in the
-   *          tone at 40% → 12% → 32%. The neutral rim is 20/5/15 WHITE; a hue is far less
-   *          luminous than white, so the alphas are raised until the rim sits at about the
-   *          neutral one's brightness on the same ground (green at 40% over rgb(39,39,42)
-   *          ≈ luminance .10 vs white at 20% ≈ .085) — same glass edge, coloured;
-   *   ink    the tone itself.
+   * должен быть оттенков статуса»). The glass (`--t`) is the tone; the highlights (`--hi`)
+   * are the tone lifted halfway to white — a specular on coloured glass is pale, not
+   * saturated. A hue is far less luminous than white, so every alpha is raised until the
+   * coloured chip sits at about the neutral one's brightness on the same ground: body
+   * 18% → 9% (neutral 9% → 3%), rim 20% (neutral 7%). The ink is the tone itself.
    *
    * Tones are the Publish panel's four (`DOMAIN_STATUS`), by name, so a fifth colour cannot
    * arrive through this door. `color-mix` and not a second hex per tone: the token stays
-   * the one source, and there is no interpolation here for the Oklab trap to bite.
+   * the one source.
    */
   .liquid-glass--chip[data-tone] {
+    --t: var(--chip-tone);
+    --hi: color-mix(in srgb, var(--chip-tone) 50%, #fff);
     --chip-ink: var(--chip-tone);
-    background: color-mix(in srgb, var(--chip-tone) 14%, transparent);
+    --chip-fill-top: 18%;
+    --chip-fill-bot: 9%;
+    --chip-rim-a: 20%;
+    --chip-hi-a: 92%;
+    --chip-hi2-a: 72%;
+    --chip-arc-a: 28%;
+    --chip-depth-a: 0.2;
     color: var(--chip-ink);
-  }
-  .liquid-glass--chip[data-tone]::before {
-    background: linear-gradient(
-      to bottom right,
-      color-mix(in srgb, var(--chip-tone) 40%, transparent) 0%,
-      color-mix(in srgb, var(--chip-tone) 12%, transparent) 50%,
-      color-mix(in srgb, var(--chip-tone) 32%, transparent) 100%
-    );
   }
   .liquid-glass--chip[data-tone='live'] { --chip-tone: var(--live); }
   .liquid-glass--chip[data-tone='working'] { --chip-tone: var(--attention); }

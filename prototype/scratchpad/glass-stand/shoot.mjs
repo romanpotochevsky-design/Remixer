@@ -1,0 +1,10 @@
+import { chromium } from 'playwright'
+const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] })
+const p = await b.newPage({ viewport: { width: 1700, height: 1200 }, deviceScaleFactor: 2 })
+await p.goto('file://' + new URL('./stand.html', import.meta.url).pathname)
+await p.waitForTimeout(300)
+const h = await p.evaluate(() => document.body.scrollHeight)
+await p.setViewportSize({ width: 1700, height: Math.min(h + 20, 4000) })
+await p.screenshot({ path: new URL('./sheet.png', import.meta.url).pathname, fullPage: true })
+console.log('sheet', h)
+await b.close()

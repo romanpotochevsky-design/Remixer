@@ -416,23 +416,29 @@ await p.waitForTimeout(800)
     JSON.stringify(tags))
 }
 {
-  /* ⚠️ THE CHIP IS THE HOUSE GLASS AT THE SIZE OF A WORD (designer, 11.09.2026), and its
-     two departures from `--pill` are the point: a LIGHT fill, because it sits inside a row
-     on a near-black card where `Black/700` would read as a hole; and NO blur, because what
-     is behind it is flat in both of its homes. The rim is `--pill`'s own diagonal. */
+  /* ⚠️ THE CHIP IS GLASS AT THE SIZE OF A WORD, AND SINCE 16.09.2026 IT IS LIT LIKE A BADGE,
+     NOT A BUTTON (designer: «мне не нравится что они похожи на кнопки… более реалистичным и
+     стеклянным»): two specular streaks on the rim (light in top-left, out bottom-right — radial
+     gradients centred on the edge), a nearly-gone rim between them, a clear body with light
+     gathering at the top, and a thin dark band inside for thickness. NO blur, because what is
+     behind it is flat in every home; NO diagonal button rim any more. */
   const chip = await p.evaluate(() => {
     const n = [...document.querySelectorAll('span')].find((x) => x.textContent === 'Recommended')
     if (!n) return null
     const c = getComputedStyle(n)
-    const rim = getComputedStyle(n, '::before').background
+    const rim = getComputedStyle(n, '::before').backgroundImage
+    const alpha = (col) => { const m = /\/\s*([\d.]+)\)/.exec(col) || /,\s*([\d.]+)\)$/.exec(col); return m ? +m[1] : 1 }
     return {
-      round: c.borderRadius, fill: c.backgroundColor, blur: c.backdropFilter,
-      diagonal: /to right bottom/.test(rim) && /0\.2\)/.test(rim),
+      round: c.borderRadius, fillA: +alpha(c.backgroundColor).toFixed(3), topLit: /radial-gradient/.test(c.backgroundImage),
+      blur: c.backdropFilter,
+      streaks: (rim.match(/radial-gradient\(/g) || []).length, buttonRim: /to right bottom/.test(rim),
+      depth: /0px 0px 5px 0px inset/.test(c.boxShadow),   /* Chrome serialises the shadow colour-first, `inset` last */
     }
   })
-  check('Recommended is a fully round chip of the house glass',
-    chip?.round === '9999px' && chip?.fill === 'rgba(255, 255, 255, 0.08)' && chip?.diagonal === true,
-    JSON.stringify(chip))
+  check('Recommended is a fully round badge of LIT glass — two streaks and two traces on the rim, no button diagonal',
+    chip?.round === '9999px' && chip?.streaks === 4 && chip?.buttonRim === false, JSON.stringify(chip))
+  check('…with a clear body (≤ 4% at the base, light gathering at the top) and a thin dark band inside',
+    chip != null && chip.fillA <= 0.04 && chip.topLit && chip.depth, JSON.stringify(chip))
   check('…and it does not buy a blur for a flat ground', chip?.blur === 'none', chip?.blur)
 }
 
@@ -2103,7 +2109,8 @@ check('…and the typed prompt is built as given', await cardUp())
           chip: { word: el.textContent.trim(), tone: el.dataset.tone },
           ink: cs.color,
           fillDyed: cs.backgroundColor !== 'rgba(255, 255, 255, 0.08)' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)',
-          rimDyed: /linear-gradient/.test(rim.backgroundImage) && !/rgba\(255, 255, 255/.test(rim.backgroundImage),
+          /* the rim is the lit badge glass (radial streaks) in the tone — no pure white anywhere in it */
+          rimDyed: /radial-gradient/.test(rim.backgroundImage) && !/rgba\(255, 255, 255/.test(rim.backgroundImage) && !/rgb\(255, 255, 255\)/.test(rim.backgroundImage),
           h: Math.round(el.getBoundingClientRect().height),
           dot: dot && db && lb ? {
             color: getComputedStyle(dot).backgroundColor, size: Math.round(db.width),
