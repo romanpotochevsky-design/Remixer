@@ -19,6 +19,7 @@ import {
   IconReplyArrow, IconThumbUp, IconThumbDown, IconCopy, IconMore,
 } from '@/ui/icons'
 import { ScrollArea } from '@/ui/ScrollArea'
+import { useShimmerSlot } from '@/ui/shimmer'
 import { baselineThread, streamDuration } from './thread'
 import { sendMessage, resumeInterrupted } from './send'
 import { bubbleSend, cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade, popover } from '@/ui/motion'
@@ -187,6 +188,8 @@ function BriefSummary({ animate }: { animate: boolean }) {
      working — the turn is the customer's — so the title goes still and says so. */
   const waiting = world.brief.status === 'planning' && world.chat !== 'working'
   const settling = world.chat === 'working' && world.project !== 'built'
+  /* the shimmer's hue for THIS settle — taken when the title starts thinking, not at mount */
+  const shimmer = useShimmerSlot(settling)
   const title = world.project === 'built'
     ? t({ en: 'Acknowledged brief and preferences', uk: 'Бриф і вподобання прийнято' })
     : world.project === 'generating'
@@ -251,7 +254,10 @@ function BriefSummary({ animate }: { animate: boolean }) {
       className={`w-full max-w-[480px] origin-bottom overflow-hidden rounded-[24px] border border-[#272728]${animate ? ' card-arrive' : ''}`}
     >
       <motion.div variants={body} className="origin-bottom">
-        <p className={`flex h-[56px] items-center px-4 text-[15px] font-medium leading-[1.2] ${settling ? 'thinking' : 'text-white'}`}>
+        <p
+          className={`flex h-[56px] items-center px-4 text-[15px] font-medium leading-[1.2] ${settling ? 'thinking' : 'text-white'}`}
+          style={settling ? shimmer : undefined}
+        >
           {title}
         </p>
         <dl className="-mx-px w-[calc(100%+2px)] rounded-b-[24px] rounded-t-[16px] border-l border-r border-t border-[#272728] px-4 pb-3 pt-[11px] text-[14px] leading-[1.4]">
@@ -285,10 +291,11 @@ function BriefSummary({ animate }: { animate: boolean }) {
  * pointed at. Now they are the same component, so the product has ONE waiting shape.
  */
 function Waiting({ label, arrow = false }: { label: string; arrow?: boolean }) {
+  const shimmer = useShimmerSlot()
   return (
     <div className="flex flex-col gap-2 pr-8">
       <p className="text-[14px] leading-[20px]">
-        <span className="thinking">{label}</span>
+        <span className="thinking" style={shimmer}>{label}</span>
         {/* the brief's status is a collapsed tool row, so it keeps its disclosure caret */}
         {arrow && <span className="ml-1.5 text-[var(--white-400)]">›</span>}
       </p>

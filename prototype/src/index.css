@@ -160,6 +160,17 @@
 }
 
 /*
+ * The hue of the three-hue shimmer (`.thinking`, `.gen-work` — see THE THREE-HUE
+ * SHIMMER in the components layer). Registered as a colour so the sweep-to-sweep
+ * change can CROSSFADE during the rest between sweeps; unregistered it would snap.
+ */
+@property --sh-hue {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #a4b9ff;
+}
+
+/*
  * Token layer.
  *
  * Values measured from the live Remixer (panel.dreamhost.com/ai-editor) on 13 Aug 2026.
@@ -461,27 +472,72 @@
   }
 
   /*
-   * "Thinking" — a light sweeps across the letters, as in Lovable. The gradient
-   * is clipped to the glyphs and its position is animated, which does repaint
-   * each frame; that is affordable here and nowhere else, because the element
-   * is one short word and it only exists while an answer is being written.
+   * THE THREE-HUE SHIMMER — the light that passes over a line of text while the
+   * product is working. Designer, 16.09.2026, with a screen recording of the effect
+   * and board 30420:19876 «Gradient colors»: «я хочу чтобы на тексте был вот такой
+   * эффект скелетона/загрузок всяких, как на видео, чтобы в тексте красиво
+   * переливается градиент с 3-я цветами». Worn by the two lines that already had the
+   * per-frame allowance — `.thinking` (the chat's waiting word, which the board is
+   * literally titled after) and `.gen-work` (the build card's working line).
+   *
+   * Read off the recording (36 s at 55 fps; per-frame saturation of the text row,
+   * then ink sampled along the glyphs at the peaks — scratchpad/shimmer/):
+   *   · the text rests GREY; a band crosses it left → right in ~0.9 s, once every
+   *     3.5 s, and between sweeps nothing moves at all;
+   *   · the band is grey → HUE → WHITE core → grey: the white LEADS and the hue trails
+   *     behind it, and ahead of the white the text is still plain grey (sampled
+   *     left→right on one frame: #8c93b4 → #838dc4 → #adb9e0 → #dedef0 → #ffffff →
+   *     #9d9d9d). So the board's «white → hue → white» is read with its trailing
+   *     white transparent and its leading white opaque — that is the only reading
+   *     under which the board and the recording draw the same band;
+   *   · the hue ROTATES per sweep — blue, lilac, peach, blue… — the board's three
+   *     gradients (#a4b9ff · #caaafe · #febbaa), in the board's top-to-bottom order,
+   *     which is also the recording's cyclic order (pink → orange → blue → pink).
+   *
+   * Two animations on one element in lockstep (3.5 s and 10.5 s = 3 sweeps):
+   * `sh-sweep` carries the band across and parks it off the text for the rest;
+   * `sh-hue` crossfades the hue DURING that rest, when no band is on the glyphs, so
+   * the switch is never seen. The hue is the registered `--sh-hue` (top of file) —
+   * an unregistered custom property animates discretely and could not fade.
+   *
+   * Per-frame repaint, on the same terms as before: one short line, alone on
+   * screen, alive only while an answer or a section is being written. The former
+   * white-only sweeps (a 1.7 s Lovable-style pass here, the board 29480:48478
+   * two-crest wave on the build line) are superseded by this, at the designer's
+   * request; the reduced-motion fallbacks below are unchanged.
    */
-  .thinking {
-    background: linear-gradient(
-      100deg,
-      var(--white-400) 0%, var(--white-400) 38%,
-      #ffffff 50%,
-      var(--white-400) 62%, var(--white-400) 100%
+  .thinking,
+  .gen-work {
+    --sh-base: var(--white-400);
+    background-image: linear-gradient(
+      90deg,
+      var(--sh-base) 0%, var(--sh-base) 34%,
+      var(--sh-hue) 44%,
+      #ffffff 54%, #ffffff 58%,
+      var(--sh-base) 62%, var(--sh-base) 100%
     );
-    background-size: 260% 100%;
+    background-size: 300% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: thinking-sweep 1.7s linear infinite;
+    animation: sh-sweep 3.5s linear infinite, sh-hue 10.5s linear infinite;
+    /* `--sh-slot` (0 · 1 · 2, set inline at mount by ui/shimmer.ts) starts the hue rotation on
+       the colour whose turn it is — whole sweep periods, so the fades stay in the rests */
+    animation-delay: 0s, calc(var(--sh-slot, 0) * -3.5s);
   }
-  @keyframes thinking-sweep {
-    from { background-position: 130% 0; }
-    to   { background-position: -30% 0; }
+  /* the build line reads at the board's average brightness (24% ground, 72% crests) */
+  .gen-work { --sh-base: var(--white-480); }
+  @keyframes sh-sweep {
+    0%    { background-position: 100% 0; }
+    25.7% { background-position: 0% 0; }
+    100%  { background-position: 0% 0; }
+  }
+  @keyframes sh-hue {
+    0%, 28%      { --sh-hue: #a4b9ff; }
+    33.3%, 61.3% { --sh-hue: #caaafe; }
+    66.7%, 94.7% { --sh-hue: #febbaa; }
+    100%         { --sh-hue: #a4b9ff; }
   }
   @media (prefers-reduced-motion: reduce) {
     .thinking { animation: none; color: var(--white-400); }
@@ -491,9 +547,11 @@
    * The generation outline (Figma 29480:48478) — the work line under the section
    * being written, and the ring that says which one it is.
    *
-   * THE GRADIENT IS THE DESIGNER'S, off the board: `background-clip: text` over
+   * THE GRADIENT WAS THE DESIGNER'S, off the board: `background-clip: text` over
    * linear-gradient(90deg, NA/300 0%, NA/800 21.6%, NA/300 52.4%, NA/800 99.5%) —
-   * two bright crests of 72% white in a 24% ground. Read in the DARK theme; the
+   * two bright crests of 72% white in a 24% ground. ⚠️ SUPERSEDED 16.09.2026 by his
+   * own request for the three-hue shimmer (see `.thinking` above) — the line now
+   * wears that, at the board's average brightness. Read in the DARK theme; the
    * export resolves those tokens to near-black, which would paint the line invisible.
    *
    * ⚠️ The board's stop positions are one FRAME of a moving wave, and tiling them
@@ -509,26 +567,7 @@
    * (App.tsx pulses it per section instead of holding it) — a minute of blurred
    * surfaces would take the frames this line needs.
    */
-  .gen-work {
-    background-image: linear-gradient(
-      90deg,
-      #ffffff3d 0%,
-      #ffffffb8 25%,
-      #ffffff3d 50%,
-      #ffffffb8 75%,
-      #ffffff3d 100%
-    );
-    background-size: 220% 100%;
-    background-repeat: repeat-x;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: gen-work-sweep 3.4s linear infinite;
-  }
-  @keyframes gen-work-sweep {
-    from { background-position: 110% 0; }
-    to   { background-position: 0 0; }
-  }
+  /* `.gen-work`'s paint lives with `.thinking` above (THE THREE-HUE SHIMMER). */
 
   .step-spin {
     transform-origin: 12px 12px;

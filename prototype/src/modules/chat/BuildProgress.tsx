@@ -46,6 +46,7 @@ import { useT } from '@/i18n'
 import { IconPage, IconStepDone, IconStepQueued, IconStepRunning } from '@/ui/icons'
 import { cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade } from '@/ui/motion'
 import { buildOutline } from './build'
+import { useShimmerSlot } from '@/ui/shimmer'
 
 const LINE = 'var(--gray-750)'
 
@@ -65,6 +66,8 @@ function gapAfter(i: number, last: number, active: number) {
  * feel cheap.
  */
 function WorkLine({ text, beat }: { text: string; beat: string }) {
+  /* a fresh sentence joins the hue rotation where it stands, not at blue — see ui/shimmer.ts */
+  const shimmer = useShimmerSlot(beat)
   return (
     <motion.div
       key="work"
@@ -74,7 +77,7 @@ function WorkLine({ text, beat }: { text: string; beat: string }) {
       transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
       className="overflow-hidden"
     >
-      <p key={beat} className="gen-work pt-[5px] text-[14px] leading-[1.4]">
+      <p key={beat} className="gen-work pt-[5px] text-[14px] leading-[1.4]" style={shimmer}>
         {text}
       </p>
     </motion.div>
