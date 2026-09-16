@@ -78,9 +78,10 @@
   `height` — измеренное исключение из контракта с тремя условиями (`design-system.md` §9 п. 9),
   не прецедент. Спека — `docs/handoff/panel-reveal-spec.md`; фильмы — `prototype/scratchpad/reveal/`.
 
-Состояние инструментов: `npm run build` зелёный, `npm run check:brief` — новый блок Reveal 9/9,
-полный прогон (363 проверки) на этой сборке ещё шёл в момент коммита; артефакт переопубликовывается
-после зелёного итога (последняя опубликованная — **версия 73**, блик 12 %). Стенды слота —
+Состояние инструментов: `npm run build` зелёный, `npm run check:brief` **363/363**,
+артефакт переопубликован — **версия 74**, 946 180 байт. ⚠️ Пока идёт `check:brief`, не запускать
+`npm run build` / `npm run artifact`: они пересобирают `dist`, который отдаёт превью, и прогон падает
+на `ERR_HTTP_RESPONSE_CODE_FAILURE` посреди дистанции (16.09.2026, один прогон потерян). Стенды слота —
 `prototype/scratchpad/slot-stand/` (формы) и `…/slot-stand/states/` (состояния).
 
 ## Дисциплина проверки — без неё ничего мне не показывать
@@ -88,7 +89,7 @@
 - `cd prototype && npm run build` — обязателен, сломанный прототип нельзя показать CEO.
 - Полная проверка: поднять `npx vite preview --port 4173`, затем
   `CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run check:brief`
-  (~6 минут, 354 проверки; локальный playwright без этой переменной падает).
+  (~6 минут, 363 проверки; локальный playwright без этой переменной падает).
 - Перед `npm run artifact` — `pip install fonttools brotli`, иначе файл не влезет в лимит.
 - Перед публикацией — `Artifact action: read` по ссылке
   https://claude.ai/code/artifact/3a24a501-7176-4bf4-8e99-cbb56b7ba1a9 (посмотреть, что там
