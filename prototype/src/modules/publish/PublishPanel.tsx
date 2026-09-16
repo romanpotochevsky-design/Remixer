@@ -761,7 +761,12 @@ function LastStepCard({ domain, sub, resent, onResend, onUnlink }: {
           onClick={onUnlink}
           className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[var(--white-560)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
         >
-          <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Unlink', uk: 'Відв’язати' })}</span>
+          {/* 1px DOWN from the cap centre — the optical correction the mode pill wears (designer,
+              16.09.2026, on the row's twin: «текст в кнопке по вертикали кривой, он на несколько
+              пикселей выше чем нужно»). Measured in ink at 2×: cap-centred, the word's ink sat on
+              the plate's centre (32/64) while the icon's ink centre is 33.5 and the lowercase mass
+              reads lower still — a lowercase word on a pill is read by its x-height, not its caps. */}
+          <span className="translate-y-px [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Unlink', uk: 'Відв’язати' })}</span>
           <IconUnlink size={20} />
         </button>
       </div>
@@ -1914,7 +1919,11 @@ export function PublishPanel() {
                       label's 9px CAP band in the 32 button (y 11.5) beside a 20 icon (y 6) — both
                       on 16. A raw 14px line box carries descender room under the caps, so `items-
                       center` sat the glyphs ~1.5px HIGH of the icon and the word read crooked. */}
-                  <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Unlink', uk: 'Відв’язати' })}</span>
+                  {/* …and 1px DOWN from that centre, the mode pill's optical correction: with the cap
+                      band centred the word still read high («на несколько пикселей выше чем нужно»).
+                      Ink at 2×: word 23–41 (centre 32.0), icon 19–48 (centre 33.5), lowercase body
+                      28–41 (34.5). One whole pixel — a half would blur the glyphs. */}
+                  <span className="translate-y-px [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Unlink', uk: 'Відв’язати' })}</span>
                   <IconUnlink size={20} />
                 </button>
               </div>
