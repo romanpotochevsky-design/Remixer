@@ -774,7 +774,15 @@ function LastStepCard({ domain, sub, resent, onResend, onUnlink }: {
   )
 }
 
-export function PublishPanel() {
+/**
+ * `hold` — the canvas is still handing over (a surface leaving, the site fading back; App.tsx
+ * `canvasSettling`): the panel waits for it before it springs in, so a press that closes the
+ * Domains window and asks for the panel in one commit is seen as two moves, not a collision
+ * (designer, 16.09.2026). The store's `publishOpen` is untouched — nothing is lost, only timed.
+ */
+const keepPanelOnMainThread = () => {}
+
+export function PublishPanel({ hold = false }: { hold?: boolean } = {}) {
   const { world, set } = useWorld()
   const { publishOpen, togglePublish, openDomains, openPanel, publishHintOpen, dismissPublishHint } = useUI()
   const { t } = useT()
@@ -1245,7 +1253,7 @@ export function PublishPanel() {
 
   return (
     <AnimatePresence>
-      {publishOpen && (
+      {publishOpen && !hold && (
         <motion.div
           ref={panelRef}
           role="dialog"
@@ -1256,6 +1264,9 @@ export function PublishPanel() {
           initial="initial"
           animate="animate"
           exit="exit"
+          /* main thread, not WAAPI: the composited spring handed the panel back at opacity 0 for
+             one frame after landing (traced 16.09.2026, t≈430 ms) — see App.tsx keepOnMainThread */
+          onUpdate={keepPanelOnMainThread}
           /*
            * WHERE IT SITS — the SHELL board 29697:54553, which is the one that shows the
            * panel in its window (designer, 09.09.2026: "сделай расположение этого открытого

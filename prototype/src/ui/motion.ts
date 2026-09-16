@@ -740,6 +740,34 @@ export const surface = {
   exit: { opacity: 0, scale: 0.99, y: -6, transition: EXIT },
 }
 
+/*
+ * THE CANVAS HANDS OVER ONE THING AT A TIME (designer, 16.09.2026, from a recording of the
+ * Connect press: «сейчас мы закрываем окно с доменами после нажатия на Connect… у этого нет
+ * анимации, оно просто происходит в один кадр»). The canvas swap in App.tsx used to be a bare
+ * conditional: a surface MOUNTED with its own entrance, but UNMOUNTED between two frames, and the
+ * site came back the same instant — traced: at the first frame after the press the window was
+ * gone and the site stood at opacity 1, while the Publish panel had already started its spring
+ * under the still-leaving sheet. Three things in one frame.
+ *
+ * Now the swap runs under `AnimatePresence mode="wait"`: the leaving screen goes first (its own
+ * `exit`, 140 ms, flat — the house rule for leaving), THEN the next one comes — the site with
+ * this plain fade, a surface with its own entrance — and the Publish panel, when a press has
+ * asked for it, holds until the site is back (App.tsx `hold`), so the eye follows one hand-over,
+ * not a collision. Opacity only on the site: it is the ground returning, not an object arriving.
+ */
+export const siteBack = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.22, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+/** The Domains window as ONE object leaving — frame, bar and sheet together (its entrance is the
+ *  sheet's own `surface` rise, unchanged; the wrapper only owns the exit). */
+export const surfaceWindow = {
+  initial: { opacity: 1 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0, scale: 0.99, y: -6, transition: EXIT },
+} as const
+
 /**
  * A TOOLTIP (ui/Tooltip.tsx) — the smallest surface in the product, and it still opens the
  * way everything else here does (designer, 16.09.2026, on the status chip in the Publish

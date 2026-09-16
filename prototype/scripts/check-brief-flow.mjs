@@ -2642,8 +2642,46 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.waitForTimeout(800)
     await p.locator('button:has-text("Connect")').first().click()
     await p.waitForTimeout(800)
-    await p.locator('[role="dialog"] button:has-text("Connect domain")').last().click()
-    await p.waitForTimeout(900)
+    /*
+     * THE CANVAS HANDS OVER ONE THING AT A TIME (designer, 16.09.2026, from a recording of this
+     * press: «сейчас мы закрываем окно с доменами после нажатия на Connect… у этого нет анимации,
+     * оно просто происходит в один кадр»). Film the press: the Domains window must LEAVE (fade,
+     * several frames, never back to 1), the site must come back after it (fade in), and the
+     * Publish panel must arrive only once the site stands — three moves, in order.
+     */
+    const hand = await p.evaluate(async () => {
+      const main = document.querySelector('main')
+      const win = () => [...main.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Domains')?.closest('main > *')
+      const samples = []
+      const t0 = performance.now()
+      const tick = () => {
+        const now = performance.now()
+        const w = win(); const site = document.querySelector('.site-stage'); const panel = document.querySelector('[role="dialog"][aria-label="Publish"]')
+        samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, site: site ? +getComputedStyle(site.parentElement).opacity : null, panel: panel ? +getComputedStyle(panel).opacity : null })
+        if (now - t0 < 1200) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+      ;[...document.querySelectorAll('[role="dialog"] button')].filter((b) => /Connect domain/.test(b.textContent)).pop().click()
+      await new Promise((r) => setTimeout(r, 1300))
+      return samples
+    })
+    const winFrames = hand.filter((s) => s.win !== null)
+    const winGone = hand.find((s) => s.win === null)
+    const siteFrames = hand.filter((s) => s.site !== null)
+    const siteFull = siteFrames.find((s) => s.site >= 0.99)
+    const panelFirst = hand.find((s) => s.panel !== null)
+    const monoDown = winFrames.every((s, i) => i === 0 || s.win <= winFrames[i - 1].win + 0.001)
+    const monoUp = siteFrames.every((s, i) => i === 0 || s.site >= siteFrames[i - 1].site - 0.001)
+    const panelMono = hand.filter((s) => s.panel !== null).every((s, i, a) => i === 0 || s.panel >= a[i - 1].panel - 0.001)
+    check(`Connect: the Domains window LEAVES over several frames, fading and never flashing back — ${label}`,
+      winFrames.length >= 4 && winFrames[winFrames.length - 1].win < 0.4 && monoDown && !!winGone,
+      JSON.stringify({ frames: winFrames.length, last: winFrames[winFrames.length - 1]?.win, mono: monoDown, goneAt: winGone?.t }))
+    check(`…the site fades back in AFTER the window is gone, monotonically — ${label}`,
+      !!winGone && siteFrames.length >= 4 && siteFrames[0].t >= winGone.t - 1 && siteFrames[0].site < 0.3 && !!siteFull && monoUp,
+      JSON.stringify({ first: siteFrames[0], full: siteFull?.t, mono: monoUp }))
+    check(`…and the Publish panel arrives only once the site stands, then springs in without a blink — ${label}`,
+      !!panelFirst && !!siteFull && panelFirst.t >= siteFull.t - 1 && panelFirst.panel < 0.2 && panelMono && hand[hand.length - 1].panel === 1,
+      JSON.stringify({ panelAt: panelFirst?.t, siteFullAt: siteFull?.t, first: panelFirst?.panel, mono: panelMono, last: hand[hand.length - 1].panel }))
     const flight = await world()
     check(`the connect starts the walk and touches nothing else — ${label}`,
       flight.domain === 'connecting' && String(flight.published) === v, JSON.stringify(flight))
@@ -3262,8 +3300,12 @@ await shot('30-plan-review')
   await p.waitForTimeout(300)
 
   await p.click('button:has-text("Start Building")')
-  /* wait for the card rather than a stopwatch: the ack lands first, the outline after it */
-  await p.waitForFunction(() => document.body.innerText.includes('Layout & navigation'), null, { timeout: 15000 })
+  /* wait for the CARD rather than a stopwatch: the ack lands first, the outline after it.
+     ⚠️ By its element, not by a section name: the plan document lists the same section names,
+     and since the canvas hands over with an exit (16.09.2026) the leaving plan surface is still
+     on the page for 140 ms after the press — a text wait resolved on IT, 400 ms before the card
+     had landed, and read the page without the card. */
+  await p.waitForSelector('section[aria-label="What Remixer is building"]', { timeout: 15000 })
   await p.waitForTimeout(400)
   await shot('32-plan-build-started')
   const card = await text()

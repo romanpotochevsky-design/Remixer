@@ -32,7 +32,7 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
-import { SPRING, EXIT, popoverContent } from '@/ui/motion'
+import { SPRING, EXIT, popoverContent, siteBack, surfaceWindow } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -339,9 +339,46 @@ function SimulatedEmail() {
   )
 }
 
+/*
+ * ⚠️ `onUpdate` no-ops keep these one-off canvas fades ON THE MAIN THREAD (motion 11 goes to
+ * WAAPI for opacity/transform unless an element has onUpdate — AcceleratedAnimation.supports).
+ * Traced on this very hand-over: a composited fade hands the element back at its pre-animation
+ * inline opacity for the frame between `finish` and motion's next render — the leaving window
+ * read 1 again after fading to .11, the returning site read 0 after reaching 1, the panel 0
+ * after its spring — three one-frame blinks in one hand-over. Main-thread animations write the
+ * final value on their last frame and there is nothing to hand back.
+ */
+const keepOnMainThread = () => {}
+
 export default function App() {
   const { world } = useWorld()
   const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
+
+  /*
+   * A SURFACE IS LEAVING THE CANVAS. From the moment `surface` goes back to the preview until
+   * the site has faded back in (`siteBack` complete), the Publish panel is held: on the Connect
+   * press it is asked for in the same commit that closes the Domains window, and arriving then
+   * it stacked on a window that was still leaving (designer, 16.09.2026). The fallback timer is
+   * for the case where no `animate` completion ever comes (reduced motion drops nothing here —
+   * opacity still animates — but a future variant might).
+   */
+  const [canvasSettling, setCanvasSettling] = useState(false)
+  const prevSurface = useRef(surface)
+  /* Read DURING render, not from the effect below: the press that closes the window also asks
+     for the panel in the same commit, and an effect-set flag would arrive one render late — the
+     panel mounted at 2 % opacity for a beat, then left again (traced). The ref still holds the
+     previous surface while this render runs; the effect moves it after the commit. */
+  const surfaceJustLeft = prevSurface.current !== 'preview' && surface === 'preview'
+  useEffect(() => {
+    const was = prevSurface.current
+    prevSurface.current = surface
+    if (was !== 'preview' && surface === 'preview') {
+      setCanvasSettling(true)
+      const id = window.setTimeout(() => setCanvasSettling(false), 700)
+      return () => window.clearTimeout(id)
+    }
+  }, [surface])
+  const holdPanel = canvasSettling || surfaceJustLeft
 
   /*
    * The glow waits for the send choreography to finish.
@@ -765,16 +802,40 @@ export default function App() {
             thing Lovable gets for free from its preview iframe. Mobile is a real
             390px frame centred on the ground, not a scaled-down desktop. */}
         <main className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
+          {/*
+            * ONE THING AT A TIME (designer, 16.09.2026, on the Connect press: the Domains window
+            * vanished in one frame while the Publish panel was already springing in). `mode="wait"`:
+            * whatever is on the canvas leaves first — a surface with its own `exit`, the site with a
+            * plain fade — and only then does the next one come. While a surface is on its way out
+            * and the site is fading back, `hold` keeps the Publish panel from arriving on top of it
+            * (motion.ts `siteBack`). `initial={false}`: the first canvas of a session just stands.
+            */}
+          <AnimatePresence mode="wait" initial={false}>
           {(() => {
             /* The plan document takes the canvas the same way the domains dashboard
                does — a surface in place of the site, not a modal over it. There is no
                site to preview at this point in the flow, so nothing is being covered. */
             return surface === 'plan' ? (
-              <PlanSurface />
+              <motion.div key="plan" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+                <PlanSurface />
+              </motion.div>
             ) : surface === 'domains' ? (
-              <DomainsSurface />
+              /* the window leaves as ONE object — frame, bar and sheet — not sheet first, frame after */
+              <motion.div key="domains" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+                <DomainsSurface />
+              </motion.div>
             ) : (
-              <div className="flex h-full items-center justify-center">
+              <motion.div
+                key="site"
+                className="flex h-full items-center justify-center"
+                variants={siteBack}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                onUpdate={keepOnMainThread}
+                /* the site is back on the ground: now the panel may come (see `hold`) */
+                onAnimationComplete={(def) => { if (def === 'animate') setCanvasSettling(false) }}
+              >
                 <motion.div
                   /* the phone frame gets a hairline: floating on the ground, the site's
                      own dark sections would otherwise bleed into the shell. Lovable
@@ -819,10 +880,11 @@ export default function App() {
                   )}
                   <SiriGlow active={glow} surface={world.project === 'built' ? 'split' : 'dark'} />
                 </motion.div>
-              </div>
+              </motion.div>
             )
           })()}
-          <PublishPanel />
+          </AnimatePresence>
+          <PublishPanel hold={holdPanel} />
       {/* The design system's "are you sure?" — mounted ONCE, here, because its scrim covers
           the whole shell (board 30282:51628). Anything that needs it calls
           `useConfirm.getState().ask({…})`; see ui/ConfirmDialog.tsx. */}

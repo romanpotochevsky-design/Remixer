@@ -12,3 +12,4 @@ prototype/*.tmp.mjs
 # diffs — is committed next to them; the 122 raw JPEGs (6 MB) are not.
 prototype/scratchpad/swap/frames/
 prototype/scratchpad/publish-shrink/frames/
+prototype/scratchpad/connect-exit/frames/
