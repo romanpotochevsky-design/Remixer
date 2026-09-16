@@ -46,7 +46,7 @@ import { useT } from '@/i18n'
 import { IconPage, IconStepDone, IconStepQueued, IconStepRunning } from '@/ui/icons'
 import { cardIn, cardInBody, cardInBodyFade, cardInFade, cardInRow, cardInRowFade } from '@/ui/motion'
 import { buildOutline } from './build'
-import { useShimmerSlot } from '@/ui/shimmer'
+import { useShimmerPhase } from '@/ui/shimmer'
 
 const LINE = 'var(--gray-750)'
 
@@ -66,8 +66,9 @@ function gapAfter(i: number, last: number, active: number) {
  * feel cheap.
  */
 function WorkLine({ text, beat }: { text: string; beat: string }) {
-  /* a fresh sentence joins the hue rotation where it stands, not at blue — see ui/shimmer.ts */
-  const shimmer = useShimmerSlot(beat)
+  /* the line's sweep runs in the page's phase, so it lands in the holds of the hue its
+     parent scope (the active row) is showing on the ring — see ui/shimmer.ts */
+  const shimmer = useShimmerPhase(beat)
   return (
     <motion.div
       key="work"
@@ -101,6 +102,8 @@ export function BuildProgress({ animate }: { animate: boolean }) {
   /* `at` past the last section means every one is done and the page is being assembled —
      the beat just before the site appears in the canvas. */
   const active = build.at
+  /* the hue clock of the active row, phased to the page when a new section takes over */
+  const scopePhase = useShimmerPhase(active)
   const assembling = active >= sections.length
 
   return (
@@ -223,12 +226,20 @@ export function BuildProgress({ animate }: { animate: boolean }) {
                     />
                   )}
 
-                  <span className="flex min-w-0 flex-1 items-start gap-3 pl-1">
-                    <span className="flex-none">
+                  {/* The active row is the shimmer's SCOPE: it carries the hue clock, and the
+                      ring and the work line under the title both read it — one colour,
+                      drifting together (designer, 16.09.2026). */}
+                  <span
+                    className={`flex min-w-0 flex-1 items-start gap-3 pl-1${state === 'active' ? ' shimmer-hue' : ''}`}
+                    style={state === 'active' ? scopePhase : undefined}
+                  >
+                    {/* the ring wears the scope's hue through `currentColor` — set on this existing
+                        wrapper, not a new one: the checks read the row's spans by shape */}
+                    <span className="flex-none" style={state === 'active' ? { color: 'var(--sh-hue)' } : undefined}>
                       {state === 'done' ? (
                         <IconStepDone size={24} className="text-[var(--live)]" />
                       ) : state === 'active' ? (
-                        <IconStepRunning size={24} className="text-[var(--action)]" />
+                        <IconStepRunning size={24} />
                       ) : (
                         <IconStepQueued size={24} className="text-[#ffffff3d]" />
                       )}

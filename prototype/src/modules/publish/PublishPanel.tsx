@@ -43,6 +43,7 @@ import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck, IconVisitors } fr
 import { retryConnect } from '@/modules/domains/connect'
 import { domainRowStatus } from '@/modules/domains/status'
 import { Chip } from '@/ui/Chip'
+import { useShimmerPhase } from '@/ui/shimmer'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
 import { useConfirm } from '@/ui/ConfirmDialog'
 import { popover, popoverContent } from '@/ui/motion'
@@ -365,10 +366,22 @@ function UrlField({ value, suffix }: { value: string; suffix?: string }) {
  * a step that is working — one idiom for "this is moving on its own".
  */
 function ProgressCard({ title, sub, done }: { title: string; sub: string; done?: boolean }) {
+  /*
+   * WHILE IT MOVES, THE HEADLINE SHIMMERS AND THE ARC FOLLOWS ITS HUE (designer,
+   * 16.09.2026, on this very card: «вставляем градиентную плашку в текст, там где идут
+   * какие то процессы/спинеры/загрузки» and «спинер синхронно с текстом тоже менял плавно
+   * и красиво цвет»). The row is the shimmer's scope — it carries the hue clock — the
+   * headline carries the sweep over white ink, and the arc's stroke is the same inherited
+   * `--sh-hue`, so the two cannot show different colours. ⚠️ This supersedes the arc's
+   * fixed `--action` blue of 14.09.2026 («я хочу чтобы цвет в спинере был синий вот такой
+   * 1587FF»): the arc still STARTS on the shimmer's blue, then drifts with the text.
+   * The finished card (green tick) shimmers nothing: nothing is moving.
+   */
+  const phase = useShimmerPhase()
   return (
     <div className="px-1.5 pt-1.5">
       <div className="rounded-[12px] border border-[var(--white-100)] bg-[var(--white-100)]">
-        <div className="flex items-center gap-3 py-4 pl-4 pr-3">
+        <div className={`flex items-center gap-3 py-4 pl-4 pr-3${done ? '' : ' shimmer-hue'}`} style={done ? undefined : phase}>
           {/* ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up
               and only a press is left, the arc becomes a filled green tick. One shape for
               "this is moving" and "this is done" — the icon is the whole difference, which
@@ -389,12 +402,15 @@ function ProgressCard({ title, sub, done }: { title: string; sub: string; done?:
                  чтобы цвет в спинере был синий вот такой 1587FF"). Blue is this product's
                  colour for something happening; the ring behind it stays neutral so the
                  arc is the only thing the eye follows. */
-              stroke="var(--action)" strokeWidth="1.8" strokeLinecap="round"
+              stroke="var(--sh-hue)" strokeWidth="1.8" strokeLinecap="round"
               className="step-spin"
             />
           </svg>
           )}
-          <p className="min-w-0 flex-1 break-words text-[15px] font-semibold leading-[1.2] text-white">
+          <p
+            className={`min-w-0 flex-1 break-words text-[15px] font-semibold leading-[1.2] ${done ? 'text-white' : 'shimmer-ink shimmer-ink--white'}`}
+            style={done ? undefined : phase}
+          >
             {keepHostsWhole(title)}
           </p>
         </div>

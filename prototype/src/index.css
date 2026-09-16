@@ -506,8 +506,31 @@
    * two-crest wave on the build line) are superseded by this, at the designer's
    * request; the reduced-motion fallbacks below are unchanged.
    */
+  /*
+   * TIMING, re-set by the designer on the live build (16.09.2026, on version 70): «слишком
+   * долгий тайминг и просто серого текста… я бы сократил эту паузу раза в 2» and «а скорость
+   * при которой движется цветной градиент замедлил на треть». So: sweep 0.9 → 1.35 s
+   * (speed × ⅔), rest 2.6 → 1.35 s (halved), period 2.7 s, hue cycle 3 × 2.7 = 8.1 s.
+   * The sweep is the first half of every period; the hue holds through it and fades
+   * through the rest — the whole rest, not a snap at its end, because the SPINNER wears
+   * this hue too (below) and is visible all the time: «спинер синхронно с текстом тоже
+   * менял плавно и красиво цвет».
+   *
+   * TWO KINDS OF HOST. A word that waits alone (`.thinking`) carries both clocks itself:
+   * its sweep starts the moment it mounts (the wait is 2.6 s long — a sweep that waited
+   * for a beat could miss it), and its hue starts on the slot whose turn it is
+   * (`--sh-slot`, ui/shimmer.ts). A line with a SPINNER beside it (the progress card's
+   * headline, the build card's active section) is a SCOPE: the parent of the text and the
+   * spinner wears `.shimmer-hue` — the hue clock — and both children read the inherited
+   * `--sh-hue`, the text in its gradient and the spinner in its stroke, so they cannot
+   * disagree; the text (`.shimmer-ink` / `.gen-work`) carries only the sweep. Both clocks
+   * in a scope are phased to the PAGE clock (`--sh-t`, ui/shimmer.ts), so the sweep lands
+   * in the hue's holds whenever the text (re)mounts — the price is that a fresh sentence
+   * waits up to a period for its first pass; the arc's continuity is worth it.
+   */
   .thinking,
-  .gen-work {
+  .gen-work,
+  .shimmer-ink {
     --sh-base: var(--white-400);
     background-image: linear-gradient(
       90deg,
@@ -521,26 +544,46 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: sh-sweep 3.5s linear infinite, sh-hue 10.5s linear infinite;
-    /* `--sh-slot` (0 · 1 · 2, set inline at mount by ui/shimmer.ts) starts the hue rotation on
-       the colour whose turn it is — whole sweep periods, so the fades stay in the rests */
-    animation-delay: 0s, calc(var(--sh-slot, 0) * -3.5s);
   }
+  /* on white text the white core vanishes into the base and only the hue is seen passing —
+     the board's literal «white → hue → white» */
+  .shimmer-ink--white { --sh-base: #ffffff; }
   /* the build line reads at the board's average brightness (24% ground, 72% crests) */
   .gen-work { --sh-base: var(--white-480); }
+  .thinking {
+    animation: sh-sweep 2.7s linear infinite, sh-hue 8.1s linear infinite;
+    animation-delay: 0s, calc(var(--sh-slot, 0) * -2.7s);
+  }
+  .gen-work,
+  .shimmer-ink {
+    animation: sh-sweep 2.7s linear infinite;
+    animation-delay: var(--sh-t, 0s);
+  }
+  .shimmer-hue {
+    animation: sh-hue 8.1s linear infinite;
+    animation-delay: var(--sh-t, 0s);
+  }
   @keyframes sh-sweep {
-    0%    { background-position: 100% 0; }
-    25.7% { background-position: 0% 0; }
-    100%  { background-position: 0% 0; }
+    0%   { background-position: 100% 0; }
+    50%  { background-position: 0% 0; }
+    100% { background-position: 0% 0; }
   }
   @keyframes sh-hue {
-    0%, 28%      { --sh-hue: #a4b9ff; }
-    33.3%, 61.3% { --sh-hue: #caaafe; }
-    66.7%, 94.7% { --sh-hue: #febbaa; }
+    0%, 16.7%    { --sh-hue: #a4b9ff; }
+    33.3%, 50%   { --sh-hue: #caaafe; }
+    66.6%, 83.4% { --sh-hue: #febbaa; }
     100%         { --sh-hue: #a4b9ff; }
   }
   @media (prefers-reduced-motion: reduce) {
     .thinking { animation: none; color: var(--white-400); }
+    .shimmer-ink {
+      animation: none;
+      background-image: none;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
+      color: var(--sh-base);
+    }
+    .shimmer-hue { animation: none; }
   }
 
   /*
