@@ -2103,17 +2103,22 @@ check('…and the typed prompt is built as given', await cardUp())
         }
         return e === root
       }
+      const unlinkBtn = card ? [...card.querySelectorAll('button')].find((e) => /Unlink|Відв/.test(e.textContent || '')) : null
       return {
         card: !!card,
         parented: card ? clear(card, body) && body.lastElementChild.contains(card) : null,
         belowMail: card && mail ? Math.round(card.getBoundingClientRect().top - mail.getBoundingClientRect().bottom) : null,
         padlock: /Secure padlock on/.test(d.innerText),
+        /* one verb, one colour: grey in the row as in the letter (designer, 16.09.2026: «ёлка рождественская») */
+        unlinkInk: unlinkBtn ? getComputedStyle(unlinkBtn).color : null,
       }
     })
     check(`the Unlink row is there: ${label}`, row.card === want && !row.padlock, JSON.stringify(row))
     if (want) {
       check('…as the body card’s last child, under whatever card is above it',
         row.parented && (row.belowMail === null || row.belowMail === 16), JSON.stringify(row))
+      check('…and its `Unlink` is grey, as in the letter — not the board’s amber (designer, 16.09.2026)',
+        row.unlinkInk === 'rgba(255, 255, 255, 0.56)', JSON.stringify({ unlinkInk: row.unlinkInk }))
       const seen = await p.evaluate(() => {
         const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
         const btn = [...d.querySelectorAll('button')].find((b) => /^(Unlink|Відв)/.test(b.textContent.trim()))

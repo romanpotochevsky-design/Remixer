@@ -1326,9 +1326,11 @@ export function PublishPanel() {
                 * the one action that belongs to a domain on the right.
                 *
                 * ⚠️ `Unlink` IS THE DESIGNER'S (14.09.2026: "справа будет кнопка отвязать
-                * домен"), and it is the panel's only amber-on-text control: #f57c00 is the
-                * board's literal, not one of our tokens — the product has no other
-                * destructive-but-reversible verb to share a colour with yet.
+                * домен") — and since 16.09.2026 it is GREY here as in the letter (14 medium at
+                * 56 % white, white on hover), not the board's amber #f57c00: shown the two
+                * colours side by side he chose one («я думаю сделать его лучше везде серым, так
+                * как получается какая-то ёлка рождественская, а не интерфейс»). One verb, one
+                * colour, in both of its homes.
                 *
                 * ⚠️ The left line no longer says "anyone can visit" (his question: "это
                 * как? в дримхосте есть такие настройки?"). There is no visibility setting
@@ -1780,7 +1782,7 @@ export function PublishPanel() {
                 </span>
                 <button
                   onClick={unlinkDomain}
-                  className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[#f57c00] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#f57c0014]"
+                  className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[var(--white-560)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
                 >
                   {t({ en: 'Unlink', uk: 'Відв’язати' })}
                   <IconUnlink size={20} />
