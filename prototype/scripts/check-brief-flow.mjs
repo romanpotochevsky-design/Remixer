@@ -1868,8 +1868,18 @@ check('…and the typed prompt is built as given', await cardUp())
        run down with a TypeError — a check that dies when the thing it guards changes is
        worse than no check. The card is the one holding `Unlink`; its colour is asserted
        separately below, so a change is REPORTED instead of fatal. */
-    const rim = [...d.querySelectorAll('div')].find((e) => /Unlink|Відв/.test(e.textContent || '')
-      && getComputedStyle(e).borderTopWidth === '1px' && Math.round(e.getBoundingClientRect().width) === 420)
+    /* …and since 16.09.2026 the stroke is an INSET SHADOW, not a border (board 30282:19216:
+       420 × 64 with the 1px stroke inside — a CSS border made the row 66), so the row is the
+       420-wide box holding Unlink whose box-shadow is an inset ring. */
+    /* the INNERMOST such box: the body card is also 420 wide, also holds "Unlink" in its text and
+       also wears an inset ring (its own rim), so the outermost match would be the wrong card */
+    const rimCands = [...d.querySelectorAll('div')].filter((e) => /Unlink|Відв/.test(e.textContent || '')
+      && /inset/.test(getComputedStyle(e).boxShadow) && Math.round(e.getBoundingClientRect().width) === 420
+      && e.getBoundingClientRect().height < 100)
+    const rim = rimCands.find((e) => !rimCands.some((o) => o !== e && e.contains(o)))
+    /* the ring is the comma-separated shadow that says `inset` — Tailwind's shadow utility
+       prints two transparent ring placeholders before it */
+    const insetPart = (el) => (getComputedStyle(el).boxShadow.split(/,(?![^(]*\))/).find((part) => /inset/.test(part)) || '').trim()
     const body = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).backgroundColor === 'rgba(255, 255, 255, 0.04)')
     const field = [...d.querySelectorAll('p')].find((e) => e.textContent === 'Website URL').parentElement.querySelector('div')
     const w = (el) => Math.round(el.getBoundingClientRect().width)
@@ -1890,7 +1900,9 @@ check('…and the typed prompt is built as given', await cardUp())
     }
     return {
       parented: clear(rim, body) && body.lastElementChild.contains(rim),
-      seamColour: getComputedStyle(rim).borderTopColor,
+      seamColour: (insetPart(rim).match(/rgba?\([^)]+\)/) || [null])[0],
+      seamRing: insetPart(rim).replace(/rgba?\([^)]+\)\s*/, '').trim(),
+      rowH: +rim.getBoundingClientRect().height.toFixed(2), rowPad: getComputedStyle(rim).padding, rowBorder: getComputedStyle(rim).borderTopWidth,
       card: w(rim), body: w(body), field: w(field),
       flush: Math.round(rim.getBoundingClientRect().bottom) === Math.round(body.getBoundingClientRect().bottom),
     }
@@ -1908,6 +1920,9 @@ check('…and the typed prompt is built as given', await cardUp())
    */
   check('…and its seam is the board’s #313133, not a composited token',
     seam.seamColour === 'rgb(49, 49, 51)', seam.seamColour)
+  check('…drawn as a 1px INSET ring, so the row is the board’s 420 × 64 with its content at 16 / 16 / 16 / 18 — a CSS border made it 66 (16.09.2026)',
+    seam.seamRing === '0px 0px 0px 1px inset' && seam.rowBorder === '0px' && seam.rowH === 64 && seam.rowPad === '16px 16px 16px 18px',
+    JSON.stringify({ ring: seam.seamRing, border: seam.rowBorder, h: seam.rowH, pad: seam.rowPad }))
 
   /*
    * ⚠️ THE CONFIRM SCRIM IS 70%, AGAINST ITS OWN BOARD'S 50% (designer, 15.09.2026:
@@ -2119,8 +2134,12 @@ check('…and the typed prompt is built as given', await cardUp())
     await openPublish(`p=built&a=paid&${q}`)
     const row = await p.evaluate(() => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
-      const card = [...d.querySelectorAll('div')].find((e) => /Unlink|Відв/.test(e.textContent || '')
-        && getComputedStyle(e).borderTopWidth === '1px' && Math.round(e.getBoundingClientRect().width) === 420)
+      /* the row's stroke is an inset ring since 16.09.2026 (board 30282:19216, 420 × 64); take the
+         INNERMOST 420-wide inset-ringed box holding Unlink — the body card matches too */
+      const cardCands = [...d.querySelectorAll('div')].filter((e) => /Unlink|Відв/.test(e.textContent || '')
+        && /inset/.test(getComputedStyle(e).boxShadow) && Math.round(e.getBoundingClientRect().width) === 420
+        && e.getBoundingClientRect().height < 100)
+      const card = cardCands.find((e) => !cardCands.some((o) => o !== e && e.contains(o)))
       const mail = [...d.querySelectorAll('div')].find((e) => /^One last step for/.test((e.textContent || '').trim()))
       const body = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).backgroundColor === 'rgba(255, 255, 255, 0.04)')
       const clear = (el, root) => {

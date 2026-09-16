@@ -11,3 +11,4 @@ prototype/*.tmp.mjs
 # hand-over). The analysis that matters — the contact sheet, the strips, the per-frame
 # diffs — is committed next to them; the 122 raw JPEGs (6 MB) are not.
 prototype/scratchpad/swap/frames/
+prototype/scratchpad/publish-shrink/frames/

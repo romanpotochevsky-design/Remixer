@@ -1867,7 +1867,19 @@ export function PublishPanel() {
                 * diagonal so it is still the same glass. Tone and word come from
                 * `domainRowStatus`, the table the topbar chip reads, so the two cannot disagree.
                 */
-              <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
+              /* ⚠️ THE STROKE IS AN INSET SHADOW, NOT A `border` (16.09.2026, the designer on
+                 this very edge: «я вообще не вижу разделительной линии»). Board 30282:19216 is
+                 420 × 64 with the 1px stroke INSIDE and its content at 8 / 16 / 16 / 16; a CSS
+                 border sits outside the padding box, so the row came out 66 tall with its
+                 content at 19 / 17 / 17 — the standing lesson of every card in this panel,
+                 missed on this one. The colour itself is HIS: «бордер сделан цветом 313133 а не
+                 прозрачным белым, потому что… прозрачный бордер наложится на прозрачный бордер
+                 и получится 8 % вместо 4-х» — #313133 is 4 % white flattened over the body
+                 card's 4 % fill, opaque so the edge it shares with the body card's rim does
+                 not double. Measured on the live build: stroke (49,49,51) = #313133 exactly,
+                 crisp 2 device px, on the fill (39,39,42); the body card's own rim reads
+                 (47,47,50) — the two lines are one weight, as he intended. */
+              <div className="flex items-center justify-between rounded-[16px] py-4 pl-[18px] pr-4 shadow-[inset_0_0_0_1px_#313133]">
                 {/* The word changing inside the row (Setting up → Waiting on your email → Live):
                     the old chip leaves, the new one comes up (motion.ts `swapText`). The slot
                     around them is always there, so `Unlink` keeps its end of the row while the
@@ -1890,7 +1902,12 @@ export function PublishPanel() {
                   onClick={unlinkDomain}
                   className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[var(--white-560)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
                 >
-                  {t({ en: 'Unlink', uk: 'Відв’язати' })}
+                  {/* ⚠️ THE WORD IS CAP-TRIMMED, like the letter's Unlink (designer, 16.09.2026, on
+                      this button: «текст в кнопке анлинк кривой»). Board 30282:19216 centres the
+                      label's 9px CAP band in the 32 button (y 11.5) beside a 20 icon (y 6) — both
+                      on 16. A raw 14px line box carries descender room under the caps, so `items-
+                      center` sat the glyphs ~1.5px HIGH of the icon and the word read crooked. */}
+                  <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Unlink', uk: 'Відв’язати' })}</span>
                   <IconUnlink size={20} />
                 </button>
               </div>
