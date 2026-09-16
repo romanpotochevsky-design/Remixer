@@ -94,8 +94,8 @@
   **слово плашки — два варианта** (тон по умолчанию / белое через тумблер консоли «Status chip —
   white word») — его выбор ждёт, см. открытый вопрос 16.
 
-Состояние инструментов: `npm run build` зелёный, `npm run check:brief` **364/364**,
-артефакт переопубликован — **версия 75**, 947 092 байта. ⚠️ Пока идёт `check:brief`, не запускать
+Состояние инструментов: `npm run build` зелёный, `npm run check:brief` **367/367**,
+артефакт переопубликован — **версия 76**, 947 674 байта. ⚠️ Пока идёт `check:brief`, не запускать
 `npm run build` / `npm run artifact`: они пересобирают `dist`, который отдаёт превью, и прогон падает
 на `ERR_HTTP_RESPONSE_CODE_FAILURE` посреди дистанции (16.09.2026, один прогон потерян). Стенды слота —
 `prototype/scratchpad/slot-stand/` (формы) и `…/slot-stand/states/` (состояния).
@@ -105,7 +105,7 @@
 - `cd prototype && npm run build` — обязателен, сломанный прототип нельзя показать CEO.
 - Полная проверка: поднять `npx vite preview --port 4173`, затем
   `CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run check:brief`
-  (~6 минут, 364 проверки; локальный playwright без этой переменной падает).
+  (~6 минут, 367 проверок; локальный playwright без этой переменной падает).
 - Перед `npm run artifact` — `pip install fonttools brotli`, иначе файл не влезет в лимит.
 - Перед публикацией — `Artifact action: read` по ссылке
   https://claude.ai/code/artifact/3a24a501-7176-4bf4-8e99-cbb56b7ba1a9 (посмотреть, что там
