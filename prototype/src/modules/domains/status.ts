@@ -117,18 +117,52 @@ const WAITING: Text = { en: 'Waiting on your email', uk: 'Чекаємо на в
  * Null wherever the row does not render (`domainIsHome` is false) — the caller hides the
  * row, not this function.
  */
-export function domainRowStatus(w: World): { tone: DomainTone; word: Text } | null {
+/**
+ * WHAT THE WORD MEANS — the tooltip on the row's chip (`ui/Tooltip.tsx`; designer,
+ * 16.09.2026: «непонятно что значат эти статусы… что такое "Ready"?… короткий и лаконичный
+ * понятный текст с описанием статусов»). One sentence, two at most, in the customer's own
+ * vocabulary (no records, no servers, no certificates — glossary.md), and each one answers
+ * the question a status word leaves open: what do I do now — or is there nothing to do.
+ * Kept beside the words so a word cannot change without its meaning.
+ */
+const HINT: Record<'unreachable' | 'old-site' | 'live' | 'waiting' | 'ready' | 'setting-up', Text> = {
+  unreachable: {
+    en: 'The address isn’t answering right now. Your site is safe on its free address.',
+    uk: 'Адреса зараз не відповідає. Ваш сайт цілий і працює за безкоштовною адресою.',
+  },
+  'old-site': {
+    en: 'This address still opens your previous site. It has to come off before this one can go on.',
+    uk: 'За цією адресою досі відкривається ваш попередній сайт. Його треба зняти, перш ніж стане цей.',
+  },
+  live: { en: 'Your site is up at this address.', uk: 'Ваш сайт відкривається за цією адресою.' },
+  waiting: {
+    en: 'The address starts working once you confirm the email we sent you.',
+    uk: 'Адреса запрацює, щойно ви підтвердите лист, який ми надіслали.',
+  },
+  ready: {
+    en: 'Connected and set up. Hit Publish to put your site on this address.',
+    uk: 'Підключено й налаштовано. Натисніть Publish, щоб сайт відкривався за цією адресою.',
+  },
+  'setting-up': {
+    en: 'We’re connecting the domain to your site. Nothing for you to do yet.',
+    uk: 'Підключаємо домен до вашого сайту. Поки що від вас нічого не потрібно.',
+  },
+}
+
+export function domainRowStatus(w: World): { tone: DomainTone; word: Text; hint: Text } | null {
   const tone = domainStatus(w)
   if (!tone) return null
-  const word = ((): Text => {
+  const [word, hint] = ((): [Text, Text] => {
     switch (w.domain) {
-      case 'unreachable': return { en: 'Not responding', uk: 'Не відповідає' }
-      case 'old-site': return { en: 'Showing your old site', uk: 'Показує старий сайт' }
-      case 'live': case 'multiple': return registrantUnconfirmed(w) ? WAITING : { en: 'Live', uk: 'Онлайн' }
-      case 'ready': return registrantUnconfirmed(w) ? WAITING : { en: 'Ready', uk: 'Готово' }
+      case 'unreachable': return [{ en: 'Not responding', uk: 'Не відповідає' }, HINT.unreachable]
+      case 'old-site': return [{ en: 'Showing your old site', uk: 'Показує старий сайт' }, HINT['old-site']]
+      case 'live': case 'multiple':
+        return registrantUnconfirmed(w) ? [WAITING, HINT.waiting] : [{ en: 'Live', uk: 'Онлайн' }, HINT.live]
+      case 'ready':
+        return registrantUnconfirmed(w) ? [WAITING, HINT.waiting] : [{ en: 'Ready', uk: 'Готово' }, HINT.ready]
       /* provisioning · connecting · propagating — the address is being set, on both walks */
-      default: return { en: 'Setting up', uk: 'Налаштовується' }
+      default: return [{ en: 'Setting up', uk: 'Налаштовується' }, HINT['setting-up']]
     }
   })()
-  return { tone, word }
+  return { tone, word, hint }
 }

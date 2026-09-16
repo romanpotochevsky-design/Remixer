@@ -42,6 +42,7 @@ import { STAGING_HOST } from '@/data/domains'
 import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck, IconVisitors } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
 import { domainRowStatus } from '@/modules/domains/status'
+import { Tooltip } from '@/ui/Tooltip'
 import { Chip } from '@/ui/Chip'
 import { useShimmerPhase } from '@/ui/shimmer'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
@@ -1552,7 +1553,12 @@ export function PublishPanel() {
                   <AnimatePresence mode="wait" initial={false}>
                     {rowStatus && (
                       <motion.span key={rowStatus.word.en} className="flex" variants={swapText} initial="initial" animate="animate" exit="exit">
-                        <Chip label={rowStatus.word} tone={rowStatus.tone} ink={world.chipInkWhite ? 'white' : 'tone'} />
+                        {/* WHAT THE WORD MEANS — a glass tooltip above the chip (designer,
+                            16.09.2026: «непонятно что значат эти статусы… что такое "Ready"?»).
+                            The words live with the status table so they cannot drift apart. */}
+                        <Tooltip text={rowStatus.hint}>
+                          <Chip label={rowStatus.word} tone={rowStatus.tone} ink={world.chipInkWhite ? 'white' : 'tone'} />
+                        </Tooltip>
                       </motion.span>
                     )}
                   </AnimatePresence>

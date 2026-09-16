@@ -2285,6 +2285,75 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.waitForTimeout(300)
   }
 
+  /*
+   * WHAT THE WORD MEANS — the glass tooltip on the status chip (ui/Tooltip.tsx; designer,
+   * 16.09.2026: «непонятно что значат эти статусы… что такое "Ready"? нужно сделать тултип
+   * стильный при ховере на статус… как в macOS… с лёгким эффектом стекла… анимация появления
+   * и пропадания в стиле Apple liquid glass»). Hover the chip: after a beat a bubble with a
+   * tail stands above it — one clip-path shape, blurred glass, a stroked rim — inside the
+   * panel's edges with its tail on the chip; it grows out of the tail with one soft overshoot
+   * and leaves in a straight fade; the panel underneath does not close.
+   */
+  {
+    const CHIP = '[role="dialog"][aria-label="Publish"] .liquid-glass--chip[data-tone]'
+    const readTip = () => p.evaluate((sel) => {
+      const el = document.querySelector('[role="tooltip"]'); if (!el) return null
+      const chipEl = document.querySelector(sel); const chip = chipEl.getBoundingClientRect()
+      const dlg = chipEl.closest('[role="dialog"]').getBoundingClientRect()
+      const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); const host = el.parentElement
+      const rim = el.querySelector('.tip-rim-line')
+      const originX = parseFloat(cs.transformOrigin)
+      return {
+        text: el.innerText.trim(), gap: +(chip.top - r.bottom).toFixed(1),
+        tailOnChip: +((r.left + originX) - (chip.left + chip.width / 2)).toFixed(1),
+        insidePanel: r.left >= dlg.left + 7 && r.right <= dlg.right - 7,
+        clip: cs.clipPath.startsWith('path('), blur: cs.backdropFilter, bg: cs.backgroundColor,
+        rim: !!rim && getComputedStyle(rim).stroke.startsWith('url('), inDialog: !!el.closest('[role="dialog"]'),
+        z: getComputedStyle(host).zIndex, pe: getComputedStyle(host).pointerEvents,
+      }
+    }, CHIP)
+    const sample = (ms) => p.evaluate((ms) => new Promise((res) => {
+      const out = []; const t0 = performance.now()
+      const tick = () => {
+        const el = document.querySelector('[role="tooltip"]')
+        if (el) { const cs = getComputedStyle(el); const m = cs.transform === 'none' ? null : new DOMMatrix(cs.transform); out.push({ t: Math.round(performance.now() - t0), s: m ? +m.a.toFixed(3) : 1, o: +(+cs.opacity).toFixed(2) }) }
+        else out.push({ t: Math.round(performance.now() - t0), gone: true })
+        if (performance.now() - t0 < ms) requestAnimationFrame(tick); else res(out)
+      }
+      requestAnimationFrame(tick)
+    }), ms)
+
+    await openPublish('p=built&a=paid&d=live&n=fitration.shop&v=true&u=0&t=22&c=640')
+    const none = await p.evaluate(() => document.querySelectorAll('[role="tooltip"]').length)
+    await p.hover(CHIP)
+    await p.waitForTimeout(150)
+    const early = await p.evaluate(() => document.querySelectorAll('[role="tooltip"]').length)
+    const entrance = await sample(800)
+    const shown = entrance.filter((f) => !f.gone)
+    const tip = await readTip()
+    check('hovering the status chip raises a glass tooltip above it — one clip-path shape with its tail on the chip, blurred glass with a stroked rim, inside the panel, in <body>, over everything, touching nothing',
+      !!tip && tip.text === 'Your site is up at this address.' && Math.abs(tip.gap - 6) <= 1 && Math.abs(tip.tailOnChip) <= 1.5 && tip.insidePanel && tip.clip && /blur\(16px\)/.test(tip.blur) && tip.bg === 'rgba(24, 24, 27, 0.82)' && tip.rim && !tip.inDialog && tip.z === '10000' && tip.pe === 'none',
+      JSON.stringify(tip))
+    check('…it waits a beat before it shows — nothing on a pass-through', none === 0 && early === 0, JSON.stringify({ none, early }))
+    const peak = Math.max(...shown.map((f) => f.s)); const first = shown[0]; const last = shown.at(-1)
+    check('…the glass grows out of its tail with one soft overshoot and settles at 1, the words a beat behind',
+      shown.length > 6 && !!first && first.s < 0.9 && peak > 1.003 && peak < 1.05 && !!last && Math.abs(last.s - 1) < 0.002 && last.o === 1,
+      JSON.stringify({ first, peak, last, n: shown.length }))
+    await p.mouse.move(20, 20)
+    const exit = await sample(400)
+    const goneAt = exit.find((f) => f.gone)?.t
+    const shrank = exit.filter((f) => !f.gone).every((f) => f.s <= 1.001)
+    check('…and leaves when the pointer does — a straight fade, no bounce, gone within a quarter second; the panel stays',
+      goneAt !== undefined && goneAt < 260 && shrank && !!(await p.$('[role="dialog"][aria-label="Publish"]')), JSON.stringify({ goneAt, exit: exit.slice(0, 6) }))
+    await openPublish('p=built&a=paid&d=ready&n=fitration.shop&v=false&u=0&t=22&c=640')
+    await p.hover(CHIP); await p.waitForTimeout(700)
+    const ready = await readTip()
+    check('…and each word carries its own meaning: `Ready` says what to do next',
+      !!ready && /Hit Publish/.test(ready.text) && ready.insidePanel && Math.abs(ready.tailOnChip) <= 1.5, JSON.stringify(ready))
+    await p.mouse.move(20, 20); await p.waitForTimeout(300)
+    await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+  }
+
   for (const [q, want, label] of [
     ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order'],
     ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads'],

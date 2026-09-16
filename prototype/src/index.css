@@ -3672,6 +3672,71 @@ html[data-drag] .shell-aside { transition: none; }
 }
 
 /*
+ * THE TOOLTIP — the glass bubble with a tail (ui/Tooltip.tsx has the shape, the placement
+ * and the words; this is the material). Designer, 16.09.2026: «как в macOS при наведении на
+ * программы, или как в Figma… с лёгким эффектом стекла… анимация появления и пропадания в
+ * стиле Apple liquid glass». Body and tail are one clip-path; the rim is an SVG stroke of the
+ * same path, so it turns the tail's corner with the glass. The fill is the canon's glass
+ * ground over a REAL blur — the bubble floats over the panel's field and label, so the blur
+ * has something to do — and the rim is the house diagonal (20 → 9 → 7 → 16 %), which is what
+ * says "the same glass as the controls" at a size where nothing else could. No inner top
+ * light, no shadow, no saturate (the macOS-not-iOS rule). A second stroke, white, catches the
+ * light as the glass forms and is gone in .9 s — the glint every forming surface wears
+ * (`.card-arrive`). Per-frame work: compositing only. The glass animates transform and
+ * opacity ON ITSELF, never on a wrapper — an ancestor with opacity < 1 leaves a
+ * backdrop-filter sampling nothing.
+ * ---------------------------------------------------------------------- */
+.tip-host {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+}
+.tip-glass {
+  position: relative;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 280px;
+  padding-inline: 12px;
+  background: rgba(24, 24, 27, 0.82);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: var(--white-900);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 500;
+  text-align: center;
+  text-wrap: balance;
+  user-select: none;
+  will-change: transform, opacity;
+}
+.tip-text { display: block; }
+.tip-title { display: block; font-weight: 600; color: #fff; }
+.tip-rim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.tip-rim-line { fill: none; stroke-width: 1; }
+.tip-rim-glint {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1;
+  opacity: 0;
+  animation: tip-glint 0.9s cubic-bezier(0.2, 0, 0.3, 1) 0.06s both;
+}
+@keyframes tip-glint {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tip-rim-glint { animation: none; }
+}
+
+/*
  * THE BUBBLE — how the shell appears, moves between questions and leaves (designer,
  * 07.09.2026: "пузырь, который обволакивает наше поле ввода… в стиле Apple Liquid Glass",
  * then on the first two cuts: "не хватает отдачи, жидкости… Bounce effect", and on the

@@ -739,3 +739,43 @@ export const surface = {
   animate: { opacity: 1, scale: 1, y: 0, transition: SPRING_SOFT },
   exit: { opacity: 0, scale: 0.99, y: -6, transition: EXIT },
 }
+
+/**
+ * A TOOLTIP (ui/Tooltip.tsx) — the smallest surface in the product, and it still opens the
+ * way everything else here does (designer, 16.09.2026, on the status chip in the Publish
+ * panel: «прикольная анимация появления и пропадания в стиле Apple liquid glass»).
+ *
+ * The bubble GROWS OUT OF ITS TAIL: the transform origin is the tail's tip, which sits 6px
+ * off the thing you are pointing at, so the glass inflates from the target the way a popover
+ * inflates from its trigger's corner (rule 2). One soft overshoot — ζ ≈ .62 on a spring quick
+ * enough for a 24px object: scale peaks ~1.01 and is settled in ~200 ms (rule 1). The words
+ * arrive a beat behind the glass (rule 3). Leaving is a straight 120 ms fade with a slight
+ * shrink and no bounce (rule 4).
+ *
+ * ⚠️ Scale and opacity animate ON THE GLASS ELEMENT, never on a wrapper around it: the
+ * bubble carries a `backdrop-filter`, and an ancestor with opacity < 1 leaves the blur
+ * sampling nothing (CLAUDE.md, the prompt chips' lesson). The element's own opacity fades
+ * the blurred backdrop with it.
+ */
+export const TOOLTIP_SPRING = { type: 'spring', stiffness: 640, damping: 26, mass: 0.7 } as const
+export const tooltipIn = {
+  initial: { opacity: 0, scale: 0.84 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { ...TOOLTIP_SPRING, opacity: { duration: 0.16, ease: [0.2, 0, 0, 1] } },
+  },
+  exit: { opacity: 0, scale: 0.94, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+}
+/** Reduced motion: the scale is DROPPED, not jumped into — the bubble appears in place. */
+export const tooltipInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.16 } },
+  exit: { opacity: 0, transition: { duration: 0.12 } },
+}
+/** The words inside the bubble, one beat behind the glass. */
+export const tooltipText = {
+  initial: { opacity: 0, y: 2 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.18, delay: 0.05, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.08 } },
+}
