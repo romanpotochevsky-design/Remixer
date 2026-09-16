@@ -33,8 +33,8 @@
  * account it says what the plan covers — publishing on a custom domain, never the name
  * itself, which is a purchase on every plan (see the card).
  */
-import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useWorld, hasPlan, isCustomDomainActive, isCustomDomainConnected, registrantUnconfirmed, type World } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
@@ -47,7 +47,7 @@ import { Chip } from '@/ui/Chip'
 import { useShimmerPhase } from '@/ui/shimmer'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
 import { useConfirm } from '@/ui/ConfirmDialog'
-import { popover, popoverContent, swapText } from '@/ui/motion'
+import { HOST_GLIDE, popover, popoverContent, swapText, verbRoll, verbRollFade } from '@/ui/motion'
 import { Reveal } from '@/ui/Reveal'
 
 /*
@@ -134,6 +134,17 @@ const changeCount = (n: number) => {
  */
 const PUBLISH_SETTLE_MS = 1800
 const PUBLISH_FRESH_MS = 60000
+/**
+ * PUBLISHING TAKES A MOMENT, AND THE BUTTON SHOWS IT (designer, 16.09.2026, with a frame of the
+ * button: «когда ты нажимаешь на паблиш, то он не мгновенно происходит, нужно в кнопку вставить
+ * спинер и пусть у текста будет градиент… пусть оно несколько секунд красиво крутит эту анимацию
+ * в кнопке при публикации»). The press starts this clock; the site goes out when it ends. Two
+ * and a bit seconds: long enough to read as work being done, short enough not to read as a hang.
+ * While it runs the button is blue and cannot be pressed again, a white arc turns at its left
+ * and the word wears the white sweep (index.css `.busy-ink` — his frame's 56 → 100 → 56 % is one
+ * frame of it). Then `PUBLISH_SETTLE_MS` takes over: the button says what happened.
+ */
+const PUBLISHING_MS = 2400
 
 
 /**
@@ -398,6 +409,75 @@ const subSwap = {
   exit: { opacity: 0, transition: { duration: 0.12 } },
 }
 
+/**
+ * THE HEADLINE THAT ROLLS ITS VERB. «Connecting fit-ration.net» → «Propagating fit-ration.net»:
+ * the designer, 16.09.2026, on a recording of the walk — «когда меняются текст типа этого
+ * "Connecting fit-ration.net" оно происходит без какого-то аккуратного плавного перехода,
+ * выглядит просто как блимание в 1 кадр» — and, from a stand of four ways to hand the words
+ * over (scratchpad/swap/stand.html), his pick: «вариант B · меняется только глагол, имя стоит».
+ *
+ * The title is split at the host (`HOSTISH`, the same regex `keepHostsWhole` uses) into
+ * segments; the host keeps ONE key across stages, so under `AnimatePresence` it is never
+ * re-created — it GLIDES to wherever the new verb leaves it (`layout="position"`, `HOST_GLIDE`).
+ * Each verb is keyed by its words: the old one rolls up and out while the new one rolls up into
+ * place (`verbRoll`). `popLayout` takes the leaving verb out of the flow the moment it leaves,
+ * so the host's glide and the new verb's arrival start together and the line never holds two
+ * verbs' widths. Works for both word orders — «Propagating {host}» and «{host} is connected».
+ *
+ * ⚠️ The spans paint their OWN shimmer, placed against the line by arithmetic (`.shimmer-seg`,
+ * index.css THE HEADLINE THAT ROLLS ITS VERB): `background-clip: text` on the line cannot reach
+ * the glyphs of a span that is being transformed. The line writes `--line-w` from its layout
+ * width and each span's `--seg-x` from its offsetLeft — LAYOUT values (offsetLeft, clientWidth),
+ * not bounding rects: the panel is born at scale(.94), and a rect read through that transform
+ * would place the band 6 % short (the Reveal's own lesson). Re-measured when the title changes
+ * and whenever the line's box does.
+ */
+/** See RollingTitle: the presence of an `onUpdate` prop is what keeps an element's animations
+ *  on the main thread in motion 11 — the callback itself has nothing to do. */
+const keepOnMainThread = () => {}
+
+function RollingTitle({ title, done, phase }: { title: string; done: boolean; phase: CSSProperties }) {
+  const reduce = useReducedMotion()
+  const line = useRef<HTMLParagraphElement>(null)
+  /* split() with one capture group hands back [text, host, text, host, …]: the odd slots are
+     hosts. Empty ends (a title that starts or ends on the host) are dropped, and the word
+     spaces stay inside the verb segments — `white-space: pre` keeps them. */
+  const segments = title.split(HOSTISH).map((text, i) => ({ text, host: i % 2 === 1 })).filter((seg) => seg.text.length > 0)
+  useLayoutEffect(() => {
+    const el = line.current
+    if (!el) return
+    const measure = () => {
+      el.style.setProperty('--line-w', `${el.clientWidth}px`)
+      for (const seg of el.querySelectorAll<HTMLElement>('.shimmer-seg')) seg.style.setProperty('--seg-x', `${seg.offsetLeft}px`)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [title])
+  return (
+    /* `relative` in both states: popLayout parks the leaving verb absolutely, against this box.
+       The sweep (`shimmer-line`) runs only while the walk moves; the finished headline is the
+       same spans at rest, plain white (index.css). */
+    <p ref={line} className={`relative min-w-0 break-words text-[15px] font-semibold leading-[1.2]${done ? '' : ' shimmer-line'}`} style={done ? undefined : phase}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {segments.map((seg) => seg.host ? (
+          <motion.span key="host" layout="position" transition={HOST_GLIDE} className="shimmer-seg">{seg.text}</motion.span>
+        ) : (
+          /* ⚠️ `onUpdate` is a no-op ON PURPOSE: it is the one prop that keeps motion 11 off WAAPI
+             for this element (AcceleratedAnimation.supports). A composited fade hands the span
+             back at its pre-animation inline opacity for the beat between the animation's
+             `finish` and motion's next render — the leaving verb at 1, the arriving one at 0
+             (both read on the live build, scratchpad/swap/live/) — and that beat is exactly
+             the one-frame blink this component exists to remove. On the main thread the
+             inline value is written every frame and the last frame IS the final value. */
+          <motion.span key={`verb:${seg.text}`} variants={reduce ? verbRollFade : verbRoll} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread} className="shimmer-seg">{seg.text}</motion.span>
+        ))}
+      </AnimatePresence>
+    </p>
+  )
+}
+
 function ProgressCard({ variant, title, sub, done, percent, collapsible, open = true, onToggle }: {
   variant: ProgressVariant
   title: string
@@ -417,10 +497,12 @@ function ProgressCard({ variant, title, sub, done, percent, collapsible, open = 
    * 16.09.2026, on this very card: «вставляем градиентную плашку в текст, там где идут
    * какие то процессы/спинеры/загрузки» and «спинер синхронно с текстом тоже менял плавно
    * и красиво цвет»). The row is the shimmer's scope — it carries the hue clock — the
-   * headline carries the sweep over white ink, and the arc's stroke is the same inherited
-   * `--sh-hue`, so the two cannot show different colours. ⚠️ This supersedes the arc's
+   * headline carries the sweep over white ink, and the arc's stroke is the SATURATED twin of
+   * that inherited hue (`--sh-arc`, the same clock — designer, later the same day: «конкретно
+   * в спинере цвета более яркие и насыщенные», the text's pastels untouched), so the two
+   * cannot show different colours, only two strengths of one. ⚠️ This supersedes the arc's
    * fixed `--action` blue of 14.09.2026 («я хочу чтобы цвет в спинере был синий вот такой
-   * 1587FF»): the arc still STARTS on the shimmer's blue, then drifts with the text.
+   * 1587FF»): the arc still STARTS on blue (#5077fe), then drifts with the text.
    * The finished card (green tick) shimmers nothing: nothing is moving.
    */
   const phase = useShimmerPhase()
@@ -443,55 +525,66 @@ function ProgressCard({ variant, title, sub, done, percent, collapsible, open = 
        * ⚠️ ONE CARD, ITS WORDS CHANGING — NOT FOUR CARDS TAKING TURNS (designer, 16.09.2026,
        * from a recording of the walk: «внутри формы появляются и исчезают объекты, и высота
        * формы резко меняется»). The card is ONE element for the whole walk — wash, rim, band —
-       * and only the words inside are keyed by stage: the row's group hands over sequentially
-       * (`mode="wait"`, motion.ts `swapText`), the explanation's paragraph likewise (`subSwap`).
-       * The row's height is constant, so the only height that moves is the explanation box's,
-       * and the Reveal around it glides there (see below).
+       * and only the words inside change: in the headline only the VERB hands over, rolling,
+       * while the host glides and the arc stays (`RollingTitle`; the designer's variant B of
+       * 16.09.2026, replacing the row-wide sequential fade that read as a one-frame blink);
+       * the explanation's paragraph hands over sequentially (`subSwap`). The row's height is
+       * constant, so the only height that moves is the explanation box's, and the Reveal
+       * around it glides there (see below).
        */}
       <div className={`flex items-center gap-3 pl-4 pr-3 ${collapsible ? 'py-3' : 'py-4'}${done ? '' : ' shimmer-hue'}`} style={done ? undefined : phase}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={variant} variants={swapText} initial="initial" animate="animate" exit="exit" className="flex min-w-0 flex-1 items-center gap-3">
-            {/* ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up
-                and only a press is left, the arc becomes a filled green tick. One shape for
-                "this is moving" and "this is done" — the icon is the whole difference, which
-                is what makes the finish read as the end of the thing that was moving. */}
+        {/*
+         * THE ICON — the same spinning arc through EVERY stage of the walk (its node is never
+         * replaced, so it never blinks — the recording's blink was this arc fading out and in
+         * with the words), and a crossfade to the tick only when the walk is done.
+         * ⚠️ THE SAME CARD ENDS THE WALK (board 30289:59972): when the domain is set up and only
+         * a press is left, the arc becomes a filled green tick. One shape for "this is moving"
+         * and "this is done" — the icon is the whole difference, which is what makes the finish
+         * read as the end of the thing that was moving.
+         */}
+        <span className="relative h-6 w-6 flex-none" aria-hidden>
+          <AnimatePresence initial={false}>
             {done ? (
-              <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
-                {/* A filled green disc with a WHITE tick, as the board draws it — the ink
-                    the eye reads as "done" everywhere else in the product. */}
-                <circle cx="12" cy="12" r="11" fill="var(--live)" />
-                <path d="m7.4 12.3 3.1 3.1 6.1-6.6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <motion.span key="tick" className="absolute inset-0 flex" variants={swapText} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+                <svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                  {/* A filled green disc with a WHITE tick, as the board draws it — the ink
+                      the eye reads as "done" everywhere else in the product. */}
+                  <circle cx="12" cy="12" r="11" fill="var(--live)" />
+                  <path d="m7.4 12.3 3.1 3.1 6.1-6.6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </motion.span>
             ) : (
-            <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
-              <circle cx="12" cy="12" r="8" stroke="var(--white-200)" strokeWidth="1.8" />
-              <path
-                d="M12 4a8 8 0 0 1 8 8"
-                /* ⚠️ THE MOVING ARC WAS `--action` #1587FF (designer, 14.09.2026: "я хочу
-                   чтобы цвет в спинере был синий вот такой 1587FF") and now takes the
-                   shimmer's hue — see the note above the component. The ring behind it
-                   stays neutral so the arc is the only thing the eye follows. */
-                stroke="var(--sh-hue)" strokeWidth="1.8" strokeLinecap="round"
-                className="step-spin"
-              />
-            </svg>
+              <motion.span key="arc" className="absolute inset-0 flex" variants={swapText} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+                <svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" stroke="var(--white-200)" strokeWidth="1.8" />
+                  <path
+                    d="M12 4a8 8 0 0 1 8 8"
+                    /* ⚠️ THE MOVING ARC WAS `--action` #1587FF (designer, 14.09.2026: "я хочу
+                       чтобы цвет в спинере был синий вот такой 1587FF"), then the shimmer's own
+                       pastel hue (16.09) — and since the same evening the SATURATED twin of that
+                       hue, `--sh-arc` (index.css): «конкретно в спинере цвета более яркие и
+                       насыщенные — A66FFF 5077FE FF8363». Same clock as the headline's hue, so
+                       arc and text are one colour in two strengths. The ring behind it stays
+                       neutral so the arc is the only thing the eye follows. */
+                    stroke="var(--sh-arc)" strokeWidth="1.8" strokeLinecap="round"
+                    className="step-spin"
+                  />
+                </svg>
+              </motion.span>
             )}
-            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3 pr-1">
-              <p
-                className={`min-w-0 break-words text-[15px] font-semibold leading-[1.2] ${done ? 'text-white' : 'shimmer-ink shimmer-ink--white'}`}
-                style={done ? undefined : phase}
-              >
-                {keepHostsWhole(title)}
-              </p>
-              {/* the beat's share — a NUMBER, so Gilroy (the house rule), 13 at 48 % white,
-                  on the title's baseline. Live it ticks with the walk's own clock; a staged
-                  world shows the board's figure. */}
-              {percent !== undefined && percent !== null && (
-                <span className="font-display flex-none text-[13px] leading-none tabular-nums text-[var(--white-480)]">{percent}%</span>
-              )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+          </AnimatePresence>
+        </span>
+        <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3 pr-1">
+          <RollingTitle title={title} done={!!done} phase={phase} />
+          {/* the beat's share — a NUMBER, so Gilroy (the house rule), 13 at 48 % white, on the
+              title's baseline. Live it ticks with the walk's own clock; a staged world shows the
+              board's figure. It fades up when the spreading beat begins — no pop. */}
+          <AnimatePresence initial={false}>
+            {percent !== undefined && percent !== null && (
+              <motion.span key="pct" variants={swapText} initial="initial" animate="animate" exit="exit" className="font-display flex-none text-[13px] leading-none tabular-nums text-[var(--white-480)]">{percent}%</motion.span>
+            )}
+          </AnimatePresence>
+        </div>
         {/*
          * THE FOLD BUTTON (board 30425:28847: 32 × 32, r10, 24 %-white rim, chevron 20 in a
          * 24 box, turned 180° while the explanation is open). ⚠️ The board draws it with
@@ -696,6 +789,16 @@ export function PublishPanel() {
      cannot be asked what time it is. Two clocks, see the constants above. */
   const [settling, setSettling] = useState(false)
   const [justPublished, setJustPublished] = useState(false)
+  /* Is the press in flight? Session state — see PUBLISHING_MS. The commit it ends in is read
+     through a ref so the world it writes is the one at the END of the beat, not the render
+     that started it. */
+  const [publishing, setPublishing] = useState(false)
+  const commitRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    if (!publishing) return
+    const id = window.setTimeout(() => { setPublishing(false); commitRef.current() }, PUBLISHING_MS)
+    return () => window.clearTimeout(id)
+  }, [publishing])
   useEffect(() => {
     if (!settling) return
     const t = window.setTimeout(() => setSettling(false), PUBLISH_SETTLE_MS)
@@ -924,6 +1027,8 @@ export function PublishPanel() {
   /* A press that WORKED starts both clocks; the `dh-in-use` branch is a publish that
      failed, and a failure that congratulates itself is the worst thing in this file. */
   const markPublished = () => { setSettling(true); setJustPublished(true) }
+  /* The press: start the busy beat; `publishNow` below is what lands when it ends. */
+  const beginPublish = () => { if (!publishing) setPublishing(true) }
   const publishNow = () => {
     if (ready && world.inventory === 'dh-in-use') return set({ domain: 'old-site' })
     /*
@@ -938,6 +1043,7 @@ export function PublishPanel() {
     set({ unpublished: 0, published: true, ...(ready && !world.icann ? { domain: 'live' as const } : null) })
     markPublished()
   }
+  commitRef.current = publishNow
   /*
    * TAKE THE DOMAIN OFF THIS SITE (board 30282:18491, "Unlink") — BEHIND A CONFIRM
    * (board 30282:51628, designer 14.09.2026). The press no longer does it; it asks.
@@ -1839,11 +1945,16 @@ export function PublishPanel() {
             ) : null}
             <span className="flex-1" />
             <button
-              onClick={() => { if (publishes) publishNow() }}
-              disabled={!publishes && !settleLabel}
+              onClick={() => { if (publishes) beginPublish() }}
+              disabled={(!publishes && !settleLabel) || publishing}
               aria-disabled={settleLabel || undefined}
+              aria-busy={publishing || undefined}
               className={
-                publishes
+                publishing
+                  /* THE BUSY BEAT (PUBLISHING_MS): blue, unpressable, an 18px white arc turning at
+                     pl 12 with 8 to the word (the designer's frame), the word in the white sweep */
+                  ? 'flex h-10 cursor-default items-center gap-2 rounded-[10px] bg-[var(--action)] pl-3 pr-5 text-[14px] font-semibold text-white'
+                  : publishes
                   ? 'h-10 rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]'
                   : settleLabel
                     ? 'h-10 cursor-default rounded-[10px] border border-[var(--white-100)] px-5 text-[14px] font-semibold text-[var(--white-500)] transition-colors duration-[var(--dur-fast)] ease-std'
@@ -1854,7 +1965,13 @@ export function PublishPanel() {
                     : 'h-10 cursor-not-allowed rounded-[10px] border border-[var(--white-200)] px-5 text-[14px] font-semibold text-[#ffffff52]'
               }
             >
-              {t(primary)}
+              {publishing && (
+                <svg width={24} height={24} viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden>
+                  {/* a 270° arc, r 9, stroke 2.2 — the frame's proportions on a 40 button */}
+                  <path d="M12 3a9 9 0 1 1-9 9" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" className="step-spin" />
+                </svg>
+              )}
+              {publishing ? <span className="shimmer-ink busy-ink">{t(primary)}</span> : t(primary)}
             </button>
           </div>
           </motion.div>

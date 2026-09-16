@@ -75,6 +75,9 @@ enough that the effect is never mistaken for a static grey line.
 | `#ffffff` | resting ink of the connection headline | the headline is white; on white the core vanishes into the base and only the hue is seen passing — the board's literal «white → hue → white» |
 | `--white-100` (8 %) → 12 % | the card wash, rest → peak | board 30425:27467: stops 8 % / 12 % / 8 % (14 % for an hour — «слишком он яркий», re-set by the designer) |
 | `@property --sh-hue` (`<color>`, inherits, initial `#a4b9ff`) | the animated hue | registered so it can cross-fade; unregistered custom properties animate discretely |
+| `#5077fe` · `#a66fff` · `#ff8363` | the ARC's hues — the saturated twins of the three, paired by family (blue ↔ `#a4b9ff`, violet ↔ `#caaafe`, coral ↔ `#febbaa`) | designer, 16.09.2026 evening: «конкретно в спинере цвета более яркие и насыщенные»; the text keeps its pastels («трогать цвета не нужно») |
+| `@property --sh-arc` (`<color>`, inherits, initial `#5077fe`) | the arc's animated hue, on the SAME clock as `--sh-hue` (`sh-arc` beside `sh-hue` on `.shimmer-hue`, one `animation-delay`) | so arc and text are one colour in two strengths at every frame |
+| `@property --sh-p` (`<number>`, inherits, initial `1`) | the sweep's progress for a line drawn as several spans (the rolling headline) | see «A line drawn as spans» below |
 
 The hue order is the board's top-to-bottom order, which is also the cyclic order of the
 recording (pink → orange → blue → pink ≡ lilac → peach → blue → lilac).
@@ -190,16 +193,21 @@ wash breathe together.
 <!-- a scope: spinner + text (the connection card) -->
 <div class="… shimmer-card" style="--sh-t: -4213ms">           <!-- card: wash + flash -->
   <span class="shimmer-card-band" aria-hidden></span>          <!-- the moving band, under the text -->
-  <div class="flex … shimmer-hue" style="--sh-t: -4213ms">    <!-- scope: the hue clock -->
-    <svg>…<path stroke="var(--sh-hue)" class="step-spin"/></svg>
-    <p class="shimmer-ink shimmer-ink--white" style="--sh-t: -4213ms">Connecting fitration.shop</p>
+  <div class="flex … shimmer-hue" style="--sh-t: -4213ms">    <!-- scope: the hue clocks (--sh-hue + --sh-arc) -->
+    <span class="relative h-6 w-6">                              <!-- the icon slot: the arc is ONE node for the whole walk -->
+      <svg>…<path stroke="var(--sh-arc)" class="step-spin"/></svg>
+    </span>
+    <p class="relative … shimmer-line" style="--sh-t: -4213ms; --line-w: 182px">   <!-- the sweep clock: sh-run → --sh-p -->
+      <span class="shimmer-seg" style="--seg-x: 0px">Connecting </span>             <!-- verb: keyed by its words, rolls -->
+      <span class="shimmer-seg" style="--seg-x: 87px">fitration.shop</span>         <!-- host: one key, glides -->
+    </p>
   </div>
   …
 </div>
 
 <!-- a scope: the build card's active row -->
 <span class="… shimmer-hue" style="--sh-t: …">
-  <span style="color: var(--sh-hue)"><IconStepRunning/></span>  <!-- currentColor ring -->
+  <span style="color: var(--sh-arc)"><IconStepRunning/></span>  <!-- currentColor ring — the arc's saturated twin -->
   … <p class="gen-work" style="--sh-t: …">Writing the header…</p>
 </span>
 ```
@@ -252,6 +260,85 @@ copy, lists, or anything that lives longer than a wait.
   reason), `.gen-work` is required under the active section, the domain-row chip is
   unaffected. 354/354 on 16.09.2026.
 
+## The arc's saturated twin (16.09.2026, evening)
+
+The designer, on the connection card's arc: «я хочу чтобы конкретно в спинере цвета были более
+яркие и насыщенные — A66FFF · 5077FE · FF8363», and on the text: «в этом тексте трогать цвета не
+нужно, они не должны быть яркими такими насыщенными». So the text keeps the board's pastels and
+the arc gets a second registered hue, `--sh-arc`, animated by `sh-arc` on the same element, same
+duration, same delay as `sh-hue` — the stops paired BY FAMILY (blue `#5077fe` with `#a4b9ff`,
+violet `#a66fff` with `#caaafe`, coral `#ff8363` with `#febbaa`), not in the order he listed them:
+his own rule is that the spinner changes colour WITH the text, and that only holds when the pairs
+are one family. Worn by the connection card's arc (`stroke: var(--sh-arc)`) and the build card's
+active ring (`color: var(--sh-arc)`); the Publish button's busy arc is white (his mock). Reduced
+motion parks the arc on `#5077fe`.
+
+Acceptance: pause `sh-hue` and `sh-arc` on the row and seek both into each hold, then read the
+pair and the arc's stroke. ⚠️ Seek with `currentTime = hold + delay + 8100·n`, n chosen so the
+local time is ≥ 0: a CSS animation with a negative delay is in its BEFORE phase at any negative
+local time (before-active boundary = max(delay, 0)) — the effect is not applied and the initial
+values show, which is exactly what the first probe read (blue, blue, blue). `check:brief` holds
+the three pairs and the ring/arc equality on the build card.
+
+## A line drawn as spans — the headline that rolls its verb (16.09.2026)
+
+From a recording of the walk: «когда меняются текст типа этого "Connecting fit-ration.net" оно
+происходит без какого-то аккуратного плавного перехода, выглядит просто как блимание в 1 кадр».
+Frames 57–61 of the recording: the WHOLE row — arc included — dips to nothing for ~2 frames
+between the 120 ms fade-out and the 200 ms fade-in of `swapText` on the row's group. His pick
+from a stand of four (`prototype/scratchpad/swap/stand.html`): **variant B — only the verb
+changes hands, the host stays.**
+
+**Motion** (`RollingTitle` in `PublishPanel.tsx`; `verbRoll`, `verbRollFade`, `HOST_GLIDE` in
+`ui/motion.ts`): the title is split at the host (`HOSTISH`); the host keeps ONE key across
+stages and glides to its new x with `layout="position"` (280 ms, `[.2, 0, 0, 1]`); each verb is
+keyed by its words — the old one rolls up and out (`y −8`, opacity → 0, 160 ms, `[.4, 0, 1, 1]`),
+the new one rolls up into place (`y 10 → 0`, opacity → 1, 280 ms after a 60 ms beat).
+`AnimatePresence mode="popLayout"` takes the leaving verb out of the flow at once. The arc lives
+in its own 24 px slot outside the presence — one node for the whole walk; arc ⇄ tick crossfade
+only on `done`. Both word orders work («Propagating {host}», «{host} is connected»).
+
+**Why each span paints its own shimmer.** `background-clip: text` on the line cannot clip the
+line's background to the glyphs of a child that has its own compositing layer (a transform): a
+verb rolling inside the old one-element headline painted NOTHING for the roll. So the gradient
+moves onto the spans (`.shimmer-seg`), and each span places the SAME band by arithmetic against
+the line: image width `3 × --line-w` (the line writes its layout `clientWidth`), left edge
+`−2·L·(1 − p) − --seg-x` (the span's `offsetLeft`), with `--sh-p` — the sweep's progress — a
+registered `<number>` animated on the LINE (`.shimmer-line`, `sh-run`, 2.7 s, page phase `--sh-t`)
+and inherited, so the spans cannot disagree. Word spaces live INSIDE the verb spans
+(`white-space: pre`). Probed against the one-element headline (`scratchpad/swap/split/`):
+pixel-identical, the band continuous across the gap, a translated span still lit. A finished
+headline (the tick) carries no `sh-run`: p rests at 1, the band is parked off the glyphs, the
+spans read plain white, nothing repaints.
+
+⚠️ **The verb spans stay on the main thread** — `onUpdate={() => {}}` on the `motion.span`. A
+WAAPI (accelerated) fade hands the element back at its pre-animation inline opacity for the beat
+between the animation's `finish` and motion's next render: the leaving verb at 1, the arriving
+one at 0 — read on the live build (t=180 op 1 leaving, t=363 op 0 arriving), and that beat is the
+one-frame blink this exists to remove. `onUpdate` is the one prop that keeps motion 11 off WAAPI
+(`AcceleratedAnimation.supports`); a function easing or a spring does NOT — they are pre-sampled
+into `linear()` and composited anyway. On the main thread the last frame written IS the final
+value: after the change, leaving .04 → removed, arriving .99 → 1 → 1.
+
+**Measured** (`scratchpad/swap/live/probe.mjs`, `roll-01…06.png`, `ready.png`): the arc is the
+same node at opacity 1 in all 44 samples; the host is the same node, x 3.7 → 0 over ~280 ms
+(87 → 0 at the finish); the old verb absolute, y 0 → −7.7, opacity 1 → .04 by 180 ms, gone by 196;
+the new verb y 10 → 0, opacity 0 → 1, settled ~350 ms; crossing at ~130 ms (.49 / .39).
+`check:brief` holds four of these: the arc's node and opacity every frame; the host's node and
+glide; both rolls with the 60 ms beat; the crossing without an empty frame and a monotonic landing.
+
+## The busy button's word (16.09.2026)
+
+The designer's mock for the press of Publish: «нужно в кнопку вставить вот так спинер и пусть у
+текста будет градиент — пусть оно несколько секунд красиво крутит эту анимацию в кнопке при
+публикации». For 2.4 s (`PUBLISHING_MS`) the button stays blue and disabled (`aria-busy`), a white
+arc (24 box, stroke 2.2, `step-spin`) sits at `pl 12 / gap 8`, and the word wears `.busy-ink`: the
+same `sh-sweep` as every process line with NO hue — base white 56 %, core white 100 % (his frame:
+56 → 100 at 53 % → 56 is one frame of that band) — a lone-word host whose clock starts at mount.
+The world changes at the END of the beat (`publishNow` via `commitRef`), so the title, the bar and
+the domain move when the arc leaves. The button's arc is white, not `--sh-arc`: his mock, and on
+the blue plate the saturated hues would fight it.
+
 ## Don'ts — each one was hit
 
 - Do not animate `background-position` on a surface bigger than a line. Use a transformed
@@ -263,6 +350,11 @@ copy, lists, or anything that lives longer than a wait.
 - Do not wrap a shimmering spinner in a new `<span class="block">`: the build card's checks
   read section names by that selector.
 - Do not add the shimmer to the status chip or the section title without the designer.
+- Do not put a transformed child inside a `background-clip: text` element and expect its glyphs
+  to paint: split the line into spans that paint their own shimmer (`.shimmer-seg`).
+- Do not seek a negative-delay CSS animation to a negative local time to read a hold — it is in
+  its before phase there; add whole cycles.
+- Do not make the arc's saturated hues drive the TEXT: «в этом тексте трогать цвета не нужно».
 
 ## History (16.09.2026) — not to revisit
 

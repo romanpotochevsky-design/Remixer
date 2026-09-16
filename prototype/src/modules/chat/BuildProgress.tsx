@@ -234,8 +234,10 @@ export function BuildProgress({ animate }: { animate: boolean }) {
                     style={state === 'active' ? scopePhase : undefined}
                   >
                     {/* the ring wears the scope's hue through `currentColor` — set on this existing
-                        wrapper, not a new one: the checks read the row's spans by shape */}
-                    <span className="flex-none" style={state === 'active' ? { color: 'var(--sh-hue)' } : undefined}>
+                        wrapper, not a new one: the checks read the row's spans by shape. The
+                        SATURATED twin of the text's hue (`--sh-arc`, index.css): designer,
+                        16.09.2026 — «конкретно в спинере цвета более яркие и насыщенные». */}
+                    <span className="flex-none" style={state === 'active' ? { color: 'var(--sh-arc)' } : undefined}>
                       {state === 'done' ? (
                         <IconStepDone size={24} className="text-[var(--live)]" />
                       ) : state === 'active' ? (

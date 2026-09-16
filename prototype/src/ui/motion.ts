@@ -779,3 +779,30 @@ export const tooltipText = {
   animate: { opacity: 1, y: 0, transition: { duration: 0.18, delay: 0.05, ease: [0.2, 0, 0, 1] } },
   exit: { opacity: 0, transition: { duration: 0.08 } },
 }
+
+/*
+ * THE VERB THAT ROLLS — the in-flight card's headline handing over («Connecting …» →
+ * «Propagating …»; designer, 16.09.2026, from a recording: «выглядит просто как блимание в
+ * 1 кадр… как эту смену текста сделать более аккуратной и плавной и изящной?», and his pick
+ * from the stand of four, variant B: «меняется только глагол, имя стоит»). What the recording
+ * showed was the WHOLE row — arc included — dipping to nothing for two frames between a
+ * 120 ms fade-out and a 200 ms fade-in: a sequential hand-off of the row reads as a blink.
+ * Here nothing leaves the screen empty: the old verb rolls UP and out, 8 px in 160 ms, flat
+ * and quick (the house rule for leaving); the next rolls up INTO place from 10 px below over
+ * 280 ms, after a 60 ms beat so the two are never one smear; the host glides to its new x on
+ * the same curve (`HOST_GLIDE`, a `layout` animation on the span that keeps its key); the
+ * spinner is not part of the hand-off at all. Only `transform` and `opacity`.
+ */
+export const verbRoll = {
+  initial: { y: 10, opacity: 0 },
+  animate: { y: 0, opacity: 1, transition: { duration: 0.28, delay: 0.06, ease: [0.2, 0, 0, 1] } },
+  exit: { y: -8, opacity: 0, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } },
+} as const
+/** Reduced motion: the roll is DROPPED, not jumped into — the words simply hand over. */
+export const verbRollFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, delay: 0.06, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+} as const
+/** The host's glide to where the new verb leaves it — the incoming verb's own curve. */
+export const HOST_GLIDE = { duration: 0.28, ease: [0.2, 0, 0, 1] } as const

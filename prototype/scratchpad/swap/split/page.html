@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>split shimmer probe</title>
+<style>
+@property --sh-hue { syntax: '<color>'; inherits: true; initial-value: #a4b9ff; }
+@property --sh-p { syntax: '<number>'; inherits: true; initial-value: 1; }
+body { background: #1f1f22; margin: 0; padding: 40px; font: 600 15px/1.2 system-ui; color: #fff; }
+.line { position: relative; width: max-content; --sh-base: #fff; animation: sh-run 2.7s linear infinite; }
+.seg {
+  display: inline-block; white-space: pre;
+  background-image: linear-gradient(90deg, var(--sh-base) 0%, var(--sh-base) 34%, var(--sh-hue) 44%, #fff 54%, #fff 58%, var(--sh-base) 62%, var(--sh-base) 100%);
+  background-size: calc(3 * var(--line-w, 100%)) 100%;
+  background-repeat: no-repeat;
+  background-position-x: calc(-2 * var(--line-w, 0px) * (1 - var(--sh-p)) - var(--seg-x, 0px));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ref { --sh-base: #fff; display: inline-block; background-image: linear-gradient(90deg, var(--sh-base) 0%, var(--sh-base) 34%, var(--sh-hue) 44%, #fff 54%, #fff 58%, var(--sh-base) 62%, var(--sh-base) 100%); background-size: 300% 100%; background-repeat: no-repeat; background-position-x: calc((1 - var(--sh-p)) * 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@keyframes sh-run { 0% { --sh-p: 0 } 50%, 100% { --sh-p: 1 } }
+/* stronger hue to make the band easy to sample */
+.hot { --sh-hue: #ff2d95; }
+</style>
+<p class="line hot" id="split"><span class="seg" id="v">Connecting </span><span class="seg" id="h">fit-ration.com</span></p>
+<p class="line hot" id="single"><span class="ref">Connecting fit-ration.com</span></p>
+<p class="line hot" id="moved"><span class="seg" id="v2" style="transform: translateY(6px); opacity:.7">Connecting </span><span class="seg" id="h2">fit-ration.com</span></p>
+<script>
+for (const p of document.querySelectorAll('.line')) {
+  p.style.setProperty('--line-w', p.clientWidth + 'px');
+  for (const s of p.querySelectorAll('.seg')) s.style.setProperty('--seg-x', s.offsetLeft + 'px');
+}
+</script>

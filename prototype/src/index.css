@@ -171,6 +171,32 @@
 }
 
 /*
+ * …and the SPINNER'S hue, in lockstep with it: the same three moments, SATURATED (designer,
+ * 16.09.2026, on the connection card's arc: «я хочу чтобы конкретно в спинере цвета были более
+ * яркие и насыщенные» — A66FFF · 5077FE · FF8363). Paired by family with the text's pastels —
+ * blue with blue, violet with lilac, coral with peach — so the arc and the headline are one
+ * colour in two strengths at every frame, never two colours. The text keeps the board's
+ * pastels: a saturated band through white glyphs would read as a highlighter, not a light.
+ */
+@property --sh-arc {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #5077fe;
+}
+
+/*
+ * The sweep's progress, 0 → 1, for a line drawn as SEVERAL spans (THE HEADLINE THAT ROLLS ITS
+ * VERB in the components layer): a number, so every span can place the one shared band by
+ * arithmetic against the line it sits in. Registered so it interpolates; inherited so the spans
+ * read the line's clock and cannot disagree.
+ */
+@property --sh-p {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+/*
  * Token layer.
  *
  * Values measured from the live Remixer (panel.dreamhost.com/ai-editor) on 13 Aug 2026.
@@ -563,8 +589,71 @@
     animation-delay: var(--sh-t, 0s);
   }
   .shimmer-hue {
-    animation: sh-hue 8.1s linear infinite;
+    /* two hues on one clock: the text's pastel and the arc's saturated twin (top of file) */
+    animation: sh-hue 8.1s linear infinite, sh-arc 8.1s linear infinite;
     animation-delay: var(--sh-t, 0s);
+  }
+  /*
+   * THE HEADLINE THAT ROLLS ITS VERB (designer, 16.09.2026, from a recording of the walk: «когда
+   * меняются текст типа этого "Connecting fit-ration.net" оно происходит без какого-то аккуратного
+   * плавного перехода, выглядит просто как блимание в 1 кадр»; his pick from the stand of four,
+   * scratchpad/swap/stand.html: «вариант B · меняется только глагол, имя стоит»). The in-flight
+   * card's headline is drawn as SPANS — the verb and the host — so the old verb can roll out and
+   * the next roll in while the host glides to its new x and the arc beside them is never touched
+   * (PublishPanel, RollingTitle; the roll itself is motion.ts `verbRoll`).
+   *
+   * ⚠️ WHY EACH SPAN PAINTS ITS OWN SHIMMER. The headline's sweep is `background-clip: text`, and
+   * Chromium cannot clip a parent's background to the glyphs of a child that has its own layer —
+   * a verb rolling on `transform` inside the old one-element headline paints NOTHING for the
+   * roll. So the gradient moves down onto the spans, and every span places the SAME band by
+   * arithmetic against the line: the image is three line-widths wide (`--line-w`, written by
+   * the card from the line's layout box), its left edge sits where the one-element headline
+   * would have put it — −2·L·(1 − p) — minus the span's own x in the line (`--seg-x`, its
+   * offsetLeft). `--sh-p` is the sweep's progress, animated on the LINE and inherited (`sh-run`,
+   * the same 2.7 s period and page phase as `sh-sweep`). Probed against the one-element
+   * headline: pixel-identical, the band continuous across the word gap, a translated span still
+   * lit (scratchpad/swap/split/). The word spaces live INSIDE the verb spans (`white-space: pre`),
+   * so at rest the line is the same glyphs on the same advance as one string. A finished
+   * headline (the tick) simply carries no `sh-run`: p rests at 1, the band is parked off the
+   * glyphs, the spans read plain white — nothing repaints.
+   */
+  .shimmer-line {
+    animation: sh-run 2.7s linear infinite;
+    animation-delay: var(--sh-t, 0s);
+  }
+  .shimmer-seg {
+    --sh-base: #ffffff;
+    display: inline-block;
+    white-space: pre;
+    background-image: linear-gradient(
+      90deg,
+      var(--sh-base) 0%, var(--sh-base) 34%,
+      var(--sh-hue) 44%,
+      #ffffff 54%, #ffffff 58%,
+      var(--sh-base) 62%, var(--sh-base) 100%
+    );
+    background-size: calc(3 * var(--line-w, 100%)) 100%;
+    background-repeat: no-repeat;
+    background-position-x: calc(-2 * var(--line-w, 100%) * (1 - var(--sh-p)) - var(--seg-x, 0px));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  @keyframes sh-run {
+    0%        { --sh-p: 0; }
+    50%, 100% { --sh-p: 1; }
+  }
+  /*
+   * THE BUSY BUTTON'S WORD (designer, 16.09.2026: «в кнопку вставить спинер и пусть у текста
+   * будет градиент» — his frame: white 56 % → 100 % at 53 % → 56 %, which is one frame of a white
+   * band). The same sweep every process line wears, with NO hue: on the blue plate the band is
+   * white over 56 %-white, as drawn. A lone-word host like `.thinking` — its own clock, starting
+   * the moment it mounts: the busy beat is 2.4 s, and a page-phased sweep could miss it.
+   */
+  .busy-ink {
+    --sh-base: rgba(255, 255, 255, 0.56);
+    --sh-hue: #fff;
+    animation: sh-sweep 2.7s linear infinite;
   }
   /*
    * THE CARD'S OWN FLASH — board 30425:27467 (designer, 16.09.2026: «для всего фона этого
@@ -633,6 +722,13 @@
     66.6%, 83.4% { --sh-hue: #febbaa; }
     100%         { --sh-hue: #a4b9ff; }
   }
+  /* the arc's saturated twins, stop for stop — the designer's three (16.09.2026) */
+  @keyframes sh-arc {
+    0%, 16.7%    { --sh-arc: #5077fe; }
+    33.3%, 50%   { --sh-arc: #a66fff; }
+    66.6%, 83.4% { --sh-arc: #ff8363; }
+    100%         { --sh-arc: #5077fe; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .thinking { animation: none; color: var(--white-400); }
     .shimmer-ink {
@@ -643,6 +739,13 @@
       color: var(--sh-base);
     }
     .shimmer-hue { animation: none; }
+    .shimmer-line { animation: none; }
+    .shimmer-seg {
+      background-image: none;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
+      color: var(--sh-base);
+    }
     .shimmer-card-band::before { animation: none; opacity: 0; }
   }
 

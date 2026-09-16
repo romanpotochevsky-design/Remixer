@@ -153,6 +153,16 @@ const outline = () =>
       })),
       pages: [...c.querySelectorAll('div.h-12')].map((d) => d.innerText),
       shimmer: !!c.querySelector('.gen-work'),
+      /* the active row's ring reads the SATURATED twin of the row's hue (`--sh-arc`), not the
+         text's pastel (designer, 16.09.2026) — read as a colour equality, so a retoken cannot
+         quietly break the pairing */
+      ringArc: (() => {
+        const row = c.querySelector('.shimmer-hue')
+        const ring = row?.querySelector('span.flex-none')
+        if (!row || !ring) return null
+        const cs = getComputedStyle(row)
+        return getComputedStyle(ring).color === cs.getPropertyValue('--sh-arc').trim() && cs.getPropertyValue('--sh-arc').trim() !== cs.getPropertyValue('--sh-hue').trim()
+      })(),
     }
   })
 /** Is the demo site actually rendered in the canvas, or is the stage still empty? */
@@ -1070,6 +1080,8 @@ check('the outline card lands when the build starts', await cardUp())
     o?.pages.join(' · ') === 'About · Services · Contact', o?.pages.join(' · '))
   check('exactly one section is in hand', o?.rows.filter((r) => r.state === 'active').length === 1)
   check('the section in hand says what is happening to it', !!o?.rows.find((r) => r.state === 'active')?.work)
+  check('…and its ring wears the SATURATED twin of the row\'s hue (`--sh-arc`), not the work line\'s pastel — designer, 16.09.2026: «конкретно в спинере цвета более яркие и насыщенные»',
+    o?.ringArc === true, JSON.stringify(o?.ringArc))
 }
 
 /*
@@ -1814,7 +1826,24 @@ check('…and the typed prompt is built as given', await cardUp())
   check('the title stays the status until the site is actually live', (await title()) === 'Not published')
   /* pressing Publish is what changes the answer */
   await p.click('[role="dialog"] button:has-text("Publish")')
-  await p.waitForTimeout(500)
+  await p.waitForTimeout(400)
+  /* PUBLISHING TAKES A MOMENT (designer, 16.09.2026): for PUBLISHING_MS the blue button holds
+     a turning white arc and its word wears the white sweep — and it cannot be pressed again */
+  const busy = await p.evaluate(() => {
+    const b = document.querySelector('[role="dialog"][aria-label="Publish"] button[aria-busy="true"]')
+    if (!b) return null
+    const svg = b.querySelector('svg'); const arc = svg?.querySelector('path'); const word = b.querySelector('.busy-ink')
+    const cs = word ? getComputedStyle(word) : null
+    return { disabled: b.disabled, bg: getComputedStyle(b).backgroundColor, spinner: !!svg && Math.round(svg.getBoundingClientRect().width) === 24,
+      spinning: !!arc && getComputedStyle(arc).animationName === 'step-spin', arcInk: arc ? getComputedStyle(arc).stroke : null,
+      clip: cs?.backgroundClip, sweep: cs?.animationName, base: cs?.getPropertyValue('--sh-base').trim(), text: b.innerText.trim(),
+      padL: getComputedStyle(b).paddingLeft, gap: getComputedStyle(b).columnGap }
+  })
+  check('the press does not publish at once: the blue button holds a turning white arc (24 box, pl 12, 8 to the word) and its word wears the white sweep — and cannot be pressed twice',
+    !!busy && busy.disabled && busy.bg === 'rgb(21, 135, 255)' && busy.spinner && busy.spinning && busy.arcInk === 'rgb(255, 255, 255)' && busy.clip === 'text' && busy.sweep === 'sh-sweep' && /^rgba\(255, 255, 255, 0?\.56\)$/.test(busy.base) && busy.text === 'Publish' && busy.padL === '12px' && busy.gap === '8px',
+    JSON.stringify(busy))
+  check('…and the title has not changed yet', (await title()) === 'Not published')
+  await p.waitForTimeout(2600)
   await shot('23-publish-done')
   /* ⚠️ `Published`, not `Publish` (designer, 14.09.2026; board 30282:53241): the press just
      emptied the queue, so the heading is the status, not the action. */
@@ -2232,8 +2261,91 @@ check('…and the typed prompt is built as given', await cardUp())
       window.__card = card
       return { text: card?.innerText.replace(/\s+/g, ' ').slice(0, 30) }
     })
-    await p.evaluate(() => { [...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === 'Connecting').click() })
-    await p.waitForTimeout(900)
+    /*
+     * THE VERB ROLLS, THE NAME STAYS, THE ARC IS NEVER TOUCHED (designer, 16.09.2026, on a
+     * recording of this very hand-over: «выглядит просто как блимание в 1 кадр… как эту смену
+     * текста сделать более аккуратной и плавной и изящной?», and his pick from the stand of four,
+     * variant B: «меняется только глагол, имя стоит»). The recording's blink was the whole row —
+     * arc included — fading to nothing between a 120 ms out and a 200 ms in. Film the hand-over
+     * frame by frame: the arc's node and opacity, the host's node and glide, both verbs' rolls.
+     */
+    const roll = await p.evaluate(async () => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      const row = d.querySelector('.shimmer-hue')
+      const line = row.querySelector('p')
+      const arc0 = row.querySelector('path.step-spin')
+      const host0 = [...line.querySelectorAll('.shimmer-seg')].find((s) => /\./.test(s.textContent))
+      const samples = []
+      const t0 = performance.now()
+      const tick = () => {
+        const now = performance.now()
+        const arc = row.querySelector('path.step-spin')
+        const segs = [...line.querySelectorAll('.shimmer-seg')].map((s) => {
+          const cs = getComputedStyle(s)
+          const m = cs.transform === 'none' ? [0, 0] : cs.transform.match(/matrix\(([^)]+)\)/)[1].split(',').map(Number).slice(4)
+          return { text: s.textContent.trim(), op: +cs.opacity, x: m[0], y: m[1], abs: cs.position === 'absolute', host: s === host0 }
+        })
+        samples.push({ t: Math.round(now - t0), arcSame: arc === arc0, arcOp: arc ? +getComputedStyle(arc.parentElement.parentElement).opacity : 0, segs })
+        if (now - t0 < 700) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+      ;[...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === 'Connecting').click()
+      await new Promise((r) => setTimeout(r, 900))
+      return samples
+    })
+    const oldVerb = (s) => s.segs.find((g) => /^Propagating/.test(g.text))
+    const newVerb = (s) => s.segs.find((g) => /^Connecting/.test(g.text))
+    const hostSeg = (s) => s.segs.find((g) => g.host)
+    const outFrames = roll.filter((s) => oldVerb(s))
+    const inFrames = roll.filter((s) => newVerb(s))
+    check('the arc is ONE node through the hand-over and never dims — the recording\'s blink was this arc fading with the words',
+      roll.length > 20 && roll.every((s) => s.arcSame && s.arcOp === 1), JSON.stringify({ frames: roll.length, dims: roll.filter((s) => !s.arcSame || s.arcOp < 1).length }))
+    check('the host is the same node throughout and GLIDES to its new x on a layout transform — never re-created, never dimmed',
+      roll.every((s) => hostSeg(s) && hostSeg(s).op === 1) && roll.some((s) => Math.abs(hostSeg(s).x) > 1) && Math.abs(hostSeg(roll[roll.length - 1]).x) < 0.5,
+      JSON.stringify({ glide: roll.slice(0, 6).map((s) => +hostSeg(s).x.toFixed(1)), end: hostSeg(roll[roll.length - 1]).x }))
+    check('the old verb rolls UP and out — popped out of the flow, y → −8, gone within 300 ms — while the new one rolls up INTO place from 10 px below after a 60 ms beat',
+      outFrames.length > 4 && outFrames.every((s) => oldVerb(s).abs) && Math.min(...outFrames.map((s) => oldVerb(s).y)) < -6 && outFrames[outFrames.length - 1].t < 300
+        && newVerb(inFrames[0]).y > 8 && newVerb(inFrames[0]).op < 0.05 && inFrames.some((s) => s.t >= 30 && s.t <= 100 && newVerb(s).op < 0.05)
+        && Math.abs(newVerb(roll[roll.length - 1]).y) < 0.5 && newVerb(roll[roll.length - 1]).op === 1,
+      JSON.stringify({ outLast: outFrames[outFrames.length - 1], inFirst: newVerb(inFrames[0]), inLast: newVerb(roll[roll.length - 1]) }))
+    check('…the two verbs CROSS mid-roll — no frame leaves the line empty — and the arriving one lands monotonically: no zero once it is up (the WAAPI hand-back frame, kept off the main thread\'s way)',
+      roll.every((s) => Math.max(oldVerb(s)?.op ?? 0, newVerb(s)?.op ?? 0) >= 0.3)
+        && (() => { const up = inFrames.findIndex((s) => newVerb(s).op >= 0.9); return up > 0 && inFrames.slice(up).every((s) => newVerb(s).op >= 0.9) })(),
+      JSON.stringify(roll.filter((s) => s.t < 420).map((s) => [s.t, +(oldVerb(s)?.op ?? 0).toFixed(2), +(newVerb(s)?.op ?? 0).toFixed(2)])))
+    /*
+     * THE ARC IS THE SATURATED TWIN OF THE TEXT'S HUE (designer, 16.09.2026: «конкретно в спинере
+     * цвета более яркие и насыщенные» — A66FFF · 5077FE · FF8363 — and, on the text: «трогать
+     * цвета не нужно, они не должны быть яркими такими насыщенными»). Two registered hues on the
+     * row, one clock: park both in each of the three holds and read the pair.
+     */
+    const twins = await p.evaluate(async () => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      const row = d.querySelector('.shimmer-hue')
+      const arc = row.querySelector('path.step-spin')
+      const anims = row.getAnimations().filter((a) => /^sh-(hue|arc)$/.test(a.animationName))
+      const delay = anims[0]?.effect.getComputedTiming().delay ?? 0
+      const was = anims.map((a) => a.currentTime)
+      const start = performance.now()
+      const out = []
+      /* ⚠️ a CSS animation with a NEGATIVE delay is in its BEFORE phase at any negative local
+         time (before-active boundary = max(delay, 0)) — the effect is simply not applied and
+         the initial values show. Seek to the hold a whole number of 8.1 s cycles later, so the
+         local time is positive and the progress is the hold's. */
+      for (const hold of [500, 3200, 5900]) {
+        const seek = hold + delay + 8100 * Math.max(0, Math.ceil(-(hold + delay) / 8100))
+        anims.forEach((a) => { a.pause(); a.currentTime = seek })
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+        out.push({ hue: getComputedStyle(row).getPropertyValue('--sh-hue').trim(), arc: getComputedStyle(row).getPropertyValue('--sh-arc').trim(), stroke: getComputedStyle(arc).stroke })
+      }
+      /* back in step with the page clock, as if never touched */
+      anims.forEach((a, i) => { a.currentTime = was[i] + (performance.now() - start); a.play() })
+      return { names: anims.map((a) => a.animationName).sort(), delays: [...new Set(anims.map((a) => a.effect.getComputedTiming().delay))].length, out }
+    })
+    const PASTEL = ['rgb(164, 185, 255)', 'rgb(202, 170, 254)', 'rgb(254, 187, 170)']
+    const VIVID = ['rgb(80, 119, 254)', 'rgb(166, 111, 255)', 'rgb(255, 131, 99)']
+    check('the arc\'s stroke is the SATURATED twin of the headline\'s hue — two hue clocks on one delay, and in every hold the pair is blue/blue, violet/lilac, coral/peach, the text keeping the board\'s pastels',
+      twins.names.join() === 'sh-arc,sh-hue' && twins.delays === 1 && twins.out.length === 3 && twins.out.every((o, i) => o.hue === PASTEL[i] && o.arc === VIVID[i] && o.stroke === VIVID[i]),
+      JSON.stringify(twins))
     const after = await p.evaluate(() => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
       const card = d.querySelector('.shimmer-card')
@@ -2530,7 +2642,11 @@ check('…and the typed prompt is built as given', await cardUp())
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
       ;[...d.querySelectorAll('button')].find((e) => /^Publish to/.test(e.innerText.trim())).click()
     })
-    await p.waitForTimeout(1200)
+    await p.waitForTimeout(400)
+    check('…the press starts the busy beat first — the arc turns in the blue button and the world has not moved yet',
+      await p.evaluate(() => !!document.querySelector('[role="dialog"][aria-label="Publish"] button[aria-busy="true"] svg')) && (await world()).domain === 'ready',
+      JSON.stringify(await world()))
+    await p.waitForTimeout(2800)
     const out = await world()
     check('…and the press is what puts the site on it', out.domain === 'live' && out.published === true,
       JSON.stringify(out))
