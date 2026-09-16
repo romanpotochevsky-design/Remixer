@@ -1879,7 +1879,12 @@ check('…and the typed prompt is built as given', await cardUp())
     const rim = rimCands.find((e) => !rimCands.some((o) => o !== e && e.contains(o)))
     /* the ring is the comma-separated shadow that says `inset` — Tailwind's shadow utility
        prints two transparent ring placeholders before it */
-    const insetPart = (el) => (getComputedStyle(el).boxShadow.split(/,(?![^(]*\))/).find((part) => /inset/.test(part)) || '').trim()
+    const insetParts = (el) => getComputedStyle(el).boxShadow.split(/,(?![^(]*\))/).map((part) => part.trim()).filter((part) => /inset/.test(part))
+    /* the RING (spread 1px) and the TOP HAIRLINE (offset 1px down, no spread) — two strokes since
+       16.09.2026 night: «разделительную линию цветом 353538… только у верхней части этого блока» */
+    const ringPart = (el) => insetParts(el).find((part) => /0px 0px 0px 1px inset/.test(part)) || ''
+    const topPart = (el) => insetParts(el).find((part) => /0px 1px 0px 0px inset/.test(part)) || ''
+    const insetPart = ringPart
     const body = [...d.querySelectorAll('div')].find((e) => getComputedStyle(e).backgroundColor === 'rgba(255, 255, 255, 0.04)')
     const field = [...d.querySelectorAll('p')].find((e) => e.textContent === 'Website URL').parentElement.querySelector('div')
     const w = (el) => Math.round(el.getBoundingClientRect().width)
@@ -1902,6 +1907,9 @@ check('…and the typed prompt is built as given', await cardUp())
       parented: clear(rim, body) && body.lastElementChild.contains(rim),
       seamColour: (insetPart(rim).match(/rgba?\([^)]+\)/) || [null])[0],
       seamRing: insetPart(rim).replace(/rgba?\([^)]+\)\s*/, '').trim(),
+      topColour: (topPart(rim).match(/rgba?\([^)]+\)/) || [null])[0],
+      topLine: topPart(rim).replace(/rgba?\([^)]+\)\s*/, '').trim(),
+      insetCount: insetParts(rim).length,
       rowH: +rim.getBoundingClientRect().height.toFixed(2), rowPad: getComputedStyle(rim).padding, rowBorder: getComputedStyle(rim).borderTopWidth,
       card: w(rim), body: w(body), field: w(field),
       flush: Math.round(rim.getBoundingClientRect().bottom) === Math.round(body.getBoundingClientRect().bottom),
@@ -1923,6 +1931,9 @@ check('…and the typed prompt is built as given', await cardUp())
   check('…drawn as a 1px INSET ring, so the row is the board’s 420 × 64 with its content at 16 / 16 / 16 / 18 — a CSS border made it 66 (16.09.2026)',
     seam.seamRing === '0px 0px 0px 1px inset' && seam.rowBorder === '0px' && seam.rowH === 64 && seam.rowPad === '16px 16px 16px 18px',
     JSON.stringify({ ring: seam.seamRing, border: seam.rowBorder, h: seam.rowH, pad: seam.rowPad }))
+  check('…and its TOP edge alone is the designer’s #353538 — a second inset hairline (offset 1px, no spread) over the ring; sides and bottom stay #313133 (16.09.2026, night)',
+    seam.insetCount === 2 && seam.topColour === 'rgb(53, 53, 56)' && seam.topLine === '0px 1px 0px 0px inset',
+    JSON.stringify({ count: seam.insetCount, top: seam.topColour, line: seam.topLine }))
 
   /*
    * ⚠️ THE CONFIRM SCRIM IS 70%, AGAINST ITS OWN BOARD'S 50% (designer, 15.09.2026:

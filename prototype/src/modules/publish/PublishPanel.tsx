@@ -1878,8 +1878,15 @@ export function PublishPanel() {
                  card's 4 % fill, opaque so the edge it shares with the body card's rim does
                  not double. Measured on the live build: stroke (49,49,51) = #313133 exactly,
                  crisp 2 device px, on the fill (39,39,42); the body card's own rim reads
-                 (47,47,50) — the two lines are one weight, as he intended. */
-              <div className="flex items-center justify-between rounded-[16px] py-4 pl-[18px] pr-4 shadow-[inset_0_0_0_1px_#313133]">
+                 (47,47,50) — the two lines are one weight, as he intended.
+                 ✅ AND THE TOP EDGE ALONE IS #353538 (designer, 16.09.2026, night, with the top
+                 edge circled: «сделать разделительную линию цветом 353538, а то её практически не
+                 видно… только у верхней части этого блока»). A second inset shadow, offset 1px
+                 DOWN with no spread, paints exactly the top hairline — tapering off round the
+                 upper corners, nothing on the sides or the bottom — and lies OVER the ring, so
+                 the top row reads #353538 and everything else stays #313133. Both opaque: his
+                 own rule against stacking translucent strokes. */
+              <div className="flex items-center justify-between rounded-[16px] py-4 pl-[18px] pr-4 shadow-[inset_0_1px_0_0_#353538,inset_0_0_0_1px_#313133]">
                 {/* The word changing inside the row (Setting up → Waiting on your email → Live):
                     the old chip leaves, the new one comes up (motion.ts `swapText`). The slot
                     around them is always there, so `Unlink` keeps its end of the row while the

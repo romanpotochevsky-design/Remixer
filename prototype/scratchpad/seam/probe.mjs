@@ -12,7 +12,7 @@ await p.waitForTimeout(800); await p.click('.home-card-face'); await p.waitForSe
 await p.click('header button:has-text("Publish")'); await p.waitForTimeout(1200)
 const geo = await p.evaluate(() => {
   const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
-  const row = [...d.querySelectorAll('div')].find((e) => e.className.toString().includes('shadow-[inset_0_0_0_1px_#313133]'))
+  const row = [...d.querySelectorAll('div')].find((e) => e.className.toString().includes('#313133]'))
   const r = row.getBoundingClientRect()
   const cs = getComputedStyle(row)
   const chain = []
