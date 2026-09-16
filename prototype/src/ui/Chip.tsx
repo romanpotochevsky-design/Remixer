@@ -20,11 +20,17 @@ import { useT, type Text } from '@/i18n'
 /** The status tones a chip can wear — the Publish panel's own four (see DOMAIN_STATUS). */
 export type ChipTone = 'working' | 'stuck' | 'ready' | 'live'
 
-export function Chip({ label, tone }: { label: Text; tone?: ChipTone }) {
+/**
+ * `ink` — the word's colour on a dyed chip: the tone (default) or `white` (designer's A/B,
+ * 16.09.2026: «пусть будет 2 варианта цвет цветной или белый»). The dot keeps the tone either
+ * way (`--chip-dot`, index.css): it is the status, the word only reads it.
+ */
+export function Chip({ label, tone, ink = 'tone' }: { label: Text; tone?: ChipTone; ink?: 'tone' | 'white' }) {
   const { t } = useT()
   return (
     <span
       data-tone={tone}
+      data-ink={tone && ink === 'white' ? 'white' : undefined}
       className={`liquid-glass liquid-glass--chip flex h-6 flex-none items-center whitespace-nowrap rounded-full text-[13px] font-medium leading-none${
         tone ? ' gap-2 pl-2 pr-2.5' : ' px-2.5 text-[var(--white-720)]'
       }`}
@@ -39,7 +45,7 @@ export function Chip({ label, tone }: { label: Text; tone?: ChipTone }) {
         * optical margin, as on the neutral chip. The dot is the INK at full strength — the same
         * colour as the word (on the blue chip that is `--action-ink`, not the glass's `--action`).
         */}
-      {tone && <span className="h-2 w-2 flex-none rounded-full bg-[var(--chip-ink)]" aria-hidden />}
+      {tone && <span className="h-2 w-2 flex-none rounded-full bg-[var(--chip-dot,var(--chip-ink))]" aria-hidden />}
       <span className="chip-label">{t(label)}</span>
     </span>
   )

@@ -414,6 +414,25 @@ await p.waitForTimeout(800)
   })
   check('at most one option in a question is recommended', tags.filter(([, r]) => r).length <= 1,
     JSON.stringify(tags))
+  /* ⚠️ THE RECOMMENDED ROW BREATHES (board 30420:25403, designer 16.09.2026: «каша получается»):
+     with the chip the title row is the chip's 24, and 8px separate it from the consequence;
+     a plain row keeps its 2. Only the chip's row changed. */
+  const rowGap = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('.brief-opt')]
+    const gapOf = (r) => {
+      const title = r.querySelector('span.flex.flex-wrap')
+      const desc = title && title.nextElementSibling
+      return title && desc ? +(desc.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toFixed(1) : null
+    }
+    const rec = rows.find((r) => r.innerText.includes('Recommended'))
+    const plain = rows.find((r) => !r.innerText.includes('Recommended'))
+    return {
+      rec: rec ? gapOf(rec) : null, plain: plain ? gapOf(plain) : null,
+      recTitleRow: rec ? +rec.querySelector('span.flex.flex-wrap').getBoundingClientRect().height.toFixed(1) : null,
+    }
+  })
+  check('the recommended row breathes: a 24px title row and 8px down to the consequence; plain rows keep their 2',
+    rowGap.rec === 8 && rowGap.plain === 2 && rowGap.recTitleRow === 24, JSON.stringify(rowGap))
 }
 {
   /* ⚠️ THE CHIP IS GLASS AT THE SIZE OF A WORD, AND SINCE 16.09.2026 IT IS LIT LIKE A BADGE,
@@ -2228,6 +2247,42 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.waitForTimeout(300)
     await p.keyboard.press('Escape')
     await p.waitForTimeout(400)
+  }
+
+  /*
+   * THE WHITE-WORD A/B (designer, 16.09.2026, on the blue `Ready`: «попробуй сделать цвет
+   * белым в пилюле, пусть будет 2 варианта цвет цветной или белый»). `world.chipInkWhite`,
+   * flipped from the prototype console: the word goes white, the DOT keeps the tone (it is the
+   * status), the glass is untouched; off by default, so every check above saw the tone.
+   */
+  {
+    await openPublish('p=built&a=paid&d=live&n=fitration.shop&v=true&u=0&t=22&c=640')
+    const read = () => p.evaluate(() => {
+      const el = document.querySelector('[role="dialog"][aria-label="Publish"] .liquid-glass--chip[data-tone]')
+      return { ink: el.dataset.ink ?? 'tone', word: getComputedStyle(el.querySelector('.chip-label')).color,
+        dot: getComputedStyle(el.querySelector('.h-2.w-2')).backgroundColor, fill: getComputedStyle(el).backgroundColor }
+    })
+    const before = await read()
+    await p.keyboard.press('Control+.')
+    await p.waitForTimeout(400)
+    const flip = () => p.evaluate(() => {
+      const lab = [...document.querySelectorAll('[data-console] label')].find((l) => l.textContent.trim() === 'Status chip — white word')
+      lab.parentElement.parentElement.querySelector('button').click()
+    })
+    await flip()
+    await p.waitForTimeout(400)
+    const on = await read()
+    await flip()
+    await p.waitForTimeout(300)
+    const back = await read()
+    check('the status chip’s word is the tone by default, and the console can turn it white — the dot and the glass stay',
+      before.ink === 'tone' && before.word === INK.live && on.ink === 'white' && on.word === 'rgb(255, 255, 255)' && on.dot === INK.live && on.fill === before.fill,
+      JSON.stringify({ before, on }))
+    check('…and the flip goes back to the tone', back.ink === 'tone' && back.word === INK.live, JSON.stringify(back))
+    await p.keyboard.press('Control+.')
+    await p.waitForTimeout(200)
+    await p.keyboard.press('Escape')
+    await p.waitForTimeout(300)
   }
 
   for (const [q, want, label] of [

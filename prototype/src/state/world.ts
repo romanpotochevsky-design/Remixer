@@ -365,6 +365,14 @@ export interface World {
    */
   icann: boolean
   /**
+   * THE STATUS CHIP'S WORD — the tone (default) or WHITE (designer, 16.09.2026, on the blue
+   * `Ready`: «попробуй сделать цвет белым в пилюле, пусть будет 2 варианта цвет цветной или
+   * белый»). A styling A/B he flips in the console while looking at the Publish panel; the dot
+   * keeps the tone either way — it is the status, the word only reads it. Not a product state:
+   * no URL key, and `startBuild` leaves it alone on purpose (a preference, not a project).
+   */
+  chipInkWhite: boolean
+  /**
    * WHICH domain is attached to this project.
    *
    * The name has to be world truth and not navigation, because the panel outlives every
@@ -430,6 +438,7 @@ export const DEFAULT_WORLD: World = {
    */
   published: false,
   icann: false,
+  chipInkWhite: false,
   customDomain: CUSTOM_DOMAIN,
   chat: 'long',
   projects: DEMO_PROJECTS,

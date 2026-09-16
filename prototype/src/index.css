@@ -1204,6 +1204,15 @@
      (designer, 16.09.2026, on the `Ready` chip: «вот цвет текста 51A6FF») */
   .liquid-glass--chip[data-tone='ready'] { --chip-tone: var(--action); --chip-ink: var(--action-ink); }
   /*
+   * THE WHITE WORD — the designer's A/B (16.09.2026, on the blue `Ready`: «попробуй сделать
+   * цвет белым в пилюле, пусть будет 2 варианта цвет цветной или белый»). `data-ink="white"`
+   * turns the WORD white and leaves the dot in the tone: the dot is the status, the word only
+   * reads it — all-white would make the four chips one chip. The glass is untouched. Flipped
+   * from the prototype console («Status chip — white word»); which one ships is his call.
+   */
+  .liquid-glass--chip[data-tone][data-ink='white'] { --chip-ink: #fff; --chip-dot: var(--chip-tone); }
+  .liquid-glass--chip[data-tone='ready'][data-ink='white'] { --chip-dot: var(--action-ink); }
+  /*
  * THE BUILDER COMPOSER'S GLASS CIRCLES — the "+" and the mic beside the mode pill, from
  * the designer's own Figma inspector on the "+" (09.09.2026: "у кнопок этих в стиле Apple
  * liquid glass вот такие параметры, у тебя в вёрстке они не такие"):

@@ -252,9 +252,21 @@ export function Row({ name, detail, on, recommended, onPick }: {
       <span className="flex items-center pt-1.5">
         <Radio on={on} />
       </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      {/*
+        * ⚠️ THE RECOMMENDED ROW BREATHES DIFFERENTLY (board 30420:25403, designer 16.09.2026:
+        * «у пункта с пилюлей отступ вертикальный между пилюлей и текстом с описанием ниже
+        * маленький, каша получается… сделай размеры, отступы, паддинги точно так же как в
+        * макете… опции где нет Recommended мы ничего не меняем»). With the chip the title row
+        * is 24 tall — the chip's height — and the board puts 8px between that row and the
+        * consequence, where a plain row keeps its 2: a 24px pill sitting 2px over a line of
+        * text is what read as «каша». The title in that row is trimmed to its cap band
+        * (`text-box-trim`), as the board draws it, so the caps sit centred on the chip's axis;
+        * everything else — pl 16 / pr 24, py 18, radio at 6, 12 to the text, 8 to the chip —
+        * is the board's and was already here. Plain rows are untouched.
+        */}
+      <span className={`flex min-w-0 flex-1 flex-col ${recommended ? 'gap-2' : 'gap-0.5'}`}>
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-[15px] font-medium leading-[1.4] text-white">{t(name)}</span>
+          <span className={`text-[15px] font-medium leading-[1.4] text-white${recommended ? ' [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]' : ''}`}>{t(name)}</span>
           {recommended && <Chip label={RECOMMENDED} />}
         </span>
         {/* the consequence — what changes on the page if this is picked (29464:34362) */}

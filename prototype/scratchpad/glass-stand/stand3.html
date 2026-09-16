@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8">
+<title>Dyed chip — a ladder down in saturation and density</title>
+<style>
+  :root{--live:#48ba79;--attention:#e5c359;--danger:#ef4444;--action:#1587ff;--action-ink:#51a6ff;--white-720:#ffffffb8}
+  body{margin:0;background:#09090b;color:#fff;font:13px/1 -apple-system,Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .sheet{display:grid;grid-template-columns:repeat(4,1fr);gap:0 12px;padding:16px 20px;align-items:start}
+  .head{font:600 11px/1.4 ui-monospace,monospace;letter-spacing:.06em;color:#9a9aa3;padding:6px 0 8px;text-transform:uppercase}
+  .head b{display:block;color:#fff;letter-spacing:0;text-transform:none;font-size:12px}
+  .ground{border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;background:rgb(39,39,42)}
+  .zoom{zoom:3}
+  .chip{position:relative;display:inline-flex;height:24px;align-items:center;gap:8px;padding:0 10px 0 8px;border-radius:999px;font-weight:500;font-size:13px;line-height:1;white-space:nowrap;color:var(--chip-ink);
+    --t:color-mix(in srgb,var(--chip-tone) var(--sat,100%),#fff);--hi:color-mix(in srgb,var(--chip-tone) 50%,#fff);
+    background:radial-gradient(120% 90% at 50% -20%, color-mix(in srgb,var(--t) var(--fill-top,18%),transparent), transparent 70%), color-mix(in srgb,var(--t) var(--fill-bot,9%),transparent);
+    box-shadow:inset 0 0 5px rgba(0,0,0,var(--depth,.2))}
+  .chip .dot{width:8px;height:8px;border-radius:50%;background:var(--chip-ink);flex:none}
+  .chip::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+    -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+    background:
+      radial-gradient(50% 12px at 20px 0px, color-mix(in srgb,var(--hi) 92%,transparent) 0, color-mix(in srgb,var(--hi) 50.6%,transparent) 35%, transparent 100%),
+      radial-gradient(50% 12px at calc(100% - 20px) 100%, color-mix(in srgb,var(--hi) 72%,transparent) 0, color-mix(in srgb,var(--hi) 36%,transparent) 35%, transparent 100%),
+      radial-gradient(28px 14px at calc(100% - 12px) 0px, color-mix(in srgb,var(--hi) var(--arc,28%),transparent) 0, transparent 100%),
+      radial-gradient(28px 14px at 12px 100%, color-mix(in srgb,var(--hi) var(--arc,28%),transparent) 0, transparent 100%),
+      color-mix(in srgb,var(--t) var(--rim,20%),transparent)}
+  [data-tone=live]{--chip-tone:var(--live);--chip-ink:var(--live)}
+  [data-tone=working]{--chip-tone:var(--attention);--chip-ink:var(--attention)}
+  [data-tone=stuck]{--chip-tone:var(--danger);--chip-ink:var(--danger)}
+  [data-tone=ready]{--chip-tone:var(--action);--chip-ink:var(--action-ink)}
+  .l0{}                                                        /* today: fill 18→9, rim 20, tone 100% */
+  .l1{--fill-top:15%;--fill-bot:7.5%;--rim:18%;--sat:90%}      /* −1 */
+  .l2{--fill-top:13%;--fill-bot:6%;--rim:16%;--sat:80%}        /* −2 */
+  .l3{--fill-top:11%;--fill-bot:5%;--rim:14%;--sat:70%}        /* −3 */
+</style>
+<body><div class="sheet" id="s"></div>
+<script>
+const L=[['l0','L0 · сейчас','тело 18 → 9 %, кромка 20 %, тон 100 %'],['l1','L1 · −1','тело 15 → 7.5 %, кромка 18 %, тон 90 % + 10 % белого'],['l2','L2 · −2','тело 13 → 6 %, кромка 16 %, тон 80 % + 20 % белого'],['l3','L3 · −3','тело 11 → 5 %, кромка 14 %, тон 70 % + 30 % белого']];
+const chips=[['Waiting on your email','working'],['Ready','ready'],['Live','live'],['Not responding','stuck']];
+let h=L.map(([c,t,d])=>`<div class="head">${t}<b>${d}</b></div>`).join('');
+h+=L.map(([c])=>`<div class="ground zoom">${chips.map(([l,t])=>`<span class="chip ${c}" data-tone="${t}"><span class="dot"></span><span>${l}</span></span>`).join('')}</div>`).join('');
+document.getElementById('s').innerHTML=h;
+</script></body>

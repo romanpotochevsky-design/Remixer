@@ -615,6 +615,12 @@ export const AXES: Axis[] = [
     appliesWhen: (w) => isCustomDomainActive(w),
   },
   {
+    /* The designer's A/B on the status chip's word (16.09.2026): tone (off) or white (on).
+       The dot keeps the tone either way. Shown only while a chip is on screen to flip. */
+    key: 'chipInkWhite', group: G.domain, label: { en: 'Status chip — white word', uk: 'Плашка статусу — біле слово' }, kind: 'toggle',
+    appliesWhen: (w) => isCustomDomainActive(w),
+  },
+  {
     /* The composer's mode switcher (Figma 29697:54553). Autopilot is the default from
        the first generation on; it only has anything to lead once a site exists. */
     key: 'mode', group: G.chat, label: { en: 'Chat mode', uk: 'Режим чату' }, kind: 'options',

@@ -1552,7 +1552,7 @@ export function PublishPanel() {
                   <AnimatePresence mode="wait" initial={false}>
                     {rowStatus && (
                       <motion.span key={rowStatus.word.en} className="flex" variants={swapText} initial="initial" animate="animate" exit="exit">
-                        <Chip label={rowStatus.word} tone={rowStatus.tone} />
+                        <Chip label={rowStatus.word} tone={rowStatus.tone} ink={world.chipInkWhite ? 'white' : 'tone'} />
                       </motion.span>
                     )}
                   </AnimatePresence>
