@@ -46,7 +46,8 @@ import { useWorld } from '@/state/world'
 import { useT, type Text } from '@/i18n'
 import { BRIEF_QUESTIONS, OTHER, optionById, type BriefKey, type BriefOption } from './brief'
 import { answerBrief } from './send'
-import { Pick, PickDefs, Chip } from './BriefPanel'
+import { Pick, PickDefs } from './BriefPanel'
+import { Chip } from '@/ui/Chip'
 import { IconPencil } from '@/ui/icons'
 
 const q = (key: BriefKey) => BRIEF_QUESTIONS.find((x) => x.key === key)!

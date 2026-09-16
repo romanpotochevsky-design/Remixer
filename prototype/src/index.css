@@ -985,6 +985,41 @@
     background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
   }
   /*
+   * THE DYED CHIP — the same member wearing a status colour (designer, 16.09.2026, on the
+   * Publish panel's domain row: «я хочу чтобы стекла были в цвет статуса … и текст … тоже
+   * должен быть оттенков статуса»). Fill, rim and ink all take ONE tone, so it reads as
+   * coloured glass and not as a grey chip with green writing:
+   *
+   *   fill   tone at 14% — the house 8% white wash, in colour, a touch denser because a
+   *          hue at 8% over this ground is not visible;
+   *   rim    the canon's diagonal (hot top-left, dim middle, warm bottom-right), in the
+   *          tone at 40% → 12% → 32%. The neutral rim is 20/5/15 WHITE; a hue is far less
+   *          luminous than white, so the alphas are raised until the rim sits at about the
+   *          neutral one's brightness on the same ground (green at 40% over rgb(39,39,42)
+   *          ≈ luminance .10 vs white at 20% ≈ .085) — same glass edge, coloured;
+   *   ink    the tone itself.
+   *
+   * Tones are the Publish panel's four (`DOMAIN_STATUS`), by name, so a fifth colour cannot
+   * arrive through this door. `color-mix` and not a second hex per tone: the token stays
+   * the one source, and there is no interpolation here for the Oklab trap to bite.
+   */
+  .liquid-glass--chip[data-tone] {
+    background: color-mix(in srgb, var(--chip-tone) 14%, transparent);
+    color: var(--chip-tone);
+  }
+  .liquid-glass--chip[data-tone]::before {
+    background: linear-gradient(
+      to bottom right,
+      color-mix(in srgb, var(--chip-tone) 40%, transparent) 0%,
+      color-mix(in srgb, var(--chip-tone) 12%, transparent) 50%,
+      color-mix(in srgb, var(--chip-tone) 32%, transparent) 100%
+    );
+  }
+  .liquid-glass--chip[data-tone='live'] { --chip-tone: var(--live); }
+  .liquid-glass--chip[data-tone='working'] { --chip-tone: var(--attention); }
+  .liquid-glass--chip[data-tone='stuck'] { --chip-tone: var(--danger); }
+  .liquid-glass--chip[data-tone='ready'] { --chip-tone: var(--action); }
+  /*
  * THE BUILDER COMPOSER'S GLASS CIRCLES — the "+" and the mic beside the mode pill, from
  * the designer's own Figma inspector on the "+" (09.09.2026: "у кнопок этих в стиле Apple
  * liquid glass вот такие параметры, у тебя в вёрстке они не такие"):

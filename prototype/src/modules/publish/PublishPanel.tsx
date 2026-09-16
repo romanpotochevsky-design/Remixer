@@ -41,6 +41,8 @@ import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
 import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck, IconVisitors } from '@/ui/icons'
 import { retryConnect } from '@/modules/domains/connect'
+import { domainRowStatus } from '@/modules/domains/status'
+import { Chip } from '@/ui/Chip'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
 import { useConfirm } from '@/ui/ConfirmDialog'
 import { popover, popoverContent } from '@/ui/motion'
@@ -531,6 +533,8 @@ export function PublishPanel() {
   }, [publishOpen, confirming, togglePublish])
 
   const paid = hasPlan(world)
+  /** The domain row's word and tone — the topbar chip's own table, see modules/domains/status.ts. */
+  const rowStatus = domainRowStatus(world)
   /*
    * EVERY STATE THE PANEL CARRIES (the designer's six of 13.09.2026 — "после корзины все
    * статусы и продолжение флоу происходят тут в окне Publish" — plus the ones the two
@@ -1451,31 +1455,42 @@ export function PublishPanel() {
                * was the divider above it; see ProgressCard.
                */
               /*
-                * ⚠️ THE STATUS SLOT IS EMPTY, AND THAT IS THE ANSWER (designer, 15.09.2026,
-                * on the renewal line I proposed for it: «я думаю что вставлять туда "Renews
-                * 15 Sep 2027 · $19.99/yr" это не та информация которая так важна для
-                * пользователя и имеет смысл ее всегда видеть там»). He is right, and the
-                * objection generalises into the rule for this slot:
+                * THE STATUS SLOT HOLDS THE DOMAIN'S WORD, AS A CHIP DYED IN ITS TONE (designer,
+                * 16.09.2026, choosing form C of the stand in `scratchpad/slot-stand/` and then
+                * asking for the glass — and the ink — in the status colour). What stood here
+                * before, and why it went:
                 *
-                *   THIS ROW IS SEEN ON EVERY PUBLISH, SO WHATEVER STANDS IN IT MUST BE
-                *   WORTH READING ON EVERY PUBLISH.
+                *   `Secure padlock on`  — always true, therefore never news, and a claim about
+                *                          a certificate that does not exist on `propagating`;
+                *                          the designer struck it himself (15.09.2026).
+                *   `Renews 15 Sep 2027 · $19.99/yr` — rejected the same day: not worth seeing
+                *                          on every publish.
+                *   nothing              — the row held `Unlink` alone for a day. He did not
+                *                          want it empty: «что самое полезное и логичное что
+                *                          там можно видеть?»
+                *   `● Live` (a dot + a word, the bar's own form) — built, and killed by his
+                *                          screenshot: two identical green dots in one column,
+                *                          same inset to the text, read as a two-item list of
+                *                          one status, the first item boxed for no reason.
                 *
-                * A renewal date a year out fails that — it is true, it is ours to say, and
-                * it is news twice: when the domain is bought and when it is nearly due.
-                * `Secure padlock on` failed it the other way: always true, therefore never
-                * news, and a claim about a certificate that does not exist yet on
-                * `propagating`, on `ready`, or while a registrant letter is owed.
+                * So the rule this slot obeys is not "news only" (my over-reading of the renewal
+                * ruling) but HIS words: important enough to see every time. A status is — the
+                * bar in this same panel is the precedent — and the panel now says three
+                * different things on three surfaces: the TITLE is about the site (has it ever
+                * gone out), this ROW is about the domain (does the address answer), the BAR is
+                * about the edits (is what is out current). A live site with edits queued used
+                * to be titled `Publish` with a counted bar and not one word saying the domain
+                * works.
                 *
-                * Nothing else clears the bar either. The address is in the field above, the
-                * traffic is the header's counter, a second link is banned (one link in this
-                * window), and anything about the site being up is the bar's own job. So the
-                * row holds the ACTION alone, right-aligned, in every state — and the slot
-                * becomes a channel that speaks only when it has something: a renewal inside
-                * its last month, auto-renew switched off, a name at another registrar we
-                * cannot renew. None of those exists in the world yet, and inventing the
-                * calm case to fill space is what put the padlock there in the first place.
+                * FORM: the `Recommended` chip (`ui/Chip.tsx`), the canon's `--chip` member, so
+                * the row's tag and the bar's sentence are two species and stop reading as a
+                * list — and dyed, not recoloured: fill, rim and ink all take the tone
+                * (`.liquid-glass--chip[data-tone]` in index.css), the rim keeping the canon's
+                * diagonal so it is still the same glass. Tone and word come from
+                * `domainRowStatus`, the table the topbar chip reads, so the two cannot disagree.
                 */
-              <div className="flex items-center justify-end rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
+              <div className="flex items-center justify-between rounded-[16px] border border-[#313133] py-4 pl-[18px] pr-4">
+                {rowStatus && <Chip label={rowStatus.word} tone={rowStatus.tone} />}
                 <button
                   onClick={unlinkDomain}
                   className="press-bloom flex h-8 flex-none items-center gap-1 rounded-[8px] pl-4 pr-1.5 text-[14px] font-medium text-[#f57c00] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#f57c0014]"

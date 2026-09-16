@@ -2018,16 +2018,24 @@ check('…and the typed prompt is built as given', await cardUp())
    * domain that was connected, set up and merely waiting on a letter could not be taken
    * off the site from the window that owns the connection.
    *
-   * The status half of that row is EMPTY on purpose — `Secure padlock on` was a claim
-   * about a certificate that does not exist until the name answers, and the renewal line
-   * proposed to replace it was rejected as not worth seeing on every publish. So this also
-   * asserts the padlock line is gone from the whole panel.
+   * The status half of that row is the DOMAIN'S WORD, as the `Recommended` chip dyed in
+   * the status tone (designer, 16.09.2026: form C of `scratchpad/slot-stand/`, «стекла в
+   * цвет статуса … и текст … оттенков статуса»). `Secure padlock on` is gone from the
+   * whole panel (his own ruling of 15.09), and the `● Live` dot-and-word form that came
+   * between is gone too: his screenshot showed two identical green dots in one column
+   * reading as a two-item list. So per state this asserts the word, the tone attribute,
+   * that fill, rim AND ink are dyed (not the neutral chip with green writing), and — on the
+   * live panel — that the ONLY 8px dot left is the bar's.
    */
-  for (const [q, want, label] of [
-    ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order'],
-    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads'],
-    ['d=ready&k=true&n=fitration.shop&v=false&u=0', true, 'yes with the letter still owed'],
-    ['d=live&n=fitration.shop&v=true&u=0', true, 'yes on a live domain'],
+  const INK = { working: 'rgb(229, 195, 89)', stuck: 'rgb(239, 68, 68)', ready: 'rgb(21, 135, 255)', live: 'rgb(72, 186, 121)' }
+  for (const [q, want, label, chip] of [
+    ['d=provisioning&k=true&n=fitration.shop&v=false&u=0', false, 'not while the registry has the order', null],
+    ['d=propagating&k=true&n=fitration.shop&v=false&u=0', true, 'yes while the address spreads', ['Setting up', 'working']],
+    ['d=ready&n=fitration.shop&v=false&u=0', true, 'yes once it is connected, waiting on the press', ['Ready', 'ready']],
+    ['d=ready&k=true&n=fitration.shop&v=false&u=0', true, 'yes with the letter still owed', ['Waiting on your email', 'working']],
+    ['d=live&n=fitration.shop&v=true&u=0', true, 'yes on a live domain', ['Live', 'live']],
+    ['d=unreachable&n=fitration.shop&v=true&u=0', true, 'yes when it stopped answering', ['Not responding', 'stuck']],
+    ['d=old-site&i=dh-in-use&n=fitration.shop&v=true&u=0', true, 'yes while an older site sits on it', ['Showing your old site', 'stuck']],
   ]) {
     await openPublish(`p=built&a=paid&${q}`)
     const row = await p.evaluate(() => {
@@ -2047,6 +2055,30 @@ check('…and the typed prompt is built as given', await cardUp())
     if (want) {
       check('…as the body card’s last child, under whatever card is above it',
         row.parented && (row.belowMail === null || row.belowMail === 16), JSON.stringify(row))
+      const seen = await p.evaluate(() => {
+        const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+        const btn = [...d.querySelectorAll('button')].find((b) => /^(Unlink|Відв)/.test(b.textContent.trim()))
+        const rowEl = btn.parentElement
+        const el = rowEl.querySelector('.liquid-glass--chip[data-tone]')
+        if (!el) return { chip: null }
+        const cs = getComputedStyle(el), rim = getComputedStyle(el, '::before')
+        return {
+          chip: { word: el.textContent.trim(), tone: el.dataset.tone },
+          ink: cs.color,
+          fillDyed: cs.backgroundColor !== 'rgba(255, 255, 255, 0.08)' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)',
+          rimDyed: /linear-gradient/.test(rim.backgroundImage) && !/rgba\(255, 255, 255/.test(rim.backgroundImage),
+          h: Math.round(el.getBoundingClientRect().height),
+          rowDots: rowEl.querySelectorAll('.rounded-full.h-2.w-2, .rounded-full.h-1\\.5').length,
+          panelDots: d.querySelectorAll('.h-2.w-2.rounded-full').length,
+          first: rowEl.firstElementChild === el,
+        }
+      })
+      check(`…and its word is the domain’s: ${chip[0]} in ${chip[1]}`,
+        seen.chip && seen.chip.word === chip[0] && seen.chip.tone === chip[1], JSON.stringify(seen.chip))
+      check('…as the Recommended chip dyed in the tone — fill, rim and ink, 24 high, first in the row',
+        seen.ink === INK[chip[1]] && seen.fillDyed && seen.rimDyed && seen.h === 24 && seen.first, JSON.stringify(seen))
+      check('…with no dot of its own — the bar keeps the panel’s only one',
+        seen.rowDots === 0 && (chip[1] !== 'live' || seen.panelDots === 1), JSON.stringify({ rowDots: seen.rowDots, panelDots: seen.panelDots }))
     }
     await p.keyboard.press('Escape')
     await p.waitForTimeout(300)

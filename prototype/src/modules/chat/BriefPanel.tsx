@@ -39,6 +39,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT, type Text } from '@/i18n'
 import { IconCaretLeft, IconCaretRight } from '@/ui/icons'
+import { Chip } from '@/ui/Chip'
 import { sheetExit, stepSwap, stepSwapFade } from '@/ui/motion'
 import { BRIEF_QUESTIONS, OTHER, type BriefQuestion } from './brief'
 import { answerBrief, briefGoTo, briefNext, briefSkipAll, asOther } from './send'
@@ -230,25 +231,8 @@ export function Pick({ className, on, label, title, onPick, children }: {
  */
 const RECOMMENDED: Text = { en: 'Recommended', uk: 'Рекомендовано' }
 
-/**
- * THE CHIP ITSELF — glass at the size of a word (`liquid-glass--chip` in index.css;
- * designer, 11.09.2026: "ты можешь эту пилюлю сделать дизайн пилюли в стиле Apple liquid
- * glass?" and "сделай ее скругленной полностью").
- *
- * ⚠️ EXPORTED, because the plan wears the same object one moment later — there it reads
- * "Remixer's pick" over a decision the customer left alone, here "Recommended" over one
- * they are about to make. They were two copies for a day; a copy of a plate diverges on
- * the first change to its rim, which is exactly the change this is.
- */
-export function Chip({ label }: { label: Text }) {
-  const { t } = useT()
-  return (
-    <span className="liquid-glass liquid-glass--chip flex h-6 flex-none items-center whitespace-nowrap rounded-full px-2.5 text-[13px] font-medium leading-none text-[var(--white-720)]">
-      {t(label)}
-    </span>
-  )
-}
-
+/** The chip itself — `Recommended` here, `Remixer's pick` on the plan — lives in `ui/Chip.tsx`
+ *  since it gained a third home (the Publish panel's domain status, dyed in a tone). */
 export function Row({ name, detail, on, recommended, onPick }: {
   name: Text
   detail?: Text
