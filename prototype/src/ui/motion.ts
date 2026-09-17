@@ -334,8 +334,16 @@ export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
  * the edge (rule 3), coming up from slightly small and slightly HIGH — it is born at the
  * seam it unfolds from, so it slides out from under the block above rather than rising out
  * of nowhere — and it catches the light as it forms (`.card-arrive`, the thread cards'
- * glint). Leaving is quicker and flat (rule 4): the glass is gone in 140 ms, the edge
- * closes in 300, and nothing on the way out bounces.
+ * glint). The GLASS leaves the way rule 4 says — gone in 140 ms, flat. The EDGE does not
+ * leave: it is the panel's own outline moving to a new resting height, and it moves with
+ * the same spring in both directions (designer, 17.09.2026, asked whether the panel's
+ * shrink after Publish should carry «нашу фирменную apple liquid glass анимацию с bounce
+ * effect»: «да нужен»). Below zero the clip cannot go, so `ui/Reveal.tsx` carries the
+ * overshoot as a negative bottom margin: the blocks under the folding one, and the
+ * panel's bottom edge with them, dip a few pixels past their resting place and come back.
+ * Rule 4 is about DISMISSAL — a menu, a sheet, a block's glass; a persistent surface
+ * settling to a new size is a movement, and Apple's glass bounces on the way small too
+ * (the Dynamic Island shrinking back).
  *
  * ⚠️ THIS ANIMATES `height`, AND THAT IS A MEASURED EXCEPTION to this file's rule, taken
  * the way `.shell-aside`'s width took it. The panel is a fixed 432px overlay: the per-frame
@@ -346,7 +354,10 @@ export const FIELD_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
  * dock stays on its piston, the composer's field on its snap-once slide.
  */
 export const REVEAL_OPEN = { type: 'spring', duration: 0.62, bounce: 0.32 } as const
-export const REVEAL_CLOSE = { type: 'spring', duration: 0.3, bounce: 0 } as const
+/** The edge folding: the SAME physics as unfolding — one outline, one spring (17.09.2026; was
+ *  .3 s flat until the designer asked for the bounce on the shrink). Only the glass inside
+ *  leaves fast and flat (`revealBody.exit`). */
+export const REVEAL_CLOSE = { type: 'spring', duration: 0.62, bounce: 0.32 } as const
 export const revealBody = {
   initial: { opacity: 0, scale: 0.96, y: -6 },
   animate: {
@@ -761,11 +772,66 @@ export const siteBack = {
   exit: { opacity: 0, transition: EXIT },
 } as const
 /** The Domains window as ONE object leaving — frame, bar and sheet together (its entrance is the
- *  sheet's own `surface` rise, unchanged; the wrapper only owns the exit). */
+ *  sheet's own `surface` rise, unchanged; the wrapper only owns the exit). It leaves the way the
+ *  other full-canvas surface does (`fullscreenSheet.exit`): the house 140 ms, shrinking to .975 —
+ *  on a ~1600px window that is a ~40px sweep at the far corners, enough to read as the window
+ *  closing rather than blinking off (designer, 17.09.2026: «сначала анимация закрытия окна
+ *  Domains»); the 1 % it had before was a fade with a shrink nobody could see. */
 export const surfaceWindow = {
   initial: { opacity: 1 },
   animate: { opacity: 1 },
-  exit: { opacity: 0, scale: 0.99, y: -6, transition: EXIT },
+  exit: { opacity: 0, scale: 0.975, transition: EXIT },
+} as const
+
+/*
+ * THE PUBLISH PANEL ARRIVES AS GLASS (designer, 17.09.2026, confirming the Connect hand-over:
+ * «сначала анимация закрытия окна Domains, потом плавная и стильная анимация открытия Publish в
+ * стиле Apple liquid glass»). Until now the panel came in on `popover` — the menu's language: a
+ * quick house spring from .94, contents 60 ms behind, no light. Liquid Glass in this product is
+ * the thread cards' arrival (`cardIn`), and the panel now speaks it:
+ *  · the glass INFLATES from the corner it hangs off — `origin-top-right`, the Publish button it
+ *    covers — from .94 with one soft overshoot (spring .68 / bounce .2: ζ ≈ .8, the peak ~.1 %
+ *    past 1, the same numbers the cards were accepted on) and a short drop of 8px, so it comes
+ *    DOWN out of the topbar rather than materialising in place;
+ *  · the CONTENTS lag a beat (140 ms) and focus onto the glass from slightly LARGE (1.03 → 1),
+ *    the lens settling rather than a picture fading in; opacity on its own quick curve so the
+ *    panel is never gauze;
+ *  · the rim catches the LIGHT — `.glass-glint`, the cards' `card-glint` worn as a child
+ *    element, because `.card-arrive` sets `position: relative` and the panel is `fixed`.
+ * Leaving stays rule 4: 140 ms, flat, a hair smaller — a dismissal.
+ */
+export const panelIn = {
+  initial: { opacity: 0, scale: 0.94, y: -8 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: 'spring', duration: 0.68, bounce: 0.2, opacity: { duration: 0.24, ease: [0.2, 0, 0, 1] } },
+  },
+  exit: { opacity: 0, scale: 0.97, y: -2, transition: EXIT },
+} as const
+/** The panel's contents: a beat behind the glass, focusing onto it from slightly large. */
+export const panelInBody = {
+  initial: { opacity: 0, scale: 1.03, y: 4 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: 'spring', duration: 0.6, bounce: 0.1, delay: 0.14, opacity: { duration: 0.22, delay: 0.14 } },
+  },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
+} as const
+/* Reduced motion: the scales and offsets are DROPPED, not jumped into — the panel and its
+   contents simply come up in place. */
+export const panelInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.24, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+export const panelInBodyFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, delay: 0.1 } },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
 } as const
 
 /**

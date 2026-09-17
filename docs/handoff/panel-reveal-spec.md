@@ -74,8 +74,12 @@ Why each piece:
 - **The bounce is the dock's.** The designer accepted the question dock only after two cuts with
   less («не хватает отдачи») at ζ ≈ .66, and named it as the example here. `bounce .32` in
   motion's duration-spring is ζ = .68.
-- **Leaving is quicker and flat** (rule 4): the glass is gone in 140ms, the edge closes in
-  300ms, and nothing on the way out overshoots.
+- **The glass leaves quicker and flat (rule 4); the EDGE bounces both ways.** The glass is gone in
+  140ms. The edge folds on the same spring it unfolds on (`REVEAL_CLOSE` = .62s / bounce .32, since
+  17.09.2026 — the designer's «да нужен» to whether the panel's shrink after Publish should carry
+  the bounce). Rule 4 is about dismissing an OBJECT; a persistent surface settling to a new height
+  is a movement, and Apple's glass bounces on the way small too. Below zero a clip cannot go, so the
+  overshoot is carried as a negative bottom margin — see «Кромка — одно motion-значение» below.
 - **Words hand over sequentially** because two stages painted over each other at half alpha are
   a double exposure, not a cross-fade — the question dock's lesson of 08.09.2026, measured on the
   designer's own recording. The price is one or two frames of the bare block between the old
@@ -198,9 +202,20 @@ The block itself stays as it was; it must not carry the spacing that `pad` now o
 отстаёт от внутренней и на раскрытии срезает рим описания на несколько кадров.
 
 **Проп `follow: 'spring' | 'instant'`** (по умолчанию `spring`). `instant`: смену высоты
-СОДЕРЖИМОГО кромка отслеживает покадрово (`transition: { duration: 0 }` после первого измерения),
-пружина остаётся только у появления и ухода блока целиком. Реализация: `measured` — флаг «высота
-измерена хоть раз»; `tracking = follow === 'instant' && present && measured`.
+СОДЕРЖИМОГО кромка отслеживает покадрово (`edge.jump(natural)` после первого измерения), пружина
+остаётся только у появления и ухода блока целиком. Реализация: `measured` — флаг «высота измерена
+хоть раз»; ветка `follow === 'instant'` в layout-эффекте на `[natural, present]`.
+
+**Кромка — одно motion-значение, а не проп `height` (17.09.2026).** Отскок обязан пережить ноль: клип
+не бывает меньше пустого, поэтому `edge` анимируется через ноль (`animate(edge, 0, REVEAL_CLOSE)`), а
+на элемент пишутся `height = max(0, edge)` и `margin-bottom = min(0, edge)`. Блоки ниже сворачиваемого
+и нижняя кромка панели проседают за цель и возвращаются. Оба числа пишутся из события `change`
+motion-значения, не через React: инлайновый стиль из рендера показал бы значение ДО layout-эффекта,
+который сажает кромку (у приходящего блока — кадр в полную высоту). Первый коммит — единственный со
+стилем от React: `auto` для блока, открывшегося вместе с панелью, `0` для того, который сейчас
+развернётся; с измеряющего коммита стилем владеет `paint`. ⚠️ `stop()` анимации motion РАЗРЕШАЕТ её
+промис (`teardown`), поэтому финишер свёртки (`safeToRemove`), прерванной повторным появлением блока,
+читает текущее присутствие через ref — иначе снял бы блок, который стоит.
 
 **Слова внутри сворачиваемого бокса — `AnimatePresence mode="popLayout"`**, не `wait`: с `wait`
 между уходом старого абзаца и приходом нового бокс на кадр пустел, и внутренняя кромка ныряла.
@@ -212,6 +227,11 @@ The block itself stays as it was; it must not carry the spacing that `pad` now o
 внутри клипа `overflow: hidden` отрицательные маргины ребёнка срезались бы — сдвиг стоит на самом
 клипе (`className` Reveal).
 
-**Замер** (`prototype/scratchpad/letter/probe.mjs`): свёртка описания 384 → 309 за ~250 мс без
+**Замер** (`prototype/scratchpad/letter/probe.mjs`, до 17.09): свёртка описания 384 → 309 за ~250 мс без
 отскока; раскрытие письма 309 → 531 → 520 (перелёт ~11 px); ручная свёртка шевроном — посадка
 < 500 мс, без провала; внешняя кромка без отставания (рим описания на раскрытии не срезан).
+**С 17.09.2026 (кромка с отскоком):** ручная свёртка шевроном 595,8 → 516,3 → 520,4 — провал 4,1 px на
+277-й мс, в пикселе к ~400 мс (`prototype/scratchpad/reveal/fold-bounce.mjs`); сжатие панели после
+Publish 449 → 302,1 → 309,6 — провал 7,5 (5,4 %) на 266-й мс спуска, в пикселе к ~430 мс
+(`prototype/scratchpad/publish-shrink/bounce.mjs`). Письмо после свёртки — через 360 мс
+(`LETTER_AFTER_FOLD_MS`), из возврата отскока.

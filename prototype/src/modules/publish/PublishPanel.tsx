@@ -47,7 +47,7 @@ import { Chip } from '@/ui/Chip'
 import { useShimmerPhase } from '@/ui/shimmer'
 import { peekPendingConnect } from '@/modules/panel/PanelCart'
 import { useConfirm } from '@/ui/ConfirmDialog'
-import { HOST_GLIDE, popover, popoverContent, swapText, verbRoll, verbRollFade } from '@/ui/motion'
+import { HOST_GLIDE, panelIn, panelInBody, panelInBodyFade, panelInFade, swapText, verbRoll, verbRollFade } from '@/ui/motion'
 import { Reveal } from '@/ui/Reveal'
 
 /*
@@ -80,8 +80,10 @@ const RESEND_COOLDOWN_MS = 9000
  * the fold the letter unfolds: two motions in sequence, not one pile.
  */
 const PROPAGATING_READ_MS = 5000
-/** The fold (Reveal's REVEAL_CLOSE, .3 s edge) is given this long before the letter arrives. */
-const LETTER_AFTER_FOLD_MS = 260
+/** The fold (Reveal's REVEAL_CLOSE, a .62 s spring whose travel is done by ~250 ms and whose
+ *  overshoot peaks at ~330) is given this long before the letter arrives: the letter rises out of
+ *  the bounce's return, not on top of the fold's travel (was 260 for the flat .3 s edge). */
+const LETTER_AFTER_FOLD_MS = 360
 
 /**
  * "1 unpublished change", not "1 changes" — the button bar's own line (Figma 28071:53189,
@@ -787,6 +789,7 @@ export function PublishPanel({ hold = false }: { hold?: boolean } = {}) {
   const { publishOpen, togglePublish, openDomains, openPanel, publishHintOpen, dismissPublishHint } = useUI()
   const { t } = useT()
   const panelRef = useRef<HTMLDivElement>(null)
+  const reduce = useReducedMotion()
   /* Has the confirmation mail just been sent again? The button's second state, and it
      stands down on its own — see RESEND_COOLDOWN_MS. Session state, not world state: it
      describes this press, not the customer's situation. */
@@ -1258,9 +1261,10 @@ export function PublishPanel({ hold = false }: { hold?: boolean } = {}) {
           ref={panelRef}
           role="dialog"
           aria-label={t({ en: 'Publish', uk: 'Публікація' })}
-          /* iOS-26 motion: springs out of the Publish button's own corner, then
-             the contents arrive a beat later. See ui/motion.ts for the rules. */
-          variants={popover}
+          /* Liquid Glass (motion.ts `panelIn`, 17.09.2026): the glass inflates out of the Publish
+             button's own corner with one soft overshoot, the contents focus onto it a beat later,
+             the rim catches the light (`.glass-glint` below). Leaving is the house dismissal. */
+          variants={reduce ? panelInFade : panelIn}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -1294,8 +1298,12 @@ export function PublishPanel({ hold = false }: { hold?: boolean } = {}) {
              and the field 2px too tall (design-system.md §5). */
           style={{ boxShadow: 'inset 0 0 0 1px #ffffff0a, 0px 24px 28px rgba(0,0,0,0.5)' }}
         >
-          {/* The panel inflates first, its contents arrive a beat later (motion.ts rule 3). */}
-          <motion.div variants={popoverContent}>
+          {/* the rim catching the light as the glass forms — the thread cards' `card-glint`, worn as
+              a child because `.card-arrive` would make a `fixed` panel `relative` */}
+          <span aria-hidden className="glass-glint" />
+          {/* The panel inflates first, its contents arrive a beat later (motion.ts rule 3),
+              focusing onto the glass from slightly large. */}
+          <motion.div variants={reduce ? panelInBodyFade : panelInBody} className="origin-top-right">
           {/* -------------------------------------------------------- header, 64px */}
           <div className="flex h-16 items-center justify-between pl-6">
             <h3 className="font-display text-[20px] font-semibold leading-[1.2] text-white">

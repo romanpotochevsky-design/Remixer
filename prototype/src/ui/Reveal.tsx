@@ -9,10 +9,20 @@
  *
  * WHAT IT IS. Three boxes:
  *  · the CLIP — `overflow: hidden`, its `height` a spring between 0 and the content's measured
- *    height (`REVEAL_OPEN` on the way in, one soft overshoot; `REVEAL_CLOSE` on the way out,
- *    flat and quicker). This is the moving edge, and because the panel's own height is the sum
- *    of its blocks, the panel's bottom edge moves with it — one continuous motion instead of
- *    the snap the recording shows;
+ *    height (`REVEAL_OPEN` / `REVEAL_CLOSE`, the same spring both ways: one soft overshoot).
+ *    This is the moving edge, and because the panel's own height is the sum of its blocks, the
+ *    panel's bottom edge moves with it — one continuous motion instead of the snap the
+ *    recording shows;
+ *    ⚠️ THE EDGE IS ONE MOTION VALUE, NOT A `height` PROP, because the bounce has to survive
+ *    zero. Folding, the spring passes its target the way it does unfolding — but a clip cannot
+ *    be less than empty, so below zero the deficit is carried as a NEGATIVE BOTTOM MARGIN:
+ *    `height = max(0, edge)`, `margin-bottom = min(0, edge)`. The blocks under the folding one,
+ *    and the panel's bottom edge with them, dip a few pixels past their resting place and come
+ *    back — the shrink bounces (designer, 17.09.2026: «да нужен», to «после паблиша окно
+ *    уменьшается по высоте, у этого нет нашей фирменной apple liquid glass анимации с bounce
+ *    effect, так и должно быть?»). Both numbers are written to the element from the value's
+ *    `change` event, never through React: an inline style set in render would show the value
+ *    of the render before the layout effect that seats it.
  *  · the SIZER — the content at its natural height, watched by a ResizeObserver. Whatever
  *    changes inside the block (a longer sentence, a chip with more words, a top inset that
  *    depends on a neighbour) re-targets the spring: the block does not know about it, it just
@@ -49,8 +59,8 @@
  * Under reduced motion the edge changes height in one commit and the glass only fades
  * (`revealBodyFade`): the offsets are dropped, not jumped into.
  */
-import { AnimatePresence, motion, usePresence, useReducedMotion } from 'motion/react'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, usePresence, useReducedMotion } from 'motion/react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { REVEAL_CLOSE, REVEAL_OPEN, revealBody, revealBodyFade } from '@/ui/motion'
 
 export function Reveal({
@@ -95,6 +105,7 @@ function RevealBox({
 }: { pad?: string; radius: number; className?: string; follow: 'spring' | 'instant'; arriving: boolean; children: ReactNode }) {
   const reduce = useReducedMotion()
   const [present, safeToRemove] = usePresence()
+  const clip = useRef<HTMLDivElement>(null)
   const sizer = useRef<HTMLDivElement>(null)
   const removed = useRef(false)
   /* Has the edge been given a measured height once? From then on, under `follow="instant"`,
@@ -102,9 +113,9 @@ function RevealBox({
   const measured = useRef(false)
   /* The content's natural height, from the ResizeObserver's LAYOUT size (`borderBoxSize`) —
      delivered once on observe() and again on every change, before the frame paints. Null
-     only for the first commit, where 'auto' stands in.
+     only for the first commit, where 'auto' (or 0, for a block that is arriving) stands in.
      ⚠️ NOT `getBoundingClientRect()`: that is the PAINTED box, and the panel is born at
-     `scale(.94)` (motion.ts `popover`). Measured through that transform, every block came
+     `scale(.94)` (motion.ts `panelIn`). Measured through that transform, every block came
      out 6 % short and stayed clipped by it — the domain row's bottom edge stood 4px above
      the body card's, and the observer never corrected it because the LAYOUT size had not
      changed. `offsetHeight` is layout-true but integer; the observer's box is both. */
@@ -119,21 +130,66 @@ function RevealBox({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  useEffect(() => {
-    if (present && natural !== null) measured.current = true
-  }, [present, natural])
-  const tracking = follow === 'instant' && present && measured.current
+
+  /* THE EDGE — one spring position that may pass its target on either side (see the file's
+     docblock). Above the content's height the clip simply stands taller than its content;
+     below zero the clip is empty and the deficit becomes a negative bottom margin. */
+  const edge = useMotionValue(0)
+  const paint = (v: number) => {
+    const el = clip.current
+    if (!el) return
+    el.style.height = `${Math.max(0, v)}px`
+    el.style.marginBottom = `${Math.min(0, v)}px`
+  }
+  useMotionValueEvent(edge, 'change', paint)
+  const playing = useRef<ReturnType<typeof animate> | null>(null)
+  /* ⚠️ `stop()` RESOLVES the animation's promise (framer-motion `teardown`), so the `then` of a
+     fold that was interrupted by a re-entry would still fire — and remove a block that is up.
+     The finisher reads the CURRENT presence, not the one it closed over. */
+  const presentRef = useRef(present)
+  presentRef.current = present
+  const finish = () => {
+    if (removed.current || presentRef.current) return
+    removed.current = true
+    safeToRemove?.()
+  }
+  useLayoutEffect(() => {
+    if (natural === null) return
+    playing.current?.stop()
+    /* React has just dropped the first-commit inline height (`style` went undefined); re-assert
+       the edge's current position before anything else, or an arriving block would stand at its
+       full height for the one frame before its spring starts */
+    paint(edge.get())
+    const seat = (v: number) => { edge.jump(v); paint(v) }
+    if (!present) {
+      /* folding: the glass is already leaving (`revealBody.exit`, 140 ms); the edge follows
+         on its spring, through zero and back, and only then may the node go */
+      if (reduce) { seat(0); finish(); return }
+      playing.current = animate(edge, 0, REVEAL_CLOSE)
+      playing.current.then(finish)
+      return
+    }
+    if (!measured.current) {
+      measured.current = true
+      /* up when the panel opened: seated at its height in the same commit that measured it,
+         so the frame that first knows the number already shows it (no 'auto' → 0 → number) */
+      if (!arriving || reduce) { seat(natural); return }
+      playing.current = animate(edge, natural, REVEAL_OPEN)
+      return
+    }
+    /* the block is up and its content changed height: glide (`spring`) or track (`instant`) */
+    if (reduce || follow === 'instant') { seat(natural); return }
+    playing.current = animate(edge, natural, REVEAL_OPEN)
+  }, [natural, present]) // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => () => playing.current?.stop(), [])
+
   return (
-    <motion.div
+    <div
+      ref={clip}
       className={`overflow-hidden${className ? ` ${className}` : ''}`}
-      initial={{ height: 0 }}
-      animate={{ height: present ? natural ?? 'auto' : 0 }}
-      transition={reduce || tracking ? { duration: 0 } : present ? REVEAL_OPEN : REVEAL_CLOSE}
-      onAnimationComplete={() => {
-        if (present || removed.current) return
-        removed.current = true
-        safeToRemove?.()
-      }}
+      /* the first commit only: 'auto' for a block that opens with the panel, 0 for one that is
+         about to unfold; from the measuring commit on, `paint` owns both properties */
+      style={natural === null ? { height: arriving ? 0 : 'auto' } : undefined}
     >
       {/* flow-root: a child's top margin must stay INSIDE the measured box, not collapse through it */}
       <div ref={sizer} className={`flow-root${pad ? ` ${pad}` : ''}`}>
@@ -147,6 +203,6 @@ function RevealBox({
           {children}
         </motion.div>
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -1749,7 +1749,21 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 15000 })
     await p.waitForTimeout(400)
     await p.click('header button:has-text("Publish")')
-    await p.waitForTimeout(600)
+    await settled()
+  }
+  /* ⚠️ MEASURE A PANEL THAT HAS LANDED. The panel arrives as glass (motion.ts `panelIn`): a spring
+     whose scale tail (1.0009 → 1) runs ~680 ms after arrival, and a box read through
+     `getBoundingClientRect()` is the PAINTED box — at 600 ms the domain row measured 64.01, the
+     explanation box's bottom rounded a pixel off the card's. So every opening waits for the panel's
+     transform to be identity before anything is measured (Reveal.tsx carries the same lesson). */
+  const settled = async () => {
+    await p.waitForFunction(() => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      if (!d) return false
+      const t = getComputedStyle(d).transform
+      return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)'
+    }, null, { timeout: 4000 })
+    await p.waitForTimeout(120)
   }
   const panel = () => p.$('[role="dialog"][aria-label="Publish"]')
   const title = () => p.$eval('[role="dialog"][aria-label="Publish"] h3', (el) => el.textContent.trim())
@@ -1818,7 +1832,9 @@ check('…and the typed prompt is built as given', await cardUp())
   /* the ✕ takes it down — and nothing else moves */
   const wide = box.panel
   await p.click('[role="dialog"] [aria-label="Dismiss"]')
-  await p.waitForTimeout(400)
+  /* the banner's node stays for the edge's whole spring (.62 s, with the bounce — 17.09.2026), its
+     glass gone in 140 ms; the assertion is about the node */
+  await p.waitForTimeout(900)
   await shot('22-publish-hint-dismissed')
   check('the ✕ takes the banner down', !(await hint()))
   check('…and the panel keeps its width doing it',
@@ -2384,8 +2400,11 @@ check('…and the typed prompt is built as given', await cardUp())
     check('the in-flight card is ONE card whose words change, not a card per stage',
       after.same && /Propagating/.test(sameCard.text) && /Connecting/.test(after.text), JSON.stringify({ before: sameCard.text, after: after.text, same: after.same }))
     check('…and the letter folded away when the stage stepped back, the explanation standing again (only the spreading beat folds)', !after.letter && after.sub, JSON.stringify(after))
-    /* leaving is quicker and flat — measured on the explanation's own fold (the chevron): the
-       edge settles under 500 ms and never dips past its end; the letter is not taken back */
+    /* THE EDGE BOUNCES ON THE WAY DOWN TOO (designer, 17.09.2026: «да нужен», to whether the
+       panel's shrink should carry the bounce) — measured on the explanation's own fold (the
+       chevron): the edge passes its end by a few pixels (Reveal's negative bottom margin) and
+       comes back, settled within a second; the letter is not taken back. Measured 17.09.2026:
+       595.8 → 520.4, dip −4.1 at 277 ms, within 1px by ~400 ms. */
     const fold = await p.evaluate(async () => {
       const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
       const btn = [...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === 'Propagating (bought)')
@@ -2405,8 +2424,8 @@ check('…and the typed prompt is built as given', await cardUp())
     const fEnd = fold.samples[fold.samples.length - 1].h
     const foldSettle = fold.samples.findLast ? fold.samples.findLast((s) => Math.abs(s.h - fEnd) > 1) : null
     const dip = Math.min(...fold.samples.map((s) => s.h)) - fEnd
-    check('the chevron folds the explanation by hand — quicker than unfolding, flat: settled under 500 ms, no dip past the end — and the letter stays',
-      !!foldSettle && foldSettle.t < 500 && dip > -1.5 && fold.expanded === 'false' && fold.letter && fold.samples[0].h > fEnd + 60,
+    check('the chevron folds the explanation by hand — the edge dips PAST its end and comes back (the bounce on the shrink), settled within 900 ms — and the letter stays',
+      !!foldSettle && foldSettle.t < 900 && dip <= -1 && dip > -12 && fold.expanded === 'false' && fold.letter && fold.samples[0].h > fEnd + 60,
       JSON.stringify({ lastMovingAt: foldSettle?.t, dip, from: fold.samples[0].h, to: fEnd, letter: fold.letter }))
     await p.keyboard.press('Control+.')
     await p.waitForTimeout(300)
@@ -2652,17 +2671,20 @@ check('…and the typed prompt is built as given', await cardUp())
     const hand = await p.evaluate(async () => {
       const main = document.querySelector('main')
       const win = () => [...main.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Domains')?.closest('main > *')
+      const scaleOf = (el) => { const m = getComputedStyle(el).transform; const a = m && m !== 'none' ? m.match(/matrix\(([^)]+)\)/) : null; return a ? +a[1].split(',')[0] : 1 }
       const samples = []
       const t0 = performance.now()
       const tick = () => {
         const now = performance.now()
         const w = win(); const site = document.querySelector('.site-stage'); const panel = document.querySelector('[role="dialog"][aria-label="Publish"]')
-        samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, site: site ? +getComputedStyle(site.parentElement).opacity : null, panel: panel ? +getComputedStyle(panel).opacity : null })
-        if (now - t0 < 1200) requestAnimationFrame(tick)
+        const glint = panel?.querySelector('.glass-glint')
+        samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, winS: w ? scaleOf(w) : null, site: site ? +getComputedStyle(site.parentElement).opacity : null,
+          panel: panel ? +getComputedStyle(panel).opacity : null, panelS: panel ? scaleOf(panel) : null, glint: glint ? +getComputedStyle(glint).opacity : null })
+        if (now - t0 < 1500) requestAnimationFrame(tick)
       }
       requestAnimationFrame(tick)
       ;[...document.querySelectorAll('[role="dialog"] button')].filter((b) => /Connect domain/.test(b.textContent)).pop().click()
-      await new Promise((r) => setTimeout(r, 1300))
+      await new Promise((r) => setTimeout(r, 1600))
       return samples
     })
     const winFrames = hand.filter((s) => s.win !== null)
@@ -2673,15 +2695,31 @@ check('…and the typed prompt is built as given', await cardUp())
     const monoDown = winFrames.every((s, i) => i === 0 || s.win <= winFrames[i - 1].win + 0.001)
     const monoUp = siteFrames.every((s, i) => i === 0 || s.site >= siteFrames[i - 1].site - 0.001)
     const panelMono = hand.filter((s) => s.panel !== null).every((s, i, a) => i === 0 || s.panel >= a[i - 1].panel - 0.001)
-    check(`Connect: the Domains window LEAVES over several frames, fading and never flashing back — ${label}`,
-      winFrames.length >= 4 && winFrames[winFrames.length - 1].win < 0.4 && monoDown && !!winGone,
-      JSON.stringify({ frames: winFrames.length, last: winFrames[winFrames.length - 1]?.win, mono: monoDown, goneAt: winGone?.t }))
+    /* the window closes the way the fullscreen sheet does: fading AND shrinking to .975 (motion.ts
+       `surfaceWindow`, 17.09.2026 — «сначала анимация закрытия окна Domains»), not a 1 % nobody sees */
+    const winShrunk = winFrames.length > 0 && winFrames[winFrames.length - 1].winS <= 0.985
+    check(`Connect: the Domains window LEAVES over several frames, fading and shrinking toward .975, never flashing back — ${label}`,
+      winFrames.length >= 4 && winFrames[winFrames.length - 1].win < 0.4 && monoDown && !!winGone && winShrunk,
+      JSON.stringify({ frames: winFrames.length, last: winFrames[winFrames.length - 1]?.win, lastScale: winFrames[winFrames.length - 1]?.winS, mono: monoDown, goneAt: winGone?.t }))
     check(`…the site fades back in AFTER the window is gone, monotonically — ${label}`,
       !!winGone && siteFrames.length >= 4 && siteFrames[0].t >= winGone.t - 1 && siteFrames[0].site < 0.3 && !!siteFull && monoUp,
       JSON.stringify({ first: siteFrames[0], full: siteFull?.t, mono: monoUp }))
     check(`…and the Publish panel arrives only once the site stands, then springs in without a blink — ${label}`,
       !!panelFirst && !!siteFull && panelFirst.t >= siteFull.t - 1 && panelFirst.panel < 0.2 && panelMono && hand[hand.length - 1].panel === 1,
       JSON.stringify({ panelAt: panelFirst?.t, siteFullAt: siteFull?.t, first: panelFirst?.panel, mono: panelMono, last: hand[hand.length - 1].panel }))
+    /* …AS GLASS (designer, 17.09.2026: «плавная и стильная анимация открытия Publish в стиле Apple
+       liquid glass»; motion.ts `panelIn`): born at .94 in its top-right corner, inflating past 1 by
+       a hair (the cards' 1.0009) and settling at 1, while its rim catches the light — the glint
+       element rises from 0 and is on its way back down by the end of the film. Measured 17.09.2026:
+       .94 → 1.0009 at ~400 ms after arrival, glint peak at ~440 ms. */
+    const pf = hand.filter((s) => s.panelS !== null)
+    const maxS = pf.length ? Math.max(...pf.map((s) => s.panelS)) : 0
+    const glintPeak = Math.max(0, ...hand.map((s) => s.glint ?? 0))
+    const glintLast = pf.length ? pf[pf.length - 1].glint : null
+    check(`…as glass: from .94 in its corner, one soft overshoot past 1, seated at 1, the rim catching the light — ${label}`,
+      pf.length >= 10 && Math.abs(pf[0].panelS - 0.94) < 0.01 && maxS > 1.0003 && maxS < 1.01 && Math.abs(pf[pf.length - 1].panelS - 1) < 0.0015
+        && glintPeak > 0.9 && glintLast !== null && glintLast < glintPeak,
+      JSON.stringify({ first: pf[0]?.panelS, maxS, maxAt: pf.find((s) => s.panelS === maxS)?.t, last: pf[pf.length - 1]?.panelS, glintPeak, glintLast }))
     const flight = await world()
     check(`the connect starts the walk and touches nothing else — ${label}`,
       flight.domain === 'connecting' && String(flight.published) === v, JSON.stringify(flight))
@@ -2714,7 +2752,26 @@ check('…and the typed prompt is built as given', await cardUp())
     check('…the press starts the busy beat first — the arc turns in the blue button and the world has not moved yet',
       await p.evaluate(() => !!document.querySelector('[role="dialog"][aria-label="Publish"] button[aria-busy="true"] svg')) && (await world()).domain === 'ready',
       JSON.stringify(await world()))
-    await p.waitForTimeout(2800)
+    /* THE PANEL'S SHRINK BOUNCES (designer, 17.09.2026: «да нужен»). When the beat lands, the green
+       card leaves and the panel loses ~139 px: the edge passes its resting height by ~5 % (Reveal's
+       negative bottom margin) and comes back, settled inside a second. Measured 17.09.2026: 449 →
+       302.1 → 309.6, dip −7.5 at ~266 ms after the drop began, within 1 px by ~430 ms. */
+    const shrink = await p.evaluate(async () => {
+      const d = document.querySelector('[role="dialog"][aria-label="Publish"]')
+      const samples = []
+      const t0 = performance.now()
+      const tick = () => { const now = performance.now(); samples.push({ t: Math.round(now - t0), h: +d.getBoundingClientRect().height.toFixed(1) }); if (now - t0 < 2700) requestAnimationFrame(tick) }
+      requestAnimationFrame(tick)
+      await new Promise((r) => setTimeout(r, 2800))
+      return samples
+    })
+    const sh0 = shrink[0].h, shEnd = shrink[shrink.length - 1].h
+    const shMin = Math.min(...shrink.map((x) => x.h))
+    const shDrop = shrink.find((x) => x.h < sh0 - 2)
+    const shSettle = [...shrink].reverse().find((x) => Math.abs(x.h - shEnd) > 1)
+    check(`…the panel SHRINKS with the house bounce: past its new height by a few pixels and back, settled inside a second — ${label}`,
+      !!shDrop && sh0 - shEnd > 100 && shMin - shEnd <= -3 && shMin - shEnd > -16 && !!shSettle && shSettle.t - shDrop.t < 1000 && shSettle.t < shrink[shrink.length - 1].t - 200,
+      JSON.stringify({ from: sh0, to: shEnd, min: shMin, dip: +(shMin - shEnd).toFixed(1), dropAt: shDrop?.t, settledAt: shSettle?.t }))
     const out = await world()
     check('…and the press is what puts the site on it', out.domain === 'live' && out.published === true,
       JSON.stringify(out))
