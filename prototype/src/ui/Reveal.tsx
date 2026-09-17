@@ -139,7 +139,11 @@ function RevealBox({
     const el = clip.current
     if (!el) return
     el.style.height = `${Math.max(0, v)}px`
-    el.style.marginBottom = `${Math.min(0, v)}px`
+    /* the deficit only while the edge is past zero; at rest the inline margin is CLEARED, so a
+       caller's own bottom margin (`-mb-px` on the explanation box, laying its stroke on the
+       card's) applies again — an inline `0px` here overrode it and lifted that stroke a pixel
+       off the card's (caught by check:brief, 17.09.2026) */
+    el.style.marginBottom = v < 0 ? `${v}px` : ''
   }
   useMotionValueEvent(edge, 'change', paint)
   const playing = useRef<ReturnType<typeof animate> | null>(null)
