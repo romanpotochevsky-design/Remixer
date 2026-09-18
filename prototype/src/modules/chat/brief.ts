@@ -9,22 +9,25 @@
  * the build. The panel's DESIGN is Remixer's own (Figma 29464:34335 and 25732:139123).
  *
  * THE QUESTIONS AND THE COPY ARE OURS (07.09.2026, at the designer's instruction: the text
- * drawn on the board is placeholder, "придумай сам кейс для флоу и тексты и варианты"). It
- * matters that they are not Lovable's, because two of Lovable's four are a beginner trap:
- * "What kind of website do you want to build?" and "What sections should it include?" are
- * free-text fields that hand back the very problem the customer just failed to solve. On the
- * recording the designer answered them "design portfolio" and "landing" — two words, no more
- * of a brief than the prompt was. Someone who typed "website" cannot name a business
- * category, a section list or a typeface.
+ * drawn on the board is placeholder, "придумай сам кейс для флоу и тексты и варианты"), with
+ * ONE exception the designer drew himself and which opens the brief — see `site` below.
+ *
+ * Why the other four are not Lovable's: two of Lovable's four are a beginner trap. "What
+ * sections should it include?" is a free-text field that hands back the very problem the
+ * customer just failed to solve. On the recording the designer answered it "landing" — one
+ * word, no more of a brief than the prompt was. Someone who typed "website" cannot name a
+ * section list or a typeface.
  *
  * So each question here asks something a beginner CAN answer, and every option spends the
  * slot the board draws under the title on its CONSEQUENCE — what changes on the page if you
  * pick this. In order:
  *
- *   1. `goal`    — what the site is for. The one answer that changes the most.
- *   2. `pages`   — how much there is to say, instead of asking for a list of sections.
- *   3. `palette` — the drawn 2×2 swatch grid; the only question with no words to read.
- *   4. `type`    — lettering, shown as itself: each card sets its pair's name in that pair.
+ *   1. `site`    — what kind of site this is. FREE TEXT, and the board carries the menu in
+ *                  the question itself, which is what makes it answerable (30594:24360).
+ *   2. `goal`    — what the site is for. The one answer that changes the most.
+ *   3. `pages`   — how much there is to say, instead of asking for a list of sections.
+ *   4. `palette` — the drawn 2×2 swatch grid; the only question with no words to read.
+ *   5. `type`    — lettering, shown as itself: each card sets its pair's name in that pair.
  *
  * ⚠️ AT MOST THREE OPTIONS PER RADIO QUESTION — the designer's rule, 07.09.2026. `goal` and
  * `type` each had four and are cut to three; the write-your-own field is the escape hatch
@@ -46,17 +49,19 @@
  * Anyone who wanted the dropped goal can still type it into the field, which is what the
  * field is for.
  *
- * ⚠️ `goal` and `pages` deliberately do NOT ask "what kind of business is this". That is not
- * squeamishness: the prototype renders ONE hard-coded demo site, so any answer naming a
- * business would be contradicted by the site that appears (Lovable's own demo says "design
- * portfolio" and then builds a meal-prep page). Asking about purpose and shape keeps the
- * summary true whatever the canvas shows — and it is the better question anyway.
+ * ⚠️ `goal` and `pages` still do NOT ask "what kind of business is this" — `site` asks it
+ * once, at the top, and nothing repeats it. And the reason that rule existed has NOT gone
+ * away: the prototype renders ONE hard-coded demo site, so an answer naming a business would
+ * be contradicted by the site that appears (Lovable's own demo says "design portfolio" and
+ * then builds a meal-prep page). The rule therefore moved rather than lifted — `site` is
+ * RECORDED (the summary card, the plan's opening line) and never PROMISED (no section name,
+ * no "done" line, no proposal). Purpose and shape stay true whatever the canvas shows.
  *
  * Nothing here talks to a model. `isWeakPrompt` is a stand-in for the real judgement.
  */
 import type { Text } from '@/i18n'
 
-export type BriefKey = 'goal' | 'pages' | 'palette' | 'type'
+export type BriefKey = 'site' | 'goal' | 'pages' | 'palette' | 'type'
 
 export interface BriefOption {
   id: string
@@ -65,7 +70,7 @@ export interface BriefOption {
   /**
    * The consequence line under the title: what changes on the page if this is picked.
    * The board gives every row this slot (29464:34362) and it is the whole point of the
-   * radio list — a title alone would make these four questions a quiz.
+   * radio list — a title alone would make these questions a quiz.
    */
   detail?: Text
   /** Four colours, left to right — the drawn palette plate (25732:139125). */
@@ -88,13 +93,19 @@ export interface BriefOption {
 export interface BriefQuestion {
   key: BriefKey
   /**
-   * Which of the three drawn shapes the answers take:
+   * Which of the four drawn shapes the answers take:
+   *  - 'text'       the field ALONE, no options at all (30594:24778). Nothing to pick.
    *  - 'radio'      a list of rows, radio + title + consequence (29464:34354). Max THREE.
    *  - 'palette'    the 2×2 swatch grid (25732:139123). Four plates, as drawn.
    *  - 'typography' the 2×2 specimen cards — each pair's name set IN that pair.
    * A grid holds four; only the radio list is capped at three (see the rule below).
+   *
+   * ⚠️ 'text' is not "a radio question whose options we forgot". It is the shape the board
+   * draws when the answer cannot be enumerated, and it changes the card's arithmetic: the
+   * field row becomes a `List item` of its own with 16 of padding all round rather than the
+   * 8 that separates the field from the rows above it. `options` must be absent.
    */
-  kind: 'radio' | 'palette' | 'typography'
+  kind: 'text' | 'radio' | 'palette' | 'typography'
   question: Text
   /** Placeholder of the free-text field. */
   placeholder: Text
@@ -107,6 +118,43 @@ export interface BriefQuestion {
 export const OTHER = 'other:'
 
 export const BRIEF_QUESTIONS: BriefQuestion[] = [
+  /**
+   * ⚠️ THE FIRST QUESTION IS FREE TEXT, AND IT IS THE ONE THIS FILE USED TO ARGUE AGAINST
+   * (designer, 18.09.2026, with board 30594:24360: «первым делом мы должны узнать что вообще
+   * он хочет… тут нет выбора, тут только поле для ввода текста»).
+   *
+   * The argument that lost is kept above, because half of it still holds and the half that
+   * does not is worth knowing. What was right: an empty free-text box hands back the very
+   * problem the customer failed to solve. What was wrong: the board does not draw an empty
+   * box — it draws the examples INSIDE the question, and "personal portfolio, business
+   * landing page, blog, SaaS product, restaurant" is a list anyone can point at. That is a
+   * menu written as a sentence, and it asks the one thing the four questions below cannot
+   * infer. Purpose, shape, colour and lettering all describe a site whose subject we never
+   * learned.
+   *
+   * What does NOT change is the reason the other questions avoid the subject: the prototype
+   * renders ONE hard-coded demo site, so this answer must never be promised back as content.
+   * It is a record of what was asked for, so it goes where records go — the summary card and
+   * the plan's opening line — and nowhere that describes what is ON the page. The generation
+   * card still names WORK ("Hero", "Gallery", "Footer"), never a business.
+   */
+  {
+    key: 'site',
+    kind: 'text',
+    label: { en: 'Site', uk: 'Сайт' },
+    /*
+     * The board's own sentence, with one repetition dropped: it lists "personal portfolio"
+     * and then "portfolio" again three items later. Shipped corrected and flagged, the same
+     * way `Add Promt`, `Not Publisher`, `Exellent` and `Recomended` were.
+     */
+    question: {
+      en: 'What kind of website do you want to build? (e.g. personal portfolio, business landing page, blog, SaaS product, restaurant, etc.)',
+      uk: 'Який сайт ви хочете зробити? (напр. особисте портфоліо, лендинг для бізнесу, блог, SaaS-продукт, ресторан тощо)',
+    },
+    /* The board writes "Your answer..."; the house ellipsis is the one glyph changed, so
+       this field reads like every other field in the product. */
+    placeholder: { en: 'Your answer…', uk: 'Ваша відповідь…' },
+  },
   {
     key: 'goal',
     kind: 'radio',
@@ -354,8 +402,8 @@ export function isWeakPrompt(raw: string): boolean {
  * you asking me instead of just doing it".
  */
 export const BRIEF_INTRO: Text = {
-  en: 'I can build this — but right now I would be guessing, and a guess costs you a build. Four quick questions and I will know what to make.',
-  uk: 'Можу це зібрати — але зараз я лише вгадував би, а вгадування коштує вам однієї збірки. Чотири швидкі питання, і я знатиму, що робити.',
+  en: 'I can build this — but right now I would be guessing, and a guess costs you a build. Five quick questions and I will know what to make.',
+  uk: 'Можу це зібрати — але зараз я лише вгадував би, а вгадування коштує вам однієї збірки. П’ять швидких запитань, і я знатиму, що робити.',
 }
 
 /** The summary card's first title, while the answers are being turned into a brief. */
@@ -371,10 +419,32 @@ export function optionById(q: BriefQuestion, id: string | undefined): BriefOptio
 /** The question carrying one key, so the copy below never depends on array positions. */
 const byKey = (key: BriefKey) => BRIEF_QUESTIONS.find((q) => q.key === key)!
 
-/** What the summary card prints for one answer. */
+/**
+ * What the summary card prints for one answer.
+ *
+ * ⚠️ BOTH BRANCHES DEPEND ON WHETHER THE QUESTION HAD ANYTHING TO PICK.
+ *  - A skipped question with options falls back to its FIRST option everywhere downstream,
+ *    and the card says so: "Remixer's pick". A question with NO options has nothing to fall
+ *    back to — `resolve`, `chose` and `settled` all hand back `option: undefined` for it —
+ *    so "Remixer's pick" would name a choice that does not exist. It says "Not said".
+ *  - "Other:" means "other than the ones listed". Where none are listed there is nothing to
+ *    be other than, so a text-only answer stands on its own. (And the label is translated
+ *    now: it used to be the one English word on a Ukrainian card, which mattered little
+ *    while free text was a rare escape hatch and matters more now that the first row of
+ *    every answered brief is free text.)
+ */
 export function answerText(q: BriefQuestion, value: string | undefined, lang: 'en' | 'uk'): { text: string; muted: boolean } {
-  if (!value) return { text: lang === 'uk' ? 'на розсуд Remixer' : 'Remixer’s pick', muted: true }
-  if (value.startsWith(OTHER)) return { text: `Other: ${value.slice(OTHER.length)}`, muted: false }
+  const listed = !!q.options?.length
+  if (!value) {
+    if (listed) return { text: lang === 'uk' ? 'на розсуд Remixer' : 'Remixer’s pick', muted: true }
+    return { text: lang === 'uk' ? 'не вказано' : 'Not said', muted: true }
+  }
+  if (value.startsWith(OTHER)) {
+    /* trimmed HERE, not in `asOther` — see the note there about the field eating spaces */
+    const own = value.slice(OTHER.length).trim()
+    if (!listed) return { text: own, muted: false }
+    return { text: `${lang === 'uk' ? 'Інше' : 'Other'}: ${own}`, muted: false }
+  }
   const opt = optionById(q, value)
   return { text: opt ? opt.name[lang] : value, muted: false }
 }
@@ -402,7 +472,17 @@ export function briefAck(a: BriefAnswers): Text {
   const uk: string[] = []
   const push = (f: Text | undefined) => { if (f) { en.push(f.en); uk.push(f.uk) } }
 
-  push(frag('goal', { en: 'built for what you described', uk: 'під те, що ви описали' }))
+  /*
+   * `site` leads, because it is the only clause that says what the thing IS — and it is
+   * DESCRIBED, never quoted. Echoing the typed words back here was tried once and rejected
+   * (see `briefDone`: it "read as a machine repeating itself"), and it would be a straight
+   * repeat besides — the summary card one turn above prints those very words in its first
+   * row. The ack's job is to show the answers were heard, not to read them out.
+   */
+  push(frag('site', { en: 'for what you described', uk: 'під те, що ви описали' }))
+  /* reworded away from "built for what you described" so the two do not collide on the
+     uncommon run where both were typed rather than picked */
+  push(frag('goal', { en: 'built for the job you named', uk: 'зібраний під названу вами задачу' }))
   push(frag('pages', { en: 'laid out the way you described', uk: 'у структурі, яку ви описали' }))
 
   const palette = optionById(byKey('palette'), a.palette)

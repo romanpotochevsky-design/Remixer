@@ -10,7 +10,7 @@
  *
  * What is different is only what a single, unasked-for question makes different:
  *
- *  · **No paging and no "Skip all".** The brief is four questions in a row; this is one.
+ *  · **No paging and no "Skip all".** The brief is five questions in a row; this is one.
  *    Two arrows that cannot move and a "skip ALL" with nothing behind the word would be
  *    controls describing a flow that is not happening.
  *
@@ -100,7 +100,7 @@ export function SuggestPanel() {
               />
             ))}
             <div className="flex items-start gap-3 px-4 pb-4 pt-2">
-              <span className="flex h-[42px] items-center">
+              <span className="flex h-10 items-center">
                 <Radio on={!!own} />
               </span>
               <input

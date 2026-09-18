@@ -725,8 +725,12 @@ interface Store {
  */
 /* v3: `planEdits` grew an `outline` layer (11.09.2026). A snapshot from v2 has no such
    key, and every reader of it would have to guard — the version is cheaper and is the
-   rule this project already follows when a stored shape changes. */
-const STORAGE_KEY = 'remixer-prototype/world/v3'
+   rule this project already follows when a stored shape changes.
+   v4: the brief grew a fifth question at the FRONT (18.09.2026, board 30594:24360), which
+   is the rarer half of this rule — no field changed shape, but `brief.step` is an INDEX and
+   its meaning did. A v3 snapshot paused on step 3 would reopen one question to the left, and
+   a fully answered v3 brief would show its new first row as unanswered for ever. */
+const STORAGE_KEY = 'remixer-prototype/world/v4'
 
 /*
  * THE SAME RULE `set` APPLIES TO A PATCH, FOR A WHOLE WORLD THAT ARRIVES WITHOUT ONE.

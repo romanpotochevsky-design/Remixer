@@ -160,7 +160,16 @@ function AiMessage({ text, actions, animate, thought }: { text: string; actions?
           {t({ en: `Thought for ${thought}s`, uk: `Думав ${thought} с` })}
         </p>
       )}
-      <p className="whitespace-pre-wrap text-[15px] leading-[25px] text-[var(--gray-350,#c7c7cd)]">
+      {/*
+        * 16/26, one step ABOVE the board (designer, 18.09.2026: «размер шрифта сообщений от AI
+        * увеличим на 1px, мне кажется слегка мелковат текст»). 30594:24398 draws this paragraph
+        * at 15/25 in `gray/350` and the prototype matched it to the pixel, so this is a change to
+        * the design and not a correction of it — the board is now the one that is behind.
+        * The leading moves with the size: at 16/25 the ratio drops from the drawn 1.67 to 1.56 and
+        * the lines close up, which is the opposite of what "too small to read" asks for. 26 is also
+        * the leading the customer's own bubble already uses, so the thread now runs on one.
+        */}
+      <p className="whitespace-pre-wrap text-[16px] leading-[26px] text-[var(--gray-350,#c7c7cd)]">
         {animate ? <StreamedText text={text} /> : text}
       </p>
       {actions && (
@@ -266,9 +275,18 @@ function BriefSummary({ animate }: { animate: boolean }) {
             /* `display: contents` has no box to move, so the two cells of a row carry the
                row's motion themselves, on the same clock (`custom` is the row index) */
             return (
-              <motion.div key={q.key} variants={row} custom={i} className="card-row flex h-9 items-center">
+              /* ⚠️ The value TRUNCATES, it does not wrap. The row is the board's fixed 36
+                 (29848:28823) and the card's height is asserted against it; until the brief
+                 opened with a free-text question every value was a short option name, and a
+                 two-line value would now overflow its row onto the one below. Truncating
+                 keeps the card one height whatever was typed — a card that grows with the
+                 answer could not be checked against a drawn number at all. */
+              <motion.div key={q.key} variants={row} custom={i} className="card-row flex h-9 min-w-0 items-center">
                 <dt className="w-40 flex-none text-[#ffffff7a]">{t(q.label)}</dt>
-                <dd className={a.muted ? 'italic text-[#ffffff7a]' : 'text-white'}>{a.text}</dd>
+                {/* no native `title` here on purpose: whether the shell's browser tooltips
+                    move to ui/Tooltip is an open question with the designer, and this is not
+                    the place to add a new one. The full text is in the plan's own heading. */}
+                <dd className={`min-w-0 truncate ${a.muted ? 'italic text-[#ffffff7a]' : 'text-white'}`}>{a.text}</dd>
               </motion.div>
             )
           })}

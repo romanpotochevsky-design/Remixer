@@ -64,7 +64,15 @@ const PG = {
  * The answers the staged demo presets are built on — one brief, so the generation card, the
  * plan and Autopilot's proposals all describe the same site wherever a preset shows them.
  */
-const DEMO_BRIEF = { goal: 'sell', pages: 'few', palette: 'warm-clay', type: 'friendly' } as const
+/*
+ * The one brief the staged presets share, so the summary card, the plan and the Autopilot
+ * proposals all describe the same site.
+ *
+ * ⚠️ `site` is the ONLY typed answer in it, and deliberately so: it is the brief's only
+ * free-text question, and staging it with the `other:` prefix is what makes every preset
+ * exercise the typed path — the one that used to eat spaces — instead of four clean picks.
+ */
+const DEMO_BRIEF = { site: 'other:a small bakery', goal: 'sell', pages: 'few', palette: 'warm-clay', type: 'friendly' } as const
 
 export const PRESETS: Preset[] = [
   /*
@@ -87,8 +95,8 @@ export const PRESETS: Preset[] = [
     group: PG.project,
     label: { en: 'New project — thin prompt', uk: 'Новий проєкт — слабкий промпт' },
     note: {
-      en: 'Type "Build me a website." — too little to build from, so Remixer asks four questions and writes a plan before it spends a build',
-      uk: 'Введіть «Build me a website.» — будувати нема з чого, тож Remixer ставить чотири запитання й складає план, перш ніж витратити білд',
+      en: 'Type "Build me a website." — too little to build from, so Remixer asks five questions and writes a plan before it spends a build',
+      uk: 'Введіть «Build me a website.» — будувати нема з чого, тож Remixer ставить п’ять запитань і складає план, перш ніж витратити білд',
     },
     patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], domain: 'staging', inventory: 'none', unpublished: 0, published: false },
   },

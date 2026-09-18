@@ -18,7 +18,7 @@
  * copy drawn on the node), and it is what the designer meant by "the component where you
  * choose answers, palette, fonts".
  *
- * TWO of the four questions are GRIDS rather than rows, and both drop the radio beside
+ * TWO of the five questions are GRIDS rather than rows, and both drop the radio beside
  * their "Write your own…" field, which runs full width instead:
  *  - COLOUR (25732:139123) — a 2×2 grid of four swatch plates.
  *  - LETTERING — a 2×2 grid of cards that set each pair's name IN that pair, which is
@@ -47,12 +47,27 @@ import { useDockSheet } from './dock'
 
 /**
  * The "Write your own…" / "Your answer…" field — Text field I29464:34377;17122:41625.
- * 42 tall, not 40: the board's 40 is the state layer INSIDE a 1px rim. The placeholder is
- * `text/default/secondary`, which in the dark theme is the same `gray-400` the composer's
- * own placeholder uses two rows down — one grey for "type here" inside one shell.
+ *
+ * ⚠️ 40 TALL, NOT 42 — corrected 18.09.2026, and the correction is arithmetic, not taste.
+ * The comment here used to read "42, not 40: the board's 40 is the state layer INSIDE a 1px
+ * rim", which is the standing lesson about Figma strokes applied one level too high. Figma's
+ * stroke sits inside the geometry, so a rim does not grow its frame: on BOTH boards the
+ * `Text Input` INSTANCE measures 40 and the `Text field` that owns the rim measures 40 with
+ * it (29464:34377 → 710×40, 30594:24822 → 738×40). Tailwind's preflight makes the box
+ * border-box, so `h-10` + a 1px border is the drawn 40 exactly.
+ *
+ * Three things agree, which is why this is safe to move: the field row on 30594:24778 is
+ * 72 = 16 + 40 + 16 and closes on whole 16s only at 40; the rating card's note field — the
+ * same component off its own board, 29751:58876 — has always shipped `h-10` a few files
+ * away, and `check:brief` asserts it there; and 42 needed paddings of 15 that no board draws.
+ *
+ * The placeholder stays `gray-400` rather than the board's `text/default/secondary`
+ * (#ffffff7a, which is what the rating card's note uses): that one was a deliberate reading —
+ * one grey for "type here" across this shell, matching the composer two rows down — and it
+ * is not forced by any arithmetic. Raised with the designer rather than changed here.
  */
 export const FIELD =
-  'block h-[42px] w-full rounded-[8px] border border-[#ffffff1f] bg-[#09090b29] pl-4 pr-2 text-[14px] text-white outline-none transition-colors duration-[var(--dur-fast)] ease-std placeholder:text-[var(--gray-400,#a1a1aa)] focus:border-[var(--action)]'
+  'block h-10 w-full rounded-[8px] border border-[#ffffff1f] bg-[#09090b29] pl-4 pr-2 text-[14px] text-white outline-none transition-colors duration-[var(--dur-fast)] ease-std placeholder:text-[var(--gray-400,#a1a1aa)] focus:border-[var(--action)]'
 
 /**
  * The radio (29464:34358 selected / 34366 idle).
@@ -457,8 +472,30 @@ function Body({ q }: { q: BriefQuestion }) {
   const input = useRef<HTMLInputElement>(null)
   const options = q.options ?? []
 
-  // The field takes focus as each question arrives — you can just type.
-  useEffect(() => { if (!options.length) input.current?.focus() }, [q.key, options.length])
+  /*
+   * The field takes focus as each question arrives — you can just type.
+   *
+   * ⚠️ `preventScroll`, and only once the dock has landed. This was written for a
+   * question REACHED BY PAGING, where the shell is already at rest; with a text-only
+   * question FIRST it also runs on the panel's very first frame, while `dock-armed` has
+   * the sheet parked ~430px below its resting place. Focusing there asks the browser to
+   * scroll an element that is mid-flight — the thread jumps, and the piston then carries
+   * the field away from where the scroll just put it. So: never scroll, and wait for the
+   * same "dock is still moving" fact `Pick` uses to ignore the pointer (dock.ts puts the
+   * classes on `.dock`).
+   */
+  useEffect(() => {
+    if (options.length) return
+    let raf = 0
+    const tryFocus = () => {
+      const el = input.current
+      if (!el) return
+      if (dockInMotion(el)) { raf = requestAnimationFrame(tryFocus); return }
+      el.focus({ preventScroll: true })
+    }
+    raf = requestAnimationFrame(tryFocus)
+    return () => cancelAnimationFrame(raf)
+  }, [q.key, options.length])
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') { e.preventDefault(); briefNext() }
@@ -576,10 +613,33 @@ function Body({ q }: { q: BriefQuestion }) {
           />
         ))}
 
-      <div className={options.length && !grid ? 'flex items-start gap-3 px-4 pb-4 pt-2' : 'px-4 pb-4 pt-2'}>
+      {/*
+        * ⚠️ `pt-2` IS THE GAP BELOW THE OPTIONS, NOT THE FIELD'S OWN TOP PADDING. On every
+        * question that has options something always sits above the field — rows, or a grid
+        * closing on `pb-2` — and the 8 completes the 16 the board leaves between them. A
+        * text-only question has nothing above it, so the same 8 would seat the field 8 from
+        * the card's top edge and the row would measure 64 where 30594:24815 draws a `List
+        * item` of 72: 16 round a 40 field. So the top padding follows what is above it.
+        *
+        * ⚠️ AND IT IS 15, NOT 16 — the stroke correction this project has made four times
+        * (the summary list's `pt-[11px]`, the plan card's `top: 41`, the shit's card, the
+        * panel's banner). Figma measures the `List item`'s 16 from a frame edge that already
+        * contains the card's 1px stroke, so the AIR is 15 and the drawn box closes twice
+        * over: 1 + 15 + 40 + 15 + 1 = the row's 72, and 770 − 2 − 30 = the input's 738. With
+        * 16 the card comes out 74 and the input 2px narrow — both wrong, in the same step.
+        */}
+      <div
+        className={
+          options.length && !grid
+            ? 'flex items-start gap-3 px-4 pb-4 pt-2'
+            : options.length || grid
+              ? 'px-4 pb-4 pt-2'
+              : 'p-[15px]'
+        }
+      >
         {options.length > 0 && !grid && (
           /* the radio centres on the field's full height (self-stretch on the board) */
-          <span className="flex h-[42px] items-center">
+          <span className="flex h-10 items-center">
             <Radio on={!!own} />
           </span>
         )}

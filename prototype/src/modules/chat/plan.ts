@@ -3,22 +3,22 @@
  *
  * THIS IS WHERE REMIXER PARTS WAYS WITH LOVABLE (designer, 07.09.2026). Lovable's brief
  * ends at "Got it — …" and the build starts on its own. Ours ends with a PLAN the customer
- * approves: the four answers are compiled into a document, shown in the dock with `Review`
+ * approves: the five answers are compiled into a document, shown in the dock with `Review`
  * and `Start Building`, and nothing is generated until that button is pressed. Lovable does have this
  * shape — it is what their Plan mode does when you switch the composer from Build to Plan
  * (the screenshots the designer sent) — but they do not put it on the first generation,
  * which is exactly where it is worth the most: the customer arrived with "website", was
- * asked four questions, and now gets to see whether the answers were understood BEFORE
+ * asked five questions, and now gets to see whether the answers were understood BEFORE
  * spending a build on them.
  *
- * That is also the argument for the whole brief. Asking four questions and then building
+ * That is also the argument for the whole brief. Asking five questions and then building
  * silently asks the customer to trust that the answers landed. Showing the plan makes the
  * questions verifiable — and it makes `Review` meaningful, because there is a document to
  * read rather than a promise to accept.
  *
  * The plan is COMPILED FROM THE ANSWERS, not a fixed lump of text: change the goal and the
  * content blocks change, change `pages` and the structure line changes, skip a question and
- * the plan says which default it took. If it were static, the four questions would be
+ * the plan says which default it took. If it were static, the five questions would be
  * theatre and a careful viewer would notice within two runs.
  *
  * Rendered in two places from this one structure — `PlanCard` (in the dock, clipped with a
@@ -126,6 +126,7 @@ const GOAL_CHECK: Record<string, Text> = {
 /* ------------------------------------------------------------------- the plan */
 
 export function buildPlan(a: BriefAnswers): Plan {
+  const site = resolve('site', a)
   const goal = resolve('goal', a)
   const pages = resolve('pages', a)
   const palette = resolve('palette', a)
@@ -139,9 +140,22 @@ export function buildPlan(a: BriefAnswers): Plan {
     sell: { en: 'A site that sells', uk: 'Сайт, який продає' },
     work: { en: 'A site built around the work', uk: 'Сайт навколо робіт' },
   }
-  const title = goal.own
-    ? { en: `A site for ${goal.own}`, uk: `Сайт для ${goal.own}` }
-    : titleFor[goal.id ?? 'enquiries']
+  /*
+   * ⚠️ `site` OUTRANKS `goal` IN THE TITLE, and it is the only place in the compiled plan it
+   * appears. It is the one answer that names WHAT THIS IS, so a document headed "A site that
+   * sells" when the customer wrote "a small bakery" would be describing the mechanism and
+   * skipping the subject. `goal.own` keeps the same shape one rank down, unchanged.
+   *
+   * And this is as far as it goes. `site` is free text about a business, and the prototype
+   * renders ONE hard-coded demo site — so it is RECORDED (this line, and the summary card)
+   * and never PROMISED: it names no section, no page and no check, because the canvas would
+   * contradict any of those within the minute (brief.ts says the same at the question).
+   */
+  const title = site.own
+    ? { en: `A site for ${site.own}`, uk: `Сайт для ${site.own}` }
+    : goal.own
+      ? { en: `A site for ${goal.own}`, uk: `Сайт для ${goal.own}` }
+      : titleFor[goal.id ?? 'enquiries']
 
   /* ---- goal paragraph ---- */
   const goalText: Text = goal.own

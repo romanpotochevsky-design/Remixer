@@ -14,6 +14,13 @@
  * ⚠️ AND IT IS THE BEST ANSWER TO A SKIPPED QUESTION. An unanswered question prints
  * "(Remixer's pick.)" in the prose — an apology, and a dead end. As a card it becomes a
  * STATE of the control: chosen for you, here is what, here are the others, one click away.
+ *
+ * ⚠️ ONLY `palette` AND `type` GET CARDS, AND THAT PAIR IS A DECISION, NOT AN OVERSIGHT.
+ * A card exists where the answer has a VISUAL FORM a sentence flattens — a swatch, a
+ * specimen. `goal` and `pages` have none, and the brief's first question (`site`) is free
+ * text with no options at all: `settled()` would hand its card `option: undefined`, so it
+ * would draw an empty name, a blank plate and a pencil opening a grid over zero options —
+ * a card with nothing in it. An option-less key must never be given one.
  * The plan is also the last free moment — nothing is spent until `Start Building`.
  *
  * ⚠️ CONTROLS LOOK LIKE CONTROLS, PROSE LOOKS LIKE PROSE, and the designer agreed to make

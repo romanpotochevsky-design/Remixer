@@ -8,7 +8,7 @@
  *
  * Since 06.09.2026 there is a fork at the very first message. A prompt with nothing
  * to design from ("Build me a website.") does NOT start a build: Remixer asks for
- * direction and docks four questions above the composer (modules/chat/brief.ts).
+ * direction and docks five questions above the composer (modules/chat/brief.ts).
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
@@ -31,7 +31,7 @@ import { nextProposal, optionOf, recommended, leadingDone, ratingSaid, ratingTha
  * unwatchable in a demo; these are the same SHAPE at about a third of the length —
  * long enough that the agent is visibly considering, short enough to click through in
  * front of a CEO. The whole thin-prompt path is now ~13s of waiting plus whatever
- * answering the four questions takes.
+ * answering the five questions takes.
  */
 /** How long Remixer "works" before answering an ordinary edit. */
 const THINKING_MS = 3400
@@ -682,7 +682,23 @@ export function turnOffAutopilot() {
 }
 
 /** Free-text answers carry a marker so the summary can tell them from a pick. */
-export const asOther = (text: string) => (text.trim() ? `${OTHER}${text.trim()}` : '')
+/**
+ * A typed answer, tagged so the summary can tell it from a pick.
+ *
+ * ⚠️ THE TEXT IS STORED RAW — trimming here made the field refuse SPACES (found and
+ * measured 18.09.2026: typing "personal portfolio" left "personalportfolio"). The field is
+ * controlled by the stored value, so `text.trim()` on every keystroke wrote back a string
+ * one character shorter than the one the customer had just typed, and the space never
+ * survived to become an inner one. The trim only ever meant "is there an answer at all",
+ * which is what it still decides; every reader already trims for its own use
+ * (`plan.ts` typed, `briefAck` plain, `PlanDecision`, `answerText`), and the two places that
+ * must NOT trim are the live inputs themselves.
+ *
+ * It was survivable while free text was the escape hatch beside a list of picks. The brief's
+ * first question is free text and nothing else, and every example its own copy offers is two
+ * words long, so it stopped being survivable.
+ */
+export const asOther = (text: string) => (text.trim() ? `${OTHER}${text}` : '')
 
 /* --------------------------------------------------------------- resume */
 

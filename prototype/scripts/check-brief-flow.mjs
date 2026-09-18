@@ -303,6 +303,132 @@ check('the composer relabels itself as the escape hatch',
   (await p.getAttribute('textarea', 'placeholder'))?.startsWith('Tell Remixer'))
 
 /*
+ * ──────────────────────────────────────────── THE BRIEF OPENS ON A QUESTION WITH NO ANSWERS
+ *
+ * Figma 30594:24360 / 30594:24778 (designer, 18.09.2026: «первым делом мы должны узнать что
+ * вообще он хочет… тут нет выбора, тут только поле для ввода текста»). The card holds ONE
+ * `List item` of 72 whose only child is the input, full width, no radio; the question block
+ * above it and the footer below it stand on the glass as they always have.
+ *
+ * The board's own arithmetic closes twice at 15, not at the 16 it prints — Figma measures
+ * that padding from a frame edge that already contains the card's 1px stroke. So the row is
+ * 1 + 15 + 40 + 15 + 1 = 72 and the input is 770 − 2 − 30 = 738 of its 770 card. Both are
+ * checked, because getting one right with the other wrong is exactly what a `p-4` would do.
+ */
+{
+  const q1 = await p.evaluate(() => {
+    const sec = document.querySelector('section[aria-label="Questions before building"]')
+    const cs = getComputedStyle
+    const bx = (el) => { const r = el.getBoundingClientRect(); return { w: +r.width.toFixed(2), h: +r.height.toFixed(2), x: +r.x.toFixed(2), y: +r.y.toFixed(2) } }
+    const card = [...sec.querySelectorAll('div')].find((e) => /rgba\(9, 9, 11, 0\.56\)/.test(cs(e).backgroundColor))
+    const input = sec.querySelector('input')
+    const row = input.parentElement
+    const qp = [...sec.querySelectorAll('p')].find((e) => e.innerText.trim().length > 20)
+    const back = sec.querySelector('button[aria-label="Previous question"]')
+    return {
+      rows: sec.querySelectorAll('.brief-opt').length,
+      radios: sec.querySelectorAll('.brief-radio-off').length + sec.querySelectorAll('[aria-hidden].rounded-full').length,
+      card: { ...bx(card), r: cs(card).borderRadius, bg: cs(card).backgroundColor, rim: cs(card).borderColor },
+      row: { ...bx(row), pad: cs(row).padding },
+      field: { ...bx(input), r: cs(input).borderRadius, rim: cs(input).borderColor, bg: cs(input).backgroundColor, pl: cs(input).paddingLeft, pr: cs(input).paddingRight, size: cs(input).fontSize, ph: input.placeholder },
+      question: { text: qp.innerText.trim(), size: cs(qp).fontSize, weight: cs(qp).fontWeight, lh: cs(qp).lineHeight, colour: cs(qp).color },
+      back: back ? { disabled: back.disabled, op: +(+cs(back).opacity).toFixed(2) } : null,
+      focused: document.activeElement === input,
+      cardKids: card.children.length,
+    }
+  })
+  check('the brief opens on the question that asks what kind of site this is',
+    /^What kind of website do you want to build\?/.test(q1.question.text), q1.question.text?.slice(0, 60))
+  check('…and it offers nothing to pick: no rows, no radio, one child in the card',
+    q1.rows === 0 && q1.radios === 0 && q1.cardKids === 1,
+    `${q1.rows} rows / ${q1.radios} radios / ${q1.cardKids} children`)
+  /* The card is the board's 72; the row inside it is 70, because the 1px the card spends on
+     its CSS border is the 1px Figma drew inside the row's own frame. 15 + 40 + 15 = 70, and
+     the two borders put it back: that is the whole correction, checked from both ends. */
+  check('…the answers card is the board’s 72: 1 + 15 + 40 + 15 + 1',
+    q1.card.h === 72 && q1.row.h === 70 && q1.row.pad === '15px',
+    `card ${q1.card.h} / row ${q1.row.h} pad ${q1.row.pad}`)
+  check('…the field is the row’s full width at the board’s 40 tall',
+    q1.field.h === 40 && +(q1.card.w - q1.field.w).toFixed(2) === 32,
+    `field ${q1.field.w}×${q1.field.h} in a ${q1.card.w} card`)
+  /* ⚠️ THE RIM IS READ AFTER A BLUR AND A BEAT, not in the same turn as everything else. The
+     field takes focus by itself on this question, so `focus:border-[var(--action)]` owns the
+     colour — and blurring alone is not enough: `FIELD` carries `transition-colors`, so a
+     computed read in the same task returns the value the transition STARTED from, which is the
+     blue. Same shape as the reduced-motion trap CLAUDE.md records: write the style, read it back
+     synchronously, get the old number. Let the transition land, then look. */
+  await p.$eval('section[aria-label="Questions before building"] input', (el) => el.blur())
+  await p.waitForTimeout(400)
+  const restingRim = await p.$eval('section[aria-label="Questions before building"] input', (el) => getComputedStyle(el).borderColor)
+  check('…wearing the drawn rim, fill, radius and insets',
+    q1.field.r === '8px' && restingRim === 'rgba(255, 255, 255, 0.12)' && q1.field.bg === 'rgba(9, 9, 11, 0.16)'
+      && q1.field.pl === '16px' && q1.field.pr === '8px' && q1.field.size === '14px',
+    `${restingRim} | ${JSON.stringify(q1.field)}`)
+  check('…and prompting for the answer rather than for one of the options',
+    q1.field.ph === 'Your answer…', q1.field.ph)
+  check('the question keeps the board’s 16 semibold on 1.4, white',
+    q1.question.size === '16px' && q1.question.weight === '600' && q1.question.lh === '22.4px'
+      && q1.question.colour === 'rgb(255, 255, 255)', JSON.stringify(q1.question))
+  check('there is nowhere to page back to from the first question',
+    q1.back?.disabled === true && q1.back?.op === 0.25, JSON.stringify(q1.back))
+  check('the field has taken focus, so the customer can just type', q1.focused)
+}
+
+/*
+ * ⚠️ AND IT CAN HOLD A SPACE. `asOther` trimmed on every keystroke while the input was
+ * controlled by the trimmed store value, so an inner space never survived the round trip:
+ * typing "personal portfolio" left "personalportfolio" (measured on the live build,
+ * 18.09.2026). Harmless while free text was an escape hatch beside picks; fatal as the only
+ * way to answer a question whose own examples are all two words long.
+ */
+await p.click('section[aria-label="Questions before building"] input')
+await p.type('section[aria-label="Questions before building"] input', 'a corner bakery', { delay: 25 })
+check('the free-text field keeps the spaces it is typed',
+  (await p.$eval('section[aria-label="Questions before building"] input', (e) => e.value)) === 'a corner bakery',
+  await p.$eval('section[aria-label="Questions before building"] input', (e) => JSON.stringify(e.value)))
+
+/*
+ * Enter advances from the field — the only question where the keyboard is the whole control,
+ * so it is the only one where "type and press Enter" has to work without reaching for a
+ * button. Then back, to prove the typed answer survives paging the way a picked one does.
+ */
+/*
+ * ⚠️ AND THIS IS NOW THE BIGGEST MORPH IN THE FLOW — film it. The text-only sheet is the
+ * shortest the dock ever holds (~216 against `goal`'s ~438), so `site → goal` is a larger
+ * jump than the `pages → colours` shrink the sampler further down was written for, in the
+ * other direction. The piston's overhang has to cover it: whatever it does not cover is
+ * ground, and it shows as the black gap under the answers that the 320px overhang was sized
+ * to kill (`.dock-piston`, CLAUDE.md «СВЕС ПОРШНЯ ЗА ШОВ — 320, НЕ 48»).
+ */
+await p.evaluate(() => {
+  const out = (window.__grow = [])
+  const t0 = performance.now()
+  const tick = () => {
+    const piston = document.querySelector('.dock-piston'), base = document.querySelector('.dock-base')
+    if (piston && base) out.push({ gap: +(base.getBoundingClientRect().top - piston.getBoundingClientRect().bottom).toFixed(1) })
+    if (performance.now() - t0 < 1200) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+})
+await p.keyboard.press('Enter'); await p.waitForTimeout(1400)
+{
+  const f = await p.evaluate(() => window.__grow || [])
+  const worst = Math.max(...f.map((x) => x.gap))
+  check('the piston covers the flow’s largest morph too — no ground under the panel as it grows',
+    f.length > 10 && worst <= 0, `worst gap ${worst}px over ${f.length} frames`)
+}
+check('Enter from the field pages forward',
+  /^What should this site do for you\?/.test(await p.$eval('section p', (e) => e.innerText.trim())),
+  await p.$eval('section p', (e) => e.innerText.trim().slice(0, 40)))
+await p.click('button[aria-label="Previous question"]'); await p.waitForTimeout(600)
+check('…and paging back keeps a typed answer, as it keeps a picked one',
+  (await p.$eval('section[aria-label="Questions before building"] input', (e) => e.value)) === 'a corner bakery',
+  await p.$eval('section[aria-label="Questions before building"] input', (e) => JSON.stringify(e.value)))
+
+/* On to `goal`, which is where every row check below has always run. */
+await p.click('text=Next'); await p.waitForTimeout(500); await shot('03b-question-2')
+
+/*
  * THE ANSWER ROW'S HOVER — Figma 29688:26919 (designer, 08.09.2026: "ховер это скруглёный
  * полупрозрачный бордер как в макете"), DRAWN — 29688:29507 ("цвет бордера не равномерно
  * одновременно по всему бордеру появляется, а градиентно по бордеру наполняет объект").
@@ -666,9 +792,10 @@ await p.waitForTimeout(700)
 }
 
 /*
- * The four questions are ours (brief.ts): a goal, how many pages, the colour grid, the
- * lettering. Answered here the way the demo answers them — every one a PICKED option, so
- * the summary prints real names and both drawn shapes of the panel get exercised.
+ * The remaining four questions are ours (brief.ts): a goal, how many pages, the colour grid,
+ * the lettering. (The first, `site`, is the designer's own and was typed into above.)
+ * Answered here the way the demo answers them — every one a PICKED option, so the summary
+ * prints real names and both drawn shapes of the panel get exercised.
  */
 await p.click('section button[aria-label="Sell something"]'); await p.waitForTimeout(200)
 await p.click('text=Next'); await p.waitForTimeout(400); await shot('04-q2-pages')
@@ -888,6 +1015,12 @@ await shot('08-summary')
   const body = await text()
   check('the summary card prints the answers',
     body.includes('Sell something') && body.includes('A few pages') && body.includes('Warm Clay') && body.includes('Friendly'))
+  /* ⚠️ The typed answer prints WITH ITS SPACE and WITHOUT an "Other:" prefix: `asOther` used to
+     trim on every keystroke, so the field could never hold an inner space ("personal portfolio"
+     came out "personalportfolio"), and "Other:" means "other than the ones listed" — this
+     question lists none. */
+  check('…including the first question, typed, spaces intact and unprefixed',
+    body.includes('a corner bakery') && !body.includes('Other: a corner bakery'))
   check('nothing is left as Remixer’s pick when every question was answered', !body.includes('Remixer’s pick'))
   check('the panel is gone after Submit', !(await panelUp()))
 }
@@ -979,11 +1112,16 @@ check('the plan is docked where the questions were', await planUp())
      generation card draws, so "Four pages — Home, About…" is gone and the pages are NAMED in
      it instead. The compiled-not-canned claim is the same one, read off the new drawing. */
   /* ⚠️ Read off the CARD, which is what is on screen here — the stack with the page names
-     is drawn only by the full document. The title follows `goal`, and the lede follows
-     `pages`: with "one page" it would read "One page, top to bottom" instead. Both compiled. */
+     is drawn only by the full document. TWO different answers drive two different parts, which
+     is what "compiled" has to mean: the title carries the typed `site` answer (since
+     18.09.2026 it outranks `goal` there — it is the one answer that says what this IS, and a
+     document headed "A site that sells" over a customer who wrote "a corner bakery" would name
+     the mechanism and skip the subject), and the lede follows `pages`: with "one page" it would
+     read "One page, top to bottom" instead. `goal` still drives the pitch, the blocks and the
+     checks further down, so nothing about it stopped being compiled. */
   check('the plan is compiled from the answers, not canned',
-    body.includes('A site that sells') && body.includes('Home first, and only Home'),
-    'title should follow goal=sell and the lede pages=few')
+    body.includes('A site for a corner bakery') && body.includes('Home first, and only Home'),
+    'title should carry the typed site answer and the lede pages=few')
   /* The status line must not name a button by a label the button does not wear: the board
      renamed `Approve` to `Start Building`, so the line moved with it. */
   check('the waiting line points at the verb the card actually carries',
@@ -1000,7 +1138,7 @@ check('the canvas carries no site controls before there is a site',
 /* ⚠️ …which costs the counter its place on screen, so the claim is read off the WORLD.
    The questions and the plan are free; only `Start Building` spends. */
 check('the questions and the plan cost nothing',
-  (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v3') || '{}').credits)) === 2000)
+  (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').credits)) === 2000)
 
 /* Review: the chat narrows back to the split and the document takes the canvas. */
 await p.click('text=Review'); await p.waitForTimeout(900); await shot('10-plan-review')
@@ -1242,8 +1380,12 @@ check('…and is still at its end after the canvas opens and re-wraps it',
   check('the rail\u2019s site tools arrive with the site', (await railTools()) === 4,
     `${await railTools()} of 4`)
   check('the first version lands and is announced', body.includes('Done —') && body.includes('built to sell'))
+  /* ⚠️ The typed first answer leads the sentence as a DESCRIPTION, not as a quotation. The
+     customer's own words are already on screen twice by now — the summary row above and the
+     plan's heading — and this file's own `briefDone` records what happens when the ack echoes
+     free text back a third time: it "read as a machine repeating itself". */
   check('the acknowledgement reads as one sentence',
-    body.includes('a site built to sell, across a few pages, in Warm Clay with friendly lettering'))
+    body.includes('a site for what you described, built to sell, across a few pages, in Warm Clay with friendly lettering'))
   check('the brief is still readable after the build', body.includes('Warm Clay') && body.includes('Friendly'))
   /* the toolbar is back, because the site is — and the balance is on it again */
   check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
@@ -1339,16 +1481,19 @@ check('dragging the divider past the canvas minimum collapses it', (await previe
   })
   check('the brief summary caps at the 480 its board is drawn at', sum?.w === 480 && sum?.max === '480px',
     `${sum?.w} (max ${sum?.max}) in a ${fits.card}px column`)
-  /* 1 + 56 + (12 + 4×36 + 12) + 1. The list's top padding is 11 because Figma's stroke sits
-     INSIDE the geometry and a CSS border adds — the same correction the plan card's fade needed. */
-  check('…and is exactly as tall as the board', sum?.h === 226, `${sum?.h} vs 226`)
+  /* 1 + 56 + (11 + 5×36 + 12) + 1. The list's top padding is 11 because Figma's stroke sits
+     INSIDE the geometry and a CSS border adds — the same correction the plan card's fade needed.
+     ⚠️ FIVE rows since 18.09.2026: the brief opens with a free-text question (30594:24360), and
+     ChatPanel maps BRIEF_QUESTIONS, so the card grew by one 36px row. Board 29848:28823 still
+     draws four — flagged to the designer, the card is his pixel spec. */
+  check('…and is exactly as tall as the board, one row per question', sum?.h === 262, `${sum?.h} vs 262`)
   check('…with the board’s frame: 1px #272728, radius 24, and no fill on either surface',
     sum?.radius === '24px' && sum?.border === '1px rgb(39, 39, 40)'
       && sum?.fill === 'rgba(0, 0, 0, 0)' && sum?.listFill === 'rgba(0, 0, 0, 0)',
     `${sum?.radius} / ${sum?.border} / ${sum?.fill} / ${sum?.listFill}`)
   check('…a 56px header at 15 medium on the board’s 16 of padding', sum?.head === '56/15px/500/16px', sum?.head)
   check('…rows of 36 behind a 160px label column at 48% white',
-    sum?.rows === '36,36,36,36' && sum?.label === '160/rgba(255, 255, 255, 0.48)',
+    sum?.rows === '36,36,36,36,36' && sum?.label === '160/rgba(255, 255, 255, 0.48)',
     `${sum?.rows} | ${sum?.label}`)
 }
 check('…and only then does the chat header offer to bring it back',
@@ -2643,7 +2788,7 @@ check('…and the typed prompt is built as given', await cardUp())
    * walk as before it. Everything else here is what the customer sees because of it.
    */
   const world = () => p.evaluate(() => {
-    const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v3') || '{}')
+    const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}')
     return { domain: w.domain, published: w.published }
   })
   for (const [v, want, label] of [
