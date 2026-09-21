@@ -386,9 +386,10 @@ export interface World {
    *  · `false` — Figma 29816:21533. The teaser card with the fade and `Review`, which opens
    *              the document at full size in the canvas (PlanSurface).
    *
-   * Default TRUE because that is what release one ships; the footer's own switch (and this
-   * console axis) turns the full one back on in front of an audience. Not a project fact —
-   * `startBuild` leaves it alone, exactly as it leaves `chipInkWhite`.
+   * Default TRUE because that is what release one ships; the instrument in the screen's
+   * bottom-left corner (PlanVariantSwitch.tsx) and this console axis turn the full one back on
+   * in front of an audience. Not a project fact — `startBuild` leaves it alone, exactly as it
+   * leaves `chipInkWhite`.
    */
   planSimple: boolean
   /**

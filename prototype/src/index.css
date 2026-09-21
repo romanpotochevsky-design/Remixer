@@ -4303,6 +4303,12 @@ html[data-drag] .shell-aside { transition: none; }
  * «в нижнем левом углу нужно добавить маленький, красивый переключатель тогл в
  * стеклянном Apple стиле между вариантами, полноценный вариант и упрощённый»).
  *
+ * ⚠️ «В НИЖНЕМ ЛЕВОМ УГЛУ» IS THE SCREEN'S CORNER, not the card's footer — it was built into
+ * the footer first and corrected the same day («я просил это вставить в нижний левый угол
+ * экрана, а не формы»). The control lives in `modules/chat/PlanVariantSwitch.tsx`, fixed at
+ * `bottom-2.5 left-2.5`, the mirror of the scenario console's handle in the opposite corner.
+ * These rules paint it; they do not place it.
+ *
  * It is the house's THIRD segmented control, and it obeys the same law as the
  * other two (`segmentedPill` in ui/motion.ts, Home's dock tabs and its filter
  * chips): a track, one pill flying between seats on the shell's spring, labels
@@ -4316,9 +4322,13 @@ html[data-drag] .shell-aside { transition: none; }
  * mask ring so it never adds a pixel to the layout.
  *
  * ⚠️ NO `backdrop-filter`, and that is the rule this project keeps paying for:
- * look at what is BEHIND the element first. Behind this one is the dock's own
- * glass, already baked flat to #1a1a1c, so a blur would buy a layer and change
- * nothing. Same call as the chip badge's.
+ * look at what is BEHIND the element first — and look AGAIN when the element
+ * moves, because the answer belongs to the place and not to the control. In the
+ * footer it was the dock's glass, baked flat to #1a1a1c. In the screen's corner
+ * it is the chat column's own ground: measured under the instrument's box,
+ * `rgba(9,9,11,.8)` over `--gray-950`, painting a flat rgb(9,9,11) at all three
+ * sample points (scratchpad/plan-simple/behind.mjs). Flat either way, so the
+ * call stands — but it stands on a new measurement, not on the old sentence.
  * ---------------------------------------------------------------------- */
 .plan-variant {
   position: relative;

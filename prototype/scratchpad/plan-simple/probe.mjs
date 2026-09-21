@@ -47,7 +47,7 @@ const read = () => p.evaluate(() => {
   const inner = body.querySelector('.flex.flex-col.gap-4')
   const fade = body.lastElementChild
   const foot = card.querySelector('footer.dock-foot')
-  const track = foot.querySelector('[data-plan-variant]')
+  const track = document.querySelector('[data-plan-variant]')
   const thumb = track?.querySelector('.plan-variant-thumb')
   const seats = [...(track?.querySelectorAll('button') ?? [])]
   const unfold = head.querySelector('[data-plan-unfold]')

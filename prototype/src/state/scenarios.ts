@@ -669,10 +669,10 @@ export const AXES: Axis[] = [
        the first generation on; it only has anything to lead once a site exists. */
     /*
      * WHICH BUILD PLAN THE STEP WEARS (21.09.2026). Two drawn designs, both shipped: the
-     * simplified window of release one, and the full card with `Review`. The card carries
-     * this switch in its own footer; the axis is here so a presenter can stage either one
-     * BEFORE walking into the step. A design A/B like the status chip's ink — not a
-     * project fact, so `startBuild` leaves it alone.
+     * simplified window of release one, and the full card with `Review`. During the step the
+     * switch stands in the screen's bottom-left corner (PlanVariantSwitch.tsx); this axis is
+     * what stages either one BEFORE walking into it. A design A/B like the status chip's ink —
+     * not a project fact, so `startBuild` leaves it alone.
      */
     key: 'planSimple', group: G.chat, label: { en: 'Build Plan — simplified', uk: 'План збірки — спрощений' }, kind: 'toggle',
   },

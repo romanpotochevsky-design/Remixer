@@ -1050,9 +1050,14 @@ check('the plan is docked where the questions were', await planUp())
     const fade = body.lastElementChild
     const scroller = body.querySelector('.overflow-y-auto')
     const foot = card.querySelector('footer.dock-foot')
-    const track = foot.querySelector('[data-plan-variant]')
+    /* ⚠️ DOCUMENT SCOPE, and that is the whole point of 21.09.2026: the switch is an
+       INSTRUMENT parked in the screen's bottom-left corner, not a control in this card's
+       footer («я просил это вставить в нижний левый угол экрана, а не формы»). Reading it
+       through the footer is what the first cut did, and it is what the check below forbids. */
+    const track = document.querySelector('[data-plan-variant]')
     const thumb = track.querySelector('.plan-variant-thumb')
     const seats = [...track.querySelectorAll('button')]
+    const host = track.closest('.fixed') ?? track.parentElement
     const lines = [...inner.querySelectorAll('[data-plan-path]')].slice(0, 2)
     const bodyRect = body.getBoundingClientRect()
     const is = cs(inner), bs = cs(body)
@@ -1080,6 +1085,12 @@ check('the plan is docked where the questions were', await planUp())
       sample: [Math.round(bodyRect.right - 30), Math.round(bodyRect.top + 8)],
       foot: [px(cs(foot).paddingTop), px(cs(foot).paddingRight), px(cs(foot).paddingBottom), px(cs(foot).paddingLeft)],
       track: { box: box(track), r: px(cs(track).borderTopLeftRadius), bg: cs(track).backgroundColor, pad: px(cs(track).paddingLeft) },
+      corner: (() => {
+        const r = track.getBoundingClientRect()
+        return { left: Math.round(r.left), bottom: Math.round(window.innerHeight - r.bottom),
+          position: cs(host).position, z: cs(host).zIndex,
+          inFooter: !!foot.querySelector('[data-plan-variant]'), inCard: card.contains(track) }
+      })(),
       thumb: { box: box(thumb), x: Math.round((thumb.getBoundingClientRect().left - track.getBoundingClientRect().left) * 100) / 100 },
       seats: seats.map((el) => ({ label: el.innerText, on: el.dataset.on ?? null, w: box(el)[0], h: box(el)[1], color: cs(el).color })),
       review: !!foot.querySelector('[data-plan-review]'),
@@ -1135,6 +1146,16 @@ check('the plan is docked where the questions were', await planUp())
       s.seats[1].on === 'true' && s.seats[1].color === 'rgb(255, 255, 255)' &&
       s.seats[0].color === 'rgba(255, 255, 255, 0.48)',
     JSON.stringify(s.seats))
+  /*
+   * ⚠️ THE PLACEMENT IS THE CHECK. The geometry below was green while the switch sat in the
+   * card's footer — which is exactly where the designer did not want it. This is the
+   * assertion that keeps it out: the screen's bottom-left corner, on the console handle's own
+   * 10px inset, fixed, and not a descendant of the plan card at all.
+   */
+  check('the switch is an INSTRUMENT in the screen’s bottom-left corner, not a control in the form',
+    s.corner.left === 10 && s.corner.bottom === 10 && s.corner.position === 'fixed' &&
+      s.corner.inFooter === false && s.corner.inCard === false,
+    JSON.stringify(s.corner))
   check('…and its capsule is a seat wide, parked on the selected one',
     Math.abs(s.thumb.box[0] - s.seats[0].w) < 0.6 && s.thumb.box[1] === 24 &&
       Math.abs(s.thumb.x - (4 + s.seats[0].w)) < 0.6,
@@ -1157,41 +1178,79 @@ check('the plan is docked where the questions were', await planUp())
 }
 {
   /*
-   * THE HEADER CHEVRON gives the window more room and puts it back — and neither motion is
-   * allowed to move the field. The dock carries the change the way it carries a change of
-   * question: the layout snaps and the piston glides, so the sheet's height is seen to
-   * travel while the composer stands perfectly still (CLAUDE.md's oldest panel invariant).
+   * THE HEADER CHEVRON OPENS THE PLAN FULL SCREEN, at inset 16 (designer, 21.09.2026: «эта
+   * кнопка должна делать на всю всю экрана с отступом от верха в 16px»).
+   *
+   * ⚠️ It is a SHEET, not a taller card, and the two checks below are what settle that: the
+   * dock does not move at all — card, window and composer keep every pixel — while a new
+   * surface arrives over the screen. Growing the window in place was built first and измерено:
+   * the card's top could not reach 16 (the chat column's 52px header is above it) and the
+   * height it needed pushed the composer 36px off the bottom of the screen.
    */
-  const before = await p.$eval('.composer-field', (el) => JSON.stringify(el.getBoundingClientRect()))
-  const trip = await p.evaluate(() => new Promise((done) => {
-    const out = []
-    const t0 = performance.now()
-    const piston = document.querySelector('.dock-piston')
-    const field = document.querySelector('.composer-field')
-    const tick = () => {
-      const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(piston).transform)
-      const f = field.getBoundingClientRect()
-      out.push([m ? Math.round(Number(m[1].split(',')[5]) * 10) / 10 : 0, [f.x, f.y, f.width, f.height].join(',')])
-      if (performance.now() - t0 < 900) requestAnimationFrame(tick)
-      else done(out)
+  /* the document's own first line, as the small window says it now — the sheet has to say the
+     same, and hard-coding the string here would just be a second copy of the plan */
+  const titleWas = await p.$eval('[data-plan-body] [data-plan-path="title"]', (e) => e.textContent)
+  const dockWas = await p.evaluate(() => {
+    const el = (q) => document.querySelector(q)?.getBoundingClientRect()
+    const b = el('[data-plan-body]'), f = el('.composer-field'), c = el('section[aria-label="Plan, waiting for your approval"]')
+    return JSON.stringify([b, f, c].map((r) => r && [r.x, r.y, r.width, r.height].map(Math.round)))
+  })
+  await p.click('[data-plan-unfold]')
+  await p.waitForTimeout(900)
+  await shot('09b-plan-fullscreen')
+  const full = await p.evaluate(() => {
+    const cs = getComputedStyle
+    const sheet = document.querySelector('[data-plan-sheet]')
+    const scrim = sheet?.parentElement?.firstElementChild
+    const el = (q) => document.querySelector(q)?.getBoundingClientRect()
+    const b = el('[data-plan-body]'), f = el('.composer-field'), c = el('section[aria-label="Plan, waiting for your approval"]')
+    const r = sheet?.getBoundingClientRect()
+    const title = sheet?.querySelector('[data-plan-path="title"]')
+    const inSheet = [...(sheet?.querySelectorAll('[data-plan-path]') ?? [])].length
+    return {
+      sheet: r ? [Math.round(r.x), Math.round(r.y), Math.round(window.innerWidth - r.right), Math.round(window.innerHeight - r.bottom)] : null,
+      radius: sheet ? cs(sheet).borderTopLeftRadius : null,
+      fill: sheet ? cs(sheet).backgroundColor : null,
+      scrim: scrim ? cs(scrim).backgroundColor : null,
+      measure: title ? Math.round(title.getBoundingClientRect().width) : null,
+      editable: title?.getAttribute('contenteditable') ?? null,
+      says: title?.textContent ?? null,
+      lines: inSheet,
+      dock: JSON.stringify([b, f, c].map((rr) => rr && [rr.x, rr.y, rr.width, rr.height].map(Math.round))),
+      /* the instrument must NOT float over a dimmed screen: 50 against the sheet's 70 */
+      switchZ: Number(cs(document.querySelector('[data-plan-variant]').closest('.fixed')).zIndex),
+      sheetZ: Number(cs(sheet.parentElement).zIndex),
     }
-    document.querySelector('[data-plan-unfold]').click()
-    requestAnimationFrame(tick)
-  }))
-  await p.waitForTimeout(400)
-  const tall = await p.$eval('[data-plan-body]', (el) => Math.round(el.getBoundingClientRect().height))
-  const ys = trip.map((x) => x[0])
-  const fields = new Set(trip.map((x) => x[1]))
-  check('the chevron gives the plan more room — 320 to the viewport\u2019s worth',
-    tall === 440, String(tall))
-  check('…the edge GLIDES there (the piston travels and overshoots), and the field never moves',
-    Math.max(...ys) > 100 && ys.filter((v) => v > 1 && v < 100).length > 6 &&
-      Math.min(...ys) < -3 && Math.abs(ys[ys.length - 1]) < 1 && fields.size === 1,
-    `piston ${Math.max(...ys)} → ${Math.min(...ys)} · field ${[...fields][0]}`)
-  await p.click('[data-plan-unfold]'); await p.waitForTimeout(900)
-  check('…and puts it back at the height the board draws',
-    (await p.$eval('[data-plan-body]', (el) => Math.round(el.getBoundingClientRect().height))) === 320 &&
-      (await p.$eval('.composer-field', (el) => JSON.stringify(el.getBoundingClientRect()))) === before)
+  })
+  check('the chevron opens the plan FULL SCREEN at inset 16 — his number, and the house\u2019s',
+    full.sheet?.join(',') === '16,16,16,16' && full.radius === '24px' &&
+      full.fill === 'rgb(26, 26, 28)' && full.scrim === 'rgba(0, 0, 0, 0.5)',
+    JSON.stringify([full.sheet, full.radius, full.fill, full.scrim]))
+  check('\u2026and the dock does not move a pixel under it — it is a sheet, not a taller card',
+    full.dock === dockWas, `${dockWas} vs ${full.dock}`)
+  /* the same document, not a second copy of it: the line rewritten in the small window
+     stands here, at the canvas document's own 800 measure, still editable */
+  check('\u2026carrying the SAME editable document, at the 800 measure a document is read at',
+    full.editable === 'plaintext-only' && full.lines > 10 && full.measure > 770 && full.measure <= 800 &&
+      full.says === titleWas,
+    JSON.stringify([full.editable, full.lines, full.measure, full.says, titleWas]))
+  check('\u2026with the corner instrument under its scrim, not floating over it',
+    full.switchZ < full.sheetZ, `switch z${full.switchZ} vs sheet z${full.sheetZ}`)
+  /* Escape is the keyboard way out of any sheet in this shell */
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(500)
+  check('Escape puts the plan back',
+    (await p.$('[data-plan-sheet]')) === null && (await planUp()))
+  /* and so is its own ✕ — the glyph every full-screen surface here closes with */
+  await p.click('[data-plan-unfold]'); await p.waitForTimeout(700)
+  await p.click('[data-plan-fold]'); await p.waitForTimeout(600)
+  check('\u2026and so does the sheet\u2019s own ✕, leaving the card exactly as it was',
+    (await p.$('[data-plan-sheet]')) === null &&
+      (await p.evaluate(() => {
+        const el = (q) => document.querySelector(q)?.getBoundingClientRect()
+        const b = el('[data-plan-body]'), f = el('.composer-field'), c = el('section[aria-label="Plan, waiting for your approval"]')
+        return JSON.stringify([b, f, c].map((rr) => rr && [rr.x, rr.y, rr.width, rr.height].map(Math.round)))
+      })) === dockWas)
 }
 /* ---- the switch: the full card the designer asked to keep, and the rest of its board ---- */
 await p.click('[data-plan-seat="full"]'); await p.waitForTimeout(900)

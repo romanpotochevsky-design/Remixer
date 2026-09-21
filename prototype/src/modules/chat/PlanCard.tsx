@@ -5,8 +5,16 @@
  * owners' call for release one: «продукт оунеры в первом релизе хотят упростить
  * функциональность показа плана… нет кнопки Review… все показываем в этом окне и нужно дать
  * редактировать текст прямо в этом окне», then «но нам нужно сохранить и более полноценный
- * вариант… нужно добавить маленький, красивый переключатель тогл»). So `world.planSimple`
- * decides which of two boards this step wears, and the footer carries the switch:
+ * вариант что сейчас с кнопкой Review, на этом шаге В НИЖНЕМ ЛЕВОМ УГЛУ ЭКРАНА нужно добавить
+ * маленький, красивый переключатель тогл в стеклянном Apple стиле»). So `world.planSimple`
+ * decides which of two boards this step wears:
+ *
+ * ⚠️ AND THE SWITCH IS NOT IN THIS CARD. It was built into the footer first, because THIS
+ * docstring quoted the order with «в нижнем левом углу» elided — every other copy of that
+ * sentence in the repo kept the clause, and the one file that built the control dropped it.
+ * The corner meant the SCREEN's corner («я просил это вставить в нижний левый угол экрана, а
+ * не формы»). The rule that cost is worth keeping: never elide the placement clause when you
+ * quote an instruction — it is the half you are about to implement.
  *
  *  · SIMPLE (default, Figma 30596:27064) — one window. The whole document scrolls inside a
  *    320px box and is EDITED there; the header grows a chevron that gives the window more
@@ -33,8 +41,8 @@
  *                line over 14 REGULAR at `NA/700` (64% white), both at leading 1.4
  *   the fade     full: the block's last 152px from y=42; simple: the last 32, at the foot of
  *                the scroller — both ending in the block's own apparent colour
- *   footer       pt 12 / pb 16 / px 10; `Start Building` right, the switch (and `Review`,
- *                in the full variant) left
+ *   footer       pt 12 / pb 16 / px 10; `Start Building` right, `Review` left in the full
+ *                variant and nothing at all beside it in the simplified one
  *
  * ⚠️ THE FADE IS AN OVERLAY, NOT A MASK. A mask makes its element a backdrop root, and this
  * project has already paid for that once (the prompt chips: a masked ancestor silently killed
@@ -65,26 +73,26 @@ import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
-import { useT, type Text } from '@/i18n'
+import { useT } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { Tooltip } from '@/ui/Tooltip'
-import { IconFold, IconUnfold } from '@/ui/icons'
-import { segmentedPill, sheetExit, stepSwap, stepSwapFade } from '@/ui/motion'
+import { IconUnfold } from '@/ui/icons'
+import { sheetExit, stepSwap, stepSwapFade } from '@/ui/motion'
 import { buildPlan, PLAN_LABEL, PLAN_START, type Plan } from './plan'
-import { approvePlan, editPlanItems, editPlanText, reviewPlan, setPlanVariant } from './send'
-import { PlanEditable, focusPlanBlock } from './PlanEditable'
+import { PlanDocument } from './PlanDocument'
+import { approvePlan, reviewPlan } from './send'
 import { useDockSheet } from './dock'
 
 /**
- * How tall the simple window stands when it is unfolded.
- *
- * ⚠️ The ceiling is not a taste: the dock's piston hangs 320px below the seam
- * (`.dock-piston`, index.css), and anything the edge travels beyond that shows the ground
- * through the gap — the black slit the designer filmed on 09.09.2026. 620 − 320 = 300 of
- * travel, inside the overhang with room to spare. The floor is the drawn height, and the
- * viewport term keeps a short window from eating the thread it belongs to.
+ * ⚠️ THE HEADER'S CHEVRON OPENS A FULL-SCREEN SHEET — it does NOT grow the window in place
+ * (designer, 21.09.2026: «эта кнопка должна делать на всю всю экрана с отступом от верха в
+ * 16px»). Growing it in place was built first and measured: the dock lives at the bottom of
+ * the chat column, under a 52px header, so the card's top cannot reach 16 from the top of the
+ * WINDOW however tall the window gets — and the height it needed pushed the composer off the
+ * bottom of the screen, which breaks this panel's oldest invariant. The house already has the
+ * right form for "as big as the screen": the full-screen sheet at inset 16 (the template
+ * picker, 28616:59168). So the chevron opens `PlanFullscreen`, and the card stays as drawn.
  */
-const TALL = 'clamp(320px, calc(100vh - 460px), 620px)'
 
 /** What this line says now: the customer's words if they wrote any, else the compiled ones. */
 function useEdits() {
@@ -104,10 +112,10 @@ export function PlanCard() {
   const togglePlanTall = useUI((s) => s.togglePlanTall)
   const plan = buildPlan(answers)
 
-  /* Two things change this sheet's height — the variant and the unfolded window — and the
-     dock treats either as a step: it measures the new height in the same commit and glides
-     the shell's edge to it. */
-  const step = `${simple ? 'simple' : 'full'}:${simple && tall ? 'tall' : 'short'}`
+  /* The variant is the only thing that changes this sheet's height, and the dock treats it
+     as a step: it measures the new height in the same commit and glides the shell's edge to
+     it, exactly as it does between two questions. */
+  const step = simple ? 'simple' : 'full'
   const sheet = useDockSheet<HTMLElement>(step)
 
   /* Which way the bodies travel when the switch is thrown: towards Simple is "forward". */
@@ -148,25 +156,18 @@ export function PlanCard() {
                 {t(PLAN_LABEL)}
               </p>
               {simple && (
-                <Tooltip
-                  interactive
-                  text={tall
-                    ? { en: 'Put the window back', uk: 'Повернути вікно' }
-                    : { en: 'Give the plan more room', uk: 'Більше місця для плану' }}
-                >
+                <Tooltip interactive text={{ en: 'Open the plan full screen', uk: 'Відкрити план на весь екран' }}>
                   <button
                     type="button"
                     data-plan-unfold
                     onClick={togglePlanTall}
-                    aria-pressed={tall}
-                    aria-label={t(tall
-                      ? { en: 'Put the plan window back', uk: 'Повернути вікно плану' }
-                      : { en: 'Give the plan more room', uk: 'Більше місця для плану' })}
+                    aria-expanded={tall}
+                    aria-label={t({ en: 'Open the plan full screen', uk: 'Відкрити план на весь екран' })}
                     /* 30765:6001 — the kit's STANDARD icon button: 40 at radius 10 with no
                        container of its own until it is touched. */
                     className="press-bloom grid h-10 w-10 flex-none place-items-center rounded-[10px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
                   >
-                    {tall ? <IconFold size={24} /> : <IconUnfold size={24} />}
+                    <IconUnfold size={24} />
                   </button>
                 </Tooltip>
               )}
@@ -185,7 +186,7 @@ export function PlanCard() {
               animate="animate"
               exit="exit"
             >
-              {simple ? <PlanWindow plan={plan} tall={tall} /> : <PlanTeaser plan={plan} />}
+              {simple ? <PlanWindow plan={plan} /> : <PlanTeaser plan={plan} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -194,9 +195,13 @@ export function PlanCard() {
       {/* No price line here. It read as a warning attached to the button rather than as
           information, and the footer is a decision — Review or Start Building — not a
           receipt. (Designer, 07.09.2026: "этот текст нужно убрать".) */}
+      {/* ⚠️ NO INSTRUMENT IN THIS FOOTER. The switch between the two variants was built here
+          first and the designer moved it out the same day («я просил это вставить в нижний левый
+          угол экрана, а не формы»): it lives in the screen's corner now
+          (modules/chat/PlanVariantSwitch.tsx). What stands here is what the boards draw —
+          `Start Building`, and `Review` in the full variant. */}
       <footer className="dock-foot flex items-end justify-between px-2.5 pb-4 pt-3">
         <div className="flex items-center gap-2">
-          <VariantSwitch simple={simple} />
           {!simple && (
             <button
               type="button"
@@ -294,99 +299,14 @@ function PlanTeaser({ plan }: { plan: Plan }) {
  * is exactly why the ink still lands on the board's 16: the box grows outwards and the text
  * is pushed back in. Nothing here compensates for it, and nothing should.
  */
-function PlanWindow({ plan, tall }: { plan: Plan; tall: boolean }) {
-  const { t } = useT()
-  const { edits, read } = useEdits()
-
+function PlanWindow({ plan }: { plan: Plan }) {
   return (
     <div
       data-plan-body
-      className="relative overflow-hidden rounded-[16px] bg-[#09090b29] shadow-[inset_0_0_0_1px_#ffffff14]"
-      style={{ height: tall ? TALL : '320px' }}
+      className="relative h-[320px] overflow-hidden rounded-[16px] bg-[#09090b29] shadow-[inset_0_0_0_1px_#ffffff14]"
     >
       <ScrollArea className="h-full" thumb="light">
-        <div className="flex flex-col gap-4 py-[18px] pl-4 pr-6">
-          <div className="flex flex-col gap-2.5">
-            <PlanEditable
-              path="title"
-              value={read('title', t(plan.title))}
-              onCommit={(v) => editPlanText('title', v, t(plan.title))}
-              label={t({ en: 'Plan title', uk: 'Заголовок плану' })}
-              className="text-[15px] font-medium leading-[1.4] text-white"
-            />
-            <PlanEditable
-              path="goal"
-              value={read('goal', t(plan.goal))}
-              onCommit={(v) => editPlanText('goal', v, t(plan.goal))}
-              label={t({ en: 'The goal, in a paragraph', uk: 'Мета, одним абзацом' })}
-              className="text-[14px] leading-[1.4] text-[#ffffffa3]"
-            />
-          </div>
-
-          {plan.sections.map((section, i) => {
-            const items = edits.items[i] ?? (section.items ?? []).map((x) => t(x))
-            const setItems = (next: string[]) => editPlanItems(i, next)
-            /* Hoisted: TypeScript narrows `section.body` for the JSX guard but not inside
-               the callback under it, which closes over the section rather than the guard. */
-            const body = section.body ? t(section.body) : null
-            const after: Text | null = section.after ?? null
-            return (
-              <div key={section.heading.en} className="flex flex-col gap-2.5">
-                <PlanEditable
-                  path={`s${i}:h`}
-                  value={read(`s${i}:h`, t(section.heading))}
-                  onCommit={(v) => editPlanText(`s${i}:h`, v, t(section.heading))}
-                  label={t({ en: 'Section heading', uk: 'Заголовок розділу' })}
-                  className="text-[15px] font-medium leading-[1.4] text-white"
-                />
-                {body !== null && (
-                  <PlanEditable
-                    path={`s${i}:b`}
-                    value={read(`s${i}:b`, body)}
-                    onCommit={(v) => editPlanText(`s${i}:b`, v, body)}
-                    label={t({ en: 'Section text', uk: 'Текст розділу' })}
-                    className="text-[14px] leading-[1.4] text-[#ffffffa3]"
-                  />
-                )}
-                {items.length > 0 && (
-                  /* the board sets a section's lines as ONE text block: consecutive
-                     leading-1.4 lines, no bullets, sharing the block's 10px gap */
-                  <div className="text-[14px] leading-[1.4] text-[#ffffffa3]">
-                    {items.map((item, j) => (
-                      <PlanEditable
-                        key={`${i}:${j}`}
-                        path={`s${i}:${j}`}
-                        value={item}
-                        label={t({ en: 'Plan item', uk: 'Пункт плану' })}
-                        onCommit={(v) => { if (v !== item) setItems(items.map((x, k) => (k === j ? v : x))) }}
-                        onEnter={(v) => {
-                          const next = items.map((x, k) => (k === j ? v : x))
-                          next.splice(j + 1, 0, '')
-                          setItems(next)
-                          focusPlanBlock(`s${i}:${j + 1}`)
-                        }}
-                        onEmptyBackspace={() => {
-                          if (items.length === 1) return
-                          setItems(items.filter((_, k) => k !== j))
-                          if (j > 0) focusPlanBlock(`s${i}:${j - 1}`)
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-                {after && (
-                  <PlanEditable
-                    path={`s${i}:after`}
-                    value={read(`s${i}:after`, t(after))}
-                    onCommit={(v) => editPlanText(`s${i}:after`, v, t(after))}
-                    label={t({ en: 'Section text', uk: 'Текст розділу' })}
-                    className="text-[14px] leading-[1.4] text-[#ffffffa3]"
-                  />
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <PlanDocument plan={plan} />
       </ScrollArea>
       {/* 30596:27093 — the scroller's own soft edge, 32 tall, ending in the window's own
           PAINTED colour. `#09090b` at 16% over the dock's flat #1a1a1c arithmetically gives
@@ -400,73 +320,5 @@ function PlanWindow({ plan, tall }: { plan: Plan; tall: boolean }) {
         style={{ background: 'linear-gradient(to bottom, #16161900, #161619)' }}
       />
     </div>
-  )
-}
-
-/* ----------------------------------------------------------------------- the switch */
-
-const SEATS = [
-  { simple: false, label: { en: 'Full', uk: 'Повний' } as Text },
-  { simple: true, label: { en: 'Simple', uk: 'Спрощений' } as Text },
-]
-
-/**
- * WHICH PLAN THIS STEP WEARS — the switch the designer asked for in the footer's bottom-left
- * corner (21.09.2026). It is the house's third segmented control and obeys the same law as
- * the Home dock's tabs and its filter chips (`segmentedPill`, ui/motion.ts): a track, one
- * pill flying between seats on the shell's spring, labels that only change colour.
- *
- * ⚠️ No capsule-of-two here. That construction exists on the other two because their seats
- * have DIFFERENT widths, and a pill that `scaleX`es between them settles with elliptical
- * caps. These seats are equal by construction (a two-column grid), so one capsule translates
- * by exactly its own width — `x: 100%` — and nothing scales.
- *
- * ⚠️ The bloom belongs to the INACTIVE seat only: pressing what is already selected is a
- * no-op, and there is nothing to acknowledge. The flight IS the acknowledgement.
- *
- * ⚠️ It is a PROTOTYPE control — two drawn designs of one step, not a product setting — so it
- * says what it switches in a tooltip rather than pretending to be a preference.
- */
-function VariantSwitch({ simple }: { simple: boolean }) {
-  const { t } = useT()
-  const reduce = useReducedMotion()
-
-  return (
-    <Tooltip
-      interactive
-      text={{
-        en: 'Prototype: Full opens the plan in the canvas, Simple keeps it in this window.',
-        uk: 'Прототип: Повний відкриває план на полотні, Спрощений залишає його в цьому вікні.',
-      }}
-    >
-      <div data-plan-variant className="plan-variant grid h-8 grid-cols-2 items-center rounded-full p-1">
-        <motion.span
-          aria-hidden
-          className="plan-variant-thumb"
-          style={{ top: 4, bottom: 4, left: 4, width: 'calc(50% - 4px)' }}
-          /* `initial={false}`: on mount the pill IS at its seat. Without it the switch would
-             spring across the track every time the card arrives in the dock. */
-          initial={false}
-          animate={{ x: simple ? '100%' : '0%' }}
-          transition={reduce ? { duration: 0 } : segmentedPill.transition}
-        />
-        {SEATS.map((seat) => {
-          const on = seat.simple === simple
-          return (
-            <button
-              key={seat.label.en}
-              type="button"
-              data-plan-seat={seat.simple ? 'simple' : 'full'}
-              data-on={on || undefined}
-              aria-pressed={on}
-              onClick={() => setPlanVariant(seat.simple)}
-              className={`plan-variant-seat h-6 rounded-full px-3 text-[13px] font-medium leading-none ${on ? '' : 'press-bloom'}`}
-            >
-              {t(seat.label)}
-            </button>
-          )
-        })}
-      </div>
-    </Tooltip>
   )
 }
