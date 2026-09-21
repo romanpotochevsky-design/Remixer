@@ -35,9 +35,6 @@ export const TILE = 56
 /** Its inset from the field's left and top edges — the `Attachments bar`'s
  *  own `pt-16 px-16` (28734:65591, an 88 × 72 box around one 56px tile). */
 export const TILE_INSET = 16
-/** The row the tile makes: 16 + 56. The field's growth is 46, not 72, because
- *  the text row loses the phantom line at the same time. */
-export const BAR_H = TILE_INSET + TILE
 
 /** The tile's radius (the frame's 16 — `image 381` matches it on three
  *  corners). */
@@ -60,12 +57,43 @@ export const BADGE_Y = -8
 /** The glyph box inside it — `Frame` 28734:65595, 16 × 16 at (1, 1). */
 export const BADGE_GLYPH = 16
 
-/** The field, both states (28364:40219 → 28726:64923). */
-export const FIELD_H = 138
-export const FIELD_H_ATTACHED = 184
-/** What each row below the tile has to travel when the layout snaps. */
-export const SHIFT_ROW = FIELD_H_ATTACHED - FIELD_H // 46 — buttons, and the chips
-export const SHIFT_TEXT = 72 // the placeholder line: y 17 → 89
+/**
+ * THE DOMAIN CHIP — the same `Attachments bar` with a name in it instead of a picture
+ * (28734:65591 → 30771:30981, read 21.09.2026). A 36-tall pill at radius 999: `NA/50` fill
+ * under a 20% white rim and a 16 blur, pl 12 / pr 8, the name at 14 regular white, and an
+ * 18px round ✕ at its end.
+ *
+ * ⚠️ Blur, unlike the switch in the screen's corner, is NOT wasted here: behind the chip is
+ * the field's own 80%-black glass over the hero's painted colour field, so there is something
+ * to sample. The rule is the same, the answer differs because the place does.
+ */
+export const CHIP_H = 36
+
+/**
+ * WHAT THE ATTACHMENTS BAR DOES TO THE ROWS BELOW IT, as one rule rather than two constants.
+ * The bar is 16 of padding plus its tallest attachment — 56 for a template's tile, 36 for a
+ * domain's chip — and both boards close on the same arithmetic:
+ *
+ *   the placeholder line   16 + h + 17 − 17   = h + 16   (72 with a tile, 52 with a chip)
+ *   every row below it     (16+h+43+53+16) − 138 = h − 10 (46 with a tile, 26 with a chip)
+ *
+ * Which is why the field is 184 with a tile and 164 with a chip — both drawn, both measured.
+ * Deriving it beats two pairs of constants: a third kind of attachment gets its travel free,
+ * and a swap between two kinds (the tile arriving over a chip) travels their difference.
+ */
+export const barTextShift = (h: number) => (h ? h + 16 : 0)
+export const barRowShift = (h: number) => (h ? h - 10 : 0)
+
+/**
+ * The field, all three drawn states (28364:40219 → 28726:64923 on both halves of the
+ * domain board): 138 bare · 164 with a 36-tall domain chip · 184 with a 56-tall tile.
+ *
+ * ⚠️ NOT constants any more, and the four that used to stand here (`FIELD_H`,
+ * `FIELD_H_ATTACHED`, `SHIFT_ROW` 46, `SHIFT_TEXT` 72) are gone rather than kept beside
+ * the formulas above: two numbers per row can only describe ONE attachment, and the
+ * moment a second kind existed they were both wrong for the swap between them. The
+ * heights follow from `barTextShift`/`barRowShift`, which is what the composer reads.
+ */
 
 /**
  * The seating bloom's radius (ours, not drawn): the light that pours under the

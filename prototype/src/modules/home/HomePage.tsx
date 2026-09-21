@@ -57,6 +57,7 @@ import { TEMPLATE_LIBRARY } from '@/data/templates'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight, IconClose } from '@/ui/icons'
+import { AttachMenu } from './AttachMenu'
 import { LogoRemixerAnimated } from '@/ui/LogoRemixerAnimated'
 import { HomeDock } from './Dock'
 import { TemplatePicker } from './TemplatePicker'
@@ -64,8 +65,9 @@ import { TemplateFlight } from './TemplateFlight'
 import { Thumb } from './thumbs'
 import { FIELD_CLOSE, FIELD_GROW } from '@/ui/motion'
 import {
+  barRowShift, barTextShift, CHIP_H,
   FIELD_PAD_B, FIELD_RADIUS, rectOf,
-  SEAT_ACK_DELAY, SEAT_BLOOM_R, SHIFT_ROW, SHIFT_TEXT,
+  SEAT_ACK_DELAY, SEAT_BLOOM_R,
   SWAP_OUT, SWAP_OUT_DELAY, TILE, TILE_INSET, TILE_SETTLE,
 } from './attachment'
 
@@ -551,32 +553,45 @@ function AttachedTile({ index }: { index: number }) {
  */
 function useSnapSlide(
   ref: React.RefObject<HTMLElement>,
+  /*
+   * WHERE THIS ROW SITS RIGHT NOW, measured from where it sits with an empty bar
+   * — not a boolean. The hook springs the DIFFERENCE between that and where the
+   * row sat a commit ago, which is the same arithmetic in all four directions:
+   *
+   *   nothing → chip   0 → 26   the row is put back 26 UP and falls into place
+   *   nothing → tile   0 → 46
+   *   chip    → tile  26 → 46   it travels the 20 between them, not 46 and back
+   *   tile    → nothing 46 → 0  put back 46 DOWN and lifted home
+   *
+   * A boolean could only say "attached", so the third line — a template landing
+   * on top of an attached domain — would have snapped 20px with nothing playing.
+   */
   distance: number,
-  attached: boolean,
-  /* 'grow' = this row only rides the snap when the field OPENS; on the close
+  /* 'grow' = this row only rides the snap when the field OPENS; when it shrinks
      `useFieldClose` drives it, because there the row travels with the field's
      painted edge rather than against a box that has already shrunk. */
   only?: 'grow',
 ) {
   const reduced = useReducedMotion()
   const mv = useMotionValue(0)
-  const was = useRef(attached)
+  const was = useRef(distance)
 
   useLayoutEffect(() => {
-    const from = was.current === attached ? null : attached ? -distance : distance
-    was.current = attached
+    const from = was.current - distance
+    const growing = distance > was.current
+    was.current = distance
     const el = ref.current
     /* Reduced motion: the field just snaps. A row sliding is exactly the
        movement the setting asks us not to make. */
-    if (from === null || !el || reduced) return
-    if (only === 'grow' && !attached) return
+    if (from === 0 || !el || reduced) return
+    if (only === 'grow' && !growing) return
 
     el.style.transform = `translateY(${from}px)`
     el.style.willChange = 'transform'
     mv.jump(from)
     const write = mv.on('change', (v) => { el.style.transform = `translateY(${v}px)` })
     const run = animate(mv, 0, {
-      ...(attached ? FIELD_GROW : FIELD_CLOSE),
+      ...(growing ? FIELD_GROW : FIELD_CLOSE),
       onComplete: () => {
         /* Leave nothing behind: no transform, no compositing hint. */
         el.style.removeProperty('transform')
@@ -585,7 +600,46 @@ function useSnapSlide(
     })
     return () => { write(); run.stop() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attached])
+  }, [distance])
+}
+
+/**
+ * THE ATTACHED DOMAIN — `attached template` 30771:30981 on board 28726:64760, which is the
+ * same Attachments bar carrying a NAME instead of a picture (designer, 21.09.2026).
+ *
+ * 36 tall at radius 999: `NA/50` under a 20% white rim with a 16 blur, pl 12 / pr 8, the name
+ * at 14 regular white, and an 18px round ✕ of the same material at its end.
+ *
+ * ⚠️ The rim is an inset shadow, not a border: Figma's stroke sits inside the geometry, and a
+ * CSS border would spend a pixel of the drawn 12/8 padding on itself.
+ *
+ * ⚠️ AND THE BLUR EARNS ITS PLACE HERE, unlike the switch in the screen's corner: behind this
+ * chip is the field's own 80%-black glass over the hero's painted colour field, so there is
+ * something to sample. Same rule — look at what is behind — different place, different answer.
+ */
+function AttachedDomain({ domain }: { domain: string }) {
+  const { t } = useT()
+  const set = useWorld((s) => s.set)
+  return (
+    <span
+      data-attach-domain
+      style={{ height: CHIP_H }}
+      className="flex items-center gap-2 rounded-full bg-[var(--white-050)] py-1.5 pl-3 pr-2 text-[14px] leading-none text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] backdrop-blur-[16px]"
+    >
+      <span className="max-w-[320px] truncate">{domain}</span>
+      <button
+        type="button"
+        onClick={() => set({ intakeDomain: null })}
+        aria-label={t({ en: 'Remove domain', uk: 'Прибрати домен' })}
+        /* No ripple, for the reason the tile's badge states: light blooming out of a control
+           whose whole job is to remove the thing beside it celebrates the wrong event. */
+        data-no-ripple
+        className="grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-[var(--white-050)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+      >
+        <IconClose size={9} />
+      </button>
+    </span>
+  )
 }
 
 /**
@@ -647,34 +701,42 @@ function useSnapSlide(
 function useFieldClose(
   field: React.RefObject<HTMLElement>,
   chips: React.RefObject<HTMLElement>,
-  attached: boolean,
-): boolean {
+  /*
+   * The same travel `useSnapSlide` takes for the rows below the bar — and, again,
+   * a NUMBER rather than a boolean, so the hook also covers the middle case the
+   * boolean could not name: a tile removed while a domain chip stays. There the
+   * field shrinks 184 → 164 instead of 184 → 138, and 20px of edge has to ride
+   * up rather than 46.
+   */
+  travel: number,
+): number {
   const reduced = useReducedMotion()
-  const [closing, setClosing] = useState(false)
+  /** How much taller the box is being HELD than its new layout — 0 when idle. */
+  const [shrink, setShrink] = useState(0)
   const p = useMotionValue(0)
-  const was = useRef(attached)
+  const was = useRef(travel)
 
   useLayoutEffect(() => {
-    const closed = was.current && !attached
-    was.current = attached
-    /* Re-attached (the pill swaps the template mid-close): the field is going
-       back to 184 anyway, so the close is off and its styles are cleared by
-       this hook's own cleanup. */
-    if (attached) { setClosing(false); return }
+    const drop = was.current - travel
+    was.current = travel
+    /* Grew (or a re-attach mid-close: the pill swaps the template, the chip
+       arrives over nothing): the field is going UP anyway, so the hold is off
+       and its inline styles come off in this hook's own cleanup. */
+    if (drop <= 0) { setShrink(0); return }
     /* Reduced motion: nothing travels, so there is nothing to keep inside. */
-    if (!closed || reduced) return
-    setClosing(true)
-  }, [attached, reduced])
+    if (reduced) return
+    setShrink(drop)
+  }, [travel, reduced])
 
   useLayoutEffect(() => {
-    if (!closing) return
+    if (!shrink) return
     const el = field.current
     const ch = chips.current
-    if (!el || !ch) { setClosing(false); return }
+    if (!el || !ch) { setShrink(0); return }
 
     const write = (v: number) => {
-      el.style.clipPath = `inset(0 0 ${(SHIFT_ROW * v).toFixed(2)}px 0 round ${FIELD_RADIUS}px)`
-      ch.style.transform = `translateY(${(-SHIFT_ROW * v).toFixed(2)}px)`
+      el.style.clipPath = `inset(0 0 ${(shrink * v).toFixed(2)}px 0 round ${FIELD_RADIUS}px)`
+      ch.style.transform = `translateY(${(-shrink * v).toFixed(2)}px)`
     }
     write(0)
     el.style.willChange = 'clip-path'
@@ -683,7 +745,7 @@ function useFieldClose(
     const unsub = p.on('change', write)
     /* Only the flag flips here. The inline styles come off in the cleanup, one
        commit later, so the un-clipped box is never painted. */
-    const run = animate(p, 1, { ...FIELD_CLOSE, onComplete: () => setClosing(false) })
+    const run = animate(p, 1, { ...FIELD_CLOSE, onComplete: () => setShrink(0) })
 
     return () => {
       unsub()
@@ -694,9 +756,9 @@ function useFieldClose(
       ch.style.removeProperty('will-change')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closing])
+  }, [shrink])
 
-  return closing
+  return shrink
 }
 
 function Composer() {
@@ -710,29 +772,61 @@ function Composer() {
 
   const attached = attachedIndex != null ? TEMPLATE_LIBRARY[attachedIndex] : null
   const hasTile = attachedIndex != null
-  /* A template alone arms Build too — a lit tile beside a dead button would
-     read as broken. Undrawn either way (our call, same standing as the tile). */
+  /*
+   * THE OTHER KIND OF ATTACHMENT — the domain this intake is for, arriving with a
+   * customer sent over from the DreamHost panel (world.ts § intakeDomain, board
+   * 28726:64760 «Domain-Only Customer»). It lives in the WORLD and the template
+   * lives in `useUI`, and the split is the point: a template decorates this draft
+   * and dies with it, a domain is a fact about the account that has to outlive the
+   * Build press — otherwise the builder could not know the site is for that name.
+   */
+  const intakeDomain = useWorld((s) => s.world.intakeDomain)
+  const setWorld = useWorld((s) => s.set)
+  const [attachOpen, setAttachOpen] = useState(false)
+  /*
+   * THE ATTACHMENTS BAR IS AS TALL AS ITS TALLEST ATTACHMENT, and everything below
+   * it follows from that one number (`attachment.ts` § barTextShift/barRowShift,
+   * both closed against the boards: the tile board draws the field 184, the domain
+   * board 164, and the same two formulas hit both). Tile 56, chip 36, nothing 0.
+   */
+  const barH = hasTile ? TILE : intakeDomain ? CHIP_H : 0
+  const hasBar = barH > 0
+  /*
+   * A template alone arms Build too — a lit tile beside a dead button would
+   * read as broken. Undrawn either way (our call, same standing as the tile).
+   *
+   * ⚠️ A DOMAIN ALONE DOES NOT, and that is the designer's own sentence: the
+   * customer arriving from the panel «должен описать какой сайт хочет и начать
+   * генерацию». A name is not a description of a site — a template is one, which
+   * is why the two attachments part company exactly here.
+   */
   const armed = draft.trim().length > 0 || attached != null
 
   /*
-   * THE SNAP-ONCE COVER. The field's box goes 138 → 184 in one commit
-   * (board 28726:64760 against 28364:40219); these three put the rows that
-   * moved back where they were and spring them home, so nothing animates
-   * layout. Distances are the board's: the placeholder line drops 72, the
-   * button row and the chip row 46.
+   * THE SNAP-ONCE COVER. The field's box changes height in ONE commit — 138 bare,
+   * 164 with a domain chip, 184 with a template tile, all three drawn (28364:40219,
+   * 28726:64923 on both of that board's states) — and these three hooks put the rows
+   * that moved back where they were and spring them home, so nothing animates layout.
    *
-   * ⚠️ The CLOSE defers the half of that commit which shrinks the box, so the
-   * rows never travel outside the field — `useFieldClose` below owns it, and
-   * owns the chips row outright on that path (hence 'grow').
+   * ⚠️ The travels are DERIVED from the bar's height, not two constants per row: the
+   * placeholder line drops `h + 16` and every row under it `h − 10` (52/26 for a chip,
+   * 72/46 for a tile — both halves of both boards close on those two lines). That is
+   * what lets a tile landing on top of a chip travel the 20 between them instead of
+   * snapping, which two constants could not have expressed.
+   *
+   * ⚠️ The SHRINK defers the half of that commit which lowers the box, so the rows
+   * never travel outside the field — `useFieldClose` below owns it, and owns the chips
+   * row outright on that path (hence 'grow').
    */
   const fieldBox = useRef<HTMLDivElement>(null)
   const textRow = useRef<HTMLDivElement>(null)
   const buttonRow = useRef<HTMLDivElement>(null)
   const chipsRow = useRef<HTMLDivElement>(null)
-  const closing = useFieldClose(fieldBox, chipsRow, hasTile)
-  useSnapSlide(textRow, SHIFT_TEXT, hasTile)
-  useSnapSlide(buttonRow, SHIFT_ROW, hasTile)
-  useSnapSlide(chipsRow, SHIFT_ROW, hasTile, 'grow')
+  const rowTravel = barRowShift(barH)
+  const shrink = useFieldClose(fieldBox, chipsRow, rowTravel)
+  useSnapSlide(textRow, barTextShift(barH))
+  useSnapSlide(buttonRow, rowTravel)
+  useSnapSlide(chipsRow, rowTravel, 'grow')
 
   /*
    * THE FIELD ACKNOWLEDGES RECEIVING IT. When the flying template lands, the
@@ -808,7 +902,14 @@ function Composer() {
       {/* ------------------------------------------- the field (28364:40219) */}
       <div
         ref={fieldBox}
-        className="he-composer relative w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
+        /* `z-10` exists for ONE thing: the attach menu hangs out of the bottom of this
+           box, and the field's own `backdrop-blur` makes it a stacking context — so the
+           menu's z-index is trapped INSIDE the field and loses to the prompt-chip row,
+           which is positioned and comes later in the tree. Measured: the first chip was
+           painted straight across the menu's top row. Raising the FIELD is the fix,
+           because the field is the thing whose paint order was wrong; the flight layer
+           (z-80) and every overlay still sit above it. */
+        className="he-composer relative z-10 w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
         /* Figma's padding is 17/16/16/0 on a 138-tall box whose 1px stroke sits
            INSIDE the geometry. A CSS `border` does not: it eats a pixel of the
            content box, which put the text row, the `+` button and the caret 1px
@@ -817,29 +918,45 @@ function Composer() {
            static paint — and the padding is Figma's, unmodified. Same reason the
            shell's glass rims are drawn rather than bordered (CLAUDE.md).
 
-           WITH AN ATTACHMENT (28726:64923) the box is 184: the top padding goes
-           17 → 16 and the tile's 56px row opens above the text. The box grows
-           DOWNWARD — the board keeps the composer container's own y (453.9998 on
-           both boards), so everything above the field holds still and the chip
-           row below it moves 46.
+           WITH AN ATTACHMENT (28726:64923) the top padding goes 17 → 16 and the
+           bar opens above the text — 184 with a tile, 164 with a domain chip, and
+           both are the board's own numbers. The box grows DOWNWARD: the board keeps
+           the composer container's own y (453.9998 on every state), so everything
+           above the field holds still and the chip row below it moves.
 
-           WHILE THE FIELD IS CLOSING the box is still 184 — the extra 46 sits in
-           the bottom padding, under the button row, and the painted edge rides
-           up as a clip (`useFieldClose`). Without it the box shrank first and
-           left the rows hanging on the bare hero for three frames. */
+           WHILE THE FIELD IS SHRINKING the box is still the taller of the two — the
+           difference sits in the bottom padding, under the button row, and the
+           painted edge rides up as a clip (`useFieldClose`). Without it the box
+           shrank first and left the rows hanging on the bare hero for three frames. */
         style={{
           boxShadow: '0 16px 80px 0 rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--white-100)',
-          padding: hasTile
-            ? `16px 16px ${FIELD_PAD_B}px 0`
-            : `17px 16px ${closing ? FIELD_PAD_B + SHIFT_ROW : FIELD_PAD_B}px 0`,
+          padding: hasBar
+            ? `16px 16px ${FIELD_PAD_B + shrink}px 0`
+            : `17px 16px ${FIELD_PAD_B + shrink}px 0`,
         }}
       >
-        {/* THE ATTACHMENTS ROW (`Attachments bar` 28734:65591): the tile 16px in
-            from the field's left edge, 56 tall, and nothing else — the row's own
-            16px of padding-top is the field's, above. */}
-        {attachedIndex != null && (
-          <div className="flex items-start pl-4" style={{ height: TILE }}>
-            <AttachedTile index={attachedIndex} />
+        <AttachMenu
+          open={attachOpen}
+          onClose={() => setAttachOpen(false)}
+          onDomain={(domain) => setWorld({ intakeDomain: domain })}
+        />
+
+        {/* THE ATTACHMENTS ROW (`Attachments bar` 28734:65591 — 180×52 on the domain
+            board, 16 + the attachment, hugging it): whatever is attached, 16px in
+            from the field's left edge — the row's own 16px of padding-top is the
+            field's, above. The tile is 56 and the domain chip 36, and the row is as
+            tall as the tallest, which is the number every travel below is derived
+            from.
+
+            ⚠️ CENTRED, not top-aligned. With one attachment the row is exactly its
+            height and the two are identical; with both, a 36-tall chip pinned to the
+            top of a 56-tall tile reads as a mistake, and Figma's own bar centres its
+            contents (`attached template` sits at y=16 in a 52-tall bar with 16 of
+            padding — dead centre of what is left). */}
+        {hasBar && (
+          <div className="flex items-center gap-2 pl-4" style={{ height: barH }}>
+            {attachedIndex != null && <AttachedTile index={attachedIndex} />}
+            {intakeDomain && <AttachedDomain domain={intakeDomain} />}
           </div>
         )}
 
@@ -872,7 +989,7 @@ function Composer() {
             attachment the board drops that phantom line and pads the single line
             17/17 instead (a 60 box, `Text` 28726:64925) — which is why the line
             travels 72 while the row below it travels 46. */}
-        <div ref={textRow} className={hasTile ? 'mt-[17px] flex h-[26px] items-start pl-6 pr-2' : 'flex h-[52px] items-start pl-6 pr-2'}>
+        <div ref={textRow} className={hasBar ? 'mt-[17px] flex h-[26px] items-start pl-6 pr-2' : 'flex h-[52px] items-start pl-6 pr-2'}>
           <input
             ref={field}
             value={draft}
@@ -901,8 +1018,23 @@ function Composer() {
            * flattened export read claimed — design-system.md § Liquid Glass).
            */}
           <div className="flex min-w-0 items-center gap-2">
+            {/*
+              * THE "+" IS THE ATTACH DOOR (board 28726:64760, the menu instance
+              * 30771:31103 — designer 21.09.2026). It was inert until now: a
+              * control that answered a press with light and nothing else.
+              *
+              * The menu itself is mounted on the FIELD, not here — it stands above
+              * the composer's top edge, in this button's own 16px column, and
+              * AttachMenu says why it is placed off the field rather than off the
+              * button it belongs to.
+              */}
             <button
+              type="button"
+              data-attach-open
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
+              aria-haspopup="menu"
+              aria-expanded={attachOpen}
+              onClick={() => setAttachOpen((v) => !v)}
               /* hover/press live on `glass-interactive` (wash + click-point
                  ripple, index.css canon block + src/ui/ripple.ts) — the old
                  darkening hover:bg is superseded by the designer's 26.08 order */
@@ -1014,20 +1146,21 @@ function Composer() {
         ref={chipsRow}
         className="he-chips flex h-[42px] w-[960px] max-w-full flex-none items-center"
         /*
-         * The 46px the field grew comes out of the hero's BOTTOM slack, not out
+         * Whatever the field grew comes out of the hero's BOTTOM slack, not out
          * of the column's proportional spacers — a negative bottom margin keeps
          * the column's used height constant, so the logo, headline and subtitle
-         * do not move a pixel when a template lands. That is what the board
-         * says: the composer container's y is 453.9998 on both boards, the chip
-         * row inside it moves 162 → 208, and the slack under it goes 118 → 72.
-         * Without this the shared spacers would have taken 26px off the top and
-         * shifted the whole hero up.
+         * do not move a pixel when an attachment lands. That is what the board
+         * says: the composer container's y is 453.9998 on every state, the chip
+         * row inside it moves 162 → 208 with a tile, and the slack under it goes
+         * 118 → 72. Without this the shared spacers would have taken 26px off the
+         * top and shifted the whole hero up.
          *
-         * It stays on through the close, because through the close the field's
-         * box is still 184 (`useFieldClose`) — the row's own travel up to the
-         * closing edge is a transform written by that hook.
+         * It carries the HELD height through a shrink (`+ shrink`), because
+         * through the shrink the field's box is still the taller one
+         * (`useFieldClose`) — the row's own travel up to the closing edge is a
+         * transform written by that hook.
          */
-        style={hasTile || closing ? { marginBottom: -SHIFT_ROW } : undefined}
+        style={rowTravel || shrink ? { marginBottom: -(rowTravel + shrink) } : undefined}
       >
         <ScrollArea
           axis="x"

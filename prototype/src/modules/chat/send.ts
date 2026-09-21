@@ -769,6 +769,17 @@ export function startBuild(prompt: string) {
       mode: 'autopilot',
       suggest: EMPTY_SUGGEST,
       planEdits: EMPTY_PLAN_EDITS,
+      /*
+       * ⚠️ `intakeDomain` IS ABSENT ON PURPOSE — the one axis a new site KEEPS.
+       *
+       * The list above is the definition of "a new site", so an axis missing from it
+       * is a decision either way, and this one was decided before the project existed:
+       * a customer sent over from the DreamHost panel arrives with a domain already
+       * chosen, attaches it to the prompt, and presses Build. Clearing it here would
+       * throw away the only thing we know about what this site is FOR, one commit
+       * before the site exists. It claims nothing about connection (world.ts § the
+       * axis) — dropping the name would not "reset" anything, it would just forget.
+       */
     },
     preset,
   )

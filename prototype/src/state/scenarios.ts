@@ -13,6 +13,7 @@ import { DEFAULT_WORLD, DEMO_PROJECTS, isCustomDomainActive, registrantUnconfirm
 import type { Text } from '../i18n'
 import { leadingDone } from '../modules/chat/autopilot'
 import { BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS } from '../modules/chat/brief'
+import { CUSTOM_DOMAIN } from '../data/domains'
 
 export interface Preset {
   id: string
@@ -712,6 +713,34 @@ export const AXES: Axis[] = [
         value: 'one', label: { en: 'One site', uk: 'Один сайт' },
         hint: { en: 'the dock shows My projects', uk: 'у доку «My projects»' },
         patch: { projects: DEMO_PROJECTS },
+      },
+    ],
+  },
+  {
+    /*
+     * HOW THE CUSTOMER GOT HERE (board 28726:64760 «Domain-Only Customer»). The designer's
+     * scenario is a DreamHost panel customer who has already chosen a domain there, picked
+     * Remixer as the way to build, and been handed over to this page — so the page can open
+     * with the name already in the composer. Attaching it by hand through the "+" is the
+     * same axis, reached the other way.
+     *
+     * ⚠️ NOT a toggle, although it has two tiles: the axis holds a NAME, and the console
+     * should stage the one the rest of the demo talks about rather than a boolean somebody
+     * has to translate. `null` needs the explicit patch — the console's default
+     * `{ key: value }` would store the empty string.
+     */
+    key: 'intakeDomain', group: G.home, label: { en: 'Domain attached to the prompt', uk: 'Домен, прикріплений до промпту' }, kind: 'options',
+    current: (w) => w.intakeDomain ?? 'none',
+    options: [
+      {
+        value: 'none', label: { en: 'None', uk: 'Немає' },
+        hint: { en: 'a plain new site', uk: 'звичайний новий сайт' },
+        patch: { intakeDomain: null },
+      },
+      {
+        value: CUSTOM_DOMAIN, label: { en: CUSTOM_DOMAIN, uk: CUSTOM_DOMAIN },
+        hint: { en: 'arrived from the DreamHost panel', uk: 'прийшов з панелі DreamHost' },
+        patch: { intakeDomain: CUSTOM_DOMAIN },
       },
     ],
   },

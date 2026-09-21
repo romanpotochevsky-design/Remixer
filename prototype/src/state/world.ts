@@ -373,6 +373,24 @@ export interface World {
    */
   chipInkWhite: boolean
   /**
+   * THE DOMAIN THIS INTAKE IS FOR — attached to the prompt on the Home page, before a single
+   * line of the site exists (designer, 21.09.2026, with the board 28726:64760 «Domain-Only
+   * Customer»: «у пользователя в хостинге DreamHost в панели могут уже быть свои домены… он
+   * выбирает домен и способ создать сайт, в способах выбирает Remixer, и его перенаправит на
+   * эту страницу… нам нужно как-то отобразить, что он генерирует не просто новый сайт, а для
+   * конкретного домена»).
+   *
+   * ⚠️ IT CLAIMS NOTHING ABOUT CONNECTION. A name here means only "this build is for that
+   * domain" — the site is not pointed at it, not published to it, and the registrar has not
+   * been touched. Those are `domain`, `published` and `icann`, and none of them moves because
+   * a name sits in the composer. The Publish panel reads `customDomain`, not this.
+   *
+   * ⚠️ AND IT SURVIVES `startBuild` DELIBERATELY: it is the one thing about a new project that
+   * was decided BEFORE the project existed, which is the whole point of arriving from the
+   * panel with a domain in hand.
+   */
+  intakeDomain: string | null
+  /**
    * THE BUILD PLAN'S SHAPE — the simplified card (default) or the full one with `Review`.
    *
    * Designer, 21.09.2026, carrying the product owners' call for the first release: «продукт
@@ -459,6 +477,7 @@ export const DEFAULT_WORLD: World = {
   published: false,
   icann: false,
   chipInkWhite: false,
+  intakeDomain: null,
   planSimple: true,
   customDomain: CUSTOM_DOMAIN,
   chat: 'long',
@@ -673,7 +692,7 @@ export function violations(w: World): Violation[] {
 const KEYS: Record<string, keyof World> = {
   l: 'lang', a: 'account', t: 'trialDay', b: 'billing', c: 'credits', z: 'bonus',
   i: 'inventory', d: 'domain', p: 'project', u: 'unpublished', v: 'published', h: 'chat',
-  m: 'mode', k: 'icann', n: 'customDomain',
+  m: 'mode', k: 'icann', n: 'customDomain', g: 'intakeDomain',
 }
 
 /**

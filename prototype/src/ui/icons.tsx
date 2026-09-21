@@ -573,6 +573,17 @@ export const IconCollapse = ({ size = 20, className }: IconProps) => (
 )
 
 /**
+ * A PAPERCLIP — "Attach File" in the composer's attach menu (Figma 28726:64760, the menu
+ * instance 30771:31103 draws a 20px leading glyph). Drawn by hand in the house's stroke: the
+ * board hands its icons over as SVG assets on figma.com, which this session's proxy refuses.
+ */
+export const IconPaperclip = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20.2 11.3 11.7 19.8a4.6 4.6 0 0 1-6.5-6.5l8.5-8.5a3 3 0 0 1 4.3 4.3l-8.5 8.5a1.5 1.5 0 0 1-2.2-2.2l7.9-7.8" />
+  </svg>
+)
+
+/**
  * A CHEVRON ABOVE AND ONE BELOW, POINTING APART — "give this window more room".
  * The glyph the simplified Build Plan wears in its header (Figma 30596:27064, the icon
  * button at the right of the title row), and its inward twin for putting the window back.
