@@ -3947,10 +3947,15 @@ html[data-drag] .shell-aside { transition: none; }
      never moves. Whatever the piston's overhang below the seam does not cover is the GROUND
      showing through: 48px of overhang against a 224px drop (lettering → colours) left a
      176px black band under the answers, the footer sitting on it, for the first frames of
-     every shrink. The overhang has to be at least the largest drop the panel can make; 320
-     is the room the shell already keeps above for the overshoot, and anything past the seam
-     is under the opaque collar and its ground-coloured shadow, so it costs nothing. */
-  height: calc(var(--rise) + 320px);
+     every shrink. The overhang has to be at least the largest drop the panel can make, and
+     anything past the seam is under the opaque collar and its ground-coloured shadow, so it
+     costs nothing.
+     ⚠️ SINCE 21.09.2026 THAT DROP CAN BE THE WHOLE SCREEN: the Build Plan's chevron takes its
+     window to 16px under the top of the window and folds it back (PlanCard.tsx), so the fixed
+     320 that covered every question-to-question morph leaves a black band under a folding plan
+     on any screen taller than ~900. `100vh` is not a guess — the drop is bounded by the
+     viewport by construction, so this covers every one of them on every display. */
+  height: calc(var(--rise) + 100vh);
   border-bottom: 0;
   border-radius: 24px 24px 0 0;
 }
@@ -4018,7 +4023,12 @@ html[data-drag] .shell-aside { transition: none; }
  * anything, and hit-testing can only ever be narrowed by it — so no
  * pointer-events games either.
  * ---------------------------------------------------------------------- */
-.dock-clip { clip-path: inset(-640px 0 0 0); }
+/* ⚠️ The opening is `100vh`, not the old 640: on a morph to a SHORTER sheet the content starts
+   the height difference ABOVE where it lands, and since 21.09.2026 that difference can be a
+   whole screen (the plan's window folding back from the top of the screen). 640 cut the top off
+   the card as it came down on any window taller than ~1000. Same reasoning as the piston's
+   overhang — the travel is bounded by the viewport, so the viewport is the honest number. */
+.dock-clip { clip-path: inset(-100vh 0 0 0); }
 
 /* Parked: the start values, statically, for the one frame before the motion. */
 .dock-armed .dock-piston,
@@ -4297,6 +4307,25 @@ html[data-drag] .shell-aside { transition: none; }
 .plan-edit:focus { background: var(--white-050); box-shadow: inset 0 0 0 1px var(--action); }
 /* An emptied line still has to be clickable, or a bullet you cleared cannot be typed into. */
 .plan-edit:empty::before { content: ''; display: inline-block; min-height: 1em; }
+
+/* ------------------------------------------------------------------------
+ * THE PLAN AS A DOCUMENT — one editable host, not a stack of fields
+ * (designer, 21.09.2026: «выделяется только строка, почему не сделать так как
+ * в редактировании обычных документов, как в гугл док?»).
+ *
+ * `.plan-edit` above is the FIELD idiom: its own box, a hover plate and a blue
+ * focus ring, one `contentEditable` per line. Two separate hosts cannot hold one
+ * selection, so a drag could never cross a paragraph — which is exactly what he
+ * saw. Here the whole prose is one host and these rules give the lines back
+ * their document manners: no plate, no ring, a caret and nothing else.
+ * ---------------------------------------------------------------------- */
+.plan-doc { caret-color: #fff; }
+.plan-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* An emptied line still has to be clickable, or a paragraph you cleared cannot be typed into. */
+.plan-line:empty::before { content: ''; display: inline-block; min-height: 1em; }
 
 /* ------------------------------------------------------------------------
  * THE VARIANT SWITCH — which Build Plan this step wears (designer, 21.09.2026:

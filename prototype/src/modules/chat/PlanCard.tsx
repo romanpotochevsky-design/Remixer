@@ -69,7 +69,7 @@
  * questions' answer; a button that means "build without the thing I just asked you for"
  * would undo the flow. Flagged to the designer rather than shipped as a no-op.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
@@ -84,15 +84,25 @@ import { approvePlan, reviewPlan } from './send'
 import { useDockSheet } from './dock'
 
 /**
- * ⚠️ THE HEADER'S CHEVRON OPENS A FULL-SCREEN SHEET — it does NOT grow the window in place
+ * THE WINDOW UNFOLDS TO THE TOP OF THE SCREEN — 16px under it, and nothing else moves
  * (designer, 21.09.2026: «эта кнопка должна делать на всю всю экрана с отступом от верха в
- * 16px»). Growing it in place was built first and measured: the dock lives at the bottom of
- * the chat column, under a 52px header, so the card's top cannot reach 16 from the top of the
- * WINDOW however tall the window gets — and the height it needed pushed the composer off the
- * bottom of the screen, which breaks this panel's oldest invariant. The house already has the
- * right form for "as big as the screen": the full-screen sheet at inset 16 (the template
- * picker, 28616:59168). So the chevron opens `PlanFullscreen`, and the card stays as drawn.
+ * 16px», then, on the full-screen sheet that was built first, «я просил просто высоту окна
+ * увеличивать, а не делать его на весь экран», with the mock: the same card, in the same
+ * column, its window taller and the composer where it always is).
+ *
+ * ⚠️ THE HEIGHT IS MEASURED, NOT COMPUTED. A formula over the viewport would have to know the
+ * composer's height, the dock's paddings and this card's header and footer — four numbers that
+ * each belong to somebody else's board. Instead: take where the card's top edge stands NOW and
+ * add the distance it has to travel (`top − 16`). One step converges exactly, because the top
+ * is linear in this height, and the same expression corrects itself on a window resize.
+ *
+ * ⚠️ AND THE COLUMN HAS TO SPILL UPWARD for it to reach 16 at all: the dock sits at the bottom
+ * of the chat column, under its 52px header, so a window this tall is taller than the column
+ * itself. `justify-end` on that column (ChatPanel.tsx) sends the overflow over the header
+ * instead of past the composer — the first cut pushed the field 36px off the bottom of the
+ * screen, which is the one thing this panel may never do.
  */
+const TOP_AIR = 16
 
 /** What this line says now: the customer's words if they wrote any, else the compiled ones. */
 function useEdits() {
@@ -112,11 +122,42 @@ export function PlanCard() {
   const togglePlanTall = useUI((s) => s.togglePlanTall)
   const plan = buildPlan(answers)
 
-  /* The variant is the only thing that changes this sheet's height, and the dock treats it
-     as a step: it measures the new height in the same commit and glides the shell's edge to
-     it, exactly as it does between two questions. */
-  const step = simple ? 'simple' : 'full'
+  /** The unfolded window's height in px, once measured — null while it stands as drawn. */
+  const [tallPx, setTallPx] = useState<number | null>(null)
+
+  /*
+   * Two things change this sheet's height — the variant and the unfolded window — and the dock
+   * treats either as a step: it measures the new height in the same commit and glides the
+   * shell's edge to it, exactly as it does between two questions.
+   *
+   * ⚠️ The key carries the APPLIED height, not the intent. Unfolding takes two commits (flip,
+   * then the measured height), and a key that changed on the first would ask the dock to morph
+   * to a height nothing had moved to yet — it would find no change, skip the glide, and the
+   * edge would jump when the real height landed.
+   */
+  const applied = simple && tall && tallPx ? tallPx : 320
+  const step = `${simple ? 'simple' : 'full'}:${applied}`
   const sheet = useDockSheet<HTMLElement>(step)
+
+  /*
+   * ⚠️ MEASURE OFF THE SECTION, NOT THE SHEET. The dock's transform lives on `.dock-sheet`,
+   * inside this element — so this box is the settled layout box even mid-flight, and the
+   * window's own `offsetHeight` is the applied height rather than a transformed rect. That is
+   * what lets the correction run at any moment and still be right.
+   */
+  useLayoutEffect(() => {
+    if (!simple || !tall) { setTallPx(null); return }
+    const measure = () => {
+      const el = sheet.ref.current
+      const box = el?.querySelector<HTMLElement>('[data-plan-body]')
+      if (!el || !box) return
+      const next = Math.max(320, Math.round(box.offsetHeight + el.getBoundingClientRect().top - TOP_AIR))
+      setTallPx((prev) => (prev === next ? prev : next))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [simple, tall, sheet.ref])
 
   /* Which way the bodies travel when the switch is thrown: towards Simple is "forward". */
   const prev = useRef(simple)
@@ -156,17 +197,27 @@ export function PlanCard() {
                 {t(PLAN_LABEL)}
               </p>
               {simple && (
-                <Tooltip interactive text={{ en: 'Open the plan full screen', uk: 'Відкрити план на весь екран' }}>
+                <Tooltip
+                  interactive
+                  text={tall
+                    ? { en: 'Put the window back', uk: 'Повернути вікно' }
+                    : { en: 'Give the plan the whole height', uk: 'Розгорнути план на всю висоту' }}
+                >
                   <button
                     type="button"
                     data-plan-unfold
                     onClick={togglePlanTall}
                     aria-expanded={tall}
-                    aria-label={t({ en: 'Open the plan full screen', uk: 'Відкрити план на весь екран' })}
+                    aria-label={t(tall
+                      ? { en: 'Put the plan window back', uk: 'Повернути вікно плану' }
+                      : { en: 'Give the plan the whole height', uk: 'Розгорнути план на всю висоту' })}
                     /* 30765:6001 — the kit's STANDARD icon button: 40 at radius 10 with no
                        container of its own until it is touched. */
                     className="press-bloom grid h-10 w-10 flex-none place-items-center rounded-[10px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
                   >
+                    {/* ⚠️ ONE GLYPH IN BOTH STATES, as the mock draws it: his expanded card
+                        still wears the chevrons-apart mark. The inward twin reads as an ✕ at
+                        24px anyway — the word for the state is in the tooltip and the label. */}
                     <IconUnfold size={24} />
                   </button>
                 </Tooltip>
@@ -186,7 +237,7 @@ export function PlanCard() {
               animate="animate"
               exit="exit"
             >
-              {simple ? <PlanWindow plan={plan} /> : <PlanTeaser plan={plan} />}
+              {simple ? <PlanWindow plan={plan} height={applied} /> : <PlanTeaser plan={plan} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -299,11 +350,12 @@ function PlanTeaser({ plan }: { plan: Plan }) {
  * is exactly why the ink still lands on the board's 16: the box grows outwards and the text
  * is pushed back in. Nothing here compensates for it, and nothing should.
  */
-function PlanWindow({ plan }: { plan: Plan }) {
+function PlanWindow({ plan, height }: { plan: Plan; height: number }) {
   return (
     <div
       data-plan-body
-      className="relative h-[320px] overflow-hidden rounded-[16px] bg-[#09090b29] shadow-[inset_0_0_0_1px_#ffffff14]"
+      className="relative overflow-hidden rounded-[16px] bg-[#09090b29] shadow-[inset_0_0_0_1px_#ffffff14]"
+      style={{ height: `${height}px` }}
     >
       <ScrollArea className="h-full" thumb="light">
         <PlanDocument plan={plan} />

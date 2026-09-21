@@ -799,8 +799,18 @@ export function ChatPanel() {
     field.current?.focus()
   }
 
+  /*
+   * ⚠️ `justify-end` ON THE COLUMN IS LOAD-BEARING IN EXACTLY ONE STATE (21.09.2026). The
+   * thread is `flex-1`, so in every ordinary state it fills the column and this changes
+   * nothing. It matters when the dock is TALLER than the column — the Build Plan's window
+   * unfolded to the top of the screen: the thread shrinks to nothing and the excess has to go
+   * SOMEWHERE. A flex column overflows at its END by default, which pushed the composer off
+   * the bottom of the screen (measured: 36px past it) — the one thing this panel may never do.
+   * Packed to the end, the overflow goes UP instead, over the chat's own header, which is what
+   * the designer's mock draws.
+   */
   return (
-    <div className="arrive-chat flex min-h-0 flex-1 flex-col">
+    <div className="arrive-chat flex min-h-0 flex-1 flex-col justify-end">
       {/* --------------------------------------------- messages (Figma: 16/8 gutters) */}
       {/* chat-col: the thread measures itself (max 600px) and centres in whatever
           width the column has — in the 432px column that is the full width, in a

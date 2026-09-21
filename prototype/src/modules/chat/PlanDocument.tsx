@@ -1,114 +1,151 @@
 /**
- * THE PLAN'S PROSE, EDITABLE IN PLACE — one component, two homes.
+ * THE PLAN'S PROSE — ONE EDITABLE DOCUMENT, not a stack of fields (designer, 21.09.2026:
+ * «зачем ты даёшь редактировать текст так? выделяется только строка, почему не сделать так как
+ * в редактировании обычных документов, как в гугл док?»).
  *
- * It renders inside the simplified card's 320 window (PlanCard.tsx) and inside the
- * full-screen sheet that the card's chevron opens (PlanFullscreen.tsx). ONE component and
- * not two copies, for the same reason the card and the full-size document have always
- * compiled from one `buildPlan`: a copy diverges on the first edit, and then the small
- * window promises something the big one does not say.
+ * ⚠️ THE FIRST CUT MADE EVERY LINE ITS OWN `contentEditable`, and that is what he caught: two
+ * separate editable hosts cannot hold one selection, so a drag could never cross a paragraph,
+ * and each line lit a focus ring — the idiom of a FORM FIELD. A document has one caret, one
+ * selection and no boxes. So the host is ONE `contentEditable` around the whole prose, and the
+ * lines inside it are ordinary elements that happen to carry `data-plan-path`.
  *
- * Every line writes the SAME paths as the canvas-sized document (`title`, `goal`, `s{i}:h`,
- * `s{i}:b`, `s{i}:{j}`, `s{i}:after`), so `world.planEdits` is one layer over the compiled
- * plan no matter which window somebody typed in.
+ * ⚠️ REACT STILL MUST NOT OWN THE TEXT. A `contentEditable` whose children React re-renders
+ * fights the caret: every keystroke re-runs the render, React replaces the text node, and the
+ * caret jumps to the start. So every line is rendered EMPTY and its text is written
+ * imperatively — and only while nobody is typing in this host. The document is therefore free
+ * to re-render for any other reason mid-edit, which it does (the card and the unfolded window
+ * are the same component).
+ *
+ * ⚠️ AND IT IS `plaintext-only`: a paste from a browser would otherwise bring its markup, its
+ * fonts and its colours into the plan, and the store holds plain strings.
+ *
+ * WHERE THE EDITS GO: the same `world.planEdits` paths the canvas-sized document writes
+ * (`title`, `goal`, `s{i}:h`, `s{i}:b`, `s{i}:{j}`, `s{i}:after`), committed when the host
+ * loses focus. One layer over the compiled plan, whichever window somebody typed in.
  *
  * Geometry is the board's (30596:27084): pl 16 / pr 24 / py 18, 16 between blocks, 10 inside
  * each, a 15 MEDIUM white line over 14 REGULAR at 64% white, both at leading 1.4.
- *
- * ⚠️ `.plan-edit` bleeds its hover surface 8px either side (margin −8 / padding 8), which is
- * exactly why the ink still lands on the board's 16: the box grows outwards and the text is
- * pushed back in by its own padding. Nothing here compensates for it, and nothing should.
  */
+import { useLayoutEffect, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useWorld } from '@/state/world'
-import { useT, type Text } from '@/i18n'
+import { useT } from '@/i18n'
 import type { Plan } from './plan'
-import { PlanEditable, focusPlanBlock } from './PlanEditable'
 import { editPlanItems, editPlanText } from './send'
+
+/** One line of the document: its path, what it says now, and what it would say uncompiled. */
+interface Line { path: string; value: string; fallback: string }
 
 export function PlanDocument({ plan }: { plan: Plan }) {
   const { t } = useT()
   const edits = useWorld((s) => s.world.planEdits)
-  /** What this line says now: the customer's words if they wrote any, else the compiled ones. */
-  const read = (path: string, fallback: string) => edits.text[path] ?? fallback
+  const host = useRef<HTMLDivElement>(null)
+
+  /* What every line says now — the customer's words if they wrote any, else the compiled ones.
+     Built once per render and used for both halves: writing the DOM and committing back. */
+  const lines = useMemo(() => {
+    const read = (path: string, fallback: string): Line => ({ path, value: edits.text[path] ?? fallback, fallback })
+    const out: Line[] = [read('title', t(plan.title)), read('goal', t(plan.goal))]
+    const items: string[][] = []
+    plan.sections.forEach((section, i) => {
+      out.push(read(`s${i}:h`, t(section.heading)))
+      if (section.body) out.push(read(`s${i}:b`, t(section.body)))
+      const own = edits.items[i] ?? (section.items ?? []).map((x) => t(x))
+      items[i] = own
+      own.forEach((item, j) => out.push({ path: `s${i}:${j}`, value: item, fallback: item }))
+      if (section.after) out.push(read(`s${i}:after`, t(section.after)))
+    })
+    return { out, items }
+  }, [plan, edits, t])
+
+  /* The DOM carries the text. Written only when the value actually differs AND nobody is
+     typing in this host — the rule that keeps the caret where the customer put it. */
+  useLayoutEffect(() => {
+    const el = host.current
+    if (!el) return
+    const active = document.activeElement
+    if (active && (active === el || el.contains(active))) return
+    for (const line of lines.out) {
+      const node = el.querySelector<HTMLElement>(`[data-plan-path="${CSS.escape(line.path)}"]`)
+      if (node && node.textContent !== line.value) node.textContent = line.value
+    }
+  }, [lines])
+
+  /**
+   * Read the document back and post whatever changed. Prose goes line by line; a section's
+   * bullets go as a whole, because the store holds them as one array and a single changed
+   * line has to travel with its neighbours.
+   */
+  const commit = () => {
+    const el = host.current
+    if (!el) return
+    const textAt = (path: string) => el.querySelector<HTMLElement>(`[data-plan-path="${CSS.escape(path)}"]`)?.textContent ?? null
+    for (const line of lines.out) {
+      if (/^s\d+:\d+$/.test(line.path)) continue
+      const now = textAt(line.path)
+      if (now !== null && now !== line.value) editPlanText(line.path, now, line.fallback)
+    }
+    lines.items.forEach((items, i) => {
+      if (!items.length) return
+      const now = items.map((item, j) => textAt(`s${i}:${j}`) ?? item)
+      if (now.some((v, j) => v !== items[j])) editPlanItems(i, now)
+    })
+  }
+
+  /* Escape abandons the edit — the document goes back to what the store says and the caret
+     leaves. An edit you cannot walk away from is a trap; the same key does the same thing on
+     every other editable surface in this shell. */
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Escape') return
+    e.preventDefault()
+    e.stopPropagation()
+    const el = host.current
+    if (!el) return
+    for (const line of lines.out) {
+      const node = el.querySelector<HTMLElement>(`[data-plan-path="${CSS.escape(line.path)}"]`)
+      if (node && node.textContent !== line.value) node.textContent = line.value
+    }
+    ;(document.activeElement as HTMLElement | null)?.blur()
+  }
+
+  const line = (path: string, className: string) => (
+    <p key={path} data-plan-path={path} className={`plan-line ${className}`} />
+  )
 
   return (
-    <div className="flex flex-col gap-4 py-[18px] pl-4 pr-6">
+    <div
+      ref={host}
+      data-plan-doc
+      contentEditable="plaintext-only"
+      suppressContentEditableWarning
+      role="textbox"
+      aria-multiline="true"
+      aria-label={t({ en: 'The plan, editable', uk: 'План, можна редагувати' })}
+      spellCheck={false}
+      onBlur={commit}
+      onKeyDown={onKeyDown}
+      /* `min-h-full` so a click in the empty space below the text still lands in the document
+         and puts the caret at the end, the way it does in a word processor. */
+      className="plan-doc flex min-h-full flex-col gap-4 py-[18px] pl-4 pr-6 outline-none"
+    >
       <div className="flex flex-col gap-2.5">
-        <PlanEditable
-          path="title"
-          value={read('title', t(plan.title))}
-          onCommit={(v) => editPlanText('title', v, t(plan.title))}
-          label={t({ en: 'Plan title', uk: 'Заголовок плану' })}
-          className="text-[15px] font-medium leading-[1.4] text-white"
-        />
-        <PlanEditable
-          path="goal"
-          value={read('goal', t(plan.goal))}
-          onCommit={(v) => editPlanText('goal', v, t(plan.goal))}
-          label={t({ en: 'The goal, in a paragraph', uk: 'Мета, одним абзацом' })}
-          className="text-[14px] leading-[1.4] text-[#ffffffa3]"
-        />
+        {line('title', 'text-[15px] font-medium leading-[1.4] text-white')}
+        {line('goal', 'text-[14px] leading-[1.4] text-[#ffffffa3]')}
       </div>
 
       {plan.sections.map((section, i) => {
-        const items = edits.items[i] ?? (section.items ?? []).map((x) => t(x))
-        const setItems = (next: string[]) => editPlanItems(i, next)
-        /* Hoisted: TypeScript narrows `section.body` for the JSX guard but not inside the
-           callback under it, which closes over the section rather than the guard. */
-        const body = section.body ? t(section.body) : null
-        const after: Text | null = section.after ?? null
+        const items = lines.items[i] ?? []
         return (
           <div key={section.heading.en} className="flex flex-col gap-2.5">
-            <PlanEditable
-              path={`s${i}:h`}
-              value={read(`s${i}:h`, t(section.heading))}
-              onCommit={(v) => editPlanText(`s${i}:h`, v, t(section.heading))}
-              label={t({ en: 'Section heading', uk: 'Заголовок розділу' })}
-              className="text-[15px] font-medium leading-[1.4] text-white"
-            />
-            {body !== null && (
-              <PlanEditable
-                path={`s${i}:b`}
-                value={read(`s${i}:b`, body)}
-                onCommit={(v) => editPlanText(`s${i}:b`, v, body)}
-                label={t({ en: 'Section text', uk: 'Текст розділу' })}
-                className="text-[14px] leading-[1.4] text-[#ffffffa3]"
-              />
-            )}
+            {line(`s${i}:h`, 'text-[15px] font-medium leading-[1.4] text-white')}
+            {section.body && line(`s${i}:b`, 'text-[14px] leading-[1.4] text-[#ffffffa3]')}
             {items.length > 0 && (
-              /* the board sets a section's lines as ONE text block: consecutive
-                 leading-1.4 lines, no bullets, sharing the block's 10px gap */
+              /* the board sets a section's lines as ONE text block: consecutive leading-1.4
+                 lines, no bullets, sharing the block's 10px gap */
               <div className="text-[14px] leading-[1.4] text-[#ffffffa3]">
-                {items.map((item, j) => (
-                  <PlanEditable
-                    key={`${i}:${j}`}
-                    path={`s${i}:${j}`}
-                    value={item}
-                    label={t({ en: 'Plan item', uk: 'Пункт плану' })}
-                    onCommit={(v) => { if (v !== item) setItems(items.map((x, k) => (k === j ? v : x))) }}
-                    onEnter={(v) => {
-                      const next = items.map((x, k) => (k === j ? v : x))
-                      next.splice(j + 1, 0, '')
-                      setItems(next)
-                      focusPlanBlock(`s${i}:${j + 1}`)
-                    }}
-                    onEmptyBackspace={() => {
-                      if (items.length === 1) return
-                      setItems(items.filter((_, k) => k !== j))
-                      if (j > 0) focusPlanBlock(`s${i}:${j - 1}`)
-                    }}
-                  />
-                ))}
+                {items.map((_, j) => line(`s${i}:${j}`, ''))}
               </div>
             )}
-            {after && (
-              <PlanEditable
-                path={`s${i}:after`}
-                value={read(`s${i}:after`, t(after))}
-                onCommit={(v) => editPlanText(`s${i}:after`, v, t(after))}
-                label={t({ en: 'Section text', uk: 'Текст розділу' })}
-                className="text-[14px] leading-[1.4] text-[#ffffffa3]"
-              />
-            )}
+            {section.after && line(`s${i}:after`, 'text-[14px] leading-[1.4] text-[#ffffffa3]')}
           </div>
         )
       })}

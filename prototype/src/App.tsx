@@ -17,7 +17,6 @@ import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { PlanVariantSwitch } from '@/modules/chat/PlanVariantSwitch'
-import { PlanFullscreen } from '@/modules/chat/PlanFullscreen'
 /* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading of
    WHICH ADDRESS THIS PRODUCT PRINTS, and the chip must not grow a second one. Since
    15.09.2026 that reading is "the domain is connected" — so the chip names the customer's
@@ -962,11 +961,6 @@ export default function App() {
           {t({ en: 'Trial ended — your site is safe. Upgrade to keep editing with AI.', uk: 'Тріал завершився — сайт у безпеці. Оновіться, щоб редагувати з AI.' })}
         </div>
       )}
-
-      {/* The Build Plan at full screen — what the card's chevron opens. Mounted here, above
-          the shell, because it covers the chat column and the rail alike; below the app
-          modals that follow, which must cover it in turn. */}
-      <PlanFullscreen />
 
       {/* The checkout sheet is an APP-modal: its scrim covers the chat column and
           the right rail too, so it mounts at the very top of the tree, not inside

@@ -1168,89 +1168,91 @@ check('the plan is docked where the questions were', await planUp())
    * full-size document writes (`world.planEdits`), which is what the flip below proves: one
    * text, two variants, no second copy of it anywhere.
    */
+  /* ⚠️ ONE EDITABLE HOST, NOT ONE PER LINE (designer, 21.09.2026: «выделяется только строка,
+     почему не сделать так как в редактировании обычных документов, как в гугл док?»). So the
+     selection has to be able to cross a paragraph — two separate `contentEditable` hosts
+     cannot hold one — and a line may carry no field dress: no plate, no focus ring. */
+  const doc = await p.evaluate(() => {
+    const host = document.querySelectorAll('[data-plan-doc]')
+    const hosts = document.querySelectorAll('[data-plan-body] [contenteditable]')
+    const a = document.querySelector('[data-plan-path="goal"]')
+    const c = document.querySelector('[data-plan-path="s0:h"]')
+    const range = document.createRange()
+    range.setStart(a.firstChild ?? a, 0)
+    range.setEnd(c.firstChild ?? c, Math.min(4, (c.textContent || '').length))
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range)
+    const crosses = sel.toString()
+    sel.removeAllRanges()
+    const cs = getComputedStyle(document.querySelector('[data-plan-path="title"]'))
+    return { hosts: hosts.length, docs: host.length, crosses: crosses.length,
+      spans: crosses.includes('\\n') || crosses.length > (a.textContent || '').length,
+      ring: cs.boxShadow, plate: cs.backgroundColor }
+  })
+  check('the plan reads as a DOCUMENT — one editable host for the whole prose',
+    doc.docs === 1 && doc.hosts === 1, JSON.stringify([doc.docs, doc.hosts]))
+  check('\u2026so one selection crosses paragraphs, and a line wears no field dress',
+    doc.spans && doc.crosses > 60 && doc.ring === 'none' && doc.plate === 'rgba(0, 0, 0, 0)',
+    JSON.stringify(doc))
+  /* and it is still the plan being written: select one line the way a document does, retype
+     it, click away — the store keeps it */
   await p.click('[data-plan-path="s0:h"]')
-  await p.keyboard.press('Control+A')
+  await p.keyboard.press('End')
+  await p.keyboard.down('Shift'); await p.keyboard.press('Home'); await p.keyboard.up('Shift')
   await p.keyboard.type('What we will build')
-  await p.keyboard.press('Enter')
+  await p.click('section[aria-label="Plan, waiting for your approval"] footer')
   await p.waitForTimeout(300)
   check('the plan is edited in the small window, not only in the full document',
     (await p.$eval('[data-plan-path="s0:h"]', (e) => e.textContent)) === 'What we will build')
 }
 {
   /*
-   * THE HEADER CHEVRON OPENS THE PLAN FULL SCREEN, at inset 16 (designer, 21.09.2026: «эта
-   * кнопка должна делать на всю всю экрана с отступом от верха в 16px»).
+   * THE HEADER CHEVRON UNFOLDS THE WINDOW TO 16 FROM THE TOP OF THE SCREEN, and nothing else
+   * moves (designer, 21.09.2026: «эта кнопка должна делать на всю всю экрана с отступом от
+   * верха в 16px», and then, on the full-screen sheet that was built first, «я просил просто
+   * высоту окна увеличивать, а не делать его на весь экран»).
    *
-   * ⚠️ It is a SHEET, not a taller card, and the two checks below are what settle that: the
-   * dock does not move at all — card, window and composer keep every pixel — while a new
-   * surface arrives over the screen. Growing the window in place was built first and измерено:
-   * the card's top could not reach 16 (the chat column's 52px header is above it) and the
-   * height it needed pushed the composer 36px off the bottom of the screen.
+   * Two numbers carry the whole thing: the card's top lands on 16, and the composer's box is
+   * byte-identical before, during and after. The second is the older law — the field does not
+   * move — and it is what killed the first cut, where the growing dock pushed it 36px past the
+   * bottom of the screen. The column packs to its end now, so the overflow goes UP.
    */
-  /* the document's own first line, as the small window says it now — the sheet has to say the
-     same, and hard-coding the string here would just be a second copy of the plan */
-  const titleWas = await p.$eval('[data-plan-body] [data-plan-path="title"]', (e) => e.textContent)
-  const dockWas = await p.evaluate(() => {
-    const el = (q) => document.querySelector(q)?.getBoundingClientRect()
-    const b = el('[data-plan-body]'), f = el('.composer-field'), c = el('section[aria-label="Plan, waiting for your approval"]')
-    return JSON.stringify([b, f, c].map((r) => r && [r.x, r.y, r.width, r.height].map(Math.round)))
+  const fieldWas = await p.$eval('.composer-field', (el) => JSON.stringify(el.getBoundingClientRect()))
+  await p.click('[data-plan-unfold]')
+  await p.waitForTimeout(1100)
+  await shot('09b-plan-unfolded')
+  const tall = await p.evaluate(() => {
+    const r = (q) => { const el = document.querySelector(q); if (!el) return null; const b = el.getBoundingClientRect(); return [b.x, b.y, b.width, b.height].map((n) => Math.round(n * 100) / 100) }
+    const card = r('section[aria-label="Plan, waiting for your approval"]')
+    return { card, body: r('[data-plan-body]'), field: JSON.stringify(document.querySelector('.composer-field').getBoundingClientRect()),
+      /* no second surface: the window grew, nothing was opened over the screen */
+      sheets: document.querySelectorAll('[data-plan-sheet]').length,
+      scrims: [...document.querySelectorAll('div')].filter((el) => getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0.5)').length }
+  })
+  check('the chevron takes the window to 16 from the top of the screen — his number',
+    tall.card?.[1] === 16, JSON.stringify(tall.card))
+  check('\u2026by growing the window itself, with no sheet and no scrim over the screen',
+    tall.sheets === 0 && tall.scrims === 0 && tall.body[3] > 600,
+    `sheets ${tall.sheets} scrims ${tall.scrims} window ${tall.body?.[3]}`)
+  check('\u2026and the composer does not move a pixel, which is the older law',
+    tall.field === fieldWas, `${fieldWas} vs ${tall.field}`)
+  /* ⚠️ AND THE FOLD MUST NOT SHOW GROUND. The piston hangs below the seam to cover exactly
+     this: on the way down the sheet starts the height difference ABOVE its rest, and whatever
+     the overhang does not cover is the page showing through — the black slit the designer
+     filmed on 09.09.2026, now with a drop that can be a whole screen. Sampled mid-fold, a
+     pixel just above the composer has to be the dock's own material, never the ground. */
+  const seam = await p.evaluate(() => {
+    const f = document.querySelector('.composer-field').getBoundingClientRect()
+    return [Math.round(f.x + f.width / 2), Math.round(f.y - 10)]
   })
   await p.click('[data-plan-unfold]')
+  await p.waitForTimeout(220)
+  const midFold = await pixelAt(seam[0], seam[1])
   await p.waitForTimeout(900)
-  await shot('09b-plan-fullscreen')
-  const full = await p.evaluate(() => {
-    const cs = getComputedStyle
-    const sheet = document.querySelector('[data-plan-sheet]')
-    const scrim = sheet?.parentElement?.firstElementChild
-    const el = (q) => document.querySelector(q)?.getBoundingClientRect()
-    const b = el('[data-plan-body]'), f = el('.composer-field'), c = el('section[aria-label="Plan, waiting for your approval"]')
-    const r = sheet?.getBoundingClientRect()
-    const title = sheet?.querySelector('[data-plan-path="title"]')
-    const inSheet = [...(sheet?.querySelectorAll('[data-plan-path]') ?? [])].length
-    return {
-      sheet: r ? [Math.round(r.x), Math.round(r.y), Math.round(window.innerWidth - r.right), Math.round(window.innerHeight - r.bottom)] : null,
-      radius: sheet ? cs(sheet).borderTopLeftRadius : null,
-      fill: sheet ? cs(sheet).backgroundColor : null,
-      scrim: scrim ? cs(scrim).backgroundColor : null,
-      measure: title ? Math.round(title.getBoundingClientRect().width) : null,
-      editable: title?.getAttribute('contenteditable') ?? null,
-      says: title?.textContent ?? null,
-      lines: inSheet,
-      dock: JSON.stringify([b, f, c].map((rr) => rr && [rr.x, rr.y, rr.width, rr.height].map(Math.round))),
-      /* the instrument must NOT float over a dimmed screen: 50 against the sheet's 70 */
-      switchZ: Number(cs(document.querySelector('[data-plan-variant]').closest('.fixed')).zIndex),
-      sheetZ: Number(cs(sheet.parentElement).zIndex),
-    }
-  })
-  check('the chevron opens the plan FULL SCREEN at inset 16 — his number, and the house\u2019s',
-    full.sheet?.join(',') === '16,16,16,16' && full.radius === '24px' &&
-      full.fill === 'rgb(26, 26, 28)' && full.scrim === 'rgba(0, 0, 0, 0.5)',
-    JSON.stringify([full.sheet, full.radius, full.fill, full.scrim]))
-  check('\u2026and the dock does not move a pixel under it — it is a sheet, not a taller card',
-    full.dock === dockWas, `${dockWas} vs ${full.dock}`)
-  /* the same document, not a second copy of it: the line rewritten in the small window
-     stands here, at the canvas document's own 800 measure, still editable */
-  check('\u2026carrying the SAME editable document, at the 800 measure a document is read at',
-    full.editable === 'plaintext-only' && full.lines > 10 && full.measure > 770 && full.measure <= 800 &&
-      full.says === titleWas,
-    JSON.stringify([full.editable, full.lines, full.measure, full.says, titleWas]))
-  check('\u2026with the corner instrument under its scrim, not floating over it',
-    full.switchZ < full.sheetZ, `switch z${full.switchZ} vs sheet z${full.sheetZ}`)
-  /* Escape is the keyboard way out of any sheet in this shell */
-  await p.keyboard.press('Escape')
-  await p.waitForTimeout(500)
-  check('Escape puts the plan back',
-    (await p.$('[data-plan-sheet]')) === null && (await planUp()))
-  /* and so is its own ✕ — the glyph every full-screen surface here closes with */
-  await p.click('[data-plan-unfold]'); await p.waitForTimeout(700)
-  await p.click('[data-plan-fold]'); await p.waitForTimeout(600)
-  check('\u2026and so does the sheet\u2019s own ✕, leaving the card exactly as it was',
-    (await p.$('[data-plan-sheet]')) === null &&
-      (await p.evaluate(() => {
-        const el = (q) => document.querySelector(q)?.getBoundingClientRect()
-        const b = el('[data-plan-body]'), f = el('.composer-field'), c = el('section[aria-label="Plan, waiting for your approval"]')
-        return JSON.stringify([b, f, c].map((rr) => rr && [rr.x, rr.y, rr.width, rr.height].map(Math.round)))
-      })) === dockWas)
+  check('\u2026and nothing shows the ground under it as it comes down',
+    Math.max(...midFold) > 20, `pixel ${midFold} just above the field, 220ms into the fold`)
+  check('\u2026folding it puts the card back at the drawn 320, the field still where it was',
+    (await p.$eval('[data-plan-body]', (el) => Math.round(el.getBoundingClientRect().height))) === 320 &&
+      (await p.$eval('.composer-field', (el) => JSON.stringify(el.getBoundingClientRect()))) === fieldWas)
 }
 /* ---- the switch: the full card the designer asked to keep, and the rest of its board ---- */
 await p.click('[data-plan-seat="full"]'); await p.waitForTimeout(900)
