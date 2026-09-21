@@ -408,6 +408,28 @@ export function reviewPlan() {
 /** What the chat was before Review widened it, so ✕ gives the canvas its room back. */
 let planWidthWas: number | null = null
 
+/**
+ * WHICH PLAN THIS STEP WEARS — the simplified window (release one) or the full card with
+ * `Review` (designer, 21.09.2026). Thrown from the switch in the card's footer, and settable
+ * from the scenario console, because a presenter should be able to stage either one before
+ * walking into the step.
+ *
+ * ⚠️ Switching to the simple one hands the canvas back FIRST. The full-size document is
+ * reached through `Review`, and the simple variant has no such door — so a surface left
+ * standing there would be a room with no way in and no way out. Same call `closePlanReview`
+ * makes, for the same reason.
+ *
+ * ⚠️ The patch does NOT touch `chat`, which is what keeps it safe: `world.set` reads a moved
+ * `chat` axis without a transcript as staging a fresh situation and would empty both the
+ * thread and the brief the card renders from.
+ */
+export function setPlanVariant(simple: boolean) {
+  const now = useWorld.getState()
+  if (now.world.planSimple === simple) return
+  if (simple && useUI.getState().surface === 'plan') closePlanReview()
+  now.set({ planSimple: simple }, now.preset)
+}
+
 /** ✕ in the plan surface — back to the dock card, canvas out of the way again. */
 export function closePlanReview() {
   const ui = useUI.getState()

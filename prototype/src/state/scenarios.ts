@@ -12,6 +12,7 @@ import type { World } from './world'
 import { DEFAULT_WORLD, DEMO_PROJECTS, isCustomDomainActive, registrantUnconfirmed } from './world'
 import type { Text } from '../i18n'
 import { leadingDone } from '../modules/chat/autopilot'
+import { BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS } from '../modules/chat/brief'
 
 export interface Preset {
   id: string
@@ -99,6 +100,41 @@ export const PRESETS: Preset[] = [
       uk: 'Введіть «Build me a website.» — будувати нема з чого, тож Remixer ставить п’ять запитань і складає план, перш ніж витратити білд',
     },
     patch: { account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'empty', sent: [], domain: 'staging', inventory: 'none', unpublished: 0, published: false },
+  },
+  {
+    id: 'plan-waiting',
+    group: PG.project,
+    label: { en: 'Plan — waiting for approval', uk: 'План — очікує підтвердження' },
+    note: {
+      en: 'The five answers are compiled and the Build Plan is docked, one press from spending a build — the step the two drawn variants live in',
+      uk: 'П’ять відповідей скомпільовано, план збірки стоїть у доці за один дотик від витрати білда — крок, у якому живуть два намальовані варіанти',
+    },
+    /*
+     * THE STEP THE PLAN IS FOR, staged. The live path to it is five questions and two
+     * pauses for reading; this is the same world in one click, which is what the console is
+     * for — and it is the only way to show the same moment in both of its drawn variants
+     * (`planSimple`) without walking the brief twice.
+     *
+     * The transcript is the one the live flow leaves behind, quoting the product's own
+     * strings rather than retyping them (the lesson the Autopilot preset records): the thin
+     * prompt, the line that explains why nothing is being built yet, and the summary card,
+     * whose title reads itself off `brief.status` — "Plan ready" here, not "Turning your
+     * answers into a brief".
+     *
+     * ⚠️ `chat: 'long'` and NOT 'working': the plan is not Remixer being busy, it is
+     * Remixer waiting. The shimmer and the locked composer would say the opposite — which
+     * is exactly the note `offerPlan` carries in send.ts.
+     */
+    patch: {
+      account: 'trial', trialDay: 1, credits: 2000, bonus: true, project: 'empty', chat: 'long',
+      domain: 'staging', inventory: 'none', unpublished: 0, published: false, projects: [],
+      brief: { status: 'planning', step: BRIEF_QUESTIONS.length - 1, answers: { ...DEMO_BRIEF } },
+      sent: [
+        { id: 1001, who: 'user', text: 'Build me a website.' },
+        { id: 1002, who: 'ai', kind: 'clarify', text: BRIEF_INTRO },
+        { id: 1003, who: 'ai', kind: 'brief', text: BRIEF_STATUS },
+      ],
+    },
   },
   {
     id: 'generating',
@@ -631,6 +667,16 @@ export const AXES: Axis[] = [
   {
     /* The composer's mode switcher (Figma 29697:54553). Autopilot is the default from
        the first generation on; it only has anything to lead once a site exists. */
+    /*
+     * WHICH BUILD PLAN THE STEP WEARS (21.09.2026). Two drawn designs, both shipped: the
+     * simplified window of release one, and the full card with `Review`. The card carries
+     * this switch in its own footer; the axis is here so a presenter can stage either one
+     * BEFORE walking into the step. A design A/B like the status chip's ink — not a
+     * project fact, so `startBuild` leaves it alone.
+     */
+    key: 'planSimple', group: G.chat, label: { en: 'Build Plan — simplified', uk: 'План збірки — спрощений' }, kind: 'toggle',
+  },
+  {
     key: 'mode', group: G.chat, label: { en: 'Chat mode', uk: 'Режим чату' }, kind: 'options',
     options: [
       { value: 'autopilot', label: { en: 'Autopilot', uk: 'Автопілот' }, hint: { en: 'Remixer proposes the next task', uk: 'Remixer пропонує наступний крок' } },

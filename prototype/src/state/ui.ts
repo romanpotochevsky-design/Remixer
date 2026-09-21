@@ -297,6 +297,16 @@ interface UIStore {
    * (top-bar arrows, or drag the divider past the canvas minimum).
    */
   previewOpen: boolean
+  /**
+   * Is the simplified Build Plan's window standing tall? (Figma 30596:27064 draws the
+   * chevron that does it, at the right of the card's header.)
+   *
+   * Here and not in the world for the same reason `publishHintOpen` is: how much of a
+   * document somebody has unfolded is this session's view of it, not the customer's
+   * situation — the scenario console has no business staging it, and a reload should put
+   * the card back at the height the board draws.
+   */
+  planTall: boolean
   /** A page outside Remixer covering the whole window, or null when we are home. */
   panel: PanelPage | null
 
@@ -343,6 +353,7 @@ interface UIStore {
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
   setPreviewOpen: (open: boolean) => void
+  togglePlanTall: () => void
   togglePreview: () => void
   openSurface: (s: Surface) => void
   openDomains: (screen?: DomainScreen, domain?: string | null) => void
@@ -387,6 +398,7 @@ export const useUI = create<UIStore>((set, get) => ({
   reloading: false,
   boot: null,
   previewOpen: true,
+  planTall: false,
   panel: null,
 
   /* Leaving a page closes what was open inside it: coming back to a half-open
@@ -395,7 +407,7 @@ export const useUI = create<UIStore>((set, get) => ({
      attachment via `openBuilder`, which is exactly when it should die. */
   goHome: () => {
     clearBootTimers()
-    set({ page: 'home', boot: null, publishOpen: false, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null })
+    set({ page: 'home', boot: null, publishOpen: false, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false })
   },
   /*
    * The transition, phase by phase. The curtain is raised FIRST and the page switches
@@ -485,6 +497,7 @@ export const useUI = create<UIStore>((set, get) => ({
   setChatWidth: (chatWidth) => set({ chatWidth }),
   setPreviewOpen: (previewOpen) => set({ previewOpen }),
   togglePreview: () => set({ previewOpen: !get().previewOpen }),
+  togglePlanTall: () => set({ planTall: !get().planTall }),
   openSurface: (surface) => set({ surface, publishOpen: false }),
   openDomains: (screen = 'home', domain = null) =>
     set({ surface: 'domains', domainScreen: screen, activeDomain: domain, publishOpen: false }),

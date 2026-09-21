@@ -4299,6 +4299,78 @@ html[data-drag] .shell-aside { transition: none; }
 .plan-edit:empty::before { content: ''; display: inline-block; min-height: 1em; }
 
 /* ------------------------------------------------------------------------
+ * THE VARIANT SWITCH — which Build Plan this step wears (designer, 21.09.2026:
+ * «в нижнем левом углу нужно добавить маленький, красивый переключатель тогл в
+ * стеклянном Apple стиле между вариантами, полноценный вариант и упрощённый»).
+ *
+ * It is the house's THIRD segmented control, and it obeys the same law as the
+ * other two (`segmentedPill` in ui/motion.ts, Home's dock tabs and its filter
+ * chips): a track, one pill flying between seats on the shell's spring, labels
+ * that only change colour. What it does NOT need is their capsule-of-two — that
+ * exists because those seats have DIFFERENT widths and a scaling pill ends its
+ * life with elliptical caps. Here the two seats are equal by construction (a
+ * two-column grid), so the pill is one capsule that only translates.
+ *
+ * The glass is the canon's control recipe (design-system §5): Black/700 under
+ * the pill's diagonal rim, 20 → 5 → 15 top-left to bottom-right, painted as a
+ * mask ring so it never adds a pixel to the layout.
+ *
+ * ⚠️ NO `backdrop-filter`, and that is the rule this project keeps paying for:
+ * look at what is BEHIND the element first. Behind this one is the dock's own
+ * glass, already baked flat to #1a1a1c, so a blur would buy a layer and change
+ * nothing. Same call as the chip badge's.
+ * ---------------------------------------------------------------------- */
+.plan-variant {
+  position: relative;
+  background: #09090ba3; /* Black/700 */
+}
+.plan-variant::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* The flying seat. Lighter glass than the track, lit on the same diagonal — so the
+   selection reads as a piece of the same material lifted towards the light, not as a
+   painted-on highlight. */
+.plan-variant-thumb {
+  position: absolute;
+  border-radius: 999px;
+  background: #ffffff1f;
+}
+.plan-variant-thumb::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom right, #ffffff3d 0%, #ffffff0a 50%, #ffffff2e 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* `position: relative` is load-bearing on the seats: the pill is an absolutely
+   positioned sibling, and a static button would have its label painted UNDER it. */
+.plan-variant-seat {
+  position: relative;
+  color: #ffffff7a;
+  transition: color var(--dur-fast) var(--ease-std);
+}
+.plan-variant-seat[data-on] { color: #fff; }
+@media (hover: hover) {
+  .plan-variant-seat:not([data-on]):hover { color: #ffffffa3; }
+}
+
+/* ------------------------------------------------------------------------
  * A ROW OF THE PLAN'S STACK IS AN OBJECT — Figma 30115:55247 (designer,
  * 11.09.2026, on the first version of it: "бред какой то как удалить страницу
  * или секцию? как поменять местами?").

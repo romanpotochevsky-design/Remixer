@@ -572,6 +572,36 @@ export const IconCollapse = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * A CHEVRON ABOVE AND ONE BELOW, POINTING APART — "give this window more room".
+ * The glyph the simplified Build Plan wears in its header (Figma 30596:27064, the icon
+ * button at the right of the title row), and its inward twin for putting the window back.
+ *
+ * ⚠️ Drawn rather than exported: figma.com's asset URLs are refused by this session's
+ * proxy, so the vector behind that instance is unreachable. What the board does settle is
+ * the BOX — a 24 icon inside a 40 button — and the direction of the two chevrons; the ink
+ * (7 wide, 12 tall, the house's 1.7 stroke) is read off its render.
+ *
+ * ⚠️ THE GAP BETWEEN THE TWO CHEVRONS IS THE GLYPH. At 3 units apart the four arm ends and
+ * the two apexes outline a rhombus and the icon reads as a DIAMOND; the inward twin at the
+ * same distance reads as an ✕. Both were built that way first and photographed. Five units
+ * — with each chevron 3.5 tall — is what separates them into two marks.
+ */
+export const IconUnfold = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m8.5 9.5 3.5-3.5 3.5 3.5" />
+    <path d="m8.5 14.5 3.5 3.5 3.5-3.5" />
+  </svg>
+)
+
+/** The same pair pointing INWARD — "put the window back to the height it is drawn at". */
+export const IconFold = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="m8.5 6 3.5 3.5 3.5-3.5" />
+    <path d="m8.5 18 3.5-3.5 3.5 3.5" />
+  </svg>
+)
+
 /* ------------------------------------------ the generation outline (29480:48478) */
 
 /**

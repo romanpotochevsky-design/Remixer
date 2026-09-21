@@ -373,6 +373,25 @@ export interface World {
    */
   chipInkWhite: boolean
   /**
+   * THE BUILD PLAN'S SHAPE — the simplified card (default) or the full one with `Review`.
+   *
+   * Designer, 21.09.2026, carrying the product owners' call for the first release: «продукт
+   * оунеры в первом релизе хотят упростить функциональность показа плана… нет кнопки Review…
+   * все показываем в этом окне… нужно дать редактировать текст прямо в этом окне», and then —
+   * «но нам нужно сохранить и более полноценный вариант». So this is not a preference we
+   * invented: it is which of two DRAWN designs the step wears, and both are shipped.
+   *
+   *  · `true`  — Figma 30596:27064. One window: the whole document scrolls inside a 320px
+   *              box and is edited there. No `Review`, no full-canvas surface.
+   *  · `false` — Figma 29816:21533. The teaser card with the fade and `Review`, which opens
+   *              the document at full size in the canvas (PlanSurface).
+   *
+   * Default TRUE because that is what release one ships; the footer's own switch (and this
+   * console axis) turns the full one back on in front of an audience. Not a project fact —
+   * `startBuild` leaves it alone, exactly as it leaves `chipInkWhite`.
+   */
+  planSimple: boolean
+  /**
    * WHICH domain is attached to this project.
    *
    * The name has to be world truth and not navigation, because the panel outlives every
@@ -439,6 +458,7 @@ export const DEFAULT_WORLD: World = {
   published: false,
   icann: false,
   chipInkWhite: false,
+  planSimple: true,
   customDomain: CUSTOM_DOMAIN,
   chat: 'long',
   projects: DEMO_PROJECTS,

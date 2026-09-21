@@ -1030,6 +1030,177 @@ await p.waitForTimeout(2600); await shot('09-plan-card')
 check('the plan is docked where the questions were', await planUp())
 {
   /*
+   * THE SIMPLIFIED WINDOW — Figma 30596:27064, and what this step OPENS on (designer,
+   * 21.09.2026, carrying the product owners' call for release one: «нет кнопки Review… все
+   * показываем в этом окне… нужно дать редактировать текст прямо в этом окне»). The full
+   * card with `Review` is still shipped and is checked below, after the switch is thrown.
+   */
+  await p.mouse.move(8, 8); await p.waitForTimeout(220)
+  const s = await p.evaluate(() => {
+    const px = (v) => Math.round(parseFloat(v) * 100) / 100
+    const cs = (el) => getComputedStyle(el)
+    const box = (el) => { const r = el.getBoundingClientRect(); return [r.width, r.height].map((n) => Math.round(n * 100) / 100) }
+    const card = document.querySelector('section[aria-label="Plan, waiting for your approval"]')
+    const sheet = card.querySelector('.dock-sheet')
+    const head = sheet.children[0]
+    const title = head.querySelector('p')
+    const unfold = head.querySelector('[data-plan-unfold]')
+    const body = sheet.querySelector('[data-plan-body]')
+    const inner = body.querySelector('.flex.flex-col.gap-4')
+    const fade = body.lastElementChild
+    const scroller = body.querySelector('.overflow-y-auto')
+    const foot = card.querySelector('footer.dock-foot')
+    const track = foot.querySelector('[data-plan-variant]')
+    const thumb = track.querySelector('.plan-variant-thumb')
+    const seats = [...track.querySelectorAll('button')]
+    const lines = [...inner.querySelectorAll('[data-plan-path]')].slice(0, 2)
+    const bodyRect = body.getBoundingClientRect()
+    const is = cs(inner), bs = cs(body)
+    return {
+      card: box(card)[1],
+      head: box(head)[1], headPad: [px(cs(head).paddingLeft), px(cs(head).paddingRight)],
+      titleSize: px(cs(title).fontSize), titleWeight: cs(title).fontWeight,
+      unfold: { box: box(unfold), r: px(cs(unfold).borderTopLeftRadius),
+        y: Math.round((unfold.getBoundingClientRect().top - head.getBoundingClientRect().top) * 100) / 100 },
+      bodyH: box(body)[1], bodyR: px(bs.borderTopLeftRadius), bodyBg: bs.backgroundColor,
+      bodyBorder: px(bs.borderTopWidth), bodyRim: bs.boxShadow.includes('rgba(255, 255, 255, 0.08) 0px 0px 0px 1px inset'),
+      pad: [px(is.paddingTop), px(is.paddingRight), px(is.paddingBottom), px(is.paddingLeft)],
+      gapOuter: px(is.rowGap), gapInner: px(cs(inner.children[0]).rowGap),
+      lead: lines.map((el) => [px(cs(el).fontSize), cs(el).fontWeight, cs(el).color, px(cs(el).lineHeight)]),
+      /* the INK, not the box: `.plan-edit` bleeds its hover surface 8px either side and
+         pushes the text back in by its own padding, so the letters still land on 16 */
+      inkX: Math.round((lines[0].getBoundingClientRect().left + parseFloat(cs(lines[0]).paddingLeft) - bodyRect.left) * 100) / 100,
+      editable: lines.map((el) => el.getAttribute('contenteditable')),
+      paths: [...inner.querySelectorAll('[data-plan-path]')].map((el) => el.dataset.planPath),
+      scrolls: scroller ? [scroller.scrollHeight, scroller.clientHeight] : null,
+      whole: inner.innerText,
+      fade: { box: box(fade), ink: cs(fade).backgroundImage,
+        gap: Math.round((bodyRect.bottom - fade.getBoundingClientRect().bottom) * 100) / 100 },
+      /* a clean pixel of the window itself: inside it, above the first line, clear of text */
+      sample: [Math.round(bodyRect.right - 30), Math.round(bodyRect.top + 8)],
+      foot: [px(cs(foot).paddingTop), px(cs(foot).paddingRight), px(cs(foot).paddingBottom), px(cs(foot).paddingLeft)],
+      track: { box: box(track), r: px(cs(track).borderTopLeftRadius), bg: cs(track).backgroundColor, pad: px(cs(track).paddingLeft) },
+      thumb: { box: box(thumb), x: Math.round((thumb.getBoundingClientRect().left - track.getBoundingClientRect().left) * 100) / 100 },
+      seats: seats.map((el) => ({ label: el.innerText, on: el.dataset.on ?? null, w: box(el)[0], h: box(el)[1], color: cs(el).color })),
+      review: !!foot.querySelector('[data-plan-review]'),
+      start: !!foot.querySelector('[data-plan-start]'),
+    }
+  })
+  check('the step opens on the SIMPLIFIED plan — one window, no Review',
+    s.bodyH === 320 && s.review === false && s.start === true && s.card === 436,
+    `body ${s.bodyH} card ${s.card} review ${s.review}`)
+  check('…its header is the board\u2019s 56, 16 on the left and 8 on the right for the chevron',
+    s.head === 56 && s.headPad.join(',') === '16,8' && s.titleSize === 18 && s.titleWeight === '600',
+    `${s.head} / ${s.headPad} / ${s.titleSize}${s.titleWeight}`)
+  /* ⚠️ y=9, not a centred 8: the chevron shares the title's pt 20 / pb 18 box, which is
+     what tips it one pixel below the row's centre line — exactly as the board draws it. */
+  check('…the chevron is a 40 icon button at radius 10, a pixel below plain centring',
+    s.unfold.box.join(',') === '40,40' && s.unfold.r === 10 && s.unfold.y === 9,
+    JSON.stringify(s.unfold))
+  check('…the window is 320 at radius 16, Black/200 under a 1px NA/100 rim drawn as an INSET SHADOW',
+    s.bodyH === 320 && s.bodyR === 16 && s.bodyBg === 'rgba(9, 9, 11, 0.16)' && s.bodyBorder === 0 && s.bodyRim,
+    `${s.bodyH} r${s.bodyR} ${s.bodyBg} border ${s.bodyBorder} rim ${s.bodyRim}`)
+  check('…padded 18 / 24 / 18 / 16, with 16 between the blocks and 10 inside each',
+    s.pad.join(',') === '18,24,18,16' && s.gapOuter === 16 && s.gapInner === 10,
+    `${s.pad} gaps ${s.gapOuter}/${s.gapInner}`)
+  check('…a 15 medium white line over a 14 regular one at 64% white, both at leading 1.4',
+    JSON.stringify(s.lead) === JSON.stringify([[15, '500', 'rgb(255, 255, 255)', 21], [14, '400', 'rgba(255, 255, 255, 0.64)', 19.6]]),
+    JSON.stringify(s.lead))
+  check('…and the text still lands on the board\u2019s 16, through `.plan-edit`\u2019s own bleed',
+    s.inkX === 16, String(s.inkX))
+  /* "мы все показываем в этом окне": the WHOLE document, not the teaser's first screen —
+     and it scrolls, which is why the board draws a scrollbar in it. */
+  check('the whole plan is in the window, and it scrolls',
+    s.whole.includes('Not in this pass') && s.whole.includes('What we\u2019ll check') &&
+      s.scrolls && s.scrolls[0] > s.scrolls[1],
+    `${s.scrolls} / last heading ${s.whole.includes('Not in this pass')}`)
+  check('every line of it is editable in place, at the paths the full document writes',
+    s.editable.every((v) => v === 'plaintext-only') && s.paths.includes('title') &&
+      s.paths.includes('goal') && s.paths.includes('s0:h') && s.paths.includes('s0:0'),
+    JSON.stringify(s.paths.slice(0, 6)))
+  const px0 = await pixelAt(s.sample[0], s.sample[1])
+  check('…the tail dissolves over the last 32 into the window\u2019s OWN painted colour',
+    s.fade.box[1] === 32 && s.fade.gap === 0 &&
+      /rgba\(22, 22, 25, 0\)/.test(s.fade.ink) && /rgb\(22, 22, 25\)/.test(s.fade.ink) &&
+      Math.abs(px0[0] - 22) <= 1 && Math.abs(px0[1] - 22) <= 1 && Math.abs(px0[2] - 25) <= 1,
+    `${s.fade.box} gap ${s.fade.gap} · painted ${px0}`)
+  check('the footer is pt 12 / pb 16 / px 10 in this variant too',
+    s.foot.join(',') === '12,10,16,10', s.foot.join(','))
+  /* THE SWITCH — the house's third segmented control: equal seats, one capsule that
+     travels exactly its own width, the selected word white and the other at 48%. */
+  check('the switch is a 32 glass pill with two equal seats, the pill on Simple',
+    s.track.box[1] === 32 && s.track.pad === 4 && s.track.bg === 'rgba(9, 9, 11, 0.64)' &&
+      s.seats.length === 2 && s.seats[0].label === 'Full' && s.seats[1].label === 'Simple' &&
+      s.seats[0].w === s.seats[1].w && s.seats.every((x) => x.h === 24) &&
+      s.seats[1].on === 'true' && s.seats[1].color === 'rgb(255, 255, 255)' &&
+      s.seats[0].color === 'rgba(255, 255, 255, 0.48)',
+    JSON.stringify(s.seats))
+  check('…and its capsule is a seat wide, parked on the selected one',
+    Math.abs(s.thumb.box[0] - s.seats[0].w) < 0.6 && s.thumb.box[1] === 24 &&
+      Math.abs(s.thumb.x - (4 + s.seats[0].w)) < 0.6,
+    `thumb ${s.thumb.box} at ${s.thumb.x}, seat ${s.seats[0].w}`)
+}
+{
+  /*
+   * THE PLAN IS REWRITTEN IN THE WINDOW ITSELF — the second half of the release-one ask
+   * («нужно дать редактировать текст прямо в этом окне»). The edits are the same layer the
+   * full-size document writes (`world.planEdits`), which is what the flip below proves: one
+   * text, two variants, no second copy of it anywhere.
+   */
+  await p.click('[data-plan-path="s0:h"]')
+  await p.keyboard.press('Control+A')
+  await p.keyboard.type('What we will build')
+  await p.keyboard.press('Enter')
+  await p.waitForTimeout(300)
+  check('the plan is edited in the small window, not only in the full document',
+    (await p.$eval('[data-plan-path="s0:h"]', (e) => e.textContent)) === 'What we will build')
+}
+{
+  /*
+   * THE HEADER CHEVRON gives the window more room and puts it back — and neither motion is
+   * allowed to move the field. The dock carries the change the way it carries a change of
+   * question: the layout snaps and the piston glides, so the sheet's height is seen to
+   * travel while the composer stands perfectly still (CLAUDE.md's oldest panel invariant).
+   */
+  const before = await p.$eval('.composer-field', (el) => JSON.stringify(el.getBoundingClientRect()))
+  const trip = await p.evaluate(() => new Promise((done) => {
+    const out = []
+    const t0 = performance.now()
+    const piston = document.querySelector('.dock-piston')
+    const field = document.querySelector('.composer-field')
+    const tick = () => {
+      const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(piston).transform)
+      const f = field.getBoundingClientRect()
+      out.push([m ? Math.round(Number(m[1].split(',')[5]) * 10) / 10 : 0, [f.x, f.y, f.width, f.height].join(',')])
+      if (performance.now() - t0 < 900) requestAnimationFrame(tick)
+      else done(out)
+    }
+    document.querySelector('[data-plan-unfold]').click()
+    requestAnimationFrame(tick)
+  }))
+  await p.waitForTimeout(400)
+  const tall = await p.$eval('[data-plan-body]', (el) => Math.round(el.getBoundingClientRect().height))
+  const ys = trip.map((x) => x[0])
+  const fields = new Set(trip.map((x) => x[1]))
+  check('the chevron gives the plan more room — 320 to the viewport\u2019s worth',
+    tall === 440, String(tall))
+  check('…the edge GLIDES there (the piston travels and overshoots), and the field never moves',
+    Math.max(...ys) > 100 && ys.filter((v) => v > 1 && v < 100).length > 6 &&
+      Math.min(...ys) < -3 && Math.abs(ys[ys.length - 1]) < 1 && fields.size === 1,
+    `piston ${Math.max(...ys)} → ${Math.min(...ys)} · field ${[...fields][0]}`)
+  await p.click('[data-plan-unfold]'); await p.waitForTimeout(900)
+  check('…and puts it back at the height the board draws',
+    (await p.$eval('[data-plan-body]', (el) => Math.round(el.getBoundingClientRect().height))) === 320 &&
+      (await p.$eval('.composer-field', (el) => JSON.stringify(el.getBoundingClientRect()))) === before)
+}
+/* ---- the switch: the full card the designer asked to keep, and the rest of its board ---- */
+await p.click('[data-plan-seat="full"]'); await p.waitForTimeout(900)
+check('the switch brings the full card back — with Review, and the edit made in the window',
+  (await p.$('[data-plan-review]')) !== null &&
+    (await p.$eval('[data-plan-body]', (el) => Math.round(el.getBoundingClientRect().height))) === 194 &&
+    (await text()).includes('What we will build'))
+{
+  /*
    * THE PLAN CARD, PIXEL BY PIXEL — Figma 29816:21533 (designer, 09.09.2026: "изучи макет
    * максимально детально… сделай перфект пиксель как в макете"). Everything here is a
    * number read off the board, so a restyle that drifts fails loudly rather than quietly.
@@ -1044,11 +1215,14 @@ check('the plan is docked where the questions were', await planUp())
     const sheet = card.querySelector('.dock-sheet')
     const head = sheet.children[0]
     const title = head.querySelector('p')
-    const block = sheet.children[1]
+    /* by ITS OWN mark, not by position: the two variants hand over under an
+       `AnimatePresence`, so the body is a motion wrapper's child now */
+    const block = sheet.querySelector('[data-plan-body]')
     const inner = block.children[0]
     const fade = block.children[1]
     const foot = card.querySelector('footer.dock-foot')
-    const [review, start] = [...foot.querySelectorAll('button')]
+    const review = foot.querySelector('[data-plan-review]')
+    const start = foot.querySelector('[data-plan-start]')
     const cs = (el) => getComputedStyle(el)
     const box = (el) => { const r = el.getBoundingClientRect(); return [r.width, r.height].map((n) => Math.round(n * 100) / 100) }
     const bs = cs(block), is = cs(inner), fs = cs(fade), ft = cs(foot)
@@ -1141,7 +1315,7 @@ check('the questions and the plan cost nothing',
   (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').credits)) === 2000)
 
 /* Review: the chat narrows back to the split and the document takes the canvas. */
-await p.click('text=Review'); await p.waitForTimeout(900); await shot('10-plan-review')
+await p.click('[data-plan-review]'); await p.waitForTimeout(900); await shot('10-plan-review')
 check('Review opens the canvas on the plan', (await previewState()) === 'open')
 {
   /* THE PLAN IS A DOCUMENT YOU CAN TYPE IN (designer, 09.09.2026: "возможность редактировать
@@ -1185,6 +1359,19 @@ check('…with the chat back at its split width on a laptop-sized shell',
   check('the plan is still awaiting approval, not building', await planUp())
 }
 /* ✕ hands the canvas back and returns to the card. */
+{
+  /*
+   * THE GUARD IN `setPlanVariant`: the simplified variant has no door to the full-size
+   * document — `Review` IS that door — so throwing the switch while the document stands
+   * open in the canvas has to hand the canvas back on the way, or it would leave a room
+   * with no way in and no way out.
+   */
+  await p.click('[data-plan-seat="simple"]'); await p.waitForTimeout(900)
+  check('switching to the simple window takes the canvas back with it',
+    (await previewState()) === 'closed' && (await p.$('[data-plan-review]')) === null && (await planUp()))
+  await p.click('[data-plan-seat="full"]'); await p.waitForTimeout(900)
+  await p.click('[data-plan-review]'); await p.waitForTimeout(900)
+}
 await p.click('button[aria-label="Close the plan"]'); await p.waitForTimeout(700)
 check('closing the plan puts the canvas away again', (await previewState()) === 'closed')
 check('the plan card is still there after closing the review', await planUp())
@@ -3352,7 +3539,11 @@ check('…and the typed prompt is built as given', await cardUp())
 await buildFromHome('website')
 await p.click('.dock-foot button:has-text("Skip all")')
 await p.waitForTimeout(2600)
-await p.click('button:has-text("Review")')
+/* ⚠️ The step OPENS on the simplified window now (21.09.2026), and that one has no `Review`
+   by design — this whole section is about the full-size document, so throw the switch first.
+   Without it the click below waits out its timeout on a button that is not there. */
+await p.click('[data-plan-seat="full"]'); await p.waitForTimeout(900)
+await p.click('[data-plan-review]')
 await p.waitForTimeout(900)
 await shot('30-plan-review')
 {
