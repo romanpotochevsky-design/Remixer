@@ -1075,7 +1075,11 @@ check('the plan is docked where the questions were', await planUp())
       /* the INK, not the box: `.plan-edit` bleeds its hover surface 8px either side and
          pushes the text back in by its own padding, so the letters still land on 16 */
       inkX: Math.round((lines[0].getBoundingClientRect().left + parseFloat(cs(lines[0]).paddingLeft) - bodyRect.left) * 100) / 100,
-      editable: lines.map((el) => el.getAttribute('contenteditable')),
+      /* ⚠️ THE HOST is editable, not the line (21.09.2026): one `contentEditable` for the
+         whole prose is what lets a selection cross a paragraph. A line carrying the attribute
+         would mean the field idiom is back. */
+      editable: inner.getAttribute('contenteditable'),
+      linesEditable: lines.filter((el) => el.hasAttribute('contenteditable')).length,
       paths: [...inner.querySelectorAll('[data-plan-path]')].map((el) => el.dataset.planPath),
       scrolls: scroller ? [scroller.scrollHeight, scroller.clientHeight] : null,
       whole: inner.innerText,
@@ -1125,10 +1129,10 @@ check('the plan is docked where the questions were', await planUp())
     s.whole.includes('Not in this pass') && s.whole.includes('What we\u2019ll check') &&
       s.scrolls && s.scrolls[0] > s.scrolls[1],
     `${s.scrolls} / last heading ${s.whole.includes('Not in this pass')}`)
-  check('every line of it is editable in place, at the paths the full document writes',
-    s.editable.every((v) => v === 'plaintext-only') && s.paths.includes('title') &&
+  check('the whole prose is editable in place — ONE host, the lines at the document\u2019s own paths',
+    s.editable === 'plaintext-only' && s.linesEditable === 0 && s.paths.includes('title') &&
       s.paths.includes('goal') && s.paths.includes('s0:h') && s.paths.includes('s0:0'),
-    JSON.stringify(s.paths.slice(0, 6)))
+    JSON.stringify([s.editable, s.linesEditable, s.paths.slice(0, 6)]))
   const px0 = await pixelAt(s.sample[0], s.sample[1])
   check('…the tail dissolves over the last 32 into the window\u2019s OWN painted colour',
     s.fade.box[1] === 32 && s.fade.gap === 0 &&
