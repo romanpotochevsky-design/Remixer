@@ -788,20 +788,31 @@ export const IconStorage = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
-/** The header's left button: a funnel. */
+/**
+ * The header's left button: the funnel, FILLED — the kit draws it solid, and at 24 an
+ * outline reads as a different weight beside the solid plus next to it.
+ */
 export const IconFilter = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <path d="M3.4 5.2h17.2l-6.7 7.9v5.6l-3.8 2.1v-7.7z" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39c.51-.66.04-1.61-.79-1.61H5.04c-.83 0-1.3.95-.79 1.61z" />
   </svg>
 )
 
 /**
- * The design system's `Add` — a bare plus on the 24 frame. `IconPlus` next to it is the
- * composer's 13px mark and keeps its own proportions; this one is the kit's 24 glyph.
+ * The kit's `Add` — a SOLID plus on the 24 frame, 2 units thick. `IconPlus` next to it is
+ * the composer's 13px mark and keeps its own proportions; this one is the 24 glyph the
+ * Cloud window's two buttons carry.
  */
 export const IconAdd = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <path d="M12 5v14M5 12h14" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+  </svg>
+)
+
+/** The kit's `search` — the Material magnifier, solid, so it sits at the same weight. */
+export const IconSearchM = ({ size = 24, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
   </svg>
 )
 

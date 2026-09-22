@@ -65,7 +65,7 @@ import { ScrollArea } from '@/ui/ScrollArea'
 import { CLOUD_TABLES, type CloudRow } from '@/data/cloud'
 import {
   IconCloud, IconDatabase, IconMail, IconSecrets, IconUsers, IconStorage,
-  IconFilter, IconAdd, IconTrash, IconPencil, IconSearch, IconCloseM,
+  IconFilter, IconAdd, IconTrash, IconPencil, IconSearchM, IconCloseM,
 } from '@/ui/icons'
 
 
@@ -114,7 +114,9 @@ function MenuRow({ Icon, label, strong, onClick }: {
       data-cloud-menurow
       className="flex h-12 w-full items-center gap-3 rounded-[12px] pl-3 pr-4 text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)]"
     >
-      <span className="grid h-6 w-6 flex-none place-items-center overflow-hidden text-white">
+      {/* the glyph is `Icon/Default/Secondary` (48% white), a step under its label — the board
+          renders it that way and that token is otherwise unclaimed in this window */}
+      <span className="grid h-6 w-6 flex-none place-items-center overflow-hidden text-[var(--white-480)]">
         <Icon size={20} />
       </span>
       <span className={`text-[15px] leading-none text-white${strong ? ' font-semibold' : ''}`}>{label}</span>
@@ -152,6 +154,8 @@ function Row({ row, last, t }: { row: CloudRow; last: boolean; t: (x: Text) => s
   return (
     <div
       data-cloud-row
+      /* the floor the columns add up to; above it the last column takes the slack */
+      style={{ minWidth: ROW_W }}
       className={`flex h-[72px] w-full items-center pl-4 pr-2${last ? '' : ' border-b border-[var(--gray-750)]'}`}
     >
       {/* the thumbnail: a white 48 tile with the 42 image inside it, as drawn. We ship no
@@ -182,7 +186,15 @@ function Row({ row, last, t }: { row: CloudRow; last: boolean; t: (x: Text) => s
       <div className="flex-none text-[15px] text-[var(--white-480)]" style={{ width: COL.size }}>
         {row.size}
       </div>
-      <div className="flex-none" style={{ width: COL.url }}>
+      {/*
+        * The last column TAKES THE SLACK. Every other one is fixed, so when the table is wider
+        * than the row wants (1553) the leftover used to pile up AFTER the columns and the action
+        * block — which is placed off the end of the content — landed ~120 short of the row's
+        * right edge, where the board pins it to `right-8`. Growing this one keeps the natural
+        * width at the drawn 408 (so the scroll extent is unchanged) and puts the actions on the
+        * edge at every width.
+        */}
+      <div style={{ flex: '1 0 auto', minWidth: COL.url }}>
         <span className="block w-[408px] truncate text-[15px] text-[var(--white-480)]">{row.imageUrl}</span>
       </div>
 
@@ -335,7 +347,12 @@ export function CloudSurface() {
     <div
       data-cloud-window
       className="flex h-full overflow-hidden rounded-[16px] border border-[var(--gray-800)]"
-      style={{ background: 'var(--gray-850)', boxShadow: '0px 8px 8px rgba(0,0,0,0.12), 0px 56px 72px rgba(0,0,0,0.12)' }}
+      style={{
+        /* 24% black over --gray-900, the house window base — the same recipe DomainsSurface
+           has carried since 27085:106964, and the board's `Dashboard` node prints it verbatim. */
+        background: 'linear-gradient(rgba(9,9,11,0.24), rgba(9,9,11,0.24)), var(--gray-900)',
+        boxShadow: '0px 8px 8px rgba(0,0,0,0.12), 0px 56px 72px rgba(0,0,0,0.12)',
+      }}
     >
       {/* ───────────────────────────── menu, 264 ───────────────────────────── */}
       {/* ⚠️ NOT aria-label="Cloud": that is the rail BUTTON's name, and two things answering
@@ -376,7 +393,7 @@ export function CloudSurface() {
                       <span className="flex-1 text-center text-[14px] font-semibold leading-none text-white">
                         {t({ en: 'Add database', uk: 'Додати базу' })}
                       </span>
-                      <span className="grid h-9 w-9 flex-none place-items-center text-white">
+                      <span className="grid h-9 w-9 flex-none place-items-center text-[var(--white-480)]">
                         <IconAdd size={24} />
                       </span>
                     </button>
@@ -410,15 +427,24 @@ export function CloudSurface() {
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col">
+        {/*
+          * THE PAGE IS A LIGHTER SHEET ON A DARKER BASE (board node `Page content`, 30816:55869):
+          * `bg gray-900` with a 1px `Neutral Alpha/100` top edge and a 6px top-right corner. The
+          * base under it — the window's own 24%-black-over-gray-900 — then shows exactly where the
+          * board shows it: behind the top bar and behind the menu column. Reading only the leaf
+          * nodes had made the whole window one flat tone, and the hairline under the top bar
+          * vanished with it; the designer's own crop is what caught it.
+          */}
+        <div className="flex min-h-0 flex-1 flex-col rounded-tr-[6px] border-t border-[var(--white-100)] bg-[var(--gray-900)]">
           {/* header: title · search · actions, then the column headings */}
           <div className="flex-none">
-            <div className="flex h-[87px] items-center pl-9 pr-6">
-              <h2 className="flex-none font-display text-[32px] font-bold leading-[1.2] text-white">{title}</h2>
+            <div className="flex items-center pl-9 pr-6">
+              {/* 25 above and 24 below a 38.4 line make the board's 87 — a hair lower than centred */}
+              <h2 className="flex-none pb-6 pt-[25px] font-display text-[32px] font-bold leading-[1.2] text-white">{title}</h2>
               <div className="ml-14 flex min-w-0 flex-1 justify-center">
                 <label className="flex h-10 w-full min-w-0 max-w-[400px] items-center gap-4 rounded-full bg-[var(--gray-900)] pl-2 pr-[7px]">
                   <span className="grid h-6 w-6 flex-none place-items-center text-[var(--gray-500)]">
-                    <IconSearch size={24} />
+                    <IconSearchM size={24} />
                   </span>
                   <input
                     value={query}
@@ -471,7 +497,11 @@ export function CloudSurface() {
               {table ? (
                 <div className="flex flex-col gap-2.5 px-6">
                   <div ref={scroller} data-cloud-list className="w-full overflow-x-auto">
-                    <div className="flex w-max min-w-full flex-col" style={{ minWidth: ROW_W }}>
+                    {/* ⚠️ no inline `minWidth` here: it would BEAT `min-w-full` and pin the rows
+                        to their natural 1553, leaving the last column — and the actions pinned
+                        after it — short of the table's right edge. `w-max` already floors the
+                        column at ROW_W, which is what the scroller needs. */}
+                    <div className="flex w-max min-w-full flex-col">
                       {rows.map((r, i) => (
                         <Row key={r.id} row={r} last={i === rows.length - 1} t={t} />
                       ))}

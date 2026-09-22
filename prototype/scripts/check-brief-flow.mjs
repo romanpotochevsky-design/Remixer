@@ -4001,8 +4001,21 @@ await shot('30-plan-review')
 
   /* ── the window ──────────────────────────────────────────────────────────────── */
   const win = await R('[data-cloud-window]')
-  check('the window fill is #1f1f22 — the colour the row fades into, which is the only opaque evidence the board gives',
-    (await CSS('[data-cloud-window]', 'backgroundColor')) === 'rgb(31, 31, 34)')
+  /* the base and the sheet on it — the pair the board's own `Dashboard` and `Page content` print */
+  check('the window base is 24% black over --gray-900, the house window recipe (board `Dashboard`)',
+    (await CSS('[data-cloud-window]', 'backgroundColor')) === 'rgb(24, 24, 27)'
+    && /rgba\(9, 9, 11, 0\.24\)/.test(await CSS('[data-cloud-window]', 'backgroundImage')),
+    await CSS('[data-cloud-window]', 'backgroundImage'))
+  const sheet = await p.$eval('[data-cloud-page]', (n) => {
+    const g = getComputedStyle(n.parentElement)
+    const r = n.parentElement.getBoundingClientRect()
+    return { bg: g.backgroundColor, line: g.borderTopColor, w: g.borderTopWidth, rad: g.borderTopRightRadius, y: r.y }
+  })
+  check('…and the page is a LIGHTER sheet on it: gray-900 under a 1px 8%-white edge, corner 6 (board `Page content`)',
+    sheet.bg === 'rgb(24, 24, 27)' && sheet.line === 'rgba(255, 255, 255, 0.08)' && sheet.w === '1px' && sheet.rad === '6px',
+    JSON.stringify(sheet))
+  check('…so the darker base is what shows behind the top bar — the strip the designer caught missing',
+    Math.round(sheet.y - (await R('[data-cloud-window]'))[1]) === 49, String(Math.round(sheet.y - (await R('[data-cloud-window]'))[1])))
   check('…under the house window chrome: radius 16 and a 1px --gray-800 hairline',
     (await CSS('[data-cloud-window]', 'borderTopLeftRadius')) === '16px'
     && (await CSS('[data-cloud-window]', 'borderTopColor')) === 'rgb(39, 39, 42)'
@@ -4051,7 +4064,7 @@ await shot('30-plan-review')
     return { h: r.height, pl: Math.round(h.getBoundingClientRect().x - (n.x + n.width)), size: g.fontSize, weight: g.fontWeight }
   })
   check('the header top row is the board\u2019s 87, its title Gilroy 32 bold at pl-36',
-    top.h === 87 && top.pl === 36 && top.size === '32px' && top.weight === '700', JSON.stringify(top))
+    Math.round(top.h) === 87 && top.pl === 36 && top.size === '32px' && top.weight === '700', JSON.stringify(top))
   const search = await R('[data-cloud-window] label')
   check('the search field is the drawn 400 on #18181b, fully round',
     search[2] === 400 && search[3] === 40 && (await CSS('[data-cloud-window] label', 'backgroundColor')) === 'rgb(24, 24, 27)',
