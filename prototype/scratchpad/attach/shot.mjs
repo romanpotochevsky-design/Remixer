@@ -12,13 +12,18 @@ await p.screenshot({ path: `${OUT}/01-bare.png`, clip: { x: 300, y: 380, width: 
 
 await p.click('[data-attach-open]')
 await p.waitForTimeout(500)
-console.log('plus          ', JSON.stringify(r(await box('[data-attach-open]'))))
-console.log('menu          ', JSON.stringify(r(await box('[role="menu"]'))))
-await p.screenshot({ path: `${OUT}/02-menu.png`, clip: { x: 300, y: 300, width: 1060, height: 420 } })
+const plus = r(await box('[data-attach-open]'))
+const menu = r(await box('[role="menu"]'))
+console.log('plus          ', JSON.stringify(plus))
+console.log('menu          ', JSON.stringify(menu), '| offset from +:', (menu[0]-plus[0]).toFixed(1), (menu[1]-plus[1]).toFixed(1))
+console.log('hero bottom   ', await p.$eval('.home-hero', (e) => +e.getBoundingClientRect().bottom.toFixed(1)))
+await p.screenshot({ path: `${OUT}/02-menu.png`, clip: { x: 300, y: 380, width: 1060, height: 440 } })
 
 await p.getByRole('menuitem', { name: /Attach Domain/ }).click()
 await p.waitForTimeout(400)
-await p.screenshot({ path: `${OUT}/03-list.png`, clip: { x: 300, y: 130, width: 1060, height: 590 } })
+const list = r(await box('[role="menu"]'))
+console.log('list          ', JSON.stringify(list), '| bottom', (list[1]+list[3]).toFixed(1))
+await p.screenshot({ path: `${OUT}/03-list.png`, clip: { x: 300, y: 380, width: 1060, height: 500 } })
 
 await p.getByRole('menuitem', { name: /odesa-coffee-roasters/ }).click()
 await p.waitForTimeout(900)

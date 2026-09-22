@@ -604,14 +604,23 @@ function useSnapSlide(
 }
 
 /**
- * THE ATTACHED DOMAIN — `attached template` 30771:30981 on board 28726:64760, which is the
- * same Attachments bar carrying a NAME instead of a picture (designer, 21.09.2026).
+ * THE ATTACHED DOMAIN — `attached template` 28734:65592 → `container` 30771:30981 on board
+ * 28726:64760, which is the same Attachments bar carrying a NAME instead of a picture
+ * (designer, 21.09.2026).
  *
- * 36 tall at radius 999: `NA/50` under a 20% white rim with a 16 blur, pl 12 / pr 8, the name
- * at 14 regular white, and an 18px round ✕ of the same material at its end.
+ * 36 tall at radius 999, blur 16: pl 12 · the name at 14 regular white · gap 8 · an 18px
+ * round ✕ of the same material · pr 8. Every number is the board's (the state-layer's
+ * `pl-[12px] pr-[8px]`, the `Close` frame at x=122 in a 148-wide chip).
  *
- * ⚠️ The rim is an inset shadow, not a border: Figma's stroke sits inside the geometry, and a
- * CSS border would spend a pixel of the drawn 12/8 padding on itself.
+ * ⚠️ IT IS A GLASS PILL, ON THE HOUSE CANON — `.liquid-glass--attach` (designer, 21.09.2026:
+ * «домен находится внутри стеклянной кнопки-пилюли, ты стекло не добавил»). The first build
+ * copied the export literally — a flat `rgba(255,255,255,.2)` hairline — and a flat rim is
+ * exactly what reads as "not glass": the canon's light falls ACROSS the pill, bright at the
+ * top-left, gone in the middle, back at the far corner. index.css says why that gradient is
+ * the same statement as the board's flat 20%.
+ *
+ * ⚠️ The rim is the canon's masked `::before`, not a `border`: Figma's stroke sits inside the
+ * geometry, and a CSS border would spend a pixel of the drawn 12/8 padding on itself.
  *
  * ⚠️ AND THE BLUR EARNS ITS PLACE HERE, unlike the switch in the screen's corner: behind this
  * chip is the field's own 80%-black glass over the hero's painted colour field, so there is
@@ -624,7 +633,7 @@ function AttachedDomain({ domain }: { domain: string }) {
     <span
       data-attach-domain
       style={{ height: CHIP_H }}
-      className="flex items-center gap-2 rounded-full bg-[var(--white-050)] py-1.5 pl-3 pr-2 text-[14px] leading-none text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] backdrop-blur-[16px]"
+      className="liquid-glass liquid-glass--attach flex items-center gap-2 rounded-full pl-3 pr-2 text-[14px] leading-none text-white"
     >
       <span className="max-w-[320px] truncate">{domain}</span>
       <button
@@ -634,7 +643,9 @@ function AttachedDomain({ domain }: { domain: string }) {
         /* No ripple, for the reason the tile's badge states: light blooming out of a control
            whose whole job is to remove the thing beside it celebrates the wrong event. */
         data-no-ripple
-        className="grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-[var(--white-050)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+        /* Same material at a smaller size — the board gives the `Close` its own fill and its
+           own stroke, identical to the pill's, so it is the same glass and not a hole in it. */
+        className="liquid-glass liquid-glass--attach grid h-[18px] w-[18px] flex-none place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
       >
         <IconClose size={9} />
       </button>
@@ -783,6 +794,7 @@ function Composer() {
   const intakeDomain = useWorld((s) => s.world.intakeDomain)
   const setWorld = useWorld((s) => s.set)
   const [attachOpen, setAttachOpen] = useState(false)
+  const attachBtn = useRef<HTMLButtonElement>(null)
   /*
    * THE ATTACHMENTS BAR IS AS TALL AS ITS TALLEST ATTACHMENT, and everything below
    * it follows from that one number (`attachment.ts` § barTextShift/barRowShift,
@@ -902,14 +914,7 @@ function Composer() {
       {/* ------------------------------------------- the field (28364:40219) */}
       <div
         ref={fieldBox}
-        /* `z-10` exists for ONE thing: the attach menu hangs out of the bottom of this
-           box, and the field's own `backdrop-blur` makes it a stacking context — so the
-           menu's z-index is trapped INSIDE the field and loses to the prompt-chip row,
-           which is positioned and comes later in the tree. Measured: the first chip was
-           painted straight across the menu's top row. Raising the FIELD is the fix,
-           because the field is the thing whose paint order was wrong; the flight layer
-           (z-80) and every overlay still sit above it. */
-        className="he-composer relative z-10 w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
+        className="he-composer relative w-[960px] max-w-full flex-none rounded-[32px] bg-[var(--black-900)] backdrop-blur-[16px]"
         /* Figma's padding is 17/16/16/0 on a 138-tall box whose 1px stroke sits
            INSIDE the geometry. A CSS `border` does not: it eats a pixel of the
            content box, which put the text row, the `+` button and the caret 1px
@@ -935,12 +940,6 @@ function Composer() {
             : `17px 16px ${FIELD_PAD_B + shrink}px 0`,
         }}
       >
-        <AttachMenu
-          open={attachOpen}
-          onClose={() => setAttachOpen(false)}
-          onDomain={(domain) => setWorld({ intakeDomain: domain })}
-        />
-
         {/* THE ATTACHMENTS ROW (`Attachments bar` 28734:65591 — 180×52 on the domain
             board, 16 + the attachment, hugging it): whatever is attached, 16px in
             from the field's left edge — the row's own 16px of padding-top is the
@@ -1023,12 +1022,12 @@ function Composer() {
               * 30771:31103 — designer 21.09.2026). It was inert until now: a
               * control that answered a press with light and nothing else.
               *
-              * The menu itself is mounted on the FIELD, not here — it stands above
-              * the composer's top edge, in this button's own 16px column, and
-              * AttachMenu says why it is placed off the field rather than off the
-              * button it belongs to.
+              * The menu opens DOWNWARD out of this button, at the board's own
+              * offset, and is portalled so the hero's clip cannot cut it —
+              * AttachMenu carries both numbers and the reason.
               */}
             <button
+              ref={attachBtn}
               type="button"
               data-attach-open
               aria-label={t({ en: 'Attach', uk: 'Прикріпити' })}
@@ -1042,6 +1041,12 @@ function Composer() {
             >
               <IconPlus size={24} />
             </button>
+            <AttachMenu
+              open={attachOpen}
+              onClose={() => setAttachOpen(false)}
+              onDomain={(domain) => setWorld({ intakeDomain: domain })}
+              anchor={attachBtn}
+            />
 
             {/* "Add template" 28616:58682 — 123×36 r999 glass; label Proxima
                 Nova REGULAR 14 at 80% white (not the Semibold the chips and

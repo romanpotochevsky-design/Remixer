@@ -3800,17 +3800,30 @@ await shot('30-plan-review')
   await p.click('[data-attach-open]')
   await p.waitForTimeout(450)
   await shot('33-attach-menu')
+  const plus = await box('[data-attach-open]')
   const menu = await box('[role="menu"]')
   /* The board's own box: 208 × 89 = 4 + 40 + 1 + 40 + 4. It is what forbids the dimmed
      row a subtitle (AttachMenu.tsx). */
   check('the attach menu is the board’s 208 × 89', menu[2] === 208 && menu[3] === 89, menu.join(','))
-  check('…standing 8px above the field, in the "+" column',
-    Math.abs(menu[1] + menu[3] - (bare[1] - 8)) < 0.6 && Math.abs(menu[0] - (bare[0] + 16)) < 0.6,
-    `menu ${menu.join(',')} | field ${bare.join(',')}`)
-  /* It opens UPWARD because downward the hero's clipped panel cuts the domain list in
-     half — so the whole menu has to be inside the hero, with room to grow. */
-  const heroTop = await p.$eval('.home-hero, [class*="home-hero"]', (el) => +el.getBoundingClientRect().top.toFixed(2)).catch(() => 0)
-  check('…and it is not clipped by the hero panel', menu[1] > heroTop, `menu top ${menu[1]} vs hero ${heroTop}`)
+  /*
+   * AND IT OPENS DOWNWARD OUT OF THE "+", at the board's own offset: the `Menu` instance
+   * sits at (364, 610) where the button's box is (340, 602, 36, 36) — 24 right, 8 down,
+   * covering the button row it grew from. The designer had to say this twice: the first
+   * build read that overlap as a loose placement and hung the menu above the field.
+   */
+  check('…opening downward out of the "+", 24 right and 8 down, where the board puts it',
+    Math.abs(menu[0] - (plus[0] + 24)) < 0.6 && Math.abs(menu[1] - (plus[1] + 8)) < 0.6,
+    `menu ${menu.join(',')} | + ${plus.join(',')}`)
+  /*
+   * ⚠️ WHICH ONLY WORKS BECAUSE THE MENU IS OUT OF THE HERO. The hero is a clipped panel,
+   * and a menu opening down from a "+" that sits 52px above the field's bottom edge runs
+   * out of panel before the domain list ends — filmed: the third name sliced in half.
+   */
+  const escaped = await p.$eval('[role="menu"]', (el) => {
+    for (let n = el.parentElement; n; n = n.parentElement) if (n.classList?.contains('home-hero')) return false
+    return true
+  })
+  check('…from outside the hero’s clip, so nothing can cut it', escaped)
   /* The field's own backdrop-blur is a stacking context, so this is the check that the
      prompt chips are not painted across the menu (they were, measured 21.09.2026). */
   const onTop = await p.evaluate(([x, y]) => {
@@ -3834,8 +3847,9 @@ await shot('30-plan-review')
   /* A real name does not fit the drawn 208; that level is ours and undrawn. */
   const list = await box('[role="menu"]')
   check('…in a box wide enough for a real domain name', list[2] === 280, String(list[2]))
-  check('…whose corner by the "+" has not moved',
-    Math.abs(list[0] - menu[0]) < 0.6 && Math.abs(list[1] + list[3] - (menu[1] + menu[3])) < 0.6,
+  check('…whose corner by the "+" has not moved, and which the window still holds',
+    Math.abs(list[0] - menu[0]) < 0.6 && Math.abs(list[1] - menu[1]) < 0.6
+      && list[1] + list[3] < 900 - 8,
     `${list.join(',')} vs ${menu.join(',')}`)
 
   await p.keyboard.press('Escape')
@@ -3860,6 +3874,34 @@ await shot('30-plan-review')
   check('…the chip is the drawn 36, 16 in from the field’s corner',
     chip[3] === 36 && Math.abs(chip[0] - (withChip[0] + 16)) < 0.6 && Math.abs(chip[1] - (withChip[1] + 16)) < 0.6,
     chip.join(','))
+  /*
+   * ⚠️ AND IT IS GLASS ON THE HOUSE CANON, not a hand-rolled hairline (designer 21.09.2026:
+   * «домен находится внутри стеклянной кнопки-пилюли, ты стекло не добавил»). The board's
+   * flat rgba(255,255,255,.2) is the pill gradient's bright end; drawn flat it reads dead.
+   * The ✕ inside wears the same material — the board gives it its own fill and stroke.
+   */
+  const glass = await p.evaluate(() => {
+    const el = document.querySelector('[data-attach-domain]')
+    const x = el?.querySelector('button')
+    const rim = (n) => getComputedStyle(n, '::before').backgroundImage
+    return {
+      canon: !!el?.classList.contains('liquid-glass') && !!el?.classList.contains('liquid-glass--attach'),
+      fill: getComputedStyle(el).backgroundColor,
+      blur: getComputedStyle(el).backdropFilter,
+      rim: rim(el),
+      border: getComputedStyle(el).borderTopWidth,
+      xCanon: !!x?.classList.contains('liquid-glass--attach'),
+      xRim: rim(x),
+      xBox: [x?.offsetWidth, x?.offsetHeight],
+    }
+  })
+  check('…wearing the canon’s glass: a gradient rim over the board’s 4% fill, blur 16',
+    glass.canon && /gradient/.test(glass.rim) && glass.fill === 'rgba(255, 255, 255, 0.04)'
+      && glass.blur.includes('blur(16px)') && glass.border === '0px',
+    JSON.stringify(glass).slice(0, 200))
+  check('…and its ✕ is the same glass at 18',
+    glass.xCanon && /gradient/.test(glass.xRim) && glass.xBox[0] === 18 && glass.xBox[1] === 18,
+    JSON.stringify(glass.xBox))
   /*
    * THE DERIVED TRAVELS (attachment.ts § barTextShift/barRowShift): h + 16 for the
    * placeholder line, h − 10 for everything under it — 52 and 26 for a 36-tall chip,

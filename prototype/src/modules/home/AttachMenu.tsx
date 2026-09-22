@@ -28,7 +28,8 @@
  *    designer rather than decided here; the domain rows below DO carry notes, because that
  *    level is ours and nothing draws it.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
@@ -63,16 +64,63 @@ function Row({
   )
 }
 
-export function AttachMenu({ open, onClose, onDomain }: {
+/**
+ * WHERE IT STANDS — the board's own placement, reproduced literally (designer, 21.09.2026:
+ * «в макете чётко показано как открывается и где дропдаун»). The `Menu` instance sits at
+ * (364, 610) in a frame where the "+" button's box is (340, 602, 36, 36): the menu opens
+ * DOWNWARD out of the button, 24 right and 8 down from its corner, covering the button row
+ * and hanging over the prompt chips below. A first build read that overlap as a loose
+ * placement and hung the menu above the field instead — it is not; the board draws the "+"
+ * itself hidden underneath.
+ */
+const ANCHOR_X = 24
+const ANCHOR_Y = 8
+/** Air kept under the menu if the window is too short for it to open at the anchor. */
+const VIEWPORT_PAD = 8
+
+export function AttachMenu({ open, onClose, onDomain, anchor }: {
   open: boolean
   onClose: () => void
   onDomain: (domain: string) => void
+  /** The "+" the menu grows out of; its box is read when the menu opens. */
+  anchor: React.RefObject<HTMLElement | null>
 }) {
   const { t } = useT()
   const inventory = useWorld((s) => s.world.inventory)
   const owned = OWNED_DOMAINS[inventory] ?? []
   const [level, setLevel] = useState<'root' | 'domains'>('root')
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null)
   const box = useRef<HTMLDivElement>(null)
+
+  /*
+   * ⚠️ IT IS A PORTAL, and that is what lets the board's placement be taken literally.
+   * The hero is a clipped panel (`.home-hero`, `overflow: hidden` for its rings and dot
+   * field), and a menu opening downward out of a "+" that sits 52px above the field's
+   * bottom edge runs out of panel before the domain list ends — measured on the first
+   * build: the third name sliced in half by the panel's edge. Out in `<body>` nothing
+   * clips it, so the only thing left to respect is the window.
+   */
+  useLayoutEffect(() => {
+    if (!open) { setAt(null); return }
+    const place = () => {
+      const a = anchor.current
+      if (!a) return
+      const r = a.getBoundingClientRect()
+      const h = box.current?.offsetHeight ?? 0
+      const top = r.top + ANCHOR_Y
+      setAt({
+        left: r.left + ANCHOR_X,
+        /* Only ever pulled UP, and only by what the window is short of: at every size the
+           prototype is shown at, this is the board's number untouched. */
+        top: h ? Math.min(top, Math.max(VIEWPORT_PAD, window.innerHeight - VIEWPORT_PAD - h)) : top,
+      })
+    }
+    place()
+    /* A second pass once the box exists, because the clamp needs its height. */
+    const raf = requestAnimationFrame(place)
+    window.addEventListener('resize', place)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', place) }
+  }, [open, level, anchor])
 
   /* Every menu in this shell closes the same three ways: Escape, a click outside it, and a
      pick. Reset to the first level on the way out, so it never reopens mid-way down. */
@@ -88,7 +136,7 @@ export function AttachMenu({ open, onClose, onDomain }: {
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onDown) }
   }, [open, onClose])
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -99,25 +147,11 @@ export function AttachMenu({ open, onClose, onDomain }: {
           initial="initial"
           animate="animate"
           exit="exit"
-          /* It grows out of its own bottom-left corner — the corner nearest the "+" that
-             opened it. House law for every popover (ui/motion.ts): origin at the trigger,
-             contents a beat behind. */
-          style={{ transformOrigin: 'bottom left' }}
-          /*
-           * ⚠️ IT HANGS ABOVE THE FIELD, and it is positioned against the FIELD rather
-           * than against the "+" — `bottom-full left-4 mb-2` on the composer's own box,
-           * which is 8px of air over the drawn edge and the same 16px column the "+"
-           * stands in. Two measurements forced it:
-           *  · DOWNWARD IT GETS CUT. The hero is a clipped panel and its bottom edge is
-           *    ~145px under the field; the root menu's 89 fits, the domain list does not
-           *    (filmed: the third name sliced in half by the panel's edge). Above the
-           *    field there are ~430.
-           *  · ANCHORED TO THE BUTTON IT WOULD DRIFT. The "+" sits lower whenever an
-           *    attachment opens the bar, so a constant offset from it is a different
-           *    distance from the field's edge in each state; anchored to the field, the
-           *    menu stands in exactly one place in all three.
-           */
-          className={`absolute bottom-full left-4 z-30 mb-2 rounded-[10px] bg-[var(--gray-600)] px-0.5 py-1 shadow-[0px_8px_16px_rgba(39,39,39,0.33)] ${
+          /* It grows out of its own top-left corner — the corner it shares with the "+"
+             that opened it. House law for every popover (ui/motion.ts): origin at the
+             trigger, contents a beat behind. */
+          style={{ transformOrigin: 'top left', left: at?.left ?? -9999, top: at?.top ?? -9999, visibility: at ? undefined : 'hidden' }}
+          className={`fixed z-50 rounded-[10px] bg-[var(--gray-600)] px-0.5 py-1 shadow-[0px_8px_16px_rgba(39,39,39,0.33)] ${
             /* 208 is the board's own width, and it is the board's own two short labels
                that fit in it. A list of real names does not — `odesa-coffee-roasters.com`
                needs 280 — and that level is ours, undrawn. The box changes size between
@@ -159,6 +193,7 @@ export function AttachMenu({ open, onClose, onDomain }: {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

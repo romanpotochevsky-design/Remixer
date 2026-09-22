@@ -1199,6 +1199,26 @@
     background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
   }
   /*
+   * THE ATTACHMENT PILL — the domain chip in the Home composer and the ✕ inside it
+   * (board 28726:64760 → `container` 30771:30981, designer 21.09.2026: «домен находится
+   * внутри стеклянной кнопки-пилюли, ты стекло не добавил»).
+   *
+   * It is the PILL's rim over the BOARD's fill, and both halves are read, not chosen:
+   *  · the fill is the board's, `Neutral Alpha/50` = 4% WHITE in the dark theme — the chip
+   *    sits a step LIGHTER than the field it is in, where `--pill` would have made it
+   *    darker (Black/700, the recipe for a control ON a light-ish surface);
+   *  · the rim is the pill's diagonal, because the board's flat `rgba(255,255,255,.2)` is
+   *    exactly that gradient's bright end (20 → 5 → 15). A flat 20% rim is what the export
+   *    prints when it flattens one; drawn flat it reads dead, which is the whole of the
+   *    designer's complaint — the light has to fall across it.
+   */
+  .liquid-glass--attach {
+    background: var(--white-050);
+  }
+  .liquid-glass--attach::before {
+    background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
+  }
+  /*
    * THE CHIP — glass at the size of a word (designer, 11.09.2026, on the Recommended
    * plate: "ты можешь эту пилюлю сделать дизайн пилюли в стиле Apple liquid glass?",
    * and "сделай ее скругленной полностью").
