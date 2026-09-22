@@ -3941,6 +3941,215 @@ await shot('30-plan-review')
   check('…and its ✕ puts the field back on the bare 138', off[3] === 138 && await gone('[data-attach-domain]'), String(off[3]))
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════
+ * I · THE CLOUD WINDOW AND THE RIGHT RAIL
+ *
+ * Board 30816:49569 for the window (its own geometry is spelled out at the head of
+ * `modules/cloud/CloudSurface.tsx`), and 17471:40596 — the designer's state sheet — plus
+ * 30816:50043 ("Right Toolbar") for the rail that opens it.
+ *
+ * What these checks are really guarding: the numbers that came off the board and cannot
+ * be re-derived from the code (column x positions, the inset strokes, the accents read in
+ * the DARK theme), and the two behaviours the board draws but a mock cannot have — the
+ * headings riding the list's horizontal scroll, and the actions sticking to the right edge.
+ * ═══════════════════════════════════════════════════════════════════════════════════ */
+{
+  const R = (sel) => p.$eval(sel, (n) => { const r = n.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 100) / 100) })
+  const CSS = (sel, prop) => p.$eval(sel, (n, q) => getComputedStyle(n)[q], prop)
+
+  await p.goto(at('p=built&v=true&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
+  await p.waitForTimeout(700)
+  await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(500)
+
+  /* ── the rail, before anything is open ───────────────────────────────────────── */
+  const rail = await p.evaluate(() => {
+    const btns = [...document.querySelectorAll('nav.arrive-rail button[aria-pressed]')]
+    return btns.map((e) => { const r = e.getBoundingClientRect(); const g = getComputedStyle(e)
+      return { label: e.getAttribute('aria-label'), w: r.width, h: r.height, x: r.x, y: r.y, radius: g.borderTopLeftRadius, bg: g.backgroundColor, color: g.color,
+               glyph: (() => { const s = e.querySelector('svg'); return [s.getAttribute('width'), s.getAttribute('fill')] })() } })
+  })
+  check('the rail carries the board’s four buttons, 48 at radius 16 with a 24 glyph',
+    rail.length === 4 && rail.every((b) => b.w === 48 && b.h === 48 && b.radius === '16px' && b.glyph[0] === '24'),
+    JSON.stringify(rail.map((b) => [b.label, b.w, b.radius, b.glyph[0]])))
+  check('…and the glyphs are FILLED, as the kit draws them — not our old outlines',
+    rail.every((b) => b.glyph[1] === 'currentColor'), JSON.stringify(rail.map((b) => b.glyph[1])))
+  check('the buttons stand 8 apart (30816:50043)',
+    rail.slice(1).every((b, i) => Math.round(b.y - rail[i].y) === 56), JSON.stringify(rail.map((b) => Math.round(b.y))))
+  check('at rest every button is a bare white glyph on nothing',
+    rail.every((b) => b.bg === 'rgba(0, 0, 0, 0)' && b.color === 'rgb(255, 255, 255)'),
+    JSON.stringify(rail.map((b) => [b.bg, b.color])))
+
+  /* the avatar row is 56 — four taller than the 52 top bar, which is the board's own rhythm */
+  const avatarRow = await R('nav.arrive-rail > div:first-child')
+  check('the avatar row is the board’s 56, not the top bar’s 52', avatarRow[3] === 56, String(avatarRow[3]))
+
+  /* ── open it ─────────────────────────────────────────────────────────────────── */
+  await p.click('nav.arrive-rail [aria-label="Cloud"]')
+  await p.waitForTimeout(900)
+  await shot('37-cloud-window')
+  check('the rail’s Cloud button opens the Cloud window', !!(await p.$('[data-cloud-window]')))
+
+  const sel = await p.$eval('nav.arrive-rail [aria-label="Cloud"]', (e) => { const g = getComputedStyle(e); return [g.backgroundColor, g.color] })
+  check('…and the button takes its SELECTED state: the tile at a tenth, the glyph whole (17478:42337)',
+    sel[0] === 'rgba(149, 117, 205, 0.12)' && sel[1] === 'rgb(149, 117, 205)', sel.join(' · '))
+  const others = await p.evaluate(() => [...document.querySelectorAll('nav.arrive-rail button[aria-pressed="false"]')]
+    .map((e) => getComputedStyle(e).backgroundColor))
+  check('…while the three buttons with no window of their own stay dark',
+    others.length === 3 && others.every((c) => c === 'rgba(0, 0, 0, 0)'), others.join(' · '))
+
+  /* ── the window ──────────────────────────────────────────────────────────────── */
+  const win = await R('[data-cloud-window]')
+  check('the window fill is #1f1f22 — the colour the row fades into, which is the only opaque evidence the board gives',
+    (await CSS('[data-cloud-window]', 'backgroundColor')) === 'rgb(31, 31, 34)')
+  check('…under the house window chrome: radius 16 and a 1px --gray-800 hairline',
+    (await CSS('[data-cloud-window]', 'borderTopLeftRadius')) === '16px'
+    && (await CSS('[data-cloud-window]', 'borderTopColor')) === 'rgb(39, 39, 42)'
+    && (await CSS('[data-cloud-window]', 'borderTopWidth')) === '1px')
+  check('the page does NOT repeat the board’s right border onto that hairline (no 2px rail)',
+    (await CSS('[data-cloud-page]', 'borderRightWidth')) === '0px')
+
+  /* menu */
+  const nav = await R('[data-cloud-window] nav')
+  const card = await R('[data-cloud-menu]')
+  check('the menu column is 264 and its card 256, inset 8', nav[2] === 264 && card[2] === 256 && Math.round(card[0] - nav[0]) === 8,
+    `${nav[2]} · ${card[2]} · ${Math.round(card[0] - nav[0])}`)
+  check('…the card’s stroke is INSIDE it (an inset shadow), so the 256 stays 256',
+    (await CSS('[data-cloud-menu]', 'borderTopWidth')) === '0px'
+    && /inset/.test(await CSS('[data-cloud-menu]', 'boxShadow'))
+    && (await CSS('[data-cloud-menu]', 'borderTopLeftRadius')) === '14px')
+  const head = await R('[data-cloud-menu] > div:first-child')
+  const mark = await R('[data-cloud-menu] svg')
+  check('the menu header is 84 tall with the 25-wide cloud at 20 and the word 10 after it',
+    head[3] === 84 && mark[2] === 25 && Math.round(mark[0] - card[0]) === 20, `${head[3]} · ${mark[2]} · ${Math.round(mark[0] - card[0])}`)
+  check('…set in Gilroy 24 bold', (await CSS('[data-cloud-menu] > div:first-child span', 'fontSize')) === '24px'
+    && (await CSS('[data-cloud-menu] > div:first-child span', 'fontWeight')) === '700')
+
+  const dbs = await p.evaluate(() => [...document.querySelectorAll('[data-cloud-db]')].map((e) => {
+    const r = e.getBoundingClientRect(); const g = getComputedStyle(e)
+    return { t: e.textContent, w: r.width, h: r.height, radius: g.borderTopLeftRadius, bg: g.backgroundColor, pl: g.paddingLeft, weight: g.fontWeight, color: g.color }
+  }))
+  check('the selected database row is 40 at radius 10, filled in the module’s accent at half strength',
+    dbs[0].h === 40 && dbs[0].radius === '10px' && dbs[0].bg === 'rgba(126, 87, 194, 0.5)' && dbs[0].weight === '600' && dbs[0].pl === '16px',
+    JSON.stringify(dbs[0]))
+  check('…and the one beside it keeps the board’s own 15 of left padding, regular, at 48% white',
+    dbs[1].pl === '15px' && dbs[1].weight === '400' && dbs[1].color === 'rgba(255, 255, 255, 0.48)', JSON.stringify(dbs[1]))
+  const menuRows = await p.evaluate(() => [...document.querySelectorAll('[data-cloud-menurow]')].map((e) => e.getBoundingClientRect().height))
+  check('five top-level menu rows (Database plus the four rooms), all 48',
+    menuRows.length === 5 && menuRows.every((h) => h === 48), JSON.stringify(menuRows))
+
+  /* top bar + header */
+  const close = await R('[data-cloud-close]')
+  check('the top bar holds one button and it is the way out: 32 at radius 10, 8 from the window’s edge',
+    close[2] === 32 && (await CSS('[data-cloud-close]', 'borderTopLeftRadius')) === '10px'
+    && Math.round(win[0] + win[2] - (close[0] + close[2])) === 9, // 8 + the window's own 1px border
+    `${close[2]} · ${Math.round(win[0] + win[2] - (close[0] + close[2]))}`)
+  const top = await p.$eval('[data-cloud-window] h2', (h) => {
+    const row = h.parentElement, nav = document.querySelector('[data-cloud-window] nav')
+    const r = row.getBoundingClientRect(), n = nav.getBoundingClientRect(), g = getComputedStyle(h)
+    return { h: r.height, pl: Math.round(h.getBoundingClientRect().x - (n.x + n.width)), size: g.fontSize, weight: g.fontWeight }
+  })
+  check('the header top row is the board\u2019s 87, its title Gilroy 32 bold at pl-36',
+    top.h === 87 && top.pl === 36 && top.size === '32px' && top.weight === '700', JSON.stringify(top))
+  const search = await R('[data-cloud-window] label')
+  check('the search field is the drawn 400 on #18181b, fully round',
+    search[2] === 400 && search[3] === 40 && (await CSS('[data-cloud-window] label', 'backgroundColor')) === 'rgb(24, 24, 27)',
+    `${search[2]}×${search[3]}`)
+
+  /* column headings — every x straight off 30816:52093 */
+  const heads = await p.evaluate(() => {
+    const row = document.querySelector('[data-cloud-headings]')
+    const content = row.parentElement.parentElement
+    const x0 = content.getBoundingClientRect().x
+    const g = getComputedStyle(row.querySelector('span'))
+    return { h: row.getBoundingClientRect().height, line: getComputedStyle(row).borderTopColor, size: g.fontSize, weight: g.fontWeight, color: g.color,
+      cols: [...row.querySelectorAll('span')].map((e) => [e.textContent, Math.round(e.getBoundingClientRect().x - x0), Math.round(e.getBoundingClientRect().width)]) }
+  })
+  check('the column headings row is 47 under a #33333a line, its labels 12 medium at 32% white',
+    heads.h === 47 && heads.line === 'rgb(51, 51, 58)' && heads.size === '12px' && heads.weight === '500' && heads.color === 'rgba(255, 255, 255, 0.32)',
+    JSON.stringify([heads.h, heads.line, heads.size, heads.weight, heads.color]))
+  check('…and all seven land on the board’s own x and width (36/116/356/802/969/1101/1157)',
+    JSON.stringify(heads.cols.map((c) => c[1])) === JSON.stringify([36, 116, 356, 802, 969, 1101, 1157])
+    && JSON.stringify(heads.cols.map((c) => c[2])) === JSON.stringify([80, 240, 446, 167, 132, 56, 56]),
+    JSON.stringify(heads.cols))
+
+  /* the list */
+  const rows = await p.evaluate(() => [...document.querySelectorAll('[data-cloud-row]')].map((e) => {
+    const r = e.getBoundingClientRect(); const g = getComputedStyle(e)
+    return { w: Math.round(r.width), h: r.height, pl: g.paddingLeft, pr: g.paddingRight, bb: g.borderBottomWidth, bc: g.borderBottomColor }
+  }))
+  check('rows are 72 with pl-16 / pr-8 and a #33333a divider',
+    rows.length > 1 && rows.every((r) => r.h === 72 && r.pl === '16px' && r.pr === '8px')
+    && rows.slice(0, -1).every((r) => r.bb === '1px' && r.bc === 'rgb(51, 51, 58)'), JSON.stringify(rows[0]))
+  check('…and the LAST row draws none: the stack’s bottom edge is the card’s own (29612:24923’s rule, here too)',
+    rows[rows.length - 1].bb === '0px', rows[rows.length - 1].bb)
+  check('the row wants the board’s 1553 before it scrolls', rows[0].w === 1553, String(rows[0].w))
+  const thumb = await R('[data-cloud-row] .rounded-\\[8px\\]')
+  check('the thumbnail is a white 48 tile at radius 8',
+    thumb[2] === 48 && thumb[3] === 48 && (await CSS('[data-cloud-row] .rounded-\\[8px\\]', 'backgroundColor')) === 'rgb(255, 255, 255)')
+  check('…with the 42 image inside it, as drawn',
+    (await R('[data-cloud-row] .rounded-\\[8px\\] > div'))[2] === 42)
+
+  /* the scrollbar sits 10 under the list, exactly as wide, and its thumb is the real share */
+  const listBox = await R('[data-cloud-list]')
+  const bar = await R('[data-cloud-scrollbar]')
+  const metrics = await p.$eval('[data-cloud-list]', (n) => [n.clientWidth, n.scrollWidth])
+  check('the scrollbar is the list’s width, 10 under it, 8 tall on #33333a',
+    bar[2] === listBox[2] && Math.round(bar[1] - (listBox[1] + listBox[3])) === 10 && bar[3] === 8
+    && (await CSS('[data-cloud-scrollbar]', 'backgroundColor')) === 'rgb(51, 51, 58)',
+    `${bar[2]} vs ${listBox[2]} · gap ${Math.round(bar[1] - (listBox[1] + listBox[3]))}`)
+  const barThumb = await R('[data-cloud-scrollbar] b')
+  check('…and the 6-tall thumb is the viewport’s real share of the content',
+    barThumb[3] === 6 && Math.abs(barThumb[2] - (bar[2] - 2) * (metrics[0] / metrics[1])) < 1.5,
+    `${barThumb[2]} vs ${((bar[2] - 2) * (metrics[0] / metrics[1])).toFixed(1)}`)
+
+  /* the two behaviours a mock cannot have */
+  const ride = await p.evaluate(async () => {
+    const s = document.querySelector('[data-cloud-list]')
+    const head = document.querySelector('[data-cloud-headings] > div')
+    const act = document.querySelector('[data-cloud-row] .sticky')
+    const before = [getComputedStyle(head).transform, act.getBoundingClientRect().right]
+    s.scrollLeft = 200
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+    const after = [getComputedStyle(head).transform, act.getBoundingClientRect().right]
+    s.scrollLeft = 0
+    return { before, after, listRight: s.getBoundingClientRect().right }
+  })
+  check('the column headings ride the list’s horizontal scroll, so the table stays a table',
+    /matrix\(1, 0, 0, 1, -200/.test(ride.after[0]) && !/matrix\(1, 0, 0, 1, -/.test(ride.before[0]),
+    `${ride.before[0]} → ${ride.after[0]}`)
+  check('…and the row actions stay 8 from the visible right edge while it scrolls',
+    Math.abs(ride.before[1] - (ride.listRight - 8)) < 1.5 && Math.abs(ride.after[1] - (ride.listRight - 8)) < 1.5,
+    `${ride.before[1].toFixed(1)} / ${ride.after[1].toFixed(1)} vs ${(ride.listRight - 8).toFixed(1)}`)
+
+  /* a room the board names but does not draw shows no table at all, rather than an empty one */
+  await p.evaluate(() => [...document.querySelectorAll('[data-cloud-menurow]')].find((e) => /Secrets/.test(e.textContent)).click())
+  await p.waitForTimeout(300)
+  check('a room with nothing drawn for it shows no table and no headings',
+    (await p.$('[data-cloud-headings]')) === null && (await p.$('[data-cloud-row]')) === null
+    && /Nothing here yet/.test(await p.$eval('[data-cloud-window]', (e) => e.innerText)))
+  await p.evaluate(() => [...document.querySelectorAll('[data-cloud-db]')][0].click())
+  await p.waitForTimeout(300)
+
+  /* out again */
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(600)
+  /* the pointer is parked off the rail first: a button under the cursor wears its HOVER,
+     and reading that as its resting state is how a true check reports a false failure */
+  await p.mouse.move(800, 800)
+  await p.waitForTimeout(200)
+  check('Escape closes the window and the rail button goes dark again',
+    (await p.$('[data-cloud-window]')) === null
+    && (await p.$eval('nav.arrive-rail [aria-label="Cloud"]', (e) => getComputedStyle(e).backgroundColor)) === 'rgba(0, 0, 0, 0)')
+  await p.click('nav.arrive-rail [aria-label="Cloud"]')
+  await p.waitForTimeout(700)
+  await p.click('nav.arrive-rail [aria-label="Cloud"]')
+  await p.waitForTimeout(600)
+  check('…and the button is a toggle: pressing it again puts the site back on the canvas',
+    (await p.$('[data-cloud-window]')) === null)
+}
+
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
 await b.close()
 

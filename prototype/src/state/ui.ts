@@ -40,6 +40,12 @@ export type Surface =
    * canvas is free — and a plan worth approving is worth more room than a dock card.
    */
   | 'plan'
+  /**
+   * The Cloud window (modules/cloud/CloudSurface.tsx, Figma 30816:49569): the site's
+   * backend — its databases, and the rooms named next to them. Opened by the Cloud
+   * button in the right rail, which lights up in its own accent while it is here.
+   */
+  | 'cloud'
 
 /** Steps inside the domains surface. Kept here (not in world): it is navigation. */
 export type DomainScreen =

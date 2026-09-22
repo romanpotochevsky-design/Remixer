@@ -27,6 +27,7 @@ import { PublishPanel, domainIsHome, canPublish } from '@/modules/publish/Publis
 import { DOMAIN_STATUS, domainStatus } from '@/modules/domains/status'
 import { ConfirmHost } from '@/ui/ConfirmDialog'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
+import { CloudSurface } from '@/modules/cloud/CloudSurface'
 import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
 import { PanelCart } from '@/modules/panel/PanelCart'
@@ -52,13 +53,36 @@ function Glass({ children, className = '' }: { children: React.ReactNode; classN
 }
 
 
+/**
+ * THE RAIL'S FOUR BUTTONS — the designer's own state sheet, Figma 17471:40596, laid into
+ * the shell by 30816:50043 ("Right Toolbar"): avatar row 56, gap 10, four 48s with gap 8,
+ * bottom padding 24. Each button is 48 at radius 16 with a 24 glyph.
+ *
+ * Every button carries an accent, and the accent shows only when the button is SELECTED:
+ * the tile fills with it at a tenth and the glyph takes it whole. Enabled is a bare white
+ * glyph on nothing; hover is 8% white behind it. Off the sheet:
+ *
+ *   Style      tile rgba(80,185,123,.10)   ink #50b97b
+ *   Extension  tile Blue/200 #2554f71f     ink Blue/1000 #1587ff  (our --action)
+ *   Analytics  tile rgba(255,179,0,.10)    ink #ffb300
+ *   Cloud      tile rgba(149,117,205,.12)  ink #9575cd
+ *
+ * ⚠️ Extension's two blues are NOT one colour: the tile is the kit's `Blue/200` (#2554f7
+ * at 12%), the glyph is `Blue/1000 Dark Mode Blue` = #1587ff. Read with `get_variable_defs`
+ * in the DARK theme, which prints both; the reference export collapses them into the light
+ * theme's single rgba — the same trap this project has paid for on every board it has read.
+ *
+ * ⚠️ Only Cloud has a window to open today, so only Cloud can take the selected state. A
+ * button that lights up and shows nothing would be a lie; the other three keep their
+ * accents here, ready for the day their surfaces exist.
+ */
 const RAIL = [
-  { id: 'style', label: 'Website Styles', Icon: IconStyle },
-  { id: 'integrations', label: 'Integrations', Icon: IconExtension },
-  { id: 'analytics', label: 'Analytics', Icon: IconAnalytics },
-  { id: 'cloud', label: 'Cloud', Icon: IconCloud },
+  { id: 'style', label: 'Website Styles', Icon: IconStyle, tile: 'rgba(80,185,123,0.1)', ink: '#50b97b', goes: null },
+  { id: 'integrations', label: 'Integrations', Icon: IconExtension, tile: '#2554f71f', ink: 'var(--action)', goes: null },
+  { id: 'analytics', label: 'Analytics', Icon: IconAnalytics, tile: 'rgba(255,179,0,0.1)', ink: '#ffb300', goes: null },
+  { id: 'cloud', label: 'Cloud', Icon: IconCloud, tile: 'rgba(149,117,205,0.12)', ink: '#9575cd', goes: 'cloud' },
   // Domains and Email still have no home in the rail. That gap is the audit's headline.
-]
+] as const
 
 /**
  * ─────────────────────── THE EMAIL, SIMULATED ───────────────────────
@@ -353,7 +377,7 @@ const keepOnMainThread = () => {}
 
 export default function App() {
   const { world } = useWorld()
-  const { surface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
+  const { surface, openSurface, closeSurface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
 
   /*
    * A SURFACE IS LEAVING THE CANVAS. From the moment `surface` goes back to the preview until
@@ -820,6 +844,11 @@ export default function App() {
               <motion.div key="plan" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
                 <PlanSurface />
               </motion.div>
+            ) : surface === 'cloud' ? (
+              /* the Cloud window takes the canvas like the others — one object in, one out */
+              <motion.div key="cloud" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+                <CloudSurface />
+              </motion.div>
             ) : surface === 'domains' ? (
               /* the window leaves as ONE object — frame, bar and sheet — not sheet first, frame after */
               <motion.div key="domains" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
@@ -895,13 +924,19 @@ export default function App() {
 
       {/* ================================================== right rail, 56px */}
       <nav className="arrive-rail flex flex-none flex-col items-center pb-6" style={{ width: 'var(--rail-w)' }}>
-        <div className="grid place-items-center" style={{ height: 'var(--topbar-h)' }}>
-          <button
-            aria-label={t({ en: 'Account', uk: 'Акаунт' })}
-            className="arrive-rail-item h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white"
-          >
-            R
-          </button>
+        {/* Avatar row 56 (30816:50043) — four taller than the 52 top bar, on purpose: the
+            board sets the rail's own rhythm, 56 then a gap of 10 down to the buttons. The
+            ring is the one thing the board carries inside the avatar's own image, which
+            the proxy will not hand over; drawn here as the gradient it reads as. */}
+        <div className="grid h-14 place-items-center">
+          <span className="arrive-rail-item grid h-9 w-9 place-items-center rounded-full" style={{ background: 'linear-gradient(200deg,#9575cd,#1587ff)' }}>
+            <button
+              aria-label={t({ en: 'Account', uk: 'Акаунт' })}
+              className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white"
+            >
+              R
+            </button>
+          </span>
         </div>
         {/*
           * THE TOOLS ARRIVE WITH THE SITE (designer, 07.09.2026: "когда идет генерация
@@ -927,22 +962,28 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.14 } }}
             >
-              {RAIL.map(({ id, label, Icon }, i) => (
-                <motion.button
-                  key={id}
-                  title={label}
-                  aria-label={label}
-                  /* One after the other from the top, 70ms apart: the rail fills in the
-                     direction it is read. Only transform and opacity, so the stagger
-                     costs the compositor and nothing else. */
-                  initial={{ opacity: 0, scale: 0.82, y: -6 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ ...SPRING, delay: 0.12 + i * 0.07 }}
-                  className="grid h-12 w-12 place-items-center rounded-[16px] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
-                >
-                  <Icon size={22} />
-                </motion.button>
-              ))}
+              {RAIL.map(({ id, label, Icon, tile, ink, goes }, i) => {
+                const on = goes != null && surface === goes
+                return (
+                  <motion.button
+                    key={id}
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={on}
+                    onClick={() => { if (goes) (on ? closeSurface() : openSurface(goes)) }}
+                    /* One after the other from the top, 70ms apart: the rail fills in the
+                       direction it is read. Only transform and opacity, so the stagger
+                       costs the compositor and nothing else. */
+                    initial={{ opacity: 0, scale: 0.82, y: -6 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ ...SPRING, delay: 0.12 + i * 0.07 }}
+                    className={`grid h-12 w-12 place-items-center rounded-[16px] transition-colors duration-[var(--dur-fast)] ease-std${on ? '' : ' text-white hover:bg-[var(--white-100)]'}`}
+                    style={on ? { background: tile, color: ink } : undefined}
+                  >
+                    <Icon size={24} />
+                  </motion.button>
+                )
+              })}
             </motion.div>
           )}
         </AnimatePresence>

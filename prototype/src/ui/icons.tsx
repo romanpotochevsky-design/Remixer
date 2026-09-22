@@ -167,33 +167,58 @@ export const IconArrowUp = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
-/** Paint blob — Website Styles. */
+/*
+ * ─────────────── THE RIGHT RAIL'S FOUR GLYPHS (Figma 17471:40596) ───────────────
+ *
+ * The designer's own component sheet: five buttons (Style · Extension · Analytics ·
+ * Cloud · Photo Library), each with a light and a dark theme and six variants —
+ * Enabled / Hover / Selected × Small 40 / Large 48. The rail runs the dark, Large set.
+ *
+ * ⚠️ THESE GLYPHS ARE FILLED, NOT OUTLINED. Ours were outlines drawn from a low
+ * screenshot and one of them (Style) was the wrong shape entirely — a paint blob where
+ * the kit draws a tilted style card with its dot and two slivers. The kit's component
+ * names give the game away: `Close M`, `Add`, `Domain M`, `Database M`, `Content Copy S`,
+ * `Visibility S` are Material Symbols names, so these are Material Symbols shapes, and
+ * they are re-authored here on the same 24 grid (the SVG exports sit on figma.com, which
+ * the session proxy refuses).
+ *
+ * The state colours live with the rail itself (`App.tsx`, RAIL): the tile carries them,
+ * the glyph is `currentColor`.
+ */
+
+/** Style — the tilted style card with its dot, two slivers behind it. */
 export const IconStyle = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <path d="M12 3.5c4.7 0 8.5 3.4 8.5 7.6 0 2.6-2.1 4.7-4.7 4.7h-1.7a1.9 1.9 0 0 0-1.4 3.2c.3.4.5.8.5 1.3 0 .7-.6 1.2-1.3 1.2-4.6-.1-8.4-3.9-8.4-8.5S7.3 3.5 12 3.5Z" />
-    <circle cx="8" cy="9" r="1.1" fill="currentColor" strokeWidth="0" />
-    <circle cx="12.5" cy="7" r="1.1" fill="currentColor" strokeWidth="0" />
-    <circle cx="16.4" cy="9.6" r="1.1" fill="currentColor" strokeWidth="0" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M2.53 19.65l1.34.56v-9.03l-2.43 5.86c-.41 1.02.08 2.19 1.09 2.61zM22.03 15.95L17.07 3.98c-.31-.75-1.04-1.21-1.81-1.23-.26 0-.53.04-.79.15L7.1 5.95c-.75.31-1.21 1.03-1.23 1.8-.01.27.04.54.15.8l4.96 11.97c.31.76 1.05 1.22 1.83 1.23.26 0 .52-.05.77-.15l7.36-3.05c1.02-.42 1.51-1.59 1.09-2.6zM7.88 8.75c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM5.88 19.75c0 1.1.9 2 2 2h1.45l-3.45-8.34v6.34z" />
   </svg>
 )
 
-/** Puzzle piece — integrations. */
+/** Extension — the puzzle piece. Integrations. */
 export const IconExtension = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <path d="M9.5 4.5a2 2 0 1 1 4 0h3a1.5 1.5 0 0 1 1.5 1.5v3a2 2 0 1 1 0 4v3a1.5 1.5 0 0 1-1.5 1.5h-3.2a2 2 0 1 0-3.6 0H6.5A1.5 1.5 0 0 1 5 16v-3.2a2 2 0 1 1 0-3.6V6A1.5 1.5 0 0 1 6.5 4.5h3Z" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z" />
   </svg>
 )
 
+/** Analytics — the chart plate, its three bars cut OUT of the fill (evenodd). */
 export const IconAnalytics = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <rect x="4" y="4" width="16" height="16" rx="3" />
-    <path d="M8.5 15.5v-3M12 15.5V8.5M15.5 15.5v-5" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"
+    />
   </svg>
 )
 
+/**
+ * Cloud — the filled cloud, ink 24 × 16 inside the 24 frame. It has two homes: the rail
+ * button at 24, and the Cloud window's own brand mark at 25 (the board draws that one
+ * 25 × 18, which is this same ink). One glyph, so the two can never drift apart.
+ */
 export const IconCloud = ({ size = 24, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <path d="M7.5 18.5a4.2 4.2 0 0 1-.6-8.4 5.4 5.4 0 0 1 10.5 1.2 3.6 3.6 0 0 1-.7 7.2h-9.2Z" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
   </svg>
 )
 
@@ -706,5 +731,86 @@ export const IconPlusDisc = ({ size = 24, className }: IconProps) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden className={className}>
     <circle cx="12" cy="12" r="10" fill="currentColor" />
     <path d="M12 7.6v8.8M7.6 12h8.8" stroke="var(--gray-950)" strokeWidth="1.9" strokeLinecap="round" />
+  </svg>
+)
+
+/* ───────────────────────────── Cloud (Figma 30816:49569) ─────────────────────────────
+ *
+ * The Cloud window's glyphs. Same rule as everywhere in this file: figma.com asset URLs
+ * are refused by the session proxy, so each one is re-authored on the 24 grid against the
+ * board's render. The board frames them at 20 inside a 24 box — a FRAME is not a glyph
+ * (the lesson the copy icon taught twice), so the ink here spans ~20 of the 24 units and
+ * lands at ~16.7px when the menu renders them at `size={20}`.
+ */
+
+/** Database — the cylinder, ink 20 of 24. */
+export const IconDatabase = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <ellipse cx="12" cy="6.4" rx="8" ry="3.4" />
+    <path d="M4 6.4v11.2c0 1.9 3.6 3.4 8 3.4s8-1.5 8-3.4V6.4" />
+    <path d="M4 12c0 1.9 3.6 3.4 8 3.4s8-1.5 8-3.4" />
+  </svg>
+)
+
+/** Emails — the envelope. */
+export const IconMail = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="2.6" y="5" width="18.8" height="14" rx="2.6" />
+    <path d="m3.6 7 7.1 5.1a2.2 2.2 0 0 0 2.6 0L20.4 7" />
+  </svg>
+)
+
+/** Secrets — a key, ring left, teeth right (the board draws it lying down). */
+export const IconSecrets = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="6.6" cy="12" r="4" />
+    <path d="M10.6 12h10.8" />
+    <path d="M18 12v3.4M14.6 12v2.6" />
+  </svg>
+)
+
+/** Users — two people, the second half-hidden behind the first. */
+export const IconUsers = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="9.4" cy="8.2" r="3.6" />
+    <path d="M2.8 20.2a6.6 6.6 0 0 1 13.2 0" />
+    <path d="M16.4 5.1a3.6 3.6 0 0 1 0 6.9" />
+    <path d="M18.2 14.6a6.6 6.6 0 0 1 3 5.6" />
+  </svg>
+)
+
+/** Storage — the archive box: lid, body, handle. */
+export const IconStorage = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="2.6" y="3.6" width="18.8" height="5" rx="1.8" />
+    <path d="M4.4 8.6v9.8a2 2 0 0 0 2 2h11.2a2 2 0 0 0 2-2V8.6" />
+    <path d="M9.6 12.6h4.8" />
+  </svg>
+)
+
+/** The header's left button: a funnel. */
+export const IconFilter = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M3.4 5.2h17.2l-6.7 7.9v5.6l-3.8 2.1v-7.7z" />
+  </svg>
+)
+
+/**
+ * The design system's `Add` — a bare plus on the 24 frame. `IconPlus` next to it is the
+ * composer's 13px mark and keeps its own proportions; this one is the kit's 24 glyph.
+ */
+export const IconAdd = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+)
+
+/** Row action: delete. */
+export const IconTrash = ({ size = 24, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4.2 6.6h15.6" />
+    <path d="M9.4 6.6V4.9a1.3 1.3 0 0 1 1.3-1.3h2.6a1.3 1.3 0 0 1 1.3 1.3v1.7" />
+    <path d="M6.3 6.6 7 19.1a1.9 1.9 0 0 0 1.9 1.8h6.2a1.9 1.9 0 0 0 1.9-1.8l.7-12.5" />
+    <path d="M10.4 10.2v7M13.6 10.2v7" />
   </svg>
 )
