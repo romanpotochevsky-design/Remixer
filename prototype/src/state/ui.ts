@@ -47,6 +47,20 @@ export type Surface =
    */
   | 'cloud'
 
+/**
+ * The viewport box of the control a surface was opened FROM — the rail's Cloud button, the
+ * topbar's domain chip, the plan card's `Review`. The canvas pane unfolds out of this box and
+ * folds back into it (App.tsx `CanvasPane`, motion.ts `canvasPane`). A surface put up by a
+ * scenario or a link has no press behind it and passes null: the pane then grows from the
+ * middle of the canvas.
+ */
+export type SurfaceFrom = { x: number; y: number; w: number; h: number }
+/** The box of the control under the pointer, for `openSurface` / `openDomains` / `reviewPlan`. */
+export const fromRect = (el: Element): SurfaceFrom => {
+  const r = el.getBoundingClientRect()
+  return { x: r.x, y: r.y, w: r.width, h: r.height }
+}
+
 /** Steps inside the domains surface. Kept here (not in world): it is navigation. */
 export type DomainScreen =
   | 'home'      // universal field + AI suggestions (the default empty state)
@@ -266,6 +280,12 @@ interface UIStore {
   /** Bumped by `settleAttachedTile` — see it. */
   tileSettle: number
   surface: Surface
+  /**
+   * Where the current surface came from (see `SurfaceFrom`). Session state, not world: it
+   * describes a gesture, and a restored page has no gesture to restore. Kept through
+   * `closeSurface` — the pane's own copy is what its exit reads anyway (captured at mount).
+   */
+  surfaceFrom: SurfaceFrom | null
   domainScreen: DomainScreen
   /** The domain the user is acting on inside the domains surface. */
   activeDomain: string | null
@@ -361,8 +381,9 @@ interface UIStore {
   setPreviewOpen: (open: boolean) => void
   togglePlanTall: () => void
   togglePreview: () => void
-  openSurface: (s: Surface) => void
-  openDomains: (screen?: DomainScreen, domain?: string | null) => void
+  /** `from` is the pressed control's box — the pane unfolds from it; omit for a press-less open. */
+  openSurface: (s: Surface, from?: SurfaceFrom | null) => void
+  openDomains: (screen?: DomainScreen, domain?: string | null, from?: SurfaceFrom | null) => void
   goDomains: (screen: DomainScreen, domain?: string | null) => void
   openDomainModal: (kind: DomainModalKind, domain: string) => void
   closeDomainModal: () => void
@@ -394,6 +415,7 @@ export const useUI = create<UIStore>((set, get) => ({
   attachedTemplate: null,
   tplFlight: null,
   surface: 'preview',
+  surfaceFrom: null,
   domainScreen: 'home',
   activeDomain: null,
   domainModal: null,
@@ -504,9 +526,9 @@ export const useUI = create<UIStore>((set, get) => ({
   setPreviewOpen: (previewOpen) => set({ previewOpen }),
   togglePreview: () => set({ previewOpen: !get().previewOpen }),
   togglePlanTall: () => set({ planTall: !get().planTall }),
-  openSurface: (surface) => set({ surface, publishOpen: false }),
-  openDomains: (screen = 'home', domain = null) =>
-    set({ surface: 'domains', domainScreen: screen, activeDomain: domain, publishOpen: false }),
+  openSurface: (surface, from = null) => set({ surface, surfaceFrom: from, publishOpen: false }),
+  openDomains: (screen = 'home', domain = null, from = null) =>
+    set({ surface: 'domains', surfaceFrom: from, domainScreen: screen, activeDomain: domain, publishOpen: false }),
   goDomains: (screen, domain) =>
     set({ domainScreen: screen, ...(domain !== undefined ? { activeDomain: domain } : {}) }),
   openDomainModal: (kind, domain) => set({ domainModal: { kind, domain } }),

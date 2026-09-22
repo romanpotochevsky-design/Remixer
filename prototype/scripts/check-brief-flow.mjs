@@ -3069,19 +3069,23 @@ check('…and the typed prompt is built as given', await cardUp())
       const main = document.querySelector('main')
       const win = () => [...main.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Domains')?.closest('main > *')
       const scaleOf = (el) => { const m = getComputedStyle(el).transform; const a = m && m !== 'none' ? m.match(/matrix\(([^)]+)\)/) : null; return a ? +a[1].split(',')[0] : 1 }
+      /* the computed style collapses `inset(0px 0px 0px 0px …)` to `inset(0px …)`: expand the shorthand */
+      const clipOf = (el) => { const m = getComputedStyle(el).clipPath.match(/inset\(([^)]*)\)/); if (!m) return null; const v = m[1].split('round')[0].trim().split(/\s+/).map(parseFloat); return v.length === 1 ? [v[0], v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0], v[1]] : v.length === 3 ? [v[0], v[1], v[2], v[1]] : v }
+      const zOf = (el) => { const z = getComputedStyle(el).zIndex; return z === 'auto' ? 0 : +z }
       const samples = []
       const t0 = performance.now()
       const tick = () => {
         const now = performance.now()
         const w = win(); const site = document.querySelector('.site-stage'); const panel = document.querySelector('[role="dialog"][aria-label="Publish"]')
         const glint = panel?.querySelector('.glass-glint')
-        samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, winS: w ? scaleOf(w) : null, site: site ? +getComputedStyle(site.parentElement).opacity : null,
+        samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, winS: w ? scaleOf(w) : null, winClip: w ? clipOf(w) : null, winZ: w ? zOf(w) : null,
+          site: site ? +getComputedStyle(site.parentElement).opacity : null, siteZ: site ? zOf(site.parentElement) : null,
           panel: panel ? +getComputedStyle(panel).opacity : null, panelS: panel ? scaleOf(panel) : null, glint: glint ? +getComputedStyle(glint).opacity : null })
-        if (now - t0 < 1500) requestAnimationFrame(tick)
+        if (now - t0 < 1900) requestAnimationFrame(tick)
       }
       requestAnimationFrame(tick)
       ;[...document.querySelectorAll('[role="dialog"] button')].filter((b) => /Connect domain/.test(b.textContent)).pop().click()
-      await new Promise((r) => setTimeout(r, 1600))
+      await new Promise((r) => setTimeout(r, 2000))
       return samples
     })
     const winFrames = hand.filter((s) => s.win !== null)
@@ -3092,15 +3096,27 @@ check('…and the typed prompt is built as given', await cardUp())
     const monoDown = winFrames.every((s, i) => i === 0 || s.win <= winFrames[i - 1].win + 0.001)
     const monoUp = siteFrames.every((s, i) => i === 0 || s.site >= siteFrames[i - 1].site - 0.001)
     const panelMono = hand.filter((s) => s.panel !== null).every((s, i, a) => i === 0 || s.panel >= a[i - 1].panel - 0.001)
-    /* the window closes the way the fullscreen sheet does: fading AND shrinking to .975 (motion.ts
-       `surfaceWindow`, 17.09.2026 — «сначала анимация закрытия окна Domains»), not a 1 % nobody sees */
+    /*
+     * THE PANE FOLDS BACK INTO ITS BUTTON (22.09.2026, motion.ts `canvasPane`; before that the window
+     * faded and shrank to .975 under `mode="wait"`). Its CLIP travels — the inset the window was opened
+     * from, or the middle-of-the-canvas fallback when no press stands behind it (this window was opened
+     * by the topbar chip, so the clip heads up to the chip) — and its opacity is spent LAST, over the
+     * final 200 ms of 360, so the leaving window is never a large translucent thing over the site.
+     */
     const winShrunk = winFrames.length > 0 && winFrames[winFrames.length - 1].winS <= 0.985
-    check(`Connect: the Domains window LEAVES over several frames, fading and shrinking toward .975, never flashing back — ${label}`,
-      winFrames.length >= 4 && winFrames[winFrames.length - 1].win < 0.4 && monoDown && !!winGone && winShrunk,
-      JSON.stringify({ frames: winFrames.length, last: winFrames[winFrames.length - 1]?.win, lastScale: winFrames[winFrames.length - 1]?.winS, mono: monoDown, goneAt: winGone?.t }))
-    check(`…the site fades back in AFTER the window is gone, monotonically — ${label}`,
-      !!winGone && siteFrames.length >= 4 && siteFrames[0].t >= winGone.t - 1 && siteFrames[0].site < 0.3 && !!siteFull && monoUp,
-      JSON.stringify({ first: siteFrames[0], full: siteFull?.t, mono: monoUp }))
+    const clipMoved = winFrames.length > 1 && winFrames[0].winClip !== null && winFrames[winFrames.length - 1].winClip !== null
+      && winFrames[winFrames.length - 1].winClip[3] > winFrames[0].winClip[3] + 100
+    const foldsBeforeFading = winFrames.filter((s) => s.win < 0.9).every((s) => s.winClip !== null && s.winClip[3] > 200)
+    check(`Connect: the Domains window LEAVES over several frames — its clip folding toward the chip that opened it, a hair smaller, dissolving only once it is small, never flashing back — ${label}`,
+      winFrames.length >= 4 && winFrames[winFrames.length - 1].win < 0.4 && monoDown && !!winGone && winShrunk && clipMoved && foldsBeforeFading,
+      JSON.stringify({ frames: winFrames.length, last: winFrames[winFrames.length - 1]?.win, lastScale: winFrames[winFrames.length - 1]?.winS, clip0: winFrames[0]?.winClip, clipLast: winFrames[winFrames.length - 1]?.winClip, mono: monoDown, goneAt: winGone?.t, foldsBeforeFading }))
+    /* the site is one layer DOWN and comes forward under the folding window from the first frame: its
+       opacity rises monotonically, and the window stays above it (z) so the two never draw through
+       each other — the clip decides which one a pixel shows */
+    check(`…the site comes forward UNDER it from the first frame — below it in z, opacity rising monotonically to 1 — ${label}`,
+      siteFrames.length >= 4 && siteFrames[0].t <= 40 && siteFrames[0].site < 0.3 && !!siteFull && monoUp
+        && winFrames.every((s) => s.winZ > s.siteZ),
+      JSON.stringify({ first: siteFrames[0], full: siteFull?.t, mono: monoUp, z: [winFrames[0]?.winZ, winFrames[0]?.siteZ] }))
     check(`…and the Publish panel arrives only once the site stands, then springs in without a blink — ${label}`,
       !!panelFirst && !!siteFull && panelFirst.t >= siteFull.t - 1 && panelFirst.panel < 0.2 && panelMono && hand[hand.length - 1].panel === 1,
       JSON.stringify({ panelAt: panelFirst?.t, siteFullAt: siteFull?.t, first: panelFirst?.panel, mono: panelMono, last: hand[hand.length - 1].panel }))
@@ -4144,6 +4160,122 @@ await shot('30-plan-review')
     && /Nothing here yet/.test(await p.$eval('[data-cloud-window]', (e) => e.innerText)))
   await p.evaluate(() => [...document.querySelectorAll('[data-cloud-db]')][0].click())
   await p.waitForTimeout(300)
+
+  /*
+   * THE PANE UNFOLDS FROM THE BUTTON THAT OPENED IT (designer, 22.09.2026, from two recordings of the
+   * live editor's site ⇄ Cloud switch: «сделать эту анимацию перехода намного прикольнее, плавнее и более
+   * стильно… в Apple liquid glass стиле… не навязчивую, не бьёт по глазам»). motion.ts `canvasPane` /
+   * `canvasSite`, App.tsx `CanvasPane`. Film both directions and hold them to the law:
+   *  · the pane's CLIP starts at the rail button's footprint (outside the canvas, to the right) and lands
+   *    on the canvas on a spring whose overshoot stays outside the box; its transform origin is the
+   *    button's centre; it is solid within 140 ms (a sliding pane, not a fade);
+   *  · the site is one layer DOWN (z) and recedes under it — scale to .955, fading late — never drawn
+   *    through the pane;
+   *  · the rim glint is the module's violet; the contents cascade in after the glass (menu, header,
+   *    rows top-down) and `data-pane-fresh` is gone by 1.2 s with nothing left mid-flight;
+   *  · closing folds the clip back to the same footprint, dissolving only once small, while the site
+   *    comes forward underneath from the first frame.
+   */
+  const filmCanvas = (ms) => p.evaluate(async (ms) => {
+    /* the computed style collapses `inset(0px 0px 0px 0px …)` to `inset(0px …)`: expand the shorthand */
+    const inset = (el) => { const m = getComputedStyle(el).clipPath.match(/inset\(([^)]*)\)/); if (!m) return null; const v = m[1].split('round')[0].trim().split(/\s+/).map(parseFloat); return v.length === 1 ? [v[0], v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0], v[1]] : v.length === 3 ? [v[0], v[1], v[2], v[1]] : v }
+    const scaleOf = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return 1; const a = m.match(/matrix\(([^)]+)\)/); return a ? +(+a[1].split(',')[0]).toFixed(4) : 1 }
+    const zOf = (el) => { const z = getComputedStyle(el).zIndex; return z === 'auto' ? 0 : +z }
+    const samples = []; const t0 = performance.now(); let last = t0
+    const tick = () => {
+      const now = performance.now()
+      const pane = document.querySelector('[data-canvas-pane]'); const site = document.querySelector('[data-canvas-site]')
+      const glint = pane?.querySelector('.glass-glint')
+      const rows = [...document.querySelectorAll('[data-cloud-row]')].map((r) => +(+getComputedStyle(r).opacity).toFixed(2))
+      samples.push({ t: Math.round(now - t0), dt: Math.round(now - last),
+        pane: pane ? +(+getComputedStyle(pane).opacity).toFixed(3) : null, paneS: pane ? scaleOf(pane) : null, clip: pane ? inset(pane) : null, paneZ: pane ? zOf(pane) : null,
+        origin: pane ? getComputedStyle(pane).transformOrigin : null, fresh: pane ? pane.hasAttribute('data-pane-fresh') : null,
+        site: site ? +(+getComputedStyle(site).opacity).toFixed(3) : null, siteS: site ? scaleOf(site) : null, siteZ: site ? zOf(site) : null,
+        glint: glint ? +(+getComputedStyle(glint).opacity).toFixed(2) : null, rows: rows.length ? rows : null,
+        tile: getComputedStyle(document.querySelector('nav.arrive-rail [aria-label="Cloud"]')).backgroundColor })
+      last = now
+      if (now - t0 < ms) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    await new Promise((r) => setTimeout(r, ms + 80))
+    return samples
+  }, ms)
+  const geom = await p.evaluate(() => {
+    const main = document.querySelector('main'); const r = main.getBoundingClientRect(); const cs = getComputedStyle(main)
+    const box = { x: r.x + parseFloat(cs.paddingLeft), y: r.y + parseFloat(cs.paddingTop), w: r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), h: r.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) }
+    const b = document.querySelector('nav.arrive-rail [aria-label="Cloud"]').getBoundingClientRect()
+    return { box, btn: { x: b.x, y: b.y, w: b.width, h: b.height }, foot: [b.y - box.y, box.x + box.w - (b.x + b.width), box.y + box.h - (b.y + b.height), b.x - box.x] }
+  })
+  const near = (a, b, tol) => Math.abs(a - b) <= tol
+  /* CLOSE first (the window stands open here): Escape, film. The pointer is parked off the rail
+     before the film: a button under the cursor wears its hover wash once the tile goes dark, and
+     that 8 % white would read as "the tile never went dark" (the lesson of the Escape check below). */
+  await p.mouse.move(800, 800)
+  await p.waitForTimeout(150)
+  const [closeFilm] = await Promise.all([filmCanvas(1300), p.keyboard.press('Escape')])
+  const cP = closeFilm.filter((s) => s.pane !== null), cS = closeFilm.filter((s) => s.site !== null)
+  const cLeft = cP.map((s) => s.clip?.[3] ?? null)
+  const cMono = cLeft.every((v, i) => v !== null && (i === 0 || v >= cLeft[i - 1] - 0.5))
+  const foldsFirst = cP.filter((s) => s.pane < 0.9).every((s) => s.clip[3] > 400)
+  check('Cloud closes by FOLDING back into the rail button: the clip’s left edge travels monotonically from the canvas edge to the button’s footprint, and the pane dissolves only once it is small',
+    cP.length >= 8 && cLeft[0] < 12 && near(cLeft[cLeft.length - 1], geom.foot[3], 6) && cMono && foldsFirst && cP[cP.length - 1].pane < 0.12 && cP[cP.length - 1].paneS <= 0.985 && !!closeFilm.find((s) => s.pane === null),
+    JSON.stringify({ frames: cP.length, left0: cLeft[0], leftLast: cLeft[cLeft.length - 1], want: geom.foot[3], mono: cMono, foldsFirst, lastO: cP[cP.length - 1]?.pane, lastS: cP[cP.length - 1]?.paneS }))
+  const cUp = cS.every((s, i) => i === 0 || s.site >= cS[i - 1].site - 0.001)
+  const cScaleUp = cS.every((s, i) => i === 0 || s.siteS >= cS[i - 1].siteS - 0.0005)
+  check('…while the site comes forward UNDER it from the first frame — below in z, from .955 and dark, rising to 1 on a soft spring with no visible overshoot',
+    cS.length >= 20 && cS[0].t <= 40 && cS[0].site < 0.2 && near(cS[0].siteS, 0.955, 0.006) && cUp && cScaleUp && cS[cS.length - 1].site === 1 && near(cS[cS.length - 1].siteS, 1, 0.002) && Math.max(...cS.map((s) => s.siteS)) <= 1.003
+      && cP.every((s) => s.paneZ > (cS.find((x) => x.t === s.t)?.siteZ ?? 0)),
+    JSON.stringify({ first: cS[0], last: cS[cS.length - 1], mono: cUp, scaleMono: cScaleUp, maxS: Math.max(...cS.map((s) => s.siteS)), z: [cP[0]?.paneZ, cS[0]?.siteZ] }))
+  /* the button lets go of the window only once the window is back in it (App.tsx `closingTile`) */
+  const litWhileFolding = cP.filter((s) => s.t <= 300).every((s) => s.tile === 'rgba(149, 117, 205, 0.12)')
+  const darkAfter = closeFilm.filter((s) => s.t >= 700).every((s) => s.tile === 'rgba(0, 0, 0, 0)')
+  check('…and the rail tile stays lit for the whole fold — still the module’s violet at 300 ms, dark by 700 — so the window folds into a button that is still holding it',
+    litWhileFolding && darkAfter && cP.filter((s) => s.t <= 300).length >= 10,
+    JSON.stringify({ at300: cP.filter((s) => s.t <= 300).pop()?.tile, at700: closeFilm.find((s) => s.t >= 700)?.tile }))
+  await p.waitForTimeout(500)
+  /* OPEN: press the button, film */
+  const [openFilm] = await Promise.all([filmCanvas(1300), p.evaluate(() => document.querySelector('nav.arrive-rail [aria-label="Cloud"]').click())])
+  const oP = openFilm.filter((s) => s.pane !== null), oS = openFilm.filter((s) => s.site !== null)
+  const oLeft = oP.map((s) => s.clip?.[3] ?? null)
+  const landed = oP.find((s) => s.clip[3] <= 0.5)
+  /* monotonic UNTIL it lands: past the edge the spring dips outside the box and comes back to 0 —
+     a rise of a few px that is the overshoot returning, not the edge retreating */
+  const oMonoDown = oLeft.every((v, i) => v !== null && (i === 0 || (landed && oP[i].t > landed.t) || v <= oLeft[i - 1] + 0.5))
+  /* the overshoot is measured AFTER landing: before it the right inset is legitimately negative — the
+     button's footprint lies beyond the canvas's right edge, and the clip starts there */
+  const minInset = landed ? Math.min(...oP.filter((s) => s.t >= landed.t).map((s) => Math.min(...s.clip))) : 0
+  const originWant = `${geom.btn.x + geom.btn.w / 2 - geom.box.x}px ${geom.btn.y + geom.btn.h / 2 - geom.box.y}px`
+  const originGot = oP[0]?.origin?.split(' ').map(parseFloat), originW = originWant.split(' ').map(parseFloat)
+  check('Cloud opens by UNFOLDING from the rail button: the clip starts at the button’s footprint beyond the canvas’s right edge, its left edge sweeps monotonically to the canvas edge on a spring whose overshoot stays outside the box (never more than 8 px), and the transform origin is the button’s centre',
+    oP.length >= 8 && oLeft[0] > geom.box.w - 80 && oP[0].clip[1] < 0 && oMonoDown && !!landed && landed.t < 520 && minInset > -8 && near(oP[oP.length - 1].clip[3], 0, 0.5)
+      && !!originGot && near(originGot[0], originW[0], 1.5) && near(originGot[1], originW[1], 1.5),
+    JSON.stringify({ frames: oP.length, left0: oLeft[0], right0: oP[0]?.clip[1], boxW: geom.box.w, mono: oMonoDown, landedAt: landed?.t, minInset, lastLeft: oP[oP.length - 1]?.clip[3], origin: oP[0]?.origin, originWant }))
+  const solid = oP.find((s) => s.pane >= 0.95)
+  check('…it is solid glass within 140 ms (a pane sliding over the site, not a fade) and focuses onto place from 1.015 → 1',
+    !!solid && solid.t <= 140 && oP[0].paneS > 1.006 && oP[0].paneS <= 1.016 && near(oP[oP.length - 1].paneS, 1, 0.0015) && oP[oP.length - 1].pane === 1,
+    JSON.stringify({ solidAt: solid?.t, s0: oP[0]?.paneS, sLast: oP[oP.length - 1]?.paneS }))
+  const oDown = oS.every((s, i) => i === 0 || s.site <= oS[i - 1].site + 0.001)
+  check('…the site RECEDES under it — below in z, scale falling toward .955, fading late (still ≥ .8 while the pane covers half), gone within 480 ms',
+    /* the last SAMPLED frame of the site can sit anywhere on the tail of its fade (frames on the software
+       rasteriser are 17–50 ms apart): what is held is that it is already low and gone within 480 ms */
+    oS.length >= 12 && oS[0].site >= 0.99 && oDown && oS[oS.length - 1].siteS <= 0.962 && oS[oS.length - 1].site <= 0.35 && !!openFilm.find((s) => s.site === null && s.t < 480)
+      && oS.filter((s) => s.t <= 120).every((s) => s.site >= 0.8) && oP.every((s) => s.paneZ > (oS.find((x) => x.t === s.t)?.siteZ ?? 0)),
+    JSON.stringify({ frames: oS.length, at120: oS.filter((s) => s.t <= 120).pop(), last: oS[oS.length - 1], goneAt: openFilm.find((s) => s.site === null)?.t }))
+  const glintPeakO = Math.max(0, ...oP.map((s) => s.glint ?? 0)); const glintLastO = oP[oP.length - 1].glint
+  const glintShadow = await CSS('[data-canvas-pane] .glass-glint', 'boxShadow')
+  check('…its rim catches the light in the MODULE’S violet (149 117 205) — rising to full and on its way down by the end of the film',
+    /rgba\(149, 117, 205, 0\.24\)/.test(glintShadow) && glintPeakO > 0.9 && glintLastO !== null && glintLastO < 0.2,
+    JSON.stringify({ shadow: glintShadow.slice(0, 60), peak: glintPeakO, peakAt: oP.find((s) => s.glint === glintPeakO)?.t, last: glintLastO }))
+  const mid = oP.find((s) => s.t >= 380 && s.rows)
+  const allIn = oP.find((s) => s.rows && s.rows.every((o) => o >= 0.99))
+  check('…and the contents cascade in after the glass: at ~380 ms the first row is ahead of the last, every row is in by 950 ms, and `data-pane-fresh` is gone by 1.2 s with nothing left mid-flight',
+    !!mid && mid.rows[0] > mid.rows[mid.rows.length - 1] + 0.2 && !!allIn && allIn.t <= 950 && oP.find((s) => s.t <= 100)?.fresh === true
+      && (await p.$('[data-canvas-pane][data-pane-fresh]')) === null && (await p.$eval('[data-canvas-pane]', (e) => e.getAnimations({ subtree: true }).every((a) => a.playState === 'finished' || a.playState === 'idle' || !/pane-in/.test(a.animationName || '')))),
+    JSON.stringify({ mid: mid && { t: mid.t, rows: mid.rows }, allInAt: allIn?.t }))
+  const worst = Math.max(...openFilm.slice(1).map((s) => s.dt), ...closeFilm.slice(1).map((s) => s.dt))
+  check('…on frames that never stall (worst interval under 120 ms on the software rasteriser, both directions)', worst < 120, `${worst} ms`)
+  check('the rail buttons carry the house press bloom', (await p.$eval('nav.arrive-rail [aria-label="Cloud"]', (e) => e.classList.contains('press-bloom'))))
+  await p.waitForTimeout(400)
 
   /* out again */
   await p.keyboard.press('Escape')

@@ -14,7 +14,7 @@
  */
 import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest, type OutlineEdits } from '@/state/world'
 import type { Text } from '@/i18n'
-import { useUI, CHAT_MAX } from '@/state/ui'
+import { useUI, CHAT_MAX, type SurfaceFrom } from '@/state/ui'
 import { baselineThread, replyTo, streamDuration } from './thread'
 import {
   isWeakPrompt, BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS, briefAck, briefDone, OTHER,
@@ -391,10 +391,11 @@ function offerPlan() {
  */
 const PLAN_MEASURE = 864
 
-export function reviewPlan() {
+export function reviewPlan(from: SurfaceFrom | null = null) {
   const ui = useUI.getState()
   ui.setPreviewOpen(true)
-  ui.openSurface('plan')
+  /* `from` is the Review button's box: the document unfolds from it (App.tsx `CanvasPane`) */
+  ui.openSurface('plan', from)
   /* the rail's width is a token, so it is read rather than restated here */
   const rail = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail-w')) || 56
   const shell = typeof window === 'undefined' ? 0 : window.innerWidth - rail

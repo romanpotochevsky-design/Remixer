@@ -23,13 +23,17 @@
  * hairline as `rgba(9,9,11,0.08)`. In the dark theme those are #ffffff and 8% WHITE. The
  * same trap the brief panel, the checkout sheet and the Publish panel each paid for once.
  *
- * ⚠️ THE WINDOW'S OWN FILL IS #1f1f22 (`--gray-850`), and the evidence is the one opaque
- * number on the board: every row's action block fades `rgba(31,31,34,0) → #1f1f22`. A fade
- * that hides text has to END in the colour behind the text, and no ancestor of the row
- * carries a fill — so that literal IS the window body. (The Window node's own export is too
- * large to fetch and figma.com assets are refused by the proxy, so the frame's radius,
- * border and shadow are the house window chrome — radius 16, `--gray-800` hairline, the
- * same double shadow `DomainsSurface` has carried since 27085:106964.)
+ * ⚠️ TWO SURFACES, NOT ONE (corrected 22.09.2026 after the designer's «у тебя не все совпадает с
+ * макетом»). The window BASE (`Dashboard` 30816:52018) is 24 % black over `--gray-900` — the house
+ * window recipe `DomainsSurface` has carried since 27085:106964, radius 16, `--gray-800` hairline,
+ * the same double shadow. On it lies the PAGE SHEET (`Page content` 30816:55869): `--gray-900`,
+ * a 1px hairline of 8 % white along its top and a 6px radius at its top-right corner. The base
+ * shows exactly where the board shows it — behind the top bar and behind the menu column.
+ * The first build derived a single flat `--gray-850` from the one opaque literal in the leaves
+ * (the row-action fade `rgba(31,31,34,0) → #1f1f22`) and lost both the strip and the hairline:
+ * leaves carry no surfaces — those live on the wrappers, whose export had been skipped because
+ * it exceeded the MCP response size (it is saved to a file; slice it, do not route around it).
+ * The fade's `#1f1f22` is the mock's own slip (the sheet is #18181b): kept as drawn, flagged.
  *
  * ⚠️ THE PAGE'S `border-r` IS NOT DRAWN HERE. The board puts a `Gray/800` right border on
  * the Page, whose right edge IS the window's right edge — so in CSS it would land on top of
@@ -58,7 +62,7 @@
  *   right rail and on Publish). On the board's 2560 screen it scrolls; on ours it usually
  *   does too — the row wants 1553.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { useUI } from '@/state/ui'
 import { useT, type Text } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
@@ -150,13 +154,15 @@ function TableRow({ label, on, onClick }: { label: string; on: boolean; onClick:
 
 /* ───────────────────────────────────── the table ─────────────────────────────────────── */
 
-function Row({ row, last, t }: { row: CloudRow; last: boolean; t: (x: Text) => string }) {
+function Row({ row, i, last, t }: { row: CloudRow; i: number; last: boolean; t: (x: Text) => string }) {
   return (
     <div
       data-cloud-row
-      /* the floor the columns add up to; above it the last column takes the slack */
-      style={{ minWidth: ROW_W }}
-      className={`flex h-[72px] w-full items-center pl-4 pr-2${last ? '' : ' border-b border-[var(--gray-750)]'}`}
+      /* the floor the columns add up to; above it the last column takes the slack. `--i` is the
+         row's place in the cascade: rows come in one after another, top-down (index.css
+         `.pane-in-row`) — a beat after the window itself when it has just unfolded. */
+      style={{ minWidth: ROW_W, '--i': i } as CSSProperties}
+      className={`pane-in-row flex h-[72px] w-full items-center pl-4 pr-2${last ? '' : ' border-b border-[var(--gray-750)]'}`}
     >
       {/* the thumbnail: a white 48 tile with the 42 image inside it, as drawn. We ship no
           photographs, so the "image" is the dish's own tint and mark from the site. */}
@@ -361,7 +367,7 @@ export function CloudSurface() {
         {/* Conteiner 256: 8% white on 8% white — the stroke sits INSIDE the 256 on the
             board, so it is an inset shadow here and the box stays 256 (the law this
             project has paid for on every card it has drawn). */}
-        <div data-cloud-menu className="flex min-h-0 flex-1 flex-col rounded-[14px] bg-[var(--white-100)] shadow-[inset_0_0_0_1px_var(--white-100)]">
+        <div data-cloud-menu className="pane-in-menu flex min-h-0 flex-1 flex-col rounded-[14px] bg-[var(--white-100)] shadow-[inset_0_0_0_1px_var(--white-100)]">
           <div className="flex h-[84px] flex-none items-center gap-2.5 pl-5">
             <IconCloud size={25} className="flex-none text-[#7e57c2]" />
             <span className="font-display text-[24px] font-bold leading-[1.2] text-white">Cloud</span>
@@ -438,7 +444,7 @@ export function CloudSurface() {
         <div className="flex min-h-0 flex-1 flex-col rounded-tr-[6px] border-t border-[var(--white-100)] bg-[var(--gray-900)]">
           {/* header: title · search · actions, then the column headings */}
           <div className="flex-none">
-            <div className="flex items-center pl-9 pr-6">
+            <div className="pane-in-head flex items-center pl-9 pr-6">
               {/* 25 above and 24 below a 38.4 line make the board's 87 — a hair lower than centred */}
               <h2 className="flex-none pb-6 pt-[25px] font-display text-[32px] font-bold leading-[1.2] text-white">{title}</h2>
               <div className="ml-14 flex min-w-0 flex-1 justify-center">
@@ -475,7 +481,7 @@ export function CloudSurface() {
             </div>
 
             {table && (
-              <div data-cloud-headings className="h-[47px] overflow-hidden border-t border-[var(--gray-750)]">
+              <div data-cloud-headings className="pane-in-cols h-[47px] overflow-hidden border-t border-[var(--gray-750)]">
                 <div ref={headRow} className="flex h-full w-max min-w-full items-center pl-9">
                   {HEADINGS.map((h) => (
                     <span
@@ -503,7 +509,7 @@ export function CloudSurface() {
                         column at ROW_W, which is what the scroller needs. */}
                     <div className="flex w-max min-w-full flex-col">
                       {rows.map((r, i) => (
-                        <Row key={r.id} row={r} last={i === rows.length - 1} t={t} />
+                        <Row key={r.id} row={r} i={i} last={i === rows.length - 1} t={t} />
                       ))}
                     </div>
                   </div>

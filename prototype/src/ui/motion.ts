@@ -752,35 +752,121 @@ export const surface = {
 }
 
 /*
- * THE CANVAS HANDS OVER ONE THING AT A TIME (designer, 16.09.2026, from a recording of the
- * Connect press: «сейчас мы закрываем окно с доменами после нажатия на Connect… у этого нет
- * анимации, оно просто происходит в один кадр»). The canvas swap in App.tsx used to be a bare
- * conditional: a surface MOUNTED with its own entrance, but UNMOUNTED between two frames, and the
- * site came back the same instant — traced: at the first frame after the press the window was
- * gone and the site stood at opacity 1, while the Publish panel had already started its spring
- * under the still-leaving sheet. Three things in one frame.
+ * THE CANVAS: A PANE UNFOLDS FROM THE BUTTON THAT OPENED IT (designer, 22.09.2026, from two
+ * recordings of the live editor's site ⇄ Cloud switch: «есть такая типа прикольная анимация как одно
+ * окно прикольно уезжает, а другое приезжает… сделать эту анимацию перехода намного прикольнее,
+ * плавнее и более стильно, чтобы… вписывалась в наш концепт Apple liquid glass… не навязчивую…
+ * не бьёт по глазам»).
  *
- * Now the swap runs under `AnimatePresence mode="wait"`: the leaving screen goes first (its own
- * `exit`, 140 ms, flat — the house rule for leaving), THEN the next one comes — the site with
- * this plain fade, a surface with its own entrance — and the Publish panel, when a press has
- * asked for it, holds until the site is back (App.tsx `hold`), so the eye follows one hand-over,
- * not a collision. Opacity only on the site: it is the ground returning, not an object arriving.
+ * WHAT THE LIVE PRODUCT DOES, measured frame by frame (52-fps recordings, scratchpad/live-editor/tr-*):
+ * a vertical push. The site shrinks to 92 % over ~100 ms, holds, then LEAVES UPWARD in 4–5 frames
+ * (70–80 ms, accelerating: its top at 97 → 125 → 178 → 256 → 359 on a 1400-wide frame); the Cloud
+ * window rides in from below the same instant and then GROWS 92 → 100 % over ~250 ms, easing out.
+ * Closing mirrors it: the site drops in from above, decelerating over ~180 ms, then grows. ~500 ms in
+ * all. It reads as a carousel — two cards on a vertical belt — and what keeps it at "норм" is that the
+ * belt is a hard slide with no spring, the two moves (slide, then grow) are separately visible, and
+ * nothing connects the window to the button that asked for it.
+ *
+ * OURS — three ideas, one motion:
+ *  1. IT GROWS FROM WHAT YOU TOUCHED (rule 2, taken literally). The pane stands at its final size and
+ *     place from the first frame; what animates is its CLIP — `clip-path: inset(… round 16px)` from
+ *     the trigger's footprint to the whole canvas. The Cloud button is a 48 × 48 tile at radius 16; the
+ *     window is 1983 × 1112 at radius 16 — one shape at two sizes, so the rectangle simply unfolds out
+ *     from under the rail, corners intact all the way (a scale would stretch them into ellipses). A
+ *     clip is also what keeps the window's contents crisp and undistorted: the frame moves, the
+ *     picture inside does not — it is revealed.
+ *  2. THE SITE RECEDES; IT IS NOT PUSHED OFF. The canvas is a stack in depth, not a belt: the pane comes
+ *     forward OVER the site, and the site steps back into the dark under it — scale .955, 10 px down,
+ *     fading late (ease-in), so the strip the pane has not yet covered is still the site, dimming.
+ *     No crossfade: the pane is opaque and its clip is a hard edge, so at every pixel it is either the
+ *     pane or the site, never the two drawn through each other (the dock's double-exposure lesson).
+ *     Both stand in the same box (`absolute`), the pane above (`z-10`), the site below.
+ *  3. LIQUID GLASS, the house version. A spring on the clip (.62 s, bounce .12) — its overshoot lands
+ *     OUTSIDE the box, so the visible edge decelerates into place and never bounces back; the
+ *     contents focus onto the glass from slightly large (1.015 → 1, origin at the button — Panel
+ *     Arrival's 1.03, scaled to a 1700-wide surface); the rim catches the light (`.glass-glint`) in
+ *     the MODULE'S OWN TONE — the Cloud window is lit violet by the button that opened it. Inside, the
+ *     window fills in a beat later (index.css «THE PANE THAT UNFOLDS»: menu from the left, header,
+ *     headings, rows cascading) — rule 3, the contents lag the container.
+ *
+ * Leaving is rule 4: the clip folds back into the button over 360 ms, no bounce, the pane dissolving
+ * over its last 200 ms so the patch melts into the tile rather than snapping off; the site comes
+ * forward under it (.955 → 1 on a soft spring, opacity 260 ms) — it was there all along, one layer
+ * down. The Publish panel, when a press has asked for it, still holds until the site stands (App.tsx
+ * `hold`), and everything here runs on the main thread (`onUpdate` stubs): a composited fade hands
+ * the element back at its pre-animation inline opacity for one frame — the three blinks traced on
+ * 16.09.2026 — and main-thread animations write their last frame themselves.
+ *
+ * ⚠️ The pane's `custom` is captured ONCE, at mount (App.tsx `CanvasPane`): a pane must fold back to
+ * the button it came from, not to whatever opened the next one. ⚠️ The clip's inset is in the pane's
+ * own pixels (both ends), never `%` at one end and `px` at the other — motion cannot mix the units.
  */
-export const siteBack = {
+/** Per-pane geometry, in the pane's own pixels: where the clip starts/ends and the transform origin. */
+export type PaneCustom = { from: string; rest: string; origin: string }
+/** The unfold: one spring for the clip and the focus, whose overshoot lands outside the box. */
+export const PANE_OPEN = { type: 'spring', duration: 0.62, bounce: 0.12 } as const
+/** The fold: faster, no bounce (rule 4). `PANE_CLOSE_MS` is the same number for the rail tile that
+ *  stays lit until the pane has folded back into it (App.tsx `closingTile`). */
+export const PANE_CLOSE_MS = 360
+export const PANE_CLOSE = { duration: PANE_CLOSE_MS / 1000, ease: [0.4, 0, 0.2, 1] } as const
+/** How long the pane counts as "just arrived" for its contents' cascade (index.css `[data-pane-fresh]`). */
+export const PANE_FRESH_MS = 1100
+export const canvasPane = {
+  initial: (c: PaneCustom) => ({ clipPath: c.from, opacity: 0, scale: 1.015 }),
+  animate: (c: PaneCustom) => ({
+    clipPath: c.rest,
+    opacity: 1,
+    scale: 1,
+    /* the pane is opaque glass sliding over the site, so it is solid almost at once: the short ramp
+       is for a clip that starts INSIDE the canvas (the middle-of-the-canvas fallback, the chip
+       above the top edge), where a hard-edged patch popping in would be a cut. Traced: a longer
+       ramp left the pane's leading strip translucent over the site for ~60 ms — a crossfade. */
+    transition: { clipPath: PANE_OPEN, scale: PANE_OPEN, opacity: { duration: 0.12, ease: [0.2, 0, 0, 1] } },
+  }),
+  exit: (c: PaneCustom) => ({
+    clipPath: c.from,
+    opacity: 0,
+    scale: 0.98,
+    transition: {
+      clipPath: PANE_CLOSE,
+      scale: PANE_CLOSE,
+      /* it folds first and dissolves last: a fade while it is still large would be a crossfade */
+      opacity: { duration: 0.2, delay: 0.16, ease: [0.4, 0, 1, 1] },
+    },
+  }),
+}
+/** The site as the ground the pane stands on: back into the dark under an arriving pane, forward
+ *  under a leaving one. */
+export const SITE_FORWARD = { type: 'spring', duration: 0.6, bounce: 0.08 } as const
+export const canvasSite = {
+  initial: { opacity: 0, scale: 0.955, y: 10 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { scale: SITE_FORWARD, y: SITE_FORWARD, opacity: { duration: 0.26, ease: [0.2, 0, 0, 1] } },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.955,
+    y: 10,
+    /* the pane covers it from the right as it goes; the fade is late so the uncovered strip is
+       still the site, dimming — not a hole */
+    transition: { duration: 0.4, ease: [0.4, 0, 0.6, 1], opacity: { duration: 0.4, ease: [0.7, 0, 1, 1] } },
+  },
+} as const
+/* Reduced motion: no clip, no scale, no offset — the pane and the site simply cross-dissolve in
+   place, the leaving one first (the pane's fade is delayed by nothing here: with no clip there is no
+   fold to wait for). */
+export const canvasPaneFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.24, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } },
+} as const
+export const canvasSiteFade = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.22, ease: [0.2, 0, 0, 1] } },
   exit: { opacity: 0, transition: EXIT },
-} as const
-/** The Domains window as ONE object leaving — frame, bar and sheet together (its entrance is the
- *  sheet's own `surface` rise, unchanged; the wrapper only owns the exit). It leaves the way the
- *  other full-canvas surface does (`fullscreenSheet.exit`): the house 140 ms, shrinking to .975 —
- *  on a ~1600px window that is a ~40px sweep at the far corners, enough to read as the window
- *  closing rather than blinking off (designer, 17.09.2026: «сначала анимация закрытия окна
- *  Domains»); the 1 % it had before was a fade with a shrink nobody could see. */
-export const surfaceWindow = {
-  initial: { opacity: 1 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0, scale: 0.975, transition: EXIT },
 } as const
 
 /*

@@ -13,3 +13,11 @@ prototype/*.tmp.mjs
 prototype/scratchpad/swap/frames/
 prototype/scratchpad/publish-shrink/frames/
 prototype/scratchpad/connect-exit/frames/
+
+# Raw frame dumps from the designer's two live-editor recordings (22.09.2026) and the
+# slow-motion stills of the canvas hand-over: the contact sheets that carry the analysis
+# are committed next to them (sheet-*.jpg), the ~16 MB of individual frames are not.
+prototype/scratchpad/live-editor/scan-*/
+prototype/scratchpad/live-editor/tr-*/
+prototype/scratchpad/pane-unfold/slow-*.png
+prototype/scratchpad/pane-unfold/phase-*.png

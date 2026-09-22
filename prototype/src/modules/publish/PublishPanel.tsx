@@ -36,7 +36,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useWorld, hasPlan, isCustomDomainActive, isCustomDomainConnected, registrantUnconfirmed, type World } from '@/state/world'
-import { useUI } from '@/state/ui'
+import { useUI, fromRect } from '@/state/ui'
 import { useT } from '@/i18n'
 import { STAGING_HOST } from '@/data/domains'
 import { IconPlus, IconClose, IconCopy, IconUnlink, IconCheck, IconVisitors, IconChevronDown } from '@/ui/icons'
@@ -1718,7 +1718,8 @@ export function PublishPanel({ hold = false }: { hold?: boolean } = {}) {
               <Reveal show={!attached && !waitingOnCheckout} pad="pt-[19px]" radius={16}>
               {!attached && !waitingOnCheckout && (
                 <button
-                  onClick={() => openDomains('home')}
+                  /* the Domains window unfolds from this card (`surfaceFrom`) */
+                  onClick={(e) => openDomains('home', null, fromRect(e.currentTarget))}
                   /* Hover per Figma 26125:3832: the dashed rim brightens (NA/200 →
                      NA/300) and the "+" disc fills WHITE with a dark plus — the
                      row itself keeps its fill. Colours ease over the base duration

@@ -10,10 +10,10 @@
  * Everything still renders from the world store — the scenario console and flows
  * drive this shell exactly as they drove the old one.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld, canUseAI, hasPlan, registrantUnconfirmed } from '@/state/world'
-import { useUI, MOBILE_WIDTH, MOBILE_HEIGHT } from '@/state/ui'
+import { useUI, fromRect, MOBILE_WIDTH, MOBILE_HEIGHT, type Surface, type SurfaceFrom } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { PlanVariantSwitch } from '@/modules/chat/PlanVariantSwitch'
@@ -34,7 +34,7 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
-import { SPRING, EXIT, popoverContent, siteBack, surfaceWindow } from '@/ui/motion'
+import { SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, canvasPane, canvasPaneFade, PANE_FRESH_MS, PANE_CLOSE_MS, type PaneCustom } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -375,13 +375,81 @@ function SimulatedEmail() {
  */
 const keepOnMainThread = () => {}
 
+/**
+ * A SURFACE'S PANE ON THE CANVAS — the box a surface (Domains, Plan, Cloud) stands in, unfolding from
+ * the control that opened it and folding back into it (motion.ts `canvasPane` has the law). It
+ * measures ONCE, at mount: the trigger's viewport box (`ui.surfaceFrom`) against the canvas's content
+ * box, into a `clip-path: inset(…)` in the pane's own pixels plus a transform origin at the trigger's
+ * centre. That copy is what the exit reads too — so a pane folds back to the button it came from,
+ * whatever has been pressed since.
+ *
+ * `data-pane-fresh` marks the first 1.1 s: the window's contents cascade in under it (index.css «THE
+ * PANE THAT UNFOLDS»); when it goes, every animation it gated has already finished, so nothing snaps.
+ * `tone` lights the rim glint in the module's colour (the Cloud window's violet); the default is white.
+ */
+const PANE_R = 16
+const canvasBox = (main: HTMLElement | null) => {
+  if (!main) return null
+  const r = main.getBoundingClientRect()
+  const cs = getComputedStyle(main)
+  const [pt, pr, pb, pl] = [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].map(parseFloat)
+  return { x: r.x + pl, y: r.y + pt, w: r.width - pl - pr, h: r.height - pt - pb }
+}
+const px = (n: number) => `${Math.round(n * 10) / 10}px`
+function paneFrom(from: SurfaceFrom | null, main: HTMLElement | null): PaneCustom {
+  const box = canvasBox(main)
+  /* no press behind this surface (a scenario, a link), or a canvas that is still opening (the plan's
+     `Review` opens the preview and the surface in one commit): grow from the middle, in percentages
+     at BOTH ends, since the pane's final pixels are not known yet */
+  if (!from || !box || box.w < 200 || box.h < 200) {
+    return { from: `inset(12% 12% 12% 12% round ${PANE_R}px)`, rest: `inset(0% 0% 0% 0% round ${PANE_R}px)`, origin: '50% 50%' }
+  }
+  const t = from.y - box.y
+  const l = from.x - box.x
+  const r = box.x + box.w - (from.x + from.w)
+  const b = box.y + box.h - (from.y + from.h)
+  return {
+    from: `inset(${px(t)} ${px(r)} ${px(b)} ${px(l)} round ${PANE_R}px)`,
+    rest: `inset(0px 0px 0px 0px round ${PANE_R}px)`,
+    origin: `${px(from.x + from.w / 2 - box.x)} ${px(from.y + from.h / 2 - box.y)}`,
+  }
+}
+function CanvasPane({ id, tone, canvas, children }: { id: string; tone?: string; canvas: RefObject<HTMLElement>; children: ReactNode }) {
+  const reduce = useReducedMotion()
+  const [custom] = useState<PaneCustom>(() => paneFrom(useUI.getState().surfaceFrom, canvas.current))
+  const [fresh, setFresh] = useState(true)
+  useEffect(() => {
+    const id = window.setTimeout(() => setFresh(false), PANE_FRESH_MS)
+    return () => window.clearTimeout(id)
+  }, [])
+  return (
+    <motion.div
+      data-canvas-pane={id}
+      data-pane-fresh={fresh ? '' : undefined}
+      className="absolute bottom-2 left-2 right-0 top-0 z-10 rounded-[16px]"
+      custom={custom}
+      variants={reduce ? canvasPaneFade : canvasPane}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      onUpdate={keepOnMainThread}
+      /* promoted for its lifetime: the clip and the scale are written every frame of the unfold,
+         and a layer of its own is what keeps that a compositor update, not a repaint of the window */
+      style={{ transformOrigin: custom.origin, willChange: 'clip-path, transform, opacity' }}
+    >
+      {children}
+      <span className="glass-glint" style={tone ? ({ '--glint-rgb': tone } as CSSProperties) : undefined} aria-hidden />
+    </motion.div>
+  )
+}
+
 export default function App() {
   const { world } = useWorld()
   const { surface, openSurface, closeSurface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
 
   /*
    * A SURFACE IS LEAVING THE CANVAS. From the moment `surface` goes back to the preview until
-   * the site has faded back in (`siteBack` complete), the Publish panel is held: on the Connect
+   * the site has come forward again (`canvasSite` complete), the Publish panel is held: on the Connect
    * press it is asked for in the same commit that closes the Domains window, and arriving then
    * it stacked on a window that was still leaving (designer, 16.09.2026). The fallback timer is
    * for the case where no `animate` completion ever comes (reduced motion drops nothing here —
@@ -389,19 +457,33 @@ export default function App() {
    */
   const [canvasSettling, setCanvasSettling] = useState(false)
   const prevSurface = useRef(surface)
+  const canvasRef = useRef<HTMLElement>(null)
+  const reduce = useReducedMotion()
   /* Read DURING render, not from the effect below: the press that closes the window also asks
      for the panel in the same commit, and an effect-set flag would arrive one render late — the
      panel mounted at 2 % opacity for a beat, then left again (traced). The ref still holds the
      previous surface while this render runs; the effect moves it after the commit. */
   const surfaceJustLeft = prevSurface.current !== 'preview' && surface === 'preview'
+  /*
+   * THE TILE STAYS LIT UNTIL THE PANE IS BACK IN IT. A leaving pane folds into its rail button
+   * over 360 ms (motion.ts `PANE_CLOSE`); the button's selected tile, keyed to `surface` alone,
+   * went dark in the first 150 ms of that — the window was folding into a button that had already
+   * let go of it. `closingTile` keeps the tile lit for the fold, whichever way the window was
+   * closed (the button, ✕, Esc), and lets go once the pane has landed. `aria-pressed` still tells
+   * the truth about the state; only the paint lingers.
+   */
+  const [closingTile, setClosingTile] = useState<Surface | null>(null)
   useEffect(() => {
     const was = prevSurface.current
     prevSurface.current = surface
     if (was !== 'preview' && surface === 'preview') {
       setCanvasSettling(true)
+      setClosingTile(was)
       const id = window.setTimeout(() => setCanvasSettling(false), 700)
-      return () => window.clearTimeout(id)
+      const tile = window.setTimeout(() => setClosingTile(null), PANE_CLOSE_MS + 20)
+      return () => { window.clearTimeout(id); window.clearTimeout(tile) }
     }
+    setClosingTile(null)
   }, [surface])
   const holdPanel = canvasSettling || surfaceJustLeft
 
@@ -713,7 +795,7 @@ export default function App() {
 
           {/* center: project button, 280×40 — the live address in permanent chrome */}
           <button
-            onClick={() => (status && status !== 'live'
+            onClick={(e) => (status && status !== 'live'
               /* Every state the dot marks except a working address is reported BY the
                  Publish panel, in its own card with its own way out — in flight, waiting
                  on the first press (`ready`), or stuck. So the chip opens that panel, not
@@ -728,7 +810,7 @@ export default function App() {
                  `working` now, so this same ternary routes it to the panel with every
                  other unfinished state. The fix lives in `domainStatus`, once. */
               ? togglePublish(true)
-              : openDomains('home'))}
+              : openDomains('home', null, fromRect(e.currentTarget)))}
             title={status ? t(DOMAIN_STATUS[status].note) : undefined}
             className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
           >
@@ -826,43 +908,49 @@ export default function App() {
             because it answers container queries, not the browser width — the same
             thing Lovable gets for free from its preview iframe. Mobile is a real
             390px frame centred on the ground, not a scaled-down desktop. */}
-        <main className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
+        <main ref={canvasRef} className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
           {/*
-            * ONE THING AT A TIME (designer, 16.09.2026, on the Connect press: the Domains window
-            * vanished in one frame while the Publish panel was already springing in). `mode="wait"`:
-            * whatever is on the canvas leaves first — a surface with its own `exit`, the site with a
-            * plain fade — and only then does the next one come. While a surface is on its way out
-            * and the site is fading back, `hold` keeps the Publish panel from arriving on top of it
-            * (motion.ts `siteBack`). `initial={false}`: the first canvas of a session just stands.
+            * THE PANE UNFOLDS FROM ITS BUTTON, THE SITE RECEDES UNDER IT (designer, 22.09.2026 —
+            * motion.ts `canvasPane` / `canvasSite` has the law and the live product's numbers). Both
+            * stand in the canvas box as `absolute` layers, the pane above: an arriving pane comes
+            * forward over the site while the site steps back into the dark; a leaving pane folds back
+            * into its button while the site, one layer down, comes forward. `mode="sync"` (the default)
+            * so the two overlap in time — the clip keeps them from ever overlapping in paint. While a
+            * surface is on its way out and the site is coming forward, `hold` keeps the Publish panel
+            * from arriving on top of it. `initial={false}`: the first canvas of a session just stands.
             */}
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence initial={false}>
           {(() => {
             /* The plan document takes the canvas the same way the domains dashboard
                does — a surface in place of the site, not a modal over it. There is no
                site to preview at this point in the flow, so nothing is being covered. */
             return surface === 'plan' ? (
-              <motion.div key="plan" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+              <CanvasPane key="plan" id="plan" canvas={canvasRef}>
                 <PlanSurface />
-              </motion.div>
+              </CanvasPane>
             ) : surface === 'cloud' ? (
-              /* the Cloud window takes the canvas like the others — one object in, one out */
-              <motion.div key="cloud" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+              /* lit by the button that opened it: the rail's Cloud accent (#9575cd) on the rim */
+              <CanvasPane key="cloud" id="cloud" tone="149 117 205" canvas={canvasRef}>
                 <CloudSurface />
-              </motion.div>
+              </CanvasPane>
             ) : surface === 'domains' ? (
               /* the window leaves as ONE object — frame, bar and sheet — not sheet first, frame after */
-              <motion.div key="domains" className="h-full" variants={surfaceWindow} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread}>
+              <CanvasPane key="domains" id="domains" canvas={canvasRef}>
                 <DomainsSurface />
-              </motion.div>
+              </CanvasPane>
             ) : (
               <motion.div
                 key="site"
-                className="flex h-full items-center justify-center"
-                variants={siteBack}
+                data-canvas-site
+                className="absolute bottom-2 left-2 right-0 top-0 z-0 flex items-center justify-center"
+                variants={reduce ? canvasSiteFade : canvasSite}
                 initial="initial"
                 animate="animate"
                 exit="exit"
                 onUpdate={keepOnMainThread}
+                /* a layer of its own, so the recession is a compositor transform and not a repaint
+                   of the whole site on every frame */
+                style={{ willChange: 'transform, opacity' }}
                 /* the site is back on the ground: now the panel may come (see `hold`) */
                 onAnimationComplete={(def) => { if (def === 'animate') setCanvasSettling(false) }}
               >
@@ -964,21 +1052,24 @@ export default function App() {
             >
               {RAIL.map(({ id, label, Icon, tile, ink, goes }, i) => {
                 const on = goes != null && surface === goes
+                /* painted as selected while its pane is still folding back into it */
+                const lit = on || (goes != null && closingTile === goes)
                 return (
                   <motion.button
                     key={id}
                     title={label}
                     aria-label={label}
                     aria-pressed={on}
-                    onClick={() => { if (goes) (on ? closeSurface() : openSurface(goes)) }}
+                    /* the pane unfolds from THIS box (`surfaceFrom`), and folds back into it */
+                    onClick={(e) => { if (goes) (on ? closeSurface() : openSurface(goes, fromRect(e.currentTarget))) }}
                     /* One after the other from the top, 70ms apart: the rail fills in the
                        direction it is read. Only transform and opacity, so the stagger
                        costs the compositor and nothing else. */
                     initial={{ opacity: 0, scale: 0.82, y: -6 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ ...SPRING, delay: 0.12 + i * 0.07 }}
-                    className={`grid h-12 w-12 place-items-center rounded-[16px] transition-colors duration-[var(--dur-fast)] ease-std${on ? '' : ' text-white hover:bg-[var(--white-100)]'}`}
-                    style={on ? { background: tile, color: ink } : undefined}
+                    className={`press-bloom grid h-12 w-12 place-items-center rounded-[16px] transition-colors duration-[var(--dur-fast)] ease-std${lit ? '' : ' text-white hover:bg-[var(--white-100)]'}`}
+                    style={lit ? { background: tile, color: ink } : undefined}
                   >
                     <Icon size={24} />
                   </motion.button>

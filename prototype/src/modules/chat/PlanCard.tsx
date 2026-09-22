@@ -72,7 +72,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
-import { useUI } from '@/state/ui'
+import { useUI, fromRect } from '@/state/ui'
 import { useT } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { Tooltip } from '@/ui/Tooltip'
@@ -257,7 +257,7 @@ export function PlanCard() {
             <button
               type="button"
               data-plan-review
-              onClick={reviewPlan}
+              onClick={(e) => reviewPlan(fromRect(e.currentTarget))}
               /* 29816:21855 — a TONAL button (8% white fill), not the outlined one this card
                  shipped with: the board gives the secondary action a surface, not a rim.
                  `press-bloom` is the house click (design-system §5) — a filled button owns its
