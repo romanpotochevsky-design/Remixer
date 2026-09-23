@@ -4500,10 +4500,15 @@ await shot('30-plan-review')
    *    comes forward underneath from the first frame.
    */
   const filmCanvas = (ms) => p.evaluate(async (ms) => {
+    window.__filmArmed = (window.__filmArmed || 0) + 1
     /* the computed style collapses `inset(0px 0px 0px 0px …)` to `inset(0px …)`: expand the shorthand */
     const inset = (el) => { const m = getComputedStyle(el).clipPath.match(/inset\(([^)]*)\)/); if (!m) return null; const v = m[1].split('round')[0].trim().split(/\s+/).map(parseFloat); return v.length === 1 ? [v[0], v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0], v[1]] : v.length === 3 ? [v[0], v[1], v[2], v[1]] : v }
     const scaleOf = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return 1; const a = m.match(/matrix\(([^)]+)\)/); return a ? +(+a[1].split(',')[0]).toFixed(4) : 1 }
     const zOf = (el) => { const z = getComputedStyle(el).zIndex; return z === 'auto' ? 0 : +z }
+    /* t = 0 is the PRESS (the first pointerdown or keydown after arming), as it was when film and press
+       started together — every threshold below is measured from the gesture, not from the sampler */
+    let tAct = null; const mark = () => { if (tAct === null) tAct = performance.now() }
+    addEventListener('pointerdown', mark, { capture: true, once: true }); addEventListener('keydown', mark, { capture: true, once: true })
     const samples = []; const t0 = performance.now(); let last = t0
     const tick = () => {
       const now = performance.now()
@@ -4536,8 +4541,24 @@ await shot('30-plan-review')
     }
     requestAnimationFrame(tick)
     await new Promise((r) => setTimeout(r, ms + 80))
-    return samples
+    removeEventListener('pointerdown', mark, true); removeEventListener('keydown', mark, true)
+    if (tAct === null) return samples
+    const off = tAct - t0
+    return samples.filter((x) => x.t >= off - 1).map((x) => ({ ...x, t: Math.round(x.t - off) }))
   }, ms)
+  /* ARM THE FILM, THEN ACT. `Promise.all([film, click])` races two CDP round trips: when the click's lands
+     first, the pane's first painted frame (clip at the button's footprint, p = 0) is over before the
+     sampler's first tick. Measured 24.09.2026 — three runs caught left/right 1108/−52, one run under load
+     caught 980.7/−46: the same first frame, filmed one tick late (scratchpad/pane-motions/first-frame.mjs
+     shows both outcomes in six presses of the same button). So: start the sampler, wait until it reports
+     itself armed, and only then press. */
+  const filmed = async (start, act) => {
+    const before = await p.evaluate(() => window.__filmArmed || 0)
+    const film = start()
+    await p.waitForFunction((n) => (window.__filmArmed || 0) > n, before)
+    await act()
+    return film
+  }
   const geom = await p.evaluate(() => {
     const main = document.querySelector('main'); const r = main.getBoundingClientRect(); const cs = getComputedStyle(main)
     const box = { x: r.x + parseFloat(cs.paddingLeft), y: r.y + parseFloat(cs.paddingTop), w: r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), h: r.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) }
@@ -4550,7 +4571,7 @@ await shot('30-plan-review')
      that 8 % white would read as "the tile never went dark" (the lesson of the Escape check below). */
   await p.mouse.move(800, 800)
   await p.waitForTimeout(150)
-  const [closeFilm] = await Promise.all([filmCanvas(1300), p.keyboard.press('Escape')])
+  const closeFilm = await filmed(() => filmCanvas(1300), () => p.keyboard.press('Escape'))
   const cP = closeFilm.filter((s) => s.pane !== null), cS = closeFilm.filter((s) => s.site !== null)
   const cLeft = cP.map((s) => s.clip?.[3] ?? null)
   const cMono = cLeft.every((v, i) => v !== null && (i === 0 || v >= cLeft[i - 1] - 0.5))
@@ -4578,7 +4599,7 @@ await shot('30-plan-review')
   /* OPEN: press the button — a REAL click at (12,12) inside it, so the accent has a point to flood
      from — and film */
   const cloudBtn = await (await p.$('nav.arrive-rail [aria-label="Cloud"]')).boundingBox()
-  const [openFilm] = await Promise.all([filmCanvas(1300), p.mouse.click(cloudBtn.x + 12, cloudBtn.y + 12)])
+  const openFilm = await filmed(() => filmCanvas(1300), () => p.mouse.click(cloudBtn.x + 12, cloudBtn.y + 12))
   const oP = openFilm.filter((s) => s.pane !== null), oS = openFilm.filter((s) => s.site !== null)
   const oLeft = oP.map((s) => s.clip?.[3] ?? null)
   const landed = oP.find((s) => s.clip[3] <= 0.5)
@@ -4671,7 +4692,7 @@ await shot('30-plan-review')
   /* CLOSE BY THE BUTTON: the accent DRAINS back into the point of the click while the pane folds, the
      button's own paint resting from the first frame, the cloud flying back to the glyph */
   await p.mouse.move(800, 800); await p.waitForTimeout(150)
-  const [drainFilm] = await Promise.all([filmCanvas(900), p.mouse.click(cloudBtn.x + 36, cloudBtn.y + 36)])
+  const drainFilm = await filmed(() => filmCanvas(900), () => p.mouse.click(cloudBtn.x + 36, cloudBtn.y + 36))
   const df = drainFilm.filter((s) => s.fillR !== null && s.fillDir === 'out')
   const drainShrinks = df.every((s, i) => i === 0 || s.fillR <= df[i - 1].fillR + 0.01)
   const drainPoint = df[0]?.fillPt ?? null
@@ -4944,8 +4965,12 @@ await shot('30-plan-review')
     return hit
   }
   const filmPanes = (ms) => p.evaluate(async (ms) => {
+    window.__filmArmed = (window.__filmArmed || 0) + 1
     const mat = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return null; const a = m.match(/matrix\(([^)]+)\)/); return a ? a[1].split(',').map(Number) : null }
     const snap = (pane) => { const m = mat(pane); const cs = getComputedStyle(pane); return { id: pane.dataset.canvasPane, motion: pane.dataset.paneMotion, o: +(+cs.opacity).toFixed(3), s: m ? +m[0].toFixed(4) : 1, y: m ? Math.round(m[5]) : 0, z: cs.zIndex } }
+    /* t = 0 is the press, as in the Cloud block's filmCanvas */
+    let tAct = null; const mark = () => { if (tAct === null) tAct = performance.now() }
+    addEventListener('pointerdown', mark, { capture: true, once: true }); addEventListener('keydown', mark, { capture: true, once: true })
     const s = []; const t0 = performance.now(); let last = t0
     const tick = () => {
       const now = performance.now()
@@ -4956,8 +4981,21 @@ await shot('30-plan-review')
       if (now - t0 < ms) requestAnimationFrame(tick)
     }
     requestAnimationFrame(tick)
-    await new Promise((r) => setTimeout(r, ms + 60)); return s
+    await new Promise((r) => setTimeout(r, ms + 60))
+    removeEventListener('pointerdown', mark, true); removeEventListener('keydown', mark, true)
+    if (tAct === null) return s
+    const off = tAct - t0
+    return s.filter((x) => x.t >= off - 1).map((x) => ({ ...x, t: Math.round(x.t - off) }))
   }, ms)
+  /* arm the sampler, then press — the same race as the Cloud block's `filmed`: a click that lands before
+     the first tick loses the pane's first frame (y at 28 %, scale .97, opacity 0) */
+  const filmed = async (start, act) => {
+    const before = await p.evaluate(() => window.__filmArmed || 0)
+    const film = start()
+    await p.waitForFunction((n) => (window.__filmArmed || 0) > n, before)
+    await act()
+    return film
+  }
   const bbox = async (label) => (await p.$(`nav.arrive-rail [aria-label="${label}"]`)).boundingBox()
   const of = (film, id) => film.map((f) => ({ t: f.t, ...(f.panes.find((q) => q.id === id) || {}) })).filter((q) => q.o !== undefined)
   const monotone = (arr, key, dir) => arr.every((q, i) => i === 0 || (dir > 0 ? q[key] >= arr[i - 1][key] - 1e-6 : q[key] <= arr[i - 1][key] + 1e-6))
@@ -4977,7 +5015,7 @@ await shot('30-plan-review')
   check('…and the Sheet option is a real control (it flips the world)', await setMotion('Sheet')
     && (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').paneMotion)) === 'sheet')
   let cloud = await bbox('Cloud'), an = await bbox('Analytics')
-  const [, shOpen] = await Promise.all([p.mouse.click(cloud.x + 12, cloud.y + 12), filmPanes(1200)])
+  const shOpen = await filmed(() => filmPanes(1200), () => p.mouse.click(cloud.x + 12, cloud.y + 12))
   const so = of(shOpen, 'cloud')
   const soSolidAt = so.find((q) => q.o >= 0.99)?.t
   const soLandY = so.find((q) => q.y <= 0)?.t
@@ -4988,12 +5026,14 @@ await shot('30-plan-review')
     so[0].s < 0.985 && so[so.length - 1].s === 1 && soSolidAt !== undefined && soSolidAt <= 200 && soLandY !== undefined && soLandY > soSolidAt,
     JSON.stringify({ s0: so[0]?.s, solidAt: soSolidAt, landAt: soLandY }))
   const siteUnderSheet = shOpen.map((f) => f.site).filter(Boolean)
+  /* the time lives on the FRAME, not on its site snapshot — read the half-fade from the frame */
+  const siteHalfAt = shOpen.find((f) => f.site && f.site.o < 0.5)?.t
   check('…and the site behind steps BACK like the card behind an iOS sheet: to .94 and 12 px UP, fading late',
     siteUnderSheet.length > 5 && Math.min(...siteUnderSheet.map((x) => x.s)) <= 0.941 && Math.min(...siteUnderSheet.map((x) => x.y)) <= -11
-      && siteUnderSheet.find((x) => x.o < 0.5).t > 250,
-    JSON.stringify({ minS: Math.min(...siteUnderSheet.map((x) => x.s)), minY: Math.min(...siteUnderSheet.map((x) => x.y)), halfAt: siteUnderSheet.find((x) => x.o < 0.5)?.t }))
+      && siteHalfAt !== undefined && siteHalfAt > 250,
+    JSON.stringify({ minS: Math.min(...siteUnderSheet.map((x) => x.s)), minY: Math.min(...siteUnderSheet.map((x) => x.y)), halfAt: siteHalfAt }))
   await p.mouse.move(800, 800); await p.waitForTimeout(300)
-  const [, shSwitch] = await Promise.all([p.mouse.click(an.x + 24, an.y + 24), filmPanes(1200)])
+  const shSwitch = await filmed(() => filmPanes(1200), () => p.mouse.click(an.x + 24, an.y + 24))
   const oldSheet = of(shSwitch, 'cloud'), newSheet = of(shSwitch, 'analytics')
   const oldLast = oldSheet[oldSheet.length - 1]
   const heldTo = oldSheet.filter((q) => q.o >= 0.5).slice(-1)[0]?.t
@@ -5004,7 +5044,7 @@ await shot('30-plan-review')
       && (await p.$$('[data-canvas-pane]')).length === 1,
     JSON.stringify({ oldMinS: Math.min(...oldSheet.map((q) => q.s)), heldTo, oldGoneAt: oldLast?.t, newY0: newSheet[0]?.y }))
   await p.mouse.move(800, 800); await p.waitForTimeout(300)
-  const [, shClose] = await Promise.all([p.mouse.click(an.x + 36, an.y + 36), filmPanes(1000)])
+  const shClose = await filmed(() => filmPanes(1000), () => p.mouse.click(an.x + 36, an.y + 36))
   const sc = of(shClose, 'analytics')
   check('closing a SHEET drops it back down (~22 %) and dissolves it in the second half; the site comes forward under it',
     sc.length >= 8 && monotone(sc, 'y', 1) && sc[sc.length - 1].y > 150 && sc.find((q) => q.o < 0.9).t >= 100 && sc[sc.length - 1].o === 0
@@ -5015,14 +5055,14 @@ await shot('30-plan-review')
   /* ── FOCUS ─────────────────────────────────────────────────────────────────────── */
   await setMotion('Focus')
   cloud = await bbox('Cloud'); an = await bbox('Analytics')
-  const [, fOpen] = await Promise.all([p.mouse.click(cloud.x + 12, cloud.y + 12), filmPanes(1000)])
+  const fOpen = await filmed(() => filmPanes(1000), () => p.mouse.click(cloud.x + 12, cloud.y + 12))
   const fo = of(fOpen, 'cloud')
   check('FOCUS opens IN PLACE: no travel, scale .94 → 1 monotone with no overshoot, solid by ~260 ms, tagged as focus',
     fo.length >= 10 && fo[0].motion === 'focus' && fo.every((q) => q.y === 0) && fo[0].s < 0.98 && monotone(fo, 's', 1) && Math.max(...fo.map((q) => q.s)) <= 1.0005
       && fo[fo.length - 1].s === 1 && fo.find((q) => q.o >= 0.99).t <= 300,
     JSON.stringify({ s0: fo[0]?.s, maxS: Math.max(...fo.map((q) => q.s)), solidAt: fo.find((q) => q.o >= 0.99)?.t }))
   await p.mouse.move(800, 800); await p.waitForTimeout(300)
-  const [, fSwitch] = await Promise.all([p.mouse.click(an.x + 24, an.y + 24), filmPanes(1000)])
+  const fSwitch = await filmed(() => filmPanes(1000), () => p.mouse.click(an.x + 24, an.y + 24))
   const oldF = of(fSwitch, 'cloud'), newF = of(fSwitch, 'analytics')
   const newStarts = newF.find((q) => q.o > 0.02)?.t
   check('switching windows in FOCUS is a pass through depth: the old window comes FORWARD (→ 1.035, on top, z 11) and dissolves within ~220 ms while the new one arrives from behind (.96 → 1) a beat later',
@@ -5030,7 +5070,7 @@ await shot('30-plan-review')
       && newF[0].s <= 0.962 && newStarts >= 60 && newF[newF.length - 1].s === 1 && newF[newF.length - 1].o === 1 && (await p.$$('[data-canvas-pane]')).length === 1,
     JSON.stringify({ oldMaxS: Math.max(...oldF.map((q) => q.s)), oldZ: oldF[0]?.z, oldGone: oldF[oldF.length - 1]?.t, newS0: newF[0]?.s, newStarts }))
   await p.mouse.move(800, 800); await p.waitForTimeout(300)
-  const [, fClose] = await Promise.all([p.mouse.click(an.x + 36, an.y + 36), filmPanes(900)])
+  const fClose = await filmed(() => filmPanes(900), () => p.mouse.click(an.x + 36, an.y + 36))
   const fc = of(fClose, 'analytics')
   check('closing in FOCUS defocuses it back to .94 and clear in ~240 ms — quicker than it came (rule 4)',
     fc.length >= 6 && monotone(fc, 's', -1) && Math.abs(fc[fc.length - 1].s - 0.94) < 0.003 && fc[fc.length - 1].o === 0 && fc[fc.length - 1].t <= 320
@@ -5041,7 +5081,7 @@ await shot('30-plan-review')
   /* ── back to the UNFOLD, and it is still the unfold ─────────────────────────────── */
   await setMotion('Unfold')
   cloud = await bbox('Cloud')
-  const [, uOpen] = await Promise.all([p.mouse.click(cloud.x + 12, cloud.y + 12), filmPanes(500)])
+  const uOpen = await filmed(() => filmPanes(500), () => p.mouse.click(cloud.x + 12, cloud.y + 12))
   const uo = of(uOpen, 'cloud')
   check('the Unfold is untouched: back on it the pane is tagged unfold, does not travel or scale, and its rim rides the clip',
     uo.length >= 5 && uo[0].motion === 'unfold' && uo.every((q) => q.y === 0 && q.s === 1) && !!(await p.$('[data-canvas-pane] [data-pane-rim]')),
