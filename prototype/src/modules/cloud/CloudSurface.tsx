@@ -26,15 +26,17 @@
  * ⚠️ TWO SURFACES, NOT ONE (corrected 22.09.2026 after the designer's «у тебя не все совпадает с
  * макетом»). The window BASE (`Dashboard` 30816:52018) is 24 % black over `--gray-900` — the house
  * window recipe `DomainsSurface` has carried since 27085:106964, radius 16, `--gray-800` hairline,
- * the same double shadow. On it lies the PAGE SHEET (`Page content` 30816:55869): `--gray-900`,
- * a 1px hairline of 8 % white along its top and a 6px radius at its top-right corner. The base
- * shows exactly where the board shows it — behind the top bar and behind the menu column.
+ * the same double shadow; written flat as `--window-base` #141417 since 24.09.2026. On it lies the
+ * PAGE SHEET (`Page content` 30816:55869 → 30911:59222): `Neutral Alpha/50` = 4 % white over that
+ * base = `--window-lift` #1d1d20, a 1px hairline of 8 % white along its top and a 6px radius at its
+ * top-right corner. The base shows exactly where the board shows it — behind the top bar and behind
+ * the menu column.
  * The first build derived a single flat `--gray-850` from the one opaque literal in the leaves
  * (the row-action fade, then misread as `rgba(31,31,34,0) → #1f1f22`) and lost both the strip and the hairline:
  * leaves carry no surfaces — those live on the wrappers, whose export had been skipped because
  * it exceeded the MCP response size (it is saved to a file; slice it, do not route around it).
- * The fade ends in the sheet's #18181b (board 30816:52156) — the `#1f1f22` read on 22.09 came from a
- * partial export and was wrong; the designer caught it on the live build (23.09.2026).
+ * The fade ends in the SHEET's colour, whatever it is — #18181b while the sheet was `--gray-900`
+ * (board 30816:52156), #1d1d20 now (30911:59315). Both now read the one token.
  *
  * ⚠️ THE PAGE'S `border-r` IS NOT DRAWN HERE. The board puts a `Gray/800` right border on
  * the Page, whose right edge IS the window's right edge — so in CSS it would land on top of
@@ -546,11 +548,13 @@ function Row({ row, i, last, t }: { row: CloudRow; i: number; last: boolean; t: 
              the fade keeps the board's length: 38.942 % of 155 = 60.36px. */
           width: 164,
           marginLeft: -164,
-          /* board 30816:52156: `from-[rgba(24,24,27,0)] to-[#18181b] to-[38.942%]` — the fade ends in
-             the SHEET's own colour, so the plate is invisible and only the text under it dims. The
-             earlier `#1f1f22` was a misread of a partial export, not the mock's slip (designer 23.09.2026:
-             «у тебя под кнопками цвет градиента не как в макете»). */
-          background: 'linear-gradient(to right, rgba(24,24,27,0) 0%, var(--gray-900) 60.36px)',
+          /* board 30911:59315: `from-[rgba(29,29,32,0)] to-[#1d1d20] to-[38.942%]` — the fade ends in
+             the SHEET's own colour, so the plate is invisible and only the text under it dims. It
+             followed the sheet up on 24.09.2026 (it read `#18181b` off 30816:52156 while the sheet was
+             `--gray-900`; the `#1f1f22` before that was a misread of a partial export, not the mock's
+             slip — designer 23.09.2026: «у тебя под кнопками цвет градиента не как в макете»). Both
+             ends are the ONE token, so the pair cannot drift apart again. */
+          background: 'linear-gradient(to right, rgba(29,29,32,0) 0%, var(--window-lift) 60.36px)',
         }}
       >
         <button
@@ -725,14 +729,22 @@ export function CloudSurface() {
         </div>
 
         {/*
-          * THE PAGE IS A LIGHTER SHEET ON A DARKER BASE (board node `Page content`, 30816:55869):
-          * `bg gray-900` with a 1px `Neutral Alpha/100` top edge and a 6px top-right corner. The
-          * base under it — the window's own 24%-black-over-gray-900 — then shows exactly where the
-          * board shows it: behind the top bar and behind the menu column. Reading only the leaf
-          * nodes had made the whole window one flat tone, and the hairline under the top bar
-          * vanished with it; the designer's own crop is what caught it.
+          * THE PAGE IS A LIGHTER SHEET ON A DARKER BASE (board node `Page content`, 30816:55869 →
+          * REPAINTED 30911:59222): a 1px `Neutral Alpha/100` top edge, a 6px top-right corner, and
+          * a fill that is `Neutral Alpha/50` — 4 % WHITE over the window base, which flattens to
+          * `--window-lift` #1d1d20. It was `--gray-900` until 24.09.2026, when the designer sent the
+          * repainted board («есть отличия в цветах фона между тем что ты сделал и в макете»): the
+          * sheet moved up with the menu column's foot, so the two lightest surfaces of the window
+          * now agree, and the seam the ramp hides is the only line left between them.
+          * ⚠️ WRITTEN FLAT, and that is the same law the ramp is written by: the row-action fade
+          * below ends in this exact colour to stay invisible, and the board itself types that stop
+          * opaque (`to-[#1d1d20]`) while leaving the sheet translucent, because Figma composites
+          * the sheet for you and cannot composite a gradient stop. One token keeps the pair honest.
+          * The base under it then shows exactly where the board shows it: behind the top bar and
+          * behind the menu column. Reading only the leaf nodes had made the whole window one flat
+          * tone, and the hairline under the top bar vanished with it; the designer's own crop caught it.
           */}
-        <div className="flex min-h-0 flex-1 flex-col rounded-tr-[6px] border-t border-[var(--white-100)] bg-[var(--gray-900)]">
+        <div className="flex min-h-0 flex-1 flex-col rounded-tr-[6px] border-t border-[var(--white-100)] bg-[var(--window-lift)]">
           {/* header: title · search · actions, then the column headings */}
           <div className="flex-none">
             <div className="pane-in-head flex items-center pl-9 pr-6">

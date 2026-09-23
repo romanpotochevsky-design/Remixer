@@ -4237,8 +4237,13 @@ await shot('30-plan-review')
     const r = n.parentElement.getBoundingClientRect()
     return { bg: g.backgroundColor, line: g.borderTopColor, w: g.borderTopWidth, rad: g.borderTopRightRadius, y: r.y }
   })
-  check('…and the page is a LIGHTER sheet on it: gray-900 under a 1px 8%-white edge, corner 6 (board `Page content`)',
-    sheet.bg === 'rgb(24, 24, 27)' && sheet.line === 'rgba(255, 255, 255, 0.08)' && sheet.w === '1px' && sheet.rad === '6px',
+  /* REPAINTED 24.09.2026 (board 30911:59222, the designer: «есть отличия в цветах фона между тем что
+     ты сделал и в макете»): the sheet's fill is `Neutral Alpha/50` — 4 % WHITE over the window base,
+     which flattens to `--window-lift` #1d1d20, the same lift the menu column ramps up to. It was
+     `--gray-900` #18181b. Assert the PIXEL, and assert it FLAT: the row fade below must end in this
+     exact colour, and a stop cannot be composited for you. */
+  check('…and the page is a LIGHTER sheet on it: the lift #1d1d20 under a 1px 8%-white edge, corner 6 (board `Page content` / 30911:59222)',
+    sheet.bg === 'rgb(29, 29, 32)' && sheet.line === 'rgba(255, 255, 255, 0.08)' && sheet.w === '1px' && sheet.rad === '6px',
     JSON.stringify(sheet))
   check('…so the darker base is what shows behind the top bar — the strip the designer caught missing',
     Math.round(sheet.y - (await R('[data-cloud-window]'))[1]) === 49, String(Math.round(sheet.y - (await R('[data-cloud-window]'))[1])))
@@ -4311,8 +4316,8 @@ await shot('30-plan-review')
       && (await CSS('[data-cloud-close]', 'backgroundColor')) === 'rgba(9, 9, 11, 0.64)' && /blur\(16px\)/.test(await CSS('[data-cloud-close]', 'backdropFilter')),
     JSON.stringify({ bg: await CSS('[data-cloud-close]', 'backgroundColor'), blur: await CSS('[data-cloud-close]', 'backdropFilter') }))
   const fade = await p.$eval('button[aria-label^="Edit "]', (b) => { const host = b.parentElement; return { bg: getComputedStyle(host).backgroundImage, glyph: getComputedStyle(b).color } })
-  check('the row actions sit on a fade that ends in the sheet’s own #18181b at 60.36px (the board’s 38.942 % of 155) — an invisible plate that only dims the text — and their glyphs are white',
-    /rgba\(24, 24, 27, 0\)/.test(fade.bg) && /rgb\(24, 24, 27\) 60\.36px/.test(fade.bg) && fade.glyph === 'rgb(255, 255, 255)', JSON.stringify(fade))
+  check('the row actions sit on a fade that ends in the sheet’s own #1d1d20 at 60.36px (the board’s 38.942 % of 155) — an invisible plate that only dims the text — and their glyphs are white',
+    /rgba\(29, 29, 32, 0\)/.test(fade.bg) && /rgb\(29, 29, 32\) 60\.36px/.test(fade.bg) && fade.glyph === 'rgb(255, 255, 255)', JSON.stringify(fade))
   const top = await p.$eval('[data-cloud-window] h2', (h) => {
     const row = h.parentElement, nav = document.querySelector('[data-cloud-window] nav')
     const r = row.getBoundingClientRect(), n = nav.getBoundingClientRect(), g = getComputedStyle(h)
@@ -4320,8 +4325,10 @@ await shot('30-plan-review')
   })
   check('the header top row is the board\u2019s 87, its title Gilroy 32 bold at pl-36',
     Math.round(top.h) === 87 && top.pl === 36 && top.size === '32px' && top.weight === '700', JSON.stringify(top))
+  /* the search pill stays `Gray/900` #18181b (30911:59236) — since 24.09 that is DARKER than the
+     sheet it sits in, which is the point: a well in the page, not a tile on it. */
   const search = await R('[data-cloud-window] label')
-  check('the search field is the drawn 400 on #18181b, fully round',
+  check('the search field is the drawn 400 on #18181b — a well DARKER than the sheet — fully round',
     search[2] === 400 && search[3] === 40 && (await CSS('[data-cloud-window] label', 'backgroundColor')) === 'rgb(24, 24, 27)',
     `${search[2]}×${search[3]}`)
 
