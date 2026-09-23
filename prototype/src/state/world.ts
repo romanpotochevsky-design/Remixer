@@ -86,6 +86,23 @@ export type DomainState =
 export type Lang = 'en' | 'uk'
 
 export type Project = 'empty' | 'generating' | 'built'
+/**
+ * HOW A CANVAS WINDOW ARRIVES AND LEAVES — three motions with three different ideas, switched in the
+ * console so the designer can compare them on the same windows (24.09.2026, with a recording of the
+ * unfold: «в целом вариант хороший… но я бы хотел посмотреть еще на какие то вариант 2 других
+ * анимаций открытия и закрытия этих больших окон и переключения между ними… с другой задумкой
+ * абсолютно и концепцией»):
+ *   · `unfold` — the window GROWS OUT OF ITS BUTTON: a clip-morph from the rail tile's footprint,
+ *                a lit rim riding the edge, the mark flying from the glyph (App.tsx `CanvasPane`,
+ *                docs/handoff/pane-unfold-spec.md). The one he saw and kept.
+ *   · `sheet`  — the window RISES AS A SHEET from below the canvas while the site steps back into
+ *                depth like the card behind an iOS sheet; switching windows stacks the new sheet over
+ *                the old, which recedes a step and is taken away once covered.
+ *   · `focus`  — the window FOCUSES INTO PLACE from slightly behind (.94 → 1, no travel, no bounce —
+ *                macOS opening a window); switching windows is a pass through depth: the old one
+ *                comes forward past the viewer and dissolves, the new one arrives from behind.
+ */
+export type PaneMotion = 'unfold' | 'sheet' | 'focus'
 export type Chat = 'empty' | 'short' | 'long' | 'working' | 'error'
 
 /**
@@ -411,6 +428,13 @@ export interface World {
    */
   planSimple: boolean
   /**
+   * WHICH MOTION THE CANVAS WINDOWS WEAR — see `PaneMotion`. A design A/B for the designer to
+   * compare in front of the same windows; `unfold` is what shipped and stays the default until he
+   * picks. Not a project fact and not a URL key: `startBuild` leaves it alone, exactly as it
+   * leaves `planSimple` and `chipInkWhite`.
+   */
+  paneMotion: PaneMotion
+  /**
    * WHICH domain is attached to this project.
    *
    * The name has to be world truth and not navigation, because the panel outlives every
@@ -479,6 +503,7 @@ export const DEFAULT_WORLD: World = {
   chipInkWhite: false,
   intakeDomain: null,
   planSimple: true,
+  paneMotion: 'unfold',
   customDomain: CUSTOM_DOMAIN,
   chat: 'long',
   projects: DEMO_PROJECTS,

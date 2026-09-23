@@ -877,6 +877,82 @@ export const canvasSite = {
     transition: { duration: 0.4, ease: [0.4, 0, 0.6, 1], opacity: { duration: 0.4, ease: [0.7, 0, 1, 1] } },
   },
 } as const
+/*
+ * TWO MORE WAYS A WINDOW CAN ARRIVE (designer, 24.09.2026, with a recording of the unfold: «в целом
+ * вариант хороший и он похож на наш apple liquid glass стиль анимаций. но я бы хотел посмотреть еще
+ * на какие то вариант 2 других анимаций открытия и закрытия этих больших окон и переключения между
+ * ними… с другой задумкой абсолютно и концепцией… очень стильные, современные, плавные… не бить по
+ * глазам и не надоедливыми»). The unfold stays (`PANE_OPEN` above — the window grows out of its
+ * button); these are the other two ideas, switched in the console (world.ts `PaneMotion`), and each
+ * is one idea carried through open, close AND the switch from one window to another:
+ *
+ *  · SHEET — the window is a sheet of glass that RISES from below the canvas and sits down, while the
+ *    site steps BACK into depth like the card behind an iOS sheet (scale .94, a few px up, dimming).
+ *    It condenses as it rises — clear at the first frame, solid by 160 ms — so the top 70 % of the
+ *    canvas is never covered by a hard cut. One spring for the travel and the .97 → 1 growth from its
+ *    bottom edge (`SHEET_OPEN`), a little bounce because a sheet sitting down has weight. Closing drops
+ *    it back 22 % and dissolves it in the second half (the fold's rule: spent last). Switching windows
+ *    STACKS: the old sheet steps back a notch (.955, up 1.2 %, to 55 %) as the new one rises over it,
+ *    and is taken away only once covered — the depth is the hand-over.
+ *  · FOCUS — the window FOCUSES INTO PLACE: from .94 and clear to 1 and solid over 380 ms on one
+ *    ease-out, no travel, no bounce — the restraint of a macOS window opening. Closing defocuses it back
+ *    the same way. Switching windows is a PASS THROUGH DEPTH: the old window comes forward past the
+ *    viewer (→ 1.035, dissolving in 200 ms) while the new one arrives from behind (.96 → 1, a 100 ms
+ *    beat later); the overlap is ~60 ms — four frames of two half-windows, the crossfade of Mission
+ *    Control, not the double exposure the dock forbids over a whole second.
+ *
+ * Both are transform and opacity only, main-thread (motion values), and neither has a moving edge to
+ * light — the window moves as one object, so its own hairline IS the edge (the dock bubble's rule
+ * without the rim); the landing light is the glint the unfold also wears. Under reduced motion all
+ * three collapse to `PANE_FADE_IN` / `PANE_FADE_OUT`.
+ */
+/** Sheet: how far below its seat it starts, as a share of its own height, and how small. */
+export const SHEET_RISE_PCT = 28
+export const SHEET_SCALE_FROM = 0.97
+export const SHEET_OPEN = { type: 'spring', duration: 0.64, bounce: 0.16 } as const
+/** …and the glass condensing as it rises: clear → solid in the first 160 ms. */
+export const SHEET_CONDENSE = { duration: 0.16, ease: [0.2, 0, 0, 1] } as const
+/** Closing: back down 22 %, a hair smaller, dissolving in the second half. */
+export const SHEET_DROP_PCT = 22
+export const SHEET_CLOSE_MS = 320
+export const SHEET_CLOSE = { duration: SHEET_CLOSE_MS / 1000, ease: [0.4, 0, 0.6, 1] } as const
+export const SHEET_CLOSE_DISSOLVE = { duration: 0.18, delay: 0.14, ease: [0.4, 0, 1, 1] } as const
+/** Switching: the old sheet steps back behind the new one, then goes once covered. */
+export const SHEET_BACK_SCALE = 0.955
+export const SHEET_BACK_Y_PCT = -1.2
+export const SHEET_BACK_DIM = 0.55
+export const SHEET_BACK = { duration: 0.42, ease: [0.2, 0, 0, 1] } as const
+export const SHEET_BACK_OUT = { duration: 0.12, ease: [0.4, 0, 1, 1] } as const
+/** The site under an arriving sheet: back into depth like the card behind an iOS sheet — smaller,
+ *  a few px UP (the sheet comes up, the card behind goes the other way), fading late. */
+export const canvasSiteSheet = {
+  initial: { opacity: 0, scale: 0.955, y: 10 },
+  animate: canvasSite.animate,
+  exit: {
+    opacity: 0,
+    scale: 0.94,
+    y: -12,
+    transition: { duration: 0.5, ease: [0.2, 0, 0, 1], opacity: { duration: 0.5, ease: [0.7, 0, 1, 1] } },
+  },
+} as const
+
+/** Focus: into place from slightly behind, one ease-out, no bounce. */
+export const FOCUS_FROM = 0.94
+export const FOCUS_OPEN_MS = 380
+export const FOCUS_OPEN = { duration: FOCUS_OPEN_MS / 1000, ease: [0.2, 0.7, 0.2, 1] } as const
+export const FOCUS_SOLID = { duration: 0.26, ease: [0.2, 0, 0, 1] } as const
+/** Defocus on close: back to .94 and clear, quicker (rule 4). */
+export const FOCUS_CLOSE_MS = 240
+export const FOCUS_CLOSE = { duration: FOCUS_CLOSE_MS / 1000, ease: [0.4, 0, 1, 1] } as const
+/** Switching: the old window passes the viewer — forward and dissolving… */
+export const FOCUS_PASS_TO = 1.035
+export const FOCUS_PASS = { duration: 0.2, ease: [0.4, 0, 1, 1] } as const
+/** …and the new one arrives from behind, a beat later (the beat is what keeps the overlap to ~4 frames
+ *  of two half-windows — traced 24.09.2026: old at .5 by 100 ms and gone at 200, new solid from 100). */
+export const FOCUS_BEHIND_FROM = 0.96
+export const FOCUS_ARRIVE = { duration: 0.4, delay: 0.1, ease: [0.2, 0.7, 0.2, 1] } as const
+export const FOCUS_ARRIVE_SOLID = { duration: 0.22, delay: 0.1, ease: [0.2, 0, 0, 1] } as const
+
 /* Reduced motion for the site: no scale, no offset — it simply comes up and goes in place. */
 export const canvasSiteFade = {
   initial: { opacity: 0 },

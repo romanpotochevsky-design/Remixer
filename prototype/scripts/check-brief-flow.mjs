@@ -4916,6 +4916,140 @@ await shot('30-plan-review')
   check('…and the button is a toggle, like Cloud’s', (await p.$('[data-analytics-window]')) === null)
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════
+ * K · THREE MOTIONS FOR THE CANVAS WINDOWS — sheet, focus, and the unfold still itself
+ *
+ * Designer, 24.09.2026, with a recording of the unfold: «сделай еще 2 других варианта…
+ * с другой задумкой абсолютно и концепцией… переключатель в консоле в виде сегмент
+ * контроля». `world.paneMotion` (world.ts `PaneMotion`, motion.ts § TWO MORE WAYS A WINDOW
+ * CAN ARRIVE). Each motion is one idea carried through OPEN, SWITCH (Cloud → Analytics) and
+ * CLOSE, and each is filmed here on the production build the way the unfold is (block I):
+ * per-frame opacity / transform / z-index of every pane on the canvas and of the site.
+ * ═══════════════════════════════════════════════════════════════════════════════════ */
+{
+  await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
+  await p.waitForTimeout(700)
+  await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(500)
+
+  const setMotion = async (label) => {
+    await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
+    const hit = await p.evaluate((label) => {
+      const btn = [...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === label)
+      if (!btn) return false
+      btn.click(); return true
+    }, label)
+    await p.waitForTimeout(150); await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
+    return hit
+  }
+  const filmPanes = (ms) => p.evaluate(async (ms) => {
+    const mat = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return null; const a = m.match(/matrix\(([^)]+)\)/); return a ? a[1].split(',').map(Number) : null }
+    const snap = (pane) => { const m = mat(pane); const cs = getComputedStyle(pane); return { id: pane.dataset.canvasPane, motion: pane.dataset.paneMotion, o: +(+cs.opacity).toFixed(3), s: m ? +m[0].toFixed(4) : 1, y: m ? Math.round(m[5]) : 0, z: cs.zIndex } }
+    const s = []; const t0 = performance.now(); let last = t0
+    const tick = () => {
+      const now = performance.now()
+      const site = document.querySelector('[data-canvas-site]'); const sm = site ? mat(site) : null
+      s.push({ t: Math.round(now - t0), dt: Math.round(now - last), panes: [...document.querySelectorAll('[data-canvas-pane]')].map(snap),
+        site: site ? { o: +(+getComputedStyle(site).opacity).toFixed(2), s: sm ? +sm[0].toFixed(3) : 1, y: sm ? Math.round(sm[5]) : 0 } : null })
+      last = now
+      if (now - t0 < ms) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    await new Promise((r) => setTimeout(r, ms + 60)); return s
+  }, ms)
+  const bbox = async (label) => (await p.$(`nav.arrive-rail [aria-label="${label}"]`)).boundingBox()
+  const of = (film, id) => film.map((f) => ({ t: f.t, ...(f.panes.find((q) => q.id === id) || {}) })).filter((q) => q.o !== undefined)
+  const monotone = (arr, key, dir) => arr.every((q, i) => i === 0 || (dir > 0 ? q[key] >= arr[i - 1][key] - 1e-6 : q[key] <= arr[i - 1][key] + 1e-6))
+
+  /* the console offers the three, as one segmented row */
+  await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
+  const seg = await p.evaluate(() => {
+    const lab = [...document.querySelectorAll('[data-console] label')].find((l) => l.textContent.trim() === 'Window motion')
+    const row = lab?.parentElement?.nextElementSibling
+    return row ? [...row.querySelectorAll('button')].map((b) => [b.textContent.trim(), /bg-neutral-900/.test(b.className)]) : null
+  })
+  await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
+  check('the console offers the three window motions as one segmented row, Unfold selected by default',
+    JSON.stringify(seg) === JSON.stringify([['Unfold', true], ['Sheet', false], ['Focus', false]]), JSON.stringify(seg))
+
+  /* ── SHEET ─────────────────────────────────────────────────────────────────────── */
+  check('…and the Sheet option is a real control (it flips the world)', await setMotion('Sheet')
+    && (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').paneMotion)) === 'sheet')
+  let cloud = await bbox('Cloud'), an = await bbox('Analytics')
+  const [, shOpen] = await Promise.all([p.mouse.click(cloud.x + 12, cloud.y + 12), filmPanes(1200)])
+  const so = of(shOpen, 'cloud')
+  const soSolidAt = so.find((q) => q.o >= 0.99)?.t
+  const soLandY = so.find((q) => q.y <= 0)?.t
+  check('SHEET opens by RISING: y falls monotonically from ~28 % of the pane to 0 with a small overshoot past it, the pane tagged as a sheet',
+    so.length >= 12 && so[0].motion === 'sheet' && so[0].y > 150 && monotone(so.filter((q) => q.y >= 0), 'y', -1) && Math.min(...so.map((q) => q.y)) < 0 && Math.min(...so.map((q) => q.y)) > -8 && so[so.length - 1].y === 0,
+    JSON.stringify({ y0: so[0]?.y, minY: Math.min(...so.map((q) => q.y)), last: so[so.length - 1] }))
+  check('…growing .97 → 1 from its bottom edge while it CONDENSES — clear at first, solid within 200 ms, long before it has landed',
+    so[0].s < 0.985 && so[so.length - 1].s === 1 && soSolidAt !== undefined && soSolidAt <= 200 && soLandY !== undefined && soLandY > soSolidAt,
+    JSON.stringify({ s0: so[0]?.s, solidAt: soSolidAt, landAt: soLandY }))
+  const siteUnderSheet = shOpen.map((f) => f.site).filter(Boolean)
+  check('…and the site behind steps BACK like the card behind an iOS sheet: to .94 and 12 px UP, fading late',
+    siteUnderSheet.length > 5 && Math.min(...siteUnderSheet.map((x) => x.s)) <= 0.941 && Math.min(...siteUnderSheet.map((x) => x.y)) <= -11
+      && siteUnderSheet.find((x) => x.o < 0.5).t > 250,
+    JSON.stringify({ minS: Math.min(...siteUnderSheet.map((x) => x.s)), minY: Math.min(...siteUnderSheet.map((x) => x.y)), halfAt: siteUnderSheet.find((x) => x.o < 0.5)?.t }))
+  await p.mouse.move(800, 800); await p.waitForTimeout(300)
+  const [, shSwitch] = await Promise.all([p.mouse.click(an.x + 24, an.y + 24), filmPanes(1200)])
+  const oldSheet = of(shSwitch, 'cloud'), newSheet = of(shSwitch, 'analytics')
+  const oldLast = oldSheet[oldSheet.length - 1]
+  const heldTo = oldSheet.filter((q) => q.o >= 0.5).slice(-1)[0]?.t
+  check('switching windows as SHEETS stacks them: the old sheet steps back (.955, a few px up, to ~55 %) and stays there until the new one has landed over it, then goes',
+    oldSheet.length >= 12 && Math.abs(Math.min(...oldSheet.map((q) => q.s)) - 0.955) < 0.003 && Math.min(...oldSheet.map((q) => q.y)) <= -8
+      && heldTo >= 380 && oldLast.o === 0 && oldLast.t >= 480
+      && newSheet[0].y > 120 && newSheet[newSheet.length - 1].y === 0 && newSheet[newSheet.length - 1].o === 1
+      && (await p.$$('[data-canvas-pane]')).length === 1,
+    JSON.stringify({ oldMinS: Math.min(...oldSheet.map((q) => q.s)), heldTo, oldGoneAt: oldLast?.t, newY0: newSheet[0]?.y }))
+  await p.mouse.move(800, 800); await p.waitForTimeout(300)
+  const [, shClose] = await Promise.all([p.mouse.click(an.x + 36, an.y + 36), filmPanes(1000)])
+  const sc = of(shClose, 'analytics')
+  check('closing a SHEET drops it back down (~22 %) and dissolves it in the second half; the site comes forward under it',
+    sc.length >= 8 && monotone(sc, 'y', 1) && sc[sc.length - 1].y > 150 && sc.find((q) => q.o < 0.9).t >= 100 && sc[sc.length - 1].o === 0
+      && (await p.$('[data-canvas-pane]')) === null && (await p.$eval('[data-canvas-site]', (e) => getComputedStyle(e).opacity)) === '1',
+    JSON.stringify({ yLast: sc[sc.length - 1]?.y, fadeFrom: sc.find((q) => q.o < 0.9)?.t, n: sc.length }))
+  await p.mouse.move(800, 800); await p.waitForTimeout(400)
+
+  /* ── FOCUS ─────────────────────────────────────────────────────────────────────── */
+  await setMotion('Focus')
+  cloud = await bbox('Cloud'); an = await bbox('Analytics')
+  const [, fOpen] = await Promise.all([p.mouse.click(cloud.x + 12, cloud.y + 12), filmPanes(1000)])
+  const fo = of(fOpen, 'cloud')
+  check('FOCUS opens IN PLACE: no travel, scale .94 → 1 monotone with no overshoot, solid by ~260 ms, tagged as focus',
+    fo.length >= 10 && fo[0].motion === 'focus' && fo.every((q) => q.y === 0) && fo[0].s < 0.98 && monotone(fo, 's', 1) && Math.max(...fo.map((q) => q.s)) <= 1.0005
+      && fo[fo.length - 1].s === 1 && fo.find((q) => q.o >= 0.99).t <= 300,
+    JSON.stringify({ s0: fo[0]?.s, maxS: Math.max(...fo.map((q) => q.s)), solidAt: fo.find((q) => q.o >= 0.99)?.t }))
+  await p.mouse.move(800, 800); await p.waitForTimeout(300)
+  const [, fSwitch] = await Promise.all([p.mouse.click(an.x + 24, an.y + 24), filmPanes(1000)])
+  const oldF = of(fSwitch, 'cloud'), newF = of(fSwitch, 'analytics')
+  const newStarts = newF.find((q) => q.o > 0.02)?.t
+  check('switching windows in FOCUS is a pass through depth: the old window comes FORWARD (→ 1.035, on top, z 11) and dissolves within ~220 ms while the new one arrives from behind (.96 → 1) a beat later',
+    oldF.length >= 6 && oldF.every((q) => q.z === '11') && Math.abs(Math.max(...oldF.map((q) => q.s)) - 1.035) < 0.004 && oldF[oldF.length - 1].o === 0 && oldF[oldF.length - 1].t <= 300
+      && newF[0].s <= 0.962 && newStarts >= 60 && newF[newF.length - 1].s === 1 && newF[newF.length - 1].o === 1 && (await p.$$('[data-canvas-pane]')).length === 1,
+    JSON.stringify({ oldMaxS: Math.max(...oldF.map((q) => q.s)), oldZ: oldF[0]?.z, oldGone: oldF[oldF.length - 1]?.t, newS0: newF[0]?.s, newStarts }))
+  await p.mouse.move(800, 800); await p.waitForTimeout(300)
+  const [, fClose] = await Promise.all([p.mouse.click(an.x + 36, an.y + 36), filmPanes(900)])
+  const fc = of(fClose, 'analytics')
+  check('closing in FOCUS defocuses it back to .94 and clear in ~240 ms — quicker than it came (rule 4)',
+    fc.length >= 6 && monotone(fc, 's', -1) && Math.abs(fc[fc.length - 1].s - 0.94) < 0.003 && fc[fc.length - 1].o === 0 && fc[fc.length - 1].t <= 320
+      && (await p.$('[data-canvas-pane]')) === null,
+    JSON.stringify({ sLast: fc[fc.length - 1]?.s, gone: fc[fc.length - 1]?.t }))
+  await p.mouse.move(800, 800); await p.waitForTimeout(400)
+
+  /* ── back to the UNFOLD, and it is still the unfold ─────────────────────────────── */
+  await setMotion('Unfold')
+  cloud = await bbox('Cloud')
+  const [, uOpen] = await Promise.all([p.mouse.click(cloud.x + 12, cloud.y + 12), filmPanes(500)])
+  const uo = of(uOpen, 'cloud')
+  check('the Unfold is untouched: back on it the pane is tagged unfold, does not travel or scale, and its rim rides the clip',
+    uo.length >= 5 && uo[0].motion === 'unfold' && uo.every((q) => q.y === 0 && q.s === 1) && !!(await p.$('[data-canvas-pane] [data-pane-rim]')),
+    JSON.stringify(uo[0]))
+  await p.keyboard.press('Escape'); await p.waitForTimeout(600)
+  await p.mouse.move(800, 800); await p.waitForTimeout(200)
+}
+
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
 await b.close()
 

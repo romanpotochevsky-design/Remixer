@@ -12,7 +12,7 @@
  */
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
 import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, usePresence, useReducedMotion, useTransform, type MotionStyle, type MotionValue } from 'motion/react'
-import { useWorld, canUseAI, hasPlan, registrantUnconfirmed } from '@/state/world'
+import { useWorld, canUseAI, hasPlan, registrantUnconfirmed , type PaneMotion } from '@/state/world'
 import { useUI, fromRect, MOBILE_WIDTH, MOBILE_HEIGHT, type Surface, type SurfaceFrom } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
@@ -35,7 +35,14 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
-import { SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, PANE_OPEN, PANE_CLOSE, PANE_CLOSE_MS, PANE_FRESH_MS, PANE_SETTLE, PANE_SETTLE_FROM, PANE_SETTLE_KEYS, PANE_SOLID, PANE_DISSOLVE, PANE_RIM_COOL, PANE_TINT_K, PANE_FADE_IN, PANE_FADE_OUT } from '@/ui/motion'
+import {
+  SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, canvasSiteSheet,
+  PANE_OPEN, PANE_CLOSE, PANE_CLOSE_MS, PANE_FRESH_MS, PANE_SETTLE, PANE_SETTLE_FROM, PANE_SETTLE_KEYS, PANE_SOLID,
+  PANE_DISSOLVE, PANE_RIM_COOL, PANE_TINT_K, PANE_FADE_IN, PANE_FADE_OUT,
+  SHEET_RISE_PCT, SHEET_SCALE_FROM, SHEET_OPEN, SHEET_CONDENSE, SHEET_DROP_PCT, SHEET_CLOSE, SHEET_CLOSE_DISSOLVE,
+  SHEET_BACK_SCALE, SHEET_BACK_Y_PCT, SHEET_BACK_DIM, SHEET_BACK, SHEET_BACK_OUT,
+  FOCUS_FROM, FOCUS_OPEN, FOCUS_SOLID, FOCUS_CLOSE, FOCUS_PASS_TO, FOCUS_PASS, FOCUS_BEHIND_FROM, FOCUS_ARRIVE, FOCUS_ARRIVE_SOLID,
+} from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -560,9 +567,33 @@ const PANE_FLYER_FROM: RGB = [149, 117, 205]
 /** The pane's lights in the module's tone — and at HALF the ink of the white ones (`PANE_TINT_K`): the
  *  designer found the violet edge too loud mid-unfold (24.09.2026). No tone → no overrides, white at 1. */
 const tint = (tone?: string) => (tone ? { '--glint-rgb': tone, '--glint-k': PANE_TINT_K } : {})
-function CanvasPane({ id, tone, canvas, flyer, children }: {
+/**
+ * THREE MOTIONS, ONE PANE (designer, 24.09.2026, with a recording of the unfold — «сделай еще 2 других
+ * варианта… с другой задумкой абсолютно и концепцией», the switch in the console). The pane keeps its
+ * one job — to be the box a surface stands in — and wears whichever motion the world says
+ * (`world.paneMotion`, motion.ts § TWO MORE WAYS A WINDOW CAN ARRIVE):
+ *   · `unfold` — the clip-morph from the button, the lit rim, the flying mark (everything above);
+ *   · `sheet`  — rises from below as one sheet of glass (`y` in % of its own height, so the travel is
+ *                the same share of any canvas), growing .97 → 1 from its bottom edge, condensing in the
+ *                first 160 ms; the site behind steps back like the card behind an iOS sheet;
+ *   · `focus`  — focuses into place from .94 with no travel and no bounce.
+ * The rim and the flyer belong to the unfold alone — they ride a clip edge, and the other two move the
+ * window as one object, whose own hairline is the edge. The glint lands with all three.
+ *
+ * `handoff` is the parent's word on whether this pane is one end of a SWITCH between two windows (read
+ * in render, so it is right in the first frame — the same trick as `leavingTile`). A sheet leaving into
+ * another sheet steps back instead of dropping; a focused window leaving into another passes forward
+ * instead of defocusing, and the arriving one comes from behind with a beat's delay. The motion is read
+ * LIVE at each end, not captured at mount: the designer flips the console with a window open and wants
+ * the very next close to answer in the new language.
+ */
+function CanvasPane({ id, tone, canvas, flyer, motion: motionRef, handoff, children }: {
   id: string; tone?: string; canvas: RefObject<HTMLElement>
   flyer?: { node: ReactNode; to: string; from?: RGB; into: RGB }
+  /** which motion the world wears right now — a ref, so a pane already on screen leaves in the CURRENT one */
+  motion: RefObject<PaneMotion>
+  /** true while the shell is swapping one window for another (set in App's render) */
+  handoff: RefObject<boolean>
   children: ReactNode
 }) {
   const reduce = useReducedMotion()
@@ -570,55 +601,102 @@ function CanvasPane({ id, tone, canvas, flyer, children }: {
   const presentRef = useRef(true)
   presentRef.current = present
   const [geom] = useState<PaneGeom>(() => paneGeometry(useUI.getState().surfaceFrom, canvas.current))
-  const p = useMotionValue(reduce ? 1 : 0)
+  /* the motion this pane ARRIVED in — the rim, the flyer and the clip exist only for the unfold */
+  const [arrivedAs] = useState<PaneMotion>(() => motionRef.current ?? 'unfold')
+  const unfold = arrivedAs === 'unfold'
+  const p = useMotionValue(reduce || !unfold ? 1 : 0)
   const opacity = useMotionValue(0)
   const scale = useMotionValue(1)
-  const settle = useMotionValue(reduce ? 1 : PANE_SETTLE_FROM)
-  const glow = useMotionValue(reduce ? 0 : 1)
+  const y = useMotionValue('0%')
+  const settle = useMotionValue(reduce || !unfold ? 1 : PANE_SETTLE_FROM)
+  const glow = useMotionValue(reduce || !unfold ? 0 : 1)
   const clipPath = useTransform(p, (v) => clipAt(geom, v))
   const [fresh, setFresh] = useState(true)
+  /* a focused window passing the viewer on a switch is IN FRONT of the one arriving behind it */
+  const [inFront, setInFront] = useState(false)
   const [ctx] = useState(() => ({ settle }))
 
-  /* the unfold */
+  /* the arrival */
   useEffect(() => {
     if (reduce) {
       animate(opacity, 1, PANE_FADE_IN)
-    } else {
+    } else if (arrivedAs === 'unfold') {
       const clip = animate(p, 1, PANE_OPEN)
       animate(opacity, 1, PANE_SOLID)
       animate(settle, PANE_SETTLE_KEYS, PANE_SETTLE)
       /* the rim cools once the pane has landed — not on a fold that interrupted the unfold (a stopped
          animation resolves its promise too) */
       clip.then(() => { if (presentRef.current && p.get() > 0.99) animate(glow, 0, PANE_RIM_COOL) })
+    } else if (arrivedAs === 'sheet') {
+      y.set(`${SHEET_RISE_PCT}%`)
+      scale.set(SHEET_SCALE_FROM)
+      animate(y, '0%', SHEET_OPEN)
+      animate(scale, 1, SHEET_OPEN)
+      animate(opacity, 1, SHEET_CONDENSE)
+    } else {
+      /* arriving in a switch: from behind, a beat after the old window has started forward */
+      const behind = !!handoff.current
+      scale.set(behind ? FOCUS_BEHIND_FROM : FOCUS_FROM)
+      animate(scale, 1, behind ? FOCUS_ARRIVE : FOCUS_OPEN)
+      animate(opacity, 1, behind ? FOCUS_ARRIVE_SOLID : FOCUS_SOLID)
     }
     const id = window.setTimeout(() => setFresh(false), PANE_FRESH_MS)
     return () => window.clearTimeout(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* the fold — back into the button, dissolving only once small; then the pane removes itself */
+  /* the leaving — in whatever motion the world wears NOW; then the pane removes itself */
   useEffect(() => {
     if (present) return
-    glow.set(1)
-    const runs = reduce
-      ? [animate(opacity, 0, PANE_FADE_OUT)]
-      : [animate(p, 0, PANE_CLOSE), animate(scale, 0.98, PANE_CLOSE), animate(opacity, 0, PANE_DISSOLVE)]
+    const mode = motionRef.current ?? 'unfold'
+    const switching = !!handoff.current
+    /* motion's controls are thenable, not Promises — adopt them so the chain below types */
+    const done = (a: { then: (r: VoidFunction) => unknown }) => new Promise<void>((r) => a.then(() => r()))
+    let runs: Promise<void>[]
+    if (reduce) {
+      runs = [done(animate(opacity, 0, PANE_FADE_OUT))]
+    } else if (mode === 'unfold' && unfold) {
+      /* back into the button, dissolving only once small */
+      glow.set(1)
+      runs = [done(animate(p, 0, PANE_CLOSE)), done(animate(scale, 0.98, PANE_CLOSE)), done(animate(opacity, 0, PANE_DISSOLVE))]
+    } else if (mode === 'sheet') {
+      runs = switching
+        ? [
+            /* step back behind the sheet rising over it; go only once it is covered */
+            done(animate(scale, SHEET_BACK_SCALE, SHEET_BACK)),
+            done(animate(y, `${SHEET_BACK_Y_PCT}%`, SHEET_BACK)),
+            done(animate(opacity, SHEET_BACK_DIM, SHEET_BACK)).then(() => done(animate(opacity, 0, SHEET_BACK_OUT))),
+          ]
+        : [done(animate(y, `${SHEET_DROP_PCT}%`, SHEET_CLOSE)), done(animate(scale, SHEET_SCALE_FROM, SHEET_CLOSE)), done(animate(opacity, 0, SHEET_CLOSE_DISSOLVE))]
+    } else if (mode === 'focus') {
+      if (switching) setInFront(true)
+      runs = switching
+        ? [done(animate(scale, FOCUS_PASS_TO, FOCUS_PASS)), done(animate(opacity, 0, FOCUS_PASS))]
+        : [done(animate(scale, FOCUS_FROM, FOCUS_CLOSE)), done(animate(opacity, 0, FOCUS_CLOSE))]
+    } else {
+      /* a window that arrived as a sheet or in focus, asked to leave as an unfold: it has no clip to fold,
+         so it defocuses — the nearest of the three to a fold without a button to fold into */
+      runs = [done(animate(scale, FOCUS_FROM, FOCUS_CLOSE)), done(animate(opacity, 0, FOCUS_CLOSE))]
+    }
     Promise.all(runs).then(() => safeToRemove())
   }, [present]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const origin = geom.kind === 'px' ? `${px(geom.origin.x)} ${px(geom.origin.y)}` : '50% 50%'
+  const origin = unfold
+    ? geom.kind === 'px' ? `${px(geom.origin.x)} ${px(geom.origin.y)}` : '50% 50%'
+    : arrivedAs === 'sheet' ? '50% 100%' : '50% 50%'
   return (
     <PaneMotionContext.Provider value={ctx}>
       <motion.div
         data-canvas-pane={id}
+        data-pane-motion={arrivedAs}
         data-pane-fresh={fresh ? '' : undefined}
         className="absolute bottom-2 left-2 right-0 top-0 z-10 overflow-hidden rounded-[16px]"
         /* promoted for its lifetime: the clip is written every frame of the unfold, and a layer of its
            own is what keeps that a compositor update, not a repaint of the window */
-        style={{ clipPath, opacity, scale, transformOrigin: origin, willChange: 'clip-path, transform, opacity' }}
+        style={{ clipPath, opacity, scale, y, transformOrigin: origin, willChange: 'clip-path, transform, opacity', zIndex: inFront ? 11 : undefined }}
       >
         {children}
-        {geom.kind === 'px' && <PaneRim p={p} glow={glow} geom={geom} tone={tone} />}
-        {geom.kind === 'px' && flyer && (
+        {unfold && geom.kind === 'px' && <PaneRim p={p} glow={glow} geom={geom} tone={tone} />}
+        {unfold && geom.kind === 'px' && flyer && (
           <PaneFlyer p={p} geom={geom} to={flyer.to} from={flyer.from ?? PANE_FLYER_FROM} into={flyer.into}>
             {flyer.node}
           </PaneFlyer>
@@ -707,6 +785,18 @@ export default function App() {
     setClosingTile(null)
   }, [surface])
   const holdPanel = canvasSettling || surfaceJustLeft
+  /*
+   * THE WINDOWS' MOTION, AND WHETHER THIS IS A SWITCH. Both go to the panes as refs written in RENDER,
+   * for the same reason `leavingTile` is computed here: the pane that is leaving reads them in the
+   * effect that runs after THIS commit, and the pane that is arriving reads them at its mount — both
+   * see the frame's truth, not last frame's. `handoff` is true only while one window is replacing
+   * another (Cloud → Analytics): a sheet then steps back instead of dropping, a focused window passes
+   * forward instead of defocusing, and the arriving one comes from behind.
+   */
+  const paneMotionRef = useRef<PaneMotion>(world.paneMotion)
+  paneMotionRef.current = world.paneMotion
+  const handoffRef = useRef(false)
+  handoffRef.current = prevSurface.current !== 'preview' && surface !== 'preview' && prevSurface.current !== surface
   /* ⚠️ THE FIRST FRAME OF THE FOLD IS PAINTED BEFORE THAT EFFECT RUNS. `closingTile` is set after the
      commit that turned `surface` to 'preview', so the render that starts the fold saw `on` false and
      `closingTile` null — one frame with the tile unlit, a 120 ms colour transition started towards dark
@@ -1154,7 +1244,7 @@ export default function App() {
                does — a surface in place of the site, not a modal over it. There is no
                site to preview at this point in the flow, so nothing is being covered. */
             return surface === 'plan' ? (
-              <CanvasPane key="plan" id="plan" canvas={canvasRef}>
+              <CanvasPane key="plan" id="plan" canvas={canvasRef} motion={paneMotionRef} handoff={handoffRef}>
                 <PlanSurface />
               </CanvasPane>
             ) : surface === 'cloud' ? (
@@ -1164,6 +1254,8 @@ export default function App() {
                 id="cloud"
                 tone="149 117 205"
                 canvas={canvasRef}
+                motion={paneMotionRef}
+                handoff={handoffRef}
                 /* the window's cloud flies from the rail glyph (#9575cd) to its seat in the menu header (#7e57c2) */
                 flyer={{ node: <IconCloud size={25} />, to: '[data-cloud-mark]', into: [126, 87, 194] }}
               >
@@ -1176,6 +1268,8 @@ export default function App() {
                 id="analytics"
                 tone="102 187 106"
                 canvas={canvasRef}
+                motion={paneMotionRef}
+                handoff={handoffRef}
                 /* the chart plate flies from the rail glyph (#66bb6a) to its seat in the top bar (white) */
                 flyer={{ node: <IconAnalytics size={24} />, to: '[data-analytics-mark]', from: [102, 187, 106], into: [255, 255, 255] }}
               >
@@ -1183,7 +1277,7 @@ export default function App() {
               </CanvasPane>
             ) : surface === 'domains' ? (
               /* the window leaves as ONE object — frame, bar and sheet — not sheet first, frame after */
-              <CanvasPane key="domains" id="domains" canvas={canvasRef}>
+              <CanvasPane key="domains" id="domains" canvas={canvasRef} motion={paneMotionRef} handoff={handoffRef}>
                 <DomainsSurface />
               </CanvasPane>
             ) : (
@@ -1191,7 +1285,9 @@ export default function App() {
                 key="site"
                 data-canvas-site
                 className="absolute bottom-2 left-2 right-0 top-0 z-0 flex items-center justify-center"
-                variants={reduce ? canvasSiteFade : canvasSite}
+                /* under an arriving SHEET the site steps back like the card behind an iOS sheet —
+                   smaller and a few px UP, the other way from the sheet (motion.ts `canvasSiteSheet`) */
+                variants={reduce ? canvasSiteFade : world.paneMotion === 'sheet' ? canvasSiteSheet : canvasSite}
                 initial="initial"
                 animate="animate"
                 exit="exit"

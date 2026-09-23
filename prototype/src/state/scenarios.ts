@@ -541,6 +541,7 @@ export interface Axis {
 
 const G = {
   product: { en: 'Product', uk: 'Продукт' },
+  windows: { en: 'Canvas windows', uk: 'Вікна канвасу' },
   customer: { en: 'Customer', uk: 'Клієнт' },
   credits: { en: 'Credits', uk: 'Кредити' },
   owned: { en: 'Domains they own', uk: 'Домени клієнта' },
@@ -556,6 +557,22 @@ export const AXES: Axis[] = [
     options: [
       { value: 'en', label: { en: 'English', uk: 'English' }, hint: { en: 'Default — US market', uk: 'За замовчуванням — ринок США' } },
       { value: 'uk', label: { en: 'Українська', uk: 'Українська' }, hint: { en: 'Second language', uk: 'Друга мова' } },
+    ],
+  },
+  {
+    /*
+     * HOW THE CANVAS WINDOWS MOVE (24.09.2026) — three motions, three ideas, one segmented switch
+     * so the designer can compare them on Cloud, Analytics and Domains without leaving the shell
+     * (his ask, with a recording of the unfold: «сделай еще 2 других варианта… с другой задумкой
+     * абсолютно и концепцией… в консоле в виде сегмент контроля»). `unfold` is what shipped and
+     * stays the default until he picks; the other two are world.ts `PaneMotion`. A design A/B like
+     * `planSimple` — not a project fact, so `startBuild` leaves it alone.
+     */
+    key: 'paneMotion', group: G.windows, label: { en: 'Window motion', uk: 'Рух вікон' }, kind: 'options',
+    options: [
+      { value: 'unfold', label: { en: 'Unfold', uk: 'Розгортання' }, hint: { en: 'Grows out of its rail button, a lit rim on the edge', uk: 'Виростає зі своєї кнопки в рейлі, світлий обід по кромці' } },
+      { value: 'sheet', label: { en: 'Sheet', uk: 'Аркуш' }, hint: { en: 'Rises from below; the site steps back like the card behind an iOS sheet', uk: 'Піднімається знизу; сайт відступає, як картка за аркушем iOS' } },
+      { value: 'focus', label: { en: 'Focus', uk: 'Фокус' }, hint: { en: 'Focuses into place from behind; windows pass through depth when switching', uk: 'Фокусується на місці з глибини; вікна змінюються крізь глибину' } },
     ],
   },
   {
