@@ -847,6 +847,13 @@ export const PANE_SOLID = { duration: 0.12, ease: [0.2, 0, 0, 1] } as const
 export const PANE_DISSOLVE = { duration: 0.2, delay: 0.16, ease: [0.4, 0, 1, 1] } as const
 /** The moving rim cools once the pane has landed and the window's own hairline shows through. */
 export const PANE_RIM_COOL = { duration: 0.5, ease: [0.2, 0, 0, 1] } as const
+/** How strong a TINTED light on the pane is, against the white one (designer 24.09.2026, on the Cloud
+ *  window's violet edge mid-unfold: «мне не очень нравится во время анимации этот цветной бордер, я бы
+ *  сделал его раза в 2 прозрачнее»). Multiplies every alpha of the pane's rim (`.pane-rim`, .62 → .31) and
+ *  of its glint (`.glass-glint`, .24 / .14 / .05 → half) through `--glint-k`; the white lights — the cards',
+ *  the Publish panel's, the Domains window's — keep 1. A tint reads louder than white at the same alpha
+ *  because it is a HUE on a neutral ground, not just a lighter line: the same light, half the ink. */
+export const PANE_TINT_K = 0.5
 /** Reduced motion: the pane simply comes up and goes in place. */
 export const PANE_FADE_IN = { duration: 0.24, ease: [0.2, 0, 0, 1] } as const
 export const PANE_FADE_OUT = { duration: 0.16, ease: [0.4, 0, 1, 1] } as const

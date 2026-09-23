@@ -3885,10 +3885,14 @@ html[data-drag] .shell-aside { transition: none; }
      window sets `--glint-rgb: 149 117 205` and is lit violet by the button that opened it
      (App.tsx `CanvasPane`, 22.09.2026). Unset, it is the cards' white. */
   --glint-rgb: 255 255 255;
+  /* …and its STRENGTH: a tinted light is louder than a white one at the same alpha (a hue on a neutral
+     ground, not just a lighter line), so the pane sets `--glint-k` to .5 with its tone (motion.ts
+     `PANE_TINT_K`; designer 24.09.2026: «этот цветной бордер… раза в 2 прозрачнее»). White keeps 1. */
+  --glint-k: 1;
   box-shadow:
-    inset 0 0 0 1px rgb(var(--glint-rgb) / 0.24),
-    inset 0 1px 0 0 rgb(var(--glint-rgb) / 0.14),
-    inset 0 0 28px rgb(var(--glint-rgb) / 0.05);
+    inset 0 0 0 1px rgb(var(--glint-rgb) / calc(0.24 * var(--glint-k))),
+    inset 0 1px 0 0 rgb(var(--glint-rgb) / calc(0.14 * var(--glint-k))),
+    inset 0 0 28px rgb(var(--glint-rgb) / calc(0.05 * var(--glint-k)));
   opacity: 0;
   animation: card-glint 1.1s cubic-bezier(0.2, 0, 0.3, 1) 0.1s both;
 }
@@ -3926,12 +3930,14 @@ html[data-drag] .shell-aside { transition: none; }
 /* THE RIM THAT RIDES THE CLIP (App.tsx `PaneRim`): four 1×1 lines scaled along their length — a scaled
    1px stays 1px thick — and four r16 corner arcs, placed every frame at the clip's edge by transform.
    Lit in the module's tone while the glass moves (the group's opacity is the pane's `glow`), gone once
-   it has landed, where the window's own hairline shows through. */
+   it has landed, where the window's own hairline shows through. A TINTED rim carries half the ink of a
+   white one (`--glint-k` .5 from the pane, motion.ts `PANE_TINT_K`): .62 → .31 — the designer's
+   «раза в 2 прозрачнее» on the violet edge, 24.09.2026. */
 .pane-rim {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  color: rgb(var(--glint-rgb, 255 255 255) / 0.62);
+  color: rgb(var(--glint-rgb, 255 255 255) / calc(0.62 * var(--glint-k, 1)));
 }
 .pane-rim-line {
   position: absolute;

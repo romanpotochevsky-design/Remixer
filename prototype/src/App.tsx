@@ -34,7 +34,7 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
-import { SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, PANE_OPEN, PANE_CLOSE, PANE_CLOSE_MS, PANE_FRESH_MS, PANE_SETTLE, PANE_SETTLE_FROM, PANE_SETTLE_KEYS, PANE_SOLID, PANE_DISSOLVE, PANE_RIM_COOL, PANE_FADE_IN, PANE_FADE_OUT } from '@/ui/motion'
+import { SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, PANE_OPEN, PANE_CLOSE, PANE_CLOSE_MS, PANE_FRESH_MS, PANE_SETTLE, PANE_SETTLE_FROM, PANE_SETTLE_KEYS, PANE_SOLID, PANE_DISSOLVE, PANE_RIM_COOL, PANE_TINT_K, PANE_FADE_IN, PANE_FADE_OUT } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -474,7 +474,7 @@ function PaneRim({ p, glow, geom, tone }: { p: MotionValue<number>; glow: Motion
     </svg>
   )
   return (
-    <motion.span className="pane-rim" data-pane-rim style={{ opacity: glow, '--glint-rgb': tone } as MotionStyle} aria-hidden>
+    <motion.span className="pane-rim" data-pane-rim style={{ opacity: glow, ...tint(tone) } as MotionStyle} aria-hidden>
       <i ref={set(0)} className="pane-rim-line" />
       <i ref={set(1)} className="pane-rim-line" />
       <i ref={set(2)} className="pane-rim-line" />
@@ -544,10 +544,14 @@ function PaneFlyer({ p, geom, to, from, into, children }: {
  *
  * `data-pane-fresh` marks the first 1.1 s: the window's contents cascade in under it (index.css «THE
  * PANE THAT UNFOLDS»); when it goes, every animation it gated has already finished, so nothing snaps.
- * `tone` lights the rim and the glint in the module's colour (the Cloud window's violet); the default is
- * white. `flyer` is the mark that travels from the button to its seat (`to` — a selector inside the pane).
+ * `tone` lights the rim and the glint in the module's colour (the Cloud window's violet) — at half the
+ * white lights' ink (`PANE_TINT_K`, designer 24.09.2026: «раза в 2 прозрачнее»); the default is white at
+ * full. `flyer` is the mark that travels from the button to its seat (`to` — a selector inside the pane).
  */
 const PANE_FLYER_FROM: RGB = [149, 117, 205]
+/** The pane's lights in the module's tone — and at HALF the ink of the white ones (`PANE_TINT_K`): the
+ *  designer found the violet edge too loud mid-unfold (24.09.2026). No tone → no overrides, white at 1. */
+const tint = (tone?: string) => (tone ? { '--glint-rgb': tone, '--glint-k': PANE_TINT_K } : {})
 function CanvasPane({ id, tone, canvas, flyer, children }: {
   id: string; tone?: string; canvas: RefObject<HTMLElement>
   flyer?: { node: ReactNode; to: string; from?: RGB; into: RGB }
@@ -611,7 +615,7 @@ function CanvasPane({ id, tone, canvas, flyer, children }: {
             {flyer.node}
           </PaneFlyer>
         )}
-        <span className="glass-glint" style={tone ? ({ '--glint-rgb': tone } as CSSProperties) : undefined} aria-hidden />
+        <span className="glass-glint" style={tone ? (tint(tone) as CSSProperties) : undefined} aria-hidden />
       </motion.div>
     </PaneMotionContext.Provider>
   )

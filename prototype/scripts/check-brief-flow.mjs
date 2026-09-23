@@ -3133,6 +3133,10 @@ check('…and the typed prompt is built as given', await cardUp())
       pf.length >= 10 && Math.abs(pf[0].panelS - 0.94) < 0.01 && maxS > 1.0003 && maxS < 1.01 && Math.abs(pf[pf.length - 1].panelS - 1) < 0.0015
         && glintPeak > 0.9 && glintLast !== null && glintLast < glintPeak,
       JSON.stringify({ first: pf[0]?.panelS, maxS, maxAt: pf.find((s) => s.panelS === maxS)?.t, last: pf[pf.length - 1]?.panelS, glintPeak, glintLast }))
+    /* the WHITE glint keeps its full ink — only the TINTED pane lights were halved (`--glint-k`, 24.09.2026) */
+    const panelGlint = await p.$eval('[role="dialog"] .glass-glint', (n) => getComputedStyle(n).boxShadow).catch(() => null)
+    check(`…in the cards’ white at full ink (ring .24) — the halving belongs to tinted lights only — ${label}`,
+      panelGlint !== null && /rgba\(255, 255, 255, 0\.24\)/.test(panelGlint), String(panelGlint).slice(0, 60))
     const flight = await world()
     check(`the connect starts the walk and touches nothing else — ${label}`,
       flight.domain === 'connecting' && String(flight.published) === v, JSON.stringify(flight))
@@ -4610,6 +4614,14 @@ await shot('30-plan-review')
   check('…the moving edge is a REAL edge: an eight-part rim rides the clip (its top line sits on the clip’s top inset every frame, within 1.5 px), lit for the whole flight and cooled to nothing by the end of the film',
     rimFrames.length >= 20 && oP[0].rimParts === 8 && rimTracks && rimLitInFlight && rimCooled,
     JSON.stringify({ frames: rimFrames.length, parts: oP[0]?.rimParts, tracks: rimTracks, lit: rimLitInFlight, lastO: rimFrames[rimFrames.length - 1]?.rimO }))
+  /* the rim's INK is the module's violet at .31 — half of the white rim's .62 (designer 24.09.2026, «раза в 2
+     прозрачнее»); read on the group while it is still mounted, on a fresh unfold below the fold film */
+  const rimInk = await p.evaluate(() => {
+    const rim = document.querySelector('[data-pane-rim]')
+    return rim ? getComputedStyle(rim).color : null
+  })
+  check('…and the rim’s ink is the module’s violet at .31 — a tinted light at half the white one’s .62',
+    rimInk === null || /rgba\(149, 117, 205, 0\.31\)/.test(rimInk), String(rimInk))
   /* THE MARK FLIES WITH THE EDGE (App.tsx `PaneFlyer`): from the button's glyph to its seat, colour
      #9575cd → #7e57c2, the real mark hidden until the clone has landed */
   const fl = oP.filter((s) => s.flyX !== null)
@@ -4640,8 +4652,11 @@ await shot('30-plan-review')
     JSON.stringify({ frames: oS.length, at120: oS.filter((s) => s.t <= 120).pop(), last: oS[oS.length - 1], goneAt: openFilm.find((s) => s.site === null)?.t }))
   const glintPeakO = Math.max(0, ...oP.map((s) => s.glint ?? 0)); const glintLastO = oP[oP.length - 1].glint
   const glintShadow = await CSS('[data-canvas-pane] .glass-glint', 'boxShadow')
-  check('…its rim catches the light in the MODULE’S violet (149 117 205) — rising to full and on its way down by the end of the film',
-    /rgba\(149, 117, 205, 0\.24\)/.test(glintShadow) && glintPeakO > 0.9 && glintLastO !== null && glintLastO < 0.2,
+  /* 24.09.2026 — the designer, on the violet edge mid-unfold: «раза в 2 прозрачнее». A tinted light carries
+     HALF the ink of a white one (`--glint-k` .5, motion.ts `PANE_TINT_K`): the glint's ring .24 → .12, the
+     rim's .62 → .31. The white lights elsewhere keep their numbers — asserted on the Publish panel below. */
+  check('…its rim catches the light in the MODULE’S violet (149 117 205) at HALF the white ink (ring .12) — rising to full and on its way down by the end of the film',
+    /rgba\(149, 117, 205, 0\.12\)/.test(glintShadow) && glintPeakO > 0.9 && glintLastO !== null && glintLastO < 0.2,
     JSON.stringify({ shadow: glintShadow.slice(0, 60), peak: glintPeakO, peakAt: oP.find((s) => s.glint === glintPeakO)?.t, last: glintLastO }))
   const mid = oP.find((s) => s.t >= 380 && s.rows)
   const allIn = oP.find((s) => s.rows && s.rows.every((o) => o >= 0.99))
