@@ -4074,6 +4074,15 @@ await shot('30-plan-review')
     close[2] === 32 && (await CSS('[data-cloud-close]', 'borderTopLeftRadius')) === '10px'
     && Math.round(win[0] + win[2] - (close[0] + close[2])) === 9, // 8 + the window's own 1px border
     `${close[2]} · ${Math.round(win[0] + win[2] - (close[0] + close[2]))}`)
+  /* 23.09.2026 — the designer: the close button wears the composer's glass, with the house hover wash and
+     press bloom; the row-action fade ends in the SHEET's colour (board 30816:52156), the glyphs white. */
+  check('…and it is the composer’s glass — rim class, Black/700 fill, blur 16, hover wash + bloom host',
+    (await p.$eval('[data-cloud-close]', (e) => e.classList.contains('liquid-glass') && e.classList.contains('liquid-glass--composer') && e.classList.contains('glass-interactive')))
+      && (await CSS('[data-cloud-close]', 'backgroundColor')) === 'rgba(9, 9, 11, 0.64)' && /blur\(16px\)/.test(await CSS('[data-cloud-close]', 'backdropFilter')),
+    JSON.stringify({ bg: await CSS('[data-cloud-close]', 'backgroundColor'), blur: await CSS('[data-cloud-close]', 'backdropFilter') }))
+  const fade = await p.$eval('button[aria-label^="Edit "]', (b) => { const host = b.parentElement; return { bg: getComputedStyle(host).backgroundImage, glyph: getComputedStyle(b).color } })
+  check('the row actions sit on a fade that ends in the sheet’s own #18181b at 60.36px (the board’s 38.942 % of 155) — an invisible plate that only dims the text — and their glyphs are white',
+    /rgba\(24, 24, 27, 0\)/.test(fade.bg) && /rgb\(24, 24, 27\) 60\.36px/.test(fade.bg) && fade.glyph === 'rgb(255, 255, 255)', JSON.stringify(fade))
   const top = await p.$eval('[data-cloud-window] h2', (h) => {
     const row = h.parentElement, nav = document.querySelector('[data-cloud-window] nav')
     const r = row.getBoundingClientRect(), n = nav.getBoundingClientRect(), g = getComputedStyle(h)
@@ -4137,7 +4146,7 @@ await shot('30-plan-review')
   const ride = await p.evaluate(async () => {
     const s = document.querySelector('[data-cloud-list]')
     const head = document.querySelector('[data-cloud-headings] > div')
-    const act = document.querySelector('[data-cloud-row] .sticky')
+    const act = document.querySelector('[data-cloud-row] .sticky').lastElementChild // the trash button: the plate itself now reaches the edge (23.09)
     const before = [getComputedStyle(head).transform, act.getBoundingClientRect().right]
     s.scrollLeft = 200
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))

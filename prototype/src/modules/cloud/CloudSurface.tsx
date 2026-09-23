@@ -30,10 +30,11 @@
  * a 1px hairline of 8 % white along its top and a 6px radius at its top-right corner. The base
  * shows exactly where the board shows it — behind the top bar and behind the menu column.
  * The first build derived a single flat `--gray-850` from the one opaque literal in the leaves
- * (the row-action fade `rgba(31,31,34,0) → #1f1f22`) and lost both the strip and the hairline:
+ * (the row-action fade, then misread as `rgba(31,31,34,0) → #1f1f22`) and lost both the strip and the hairline:
  * leaves carry no surfaces — those live on the wrappers, whose export had been skipped because
  * it exceeded the MCP response size (it is saved to a file; slice it, do not route around it).
- * The fade's `#1f1f22` is the mock's own slip (the sheet is #18181b): kept as drawn, flagged.
+ * The fade ends in the sheet's #18181b (board 30816:52156) — the `#1f1f22` read on 22.09 came from a
+ * partial export and was wrong; the designer caught it on the live build (23.09.2026).
  *
  * ⚠️ THE PAGE'S `border-r` IS NOT DRAWN HERE. The board puts a `Gray/800` right border on
  * the Page, whose right edge IS the window's right edge — so in CSS it would land on top of
@@ -210,28 +211,40 @@ function Row({ row, i, last, t }: { row: CloudRow; i: number; last: boolean; t: 
         * THE ACTIONS RIDE THE RIGHT EDGE. The board draws them absolutely, 8 from the row's
         * right, over a fade that ends in the window's fill — which is the sticky-action-column
         * idiom drawn in a mock that never scrolls. Here the row really does scroll, so they are
-        * `sticky right-2`; the negative margin keeps them out of the row's width, so they sit
-        * exactly 8 from its end when the table is scrolled home.
+        * `sticky right-0` with the board's 8 as padding INSIDE the plate; the negative margin keeps
+        * the block out of the row's width, so the buttons sit exactly 8 from the visible edge at every
+        * scroll position — and the plate covers the gap the next column would otherwise peek through.
         */}
       <div
-        className="sticky right-2 flex h-10 flex-none items-center justify-end gap-2.5"
+        className="sticky right-[-1px] flex h-10 flex-none items-center justify-end gap-2.5 pr-[9px]"
         style={{
-          width: 155,
-          marginLeft: -155,
-          background: 'linear-gradient(to right, rgba(31,31,34,0) 0%, var(--gray-850) 38.942%)',
+          /* 155 on the board + the row's 8 of end padding: the plate reaches the viewport's edge, so
+             the column that scrolls under it cannot peek out in that gap (at scroll-home the price's
+             `$` did — seen on the live build, 23.09.2026). Its left edge is the board's (row end − 163);
+             the right OVERSHOOTS the scrollport by 1px, clipped by the scroller — on the software
+             rasteriser a full-frame capture showed the plate's own layer edge one device pixel short,
+             and a glyph of the next column bled through it. The buttons keep their 8 (`pr-[9px]`), and
+             the fade keeps the board's length: 38.942 % of 155 = 60.36px. */
+          width: 164,
+          marginLeft: -164,
+          /* board 30816:52156: `from-[rgba(24,24,27,0)] to-[#18181b] to-[38.942%]` — the fade ends in
+             the SHEET's own colour, so the plate is invisible and only the text under it dims. The
+             earlier `#1f1f22` was a misread of a partial export, not the mock's slip (designer 23.09.2026:
+             «у тебя под кнопками цвет градиента не как в макете»). */
+          background: 'linear-gradient(to right, rgba(24,24,27,0) 0%, var(--gray-900) 60.36px)',
         }}
       >
         <button
           type="button"
           aria-label={`${t({ en: 'Edit', uk: 'Редагувати' })} ${row.name}`}
-          className="press-bloom grid h-10 w-10 place-items-center rounded-[10px] text-[var(--white-480)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+          className="press-bloom grid h-10 w-10 place-items-center rounded-[10px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
         >
           <IconPencil size={24} />
         </button>
         <button
           type="button"
           aria-label={`${t({ en: 'Delete', uk: 'Видалити' })} ${row.name}`}
-          className="press-bloom grid h-10 w-10 place-items-center rounded-[10px] text-[var(--white-480)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+          className="press-bloom grid h-10 w-10 place-items-center rounded-[10px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
         >
           <IconTrash size={24} />
         </button>
@@ -439,7 +452,11 @@ export function CloudSurface() {
             onClick={closeSurface}
             aria-label={t({ en: 'Close', uk: 'Закрити' })}
             data-cloud-close
-            className="grid h-8 w-8 place-items-center rounded-[10px] bg-[#09090b7a] text-white shadow-[inset_0_0_0_1px_var(--white-100)] backdrop-blur-[16px] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090bcc]"
+            /* the composer's glass, not a flat hairline (designer 23.09.2026: «на этой кнопке закрытия
+               окна должно быть стекло как на кнопках в чате»): Black/700 under blur 16 and the 24 → 4 → 20 %
+               diagonal rim of the «+» and the microphone, with the house hover wash and press bloom
+               (`glass-interactive`). Shape stays the board's 32 / r10 — the material is what was asked for. */
+            className="liquid-glass liquid-glass--composer glass-interactive grid h-8 w-8 place-items-center rounded-[10px] bg-[#09090ba3] text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:text-white"
           >
             <IconCloseM size={24} />
           </button>
