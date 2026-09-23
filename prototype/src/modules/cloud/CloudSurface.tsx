@@ -64,7 +64,8 @@
  *   does too — the row wants 1553.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion } from 'motion/react'
+import { EXIT, MENU_SPRING, menuGlass, menuGlassFade, verbRoll, verbRollFade } from '@/ui/motion'
 import { useUI } from '@/state/ui'
 import { usePaneSettle } from '@/App'
 import { useT, type Text } from '@/i18n'
@@ -107,11 +108,36 @@ const ROOMS = [
 
 /* ────────────────────────────────────── the menu ─────────────────────────────────────── */
 
-/** A 48-tall top-level row: 24 icon box holding a 20 glyph, then the label. */
-function MenuRow({ Icon, label, strong, onClick }: {
-  Icon: (p: { size?: number; className?: string }) => JSX.Element
+const FIRST_TABLE = CLOUD_TABLES[0].id
+const isTable = (id: string) => CLOUD_TABLES.some((x) => x.id === id)
+/** The board's 5 under the Database card, between it and the rooms — it folds with the card. */
+const CARD_GAP = 5
+/** The selection plate: the module's accent at half strength (30816:52025, the selected sub-row). */
+const PLATE = 'rgba(126,87,194,0.5)'
+/** Keeps a motion element's fades on the main thread (see the verb roll in PublishPanel.tsx). */
+const noop = () => {}
+
+type Glyph = (p: { size?: number; className?: string }) => JSX.Element
+
+/**
+ * A 48-tall top-level row: 24 icon box holding a 20 glyph, then the label. The row that is
+ * `on` sits over the flying plate: its glyph goes white and its label semibold. Every other
+ * row carries the house hover — 8 % white, the one wash every control in this product wears —
+ * and the Google-style press bloom (`press-bloom`, ui/ripple.ts; designer 23.09.2026: «на эти
+ * кнопки тоже нужно добавить эффект ховера и клика красивый наш»). The Database header is
+ * `strong` in every state, as drawn, and blooms only when pressing it changes something.
+ * ⚠️ `relative z-[2]`: the rows paint ABOVE the selection plate (`z-[1]`), which flies under
+ * them as a single element — see `CloudMenu`.
+ */
+function MenuRow({ Icon, label, seat, strong, on, bloom = !on, expanded, onClick }: {
+  Icon: Glyph
   label: string
+  /** The id the selection plate seats on (`data-cloud-seat`). */
+  seat: string
   strong?: boolean
+  on?: boolean
+  bloom?: boolean
+  expanded?: boolean
   onClick?: () => void
 }) {
   return (
@@ -119,38 +145,319 @@ function MenuRow({ Icon, label, strong, onClick }: {
       type="button"
       onClick={onClick}
       data-cloud-menurow
-      className="flex h-12 w-full items-center gap-3 rounded-[12px] pl-3 pr-4 text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)]"
+      data-cloud-seat={seat}
+      aria-current={on ? 'true' : undefined}
+      aria-expanded={expanded}
+      className={`relative z-[2] flex h-12 w-full items-center gap-3 rounded-[12px] pl-3 pr-4 text-left transition-colors duration-[var(--dur-fast)] ease-std${
+        bloom ? ' press-bloom' : ''}${on ? '' : ' hover:bg-[var(--white-100)]'}`}
     >
       {/* the glyph is `Icon/Default/Secondary` (48% white), a step under its label — the board
           renders it that way and that token is otherwise unclaimed in this window */}
-      <span className="grid h-6 w-6 flex-none place-items-center overflow-hidden text-[var(--white-480)]">
+      <span className={`grid h-6 w-6 flex-none place-items-center overflow-hidden transition-colors duration-[var(--dur-fast)] ease-std ${
+        on ? 'text-white' : 'text-[var(--white-480)]'}`}>
         <Icon size={20} />
       </span>
-      <span className={`text-[15px] leading-none text-white${strong ? ' font-semibold' : ''}`}>{label}</span>
+      <span className={`text-[15px] leading-none text-white${strong || on ? ' font-semibold' : ''}`}>{label}</span>
     </button>
   )
 }
 
 /**
- * A 40-tall database row. The selected one is filled with the module's accent at half
- * strength and set in semibold; the others are regular at 48% white. The 1px difference in
- * their left padding (16 selected, 15 not) is the board's, kept as drawn.
+ * A 40-tall database row. The selected one is set in semibold white over the plate; the others
+ * are regular at 48% white with the house hover and bloom. The 1px difference in their left
+ * padding (16 selected, 15 not) is the board's, kept as drawn. The plate itself is not this
+ * row's background any more — it is the one `[data-cloud-plate]` that flies (see `CloudMenu`).
  */
-function TableRow({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+function TableRow({ id, label, on, onClick }: { id: string; label: string; on: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-current={on}
+      aria-current={on ? 'true' : undefined}
       data-cloud-db
-      className={
+      data-cloud-seat={id}
+      className={`relative z-[2] flex h-10 w-full items-center rounded-[10px] text-left text-[14px] leading-none transition-colors duration-[var(--dur-fast)] ease-std ${
         on
-          ? 'flex h-10 w-full items-center rounded-[10px] bg-[rgba(126,87,194,0.5)] px-4 text-left text-[14px] font-semibold leading-none text-white'
-          : 'flex h-10 w-full items-center rounded-[10px] pl-[15px] pr-4 text-left text-[14px] leading-none text-[var(--white-480)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-050)] hover:text-white'
-      }
+          ? 'px-4 font-semibold text-white'
+          : 'press-bloom pl-[15px] pr-4 text-[var(--white-480)] hover:bg-[var(--white-100)] hover:text-white'}`}
     >
       {label}
     </button>
+  )
+}
+
+type Box = { top: number; left: number; width: number; height: number; radius: number }
+
+/** An element's LAYOUT box inside `host` (transforms ignored), summed up the offsetParent chain. */
+function boxIn(el: HTMLElement, host: HTMLElement): Box {
+  let top = 0
+  let left = 0
+  let n: HTMLElement | null = el
+  while (n && n !== host && host.contains(n)) {
+    top += n.offsetTop
+    left += n.offsetLeft
+    n = n.offsetParent as HTMLElement | null
+  }
+  return { top, left, width: el.offsetWidth, height: el.offsetHeight, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 }
+}
+
+/**
+ * THE MENU: a Database card that FOLDS, and one selection plate that FLIES.
+ *
+ * The live editor (designer's recording, 23.09.2026, scratchpad/cloud-menu): clicking Database
+ * unfolds a card of tables under it and pushes the rooms down; picking a room folds it back and
+ * the rooms jump up — ~5 frames each way, linear, with a ripple artefact on the selected plate.
+ * The board (30816:52025) draws only the open card. «Сделать это более плавно и красиво в нашем
+ * стиле Apple liquid glass» — so, from `MENU_SPRING` in ui/motion.ts (the law is written there):
+ *
+ *  · `p` — the fold's progress, 1 open / 0 folded — is THE ONE CLOCK. It writes the clip's
+ *    height (p × the content's natural height), the 5px the card keeps under itself (p × 5),
+ *    the card's glass (8 % white × p: folded, the Database row is a plain room row, not a group
+ *    in a plate) and, past zero, the deficit as a negative bottom margin so the rooms dip a few
+ *    pixels past their seat and come back (the Reveal's bounce through zero). All written to
+ *    the elements from the value's `change` event, never through React.
+ *  · THE PLATE is one absolutely positioned span in the list column (`[data-cloud-plate]`),
+ *    flying on the same spring, started on the same tick: top, left, width, height and radius
+ *    (40 × r10 on a table row, 48 × r12 on a room row). A room row's seat is where the row will
+ *    REST — its offset now, corrected by the fold's remaining travel — so the plate flying down
+ *    to it meets the row gliding up to it exactly at the end, on identical normalised curves.
+ *    The rows paint above it (`z-[2]` over `z-[1]`); the folding content paints above it too
+ *    (`z-[2]` on the glass), so the plate passes UNDER the rows leaving, not over them.
+ *  · Pressing Database always means "go to the database": the first table opens (the live
+ *    editor lands on its first table too). Pressing the row that is already on is a no-op and
+ *    carries no bloom — the flight is the acknowledgement (PlanVariantSwitch's rule).
+ *  · While anything moves the column carries `data-cloud-moving`, and CSS keeps rows sliding
+ *    under a still cursor from lighting up: hover is a gesture of the cursor, not of the content
+ *    (the question dock's rule).
+ *  · Folded content is `visibility: hidden` and `inert` only once the edge has come to rest
+ *    (`closed`) — flipping it at the start of the fold would take the rows away before they left.
+ *  · `.glass-glint` in the module's violet on the card as it unfolds: the rim catches the light
+ *    the way every arriving block in this product does.
+ *
+ * ⚠️ `height` is animated here and it is a MEASURED exception to the transform/opacity contract
+ * (the Reveal's clause): the layout is contained to this 256-wide column's dozen boxes, and a
+ * transform cannot do the work — a card shrinking by scaleY squashes its rows, and the rooms
+ * under it must move by real layout to rest where they rest.
+ */
+function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) => void; t: (x: Text) => string }) {
+  const reduce = useReducedMotion()
+  const open = isTable(room)
+  const column = useRef<HTMLDivElement>(null)
+  const wrap = useRef<HTMLDivElement>(null)
+  const card = useRef<HTMLDivElement>(null)
+  const clip = useRef<HTMLDivElement>(null)
+  const sizer = useRef<HTMLDivElement>(null)
+  const rooms = useRef<HTMLDivElement>(null)
+  const p = useMotionValue(open ? 1 : 0)
+  const plateTop = useMotionValue(0)
+  const plateLeft = useMotionValue(0)
+  const plateW = useMotionValue(0)
+  const plateH = useMotionValue(0)
+  const plateR = useMotionValue(10)
+  const [closed, setClosed] = useState(!open)
+  const [arriving, setArriving] = useState(false)
+  const seated = useRef(false)
+  const token = useRef(0)
+  /* THE PLATE RIDES THE FOLD'S CLOCK while the fold moves. Two springs on identical parameters
+     meet at the end — but a bounce sends them PAST the end in opposite directions: measured, the
+     plate (overshooting down, off its own 43px of travel) sat 5.6px under a room row that was
+     overshooting up (off the fold's 164px) for ~150 ms. So while the fold moves the plate is not a
+     spring of its own: its box is a function of `p` — size, x and radius lerped on the fold's
+     clipped progress `u`, and its top GLUED to the target row's live position plus an offset that
+     decays with `u`. When `u` reaches 1 the plate IS on the row and stays on it through the bounce.
+     A hop with the fold at rest (table → table, room → room) is a plain spring flight. */
+  const ride = useRef<null | { from: Box; to: Box; toMoves: boolean; nat: number; vStart: number; pTo: number }>(null)
+
+  /* the fold, as a function of `p` — written straight to the elements (see above) */
+  const paint = useCallback(() => {
+    const v = p.get()
+    const nat = sizer.current?.offsetHeight ?? 0
+    const edge = v * (nat + CARD_GAP)
+    if (clip.current) clip.current.style.height = `${Math.max(0, v * nat)}px`
+    if (wrap.current) {
+      wrap.current.style.paddingBottom = `${Math.max(0, v * CARD_GAP)}px`
+      wrap.current.style.marginBottom = `${Math.min(0, edge)}px`
+    }
+    if (card.current) card.current.style.backgroundColor = `rgba(255,255,255,${(0.08 * Math.min(1, Math.max(0, v))).toFixed(4)})`
+    const r = ride.current
+    if (r) {
+      const u = Math.min(1, Math.max(0, (v - r.vStart) / (r.pTo - r.vStart)))
+      const mix = (a: number, b: number) => a + (b - a) * u
+      /* everything under the card sits `edge` lower than its resting place — exactly, at every v */
+      const rowTop = r.toMoves ? r.to.top + (v - r.pTo) * (r.nat + CARD_GAP) : r.to.top
+      const rowStart = r.toMoves ? r.to.top + (r.vStart - r.pTo) * (r.nat + CARD_GAP) : r.to.top
+      plateTop.set(rowTop + (r.from.top - rowStart) * (1 - u))
+      plateLeft.set(mix(r.from.left, r.to.left))
+      plateW.set(mix(r.from.width, r.to.width))
+      plateH.set(mix(r.from.height, r.to.height))
+      plateR.set(mix(r.from.radius, r.to.radius))
+    }
+  }, [p, plateTop, plateLeft, plateW, plateH, plateR])
+  useMotionValueEvent(p, 'change', paint)
+  useLayoutEffect(paint, [paint])
+
+  /* a change of room: seat the plate — flying, with the fold if the fold moves */
+  useLayoutEffect(() => {
+    const host = column.current
+    const el = host?.querySelector<HTMLElement>(`[data-cloud-seat="${room}"]`)
+    if (!host || !el) return
+    const willOpen = isTable(room)
+    const pNow = p.get()
+    const pTo = willOpen ? 1 : 0
+    const nat = sizer.current?.offsetHeight ?? 0
+    const box = boxIn(el, host)
+    /* everything under the card moves by the fold's remaining travel: the seat is where the
+       row will REST, not where it stands now */
+    if (rooms.current?.contains(el)) box.top += (pTo - pNow) * (nat + CARD_GAP)
+    const my = ++token.current
+    if (!seated.current || reduce) {
+      /* mount, or reduced motion: everything in one commit */
+      seated.current = true
+      p.jump(pTo)
+      plateTop.jump(box.top)
+      plateLeft.jump(box.left)
+      plateW.jump(box.width)
+      plateH.jump(box.height)
+      plateR.jump(box.radius)
+      paint()
+      setClosed(!willOpen)
+      return
+    }
+    host.dataset.cloudMoving = ''
+    if (willOpen && pNow < 1) {
+      setClosed(false)
+      setArriving(true)
+    }
+    const from: Box = { top: plateTop.get(), left: plateLeft.get(), width: plateW.get(), height: plateH.get(), radius: plateR.get() }
+    let runs
+    if (pTo !== pNow) {
+      /* the fold moves: the plate rides its clock (see `ride`) */
+      ride.current = { from, to: box, toMoves: !!rooms.current?.contains(el), nat, vStart: pNow, pTo }
+      runs = [animate(p, pTo, MENU_SPRING)]
+    } else {
+      ride.current = null
+      runs = [
+        animate(plateTop, box.top, MENU_SPRING),
+        animate(plateLeft, box.left, MENU_SPRING),
+        animate(plateW, box.width, MENU_SPRING),
+        animate(plateH, box.height, MENU_SPRING),
+        animate(plateR, box.radius, MENU_SPRING),
+      ]
+    }
+    /* ⚠️ `stop()` on a motion animation RESOLVES its promise (the Reveal's lesson), so a later
+       click lands here for the flight it interrupted: the token says whose finish this is */
+    Promise.all(runs).then(() => {
+      if (token.current !== my) return
+      ride.current = null
+      delete host.dataset.cloudMoving
+      if (!willOpen) setClosed(true)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room])
+
+  /* the glint plays once, 1.1 s + its 0.1 s beat */
+  useEffect(() => {
+    if (!arriving) return
+    const id = window.setTimeout(() => setArriving(false), 1200)
+    return () => window.clearTimeout(id)
+  }, [arriving])
+
+  const inertProps = closed ? ({ inert: '' } as Record<string, string>) : {}
+
+  return (
+    /* ⚠️ NOT aria-label="Cloud": that is the rail BUTTON's name, and two things answering
+       to one name is how a query means the wrong element (it cost a check run here). */
+    <nav className="flex w-[264px] flex-none flex-col py-2 pl-2" aria-label="Cloud menu">
+      {/* Conteiner 256: 8% white on 8% white — the stroke sits INSIDE the 256 on the
+          board, so it is an inset shadow here and the box stays 256 (the law this
+          project has paid for on every card it has drawn). */}
+      <div data-cloud-menu className="pane-in-menu flex min-h-0 flex-1 flex-col rounded-[14px] bg-[var(--white-100)] shadow-[inset_0_0_0_1px_var(--white-100)]">
+        <div className="flex h-[84px] flex-none items-center gap-2.5 pl-5">
+          {/* the mark the pane flies in from the rail button (App.tsx `PaneFlyer`): hidden while the
+              flight is on, shown once the clone has landed on this very box */}
+          <span data-cloud-mark className="flex flex-none text-[#7e57c2]">
+            <IconCloud size={25} />
+          </span>
+          <span data-cloud-title className="font-display text-[24px] font-bold leading-[1.2] text-white">Cloud</span>
+        </div>
+
+        <ScrollArea className="min-h-0 flex-1" thumb="light">
+          <div ref={column} data-cloud-menu-list className="relative flex flex-col gap-[3px] px-1.5 pb-2">
+            {/* the one selection plate, flying under the rows */}
+            <motion.span
+              data-cloud-plate
+              aria-hidden
+              className="pointer-events-none absolute z-[1]"
+              style={{ top: plateTop, left: plateLeft, width: plateW, height: plateH, borderRadius: plateR, backgroundColor: PLATE }}
+            />
+
+            {/* the database card: header, then the fold */}
+            <div ref={wrap} data-cloud-card-wrap>
+              <div ref={card} data-cloud-card className="relative rounded-[16px]">
+                {arriving && <span className="glass-glint" style={{ '--glint-rgb': '149 117 205' } as CSSProperties} aria-hidden />}
+                <div className="px-1 pt-1">
+                  <MenuRow
+                    Icon={IconDatabase}
+                    seat="database"
+                    label={t({ en: 'Database', uk: 'База даних' })}
+                    strong
+                    expanded={open}
+                    bloom={room !== FIRST_TABLE}
+                    onClick={() => setRoom(FIRST_TABLE)}
+                  />
+                </div>
+                <div ref={clip} data-cloud-fold className="overflow-hidden">
+                  {/* the glass inside the fold: the 4 under the header is ITS padding (a margin
+                      would collapse out of the sizer's height and the clip would cut the last 4px) */}
+                  <motion.div
+                    ref={sizer}
+                    data-cloud-fold-body
+                    {...inertProps}
+                    className={`relative z-[2] pt-1${closed ? ' invisible' : ''}`}
+                    style={{ transformOrigin: 'top center' }}
+                    variants={reduce ? menuGlassFade : menuGlass}
+                    initial={false}
+                    animate={open ? 'in' : 'out'}
+                    onUpdate={noop}
+                  >
+                    <div className="flex flex-col gap-1 rounded-[12px] border-t border-[var(--white-100)] p-1.5">
+                      {CLOUD_TABLES.map((x) => (
+                        <TableRow key={x.id} id={x.id} label={x.name} on={room === x.id} onClick={() => setRoom(x.id)} />
+                      ))}
+                    </div>
+                    <div className="px-3 pb-3 pt-2.5">
+                      {/*
+                        * `pl-36` plus the 36-wide glyph box on the right is how the board keeps
+                        * the label optically centred while the plus hangs off the end — the left
+                        * padding is the mirror of the trailing box, not a guess.
+                        */}
+                      <button
+                        type="button"
+                        className="press-bloom flex h-9 w-full items-center overflow-hidden rounded-[10px] bg-[#09090bcc] pl-9 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090b]"
+                      >
+                        <span className="flex-1 text-center text-[14px] font-semibold leading-none text-white">
+                          {t({ en: 'Add database', uk: 'Додати базу' })}
+                        </span>
+                        <span className="grid h-9 w-9 flex-none place-items-center text-[var(--white-480)]">
+                          <IconAdd size={24} />
+                        </span>
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+            </div>
+
+            {/* the rooms the board names but does not draw */}
+            <div ref={rooms} className="flex flex-col gap-[3px] px-1">
+              {ROOMS.map(({ id, Icon, label }) => (
+                <MenuRow key={id} Icon={Icon} seat={id} label={t(label)} on={room === id} onClick={() => setRoom(id)} />
+              ))}
+            </div>
+          </div>
+        </ScrollArea>
+      </div>
+    </nav>
   )
 }
 
@@ -328,6 +635,7 @@ function ScrollBar({ scroller }: { scroller: React.RefObject<HTMLDivElement> }) 
 
 export function CloudSurface() {
   const { t } = useT()
+  const reduce = useReducedMotion()
   const closeSurface = useUI((s) => s.closeSurface)
   const [room, setRoom] = useState<string>(CLOUD_TABLES[0].id)
   const [query, setQuery] = useState('')
@@ -344,15 +652,13 @@ export function CloudSurface() {
      has to be handed up: the heading row rides the list's `scrollLeft` on a transform. Read
      straight from the DOM on the scroll event — a table that re-rendered its header on every
      scroll frame would be the per-frame paint the performance contract forbids. */
+  const syncHead = (s: HTMLDivElement) => {
+    if (headRow.current) headRow.current.style.transform = `translateX(${-s.scrollLeft}px)`
+  }
+  /* a new list mounts at scroll-home (and only after the old one has left — `mode="wait"`), so
+     the headings go home the moment the room changes; from then on the list's own onScroll leads */
   useEffect(() => {
-    const s = scroller.current
-    if (!s) return
-    const sync = () => {
-      if (headRow.current) headRow.current.style.transform = `translateX(${-s.scrollLeft}px)`
-    }
-    sync()
-    s.addEventListener('scroll', sync, { passive: true })
-    return () => s.removeEventListener('scroll', sync)
+    if (headRow.current) headRow.current.style.transform = 'translateX(0px)'
   }, [room])
 
   /* Esc closes, like every other surface and sheet in the shell. */
@@ -382,66 +688,7 @@ export function CloudSurface() {
           focusing, not a slide. Outside a pane (there is none today) the wrapper simply stands. */}
       <motion.div data-pane-settle className="flex h-full w-full" style={{ scale: settle ?? 1 }}>
       {/* ───────────────────────────── menu, 264 ───────────────────────────── */}
-      {/* ⚠️ NOT aria-label="Cloud": that is the rail BUTTON's name, and two things answering
-          to one name is how a query means the wrong element (it cost a check run here). */}
-      <nav className="flex w-[264px] flex-none flex-col py-2 pl-2" aria-label="Cloud menu">
-        {/* Conteiner 256: 8% white on 8% white — the stroke sits INSIDE the 256 on the
-            board, so it is an inset shadow here and the box stays 256 (the law this
-            project has paid for on every card it has drawn). */}
-        <div data-cloud-menu className="pane-in-menu flex min-h-0 flex-1 flex-col rounded-[14px] bg-[var(--white-100)] shadow-[inset_0_0_0_1px_var(--white-100)]">
-          <div className="flex h-[84px] flex-none items-center gap-2.5 pl-5">
-            {/* the mark the pane flies in from the rail button (App.tsx `PaneFlyer`): hidden while the
-                flight is on, shown once the clone has landed on this very box */}
-            <span data-cloud-mark className="flex flex-none text-[#7e57c2]">
-              <IconCloud size={25} />
-            </span>
-            <span data-cloud-title className="font-display text-[24px] font-bold leading-[1.2] text-white">Cloud</span>
-          </div>
-
-          <ScrollArea className="min-h-0 flex-1" thumb="light">
-            <div className="flex flex-col gap-[3px] px-1.5 pb-2">
-              {/* the database card */}
-              <div className="pb-[5px]">
-                <div className="rounded-[16px] bg-[var(--white-100)]">
-                  <div className="p-1">
-                    <MenuRow Icon={IconDatabase} label={t({ en: 'Database', uk: 'База даних' })} strong />
-                  </div>
-                  <div className="flex flex-col gap-1 rounded-[12px] border-t border-[var(--white-100)] p-1.5">
-                    {CLOUD_TABLES.map((x) => (
-                      <TableRow key={x.id} label={x.name} on={room === x.id} onClick={() => setRoom(x.id)} />
-                    ))}
-                  </div>
-                  <div className="px-3 pb-3 pt-2.5">
-                    {/*
-                      * `pl-36` plus the 36-wide glyph box on the right is how the board keeps
-                      * the label optically centred while the plus hangs off the end — the left
-                      * padding is the mirror of the trailing box, not a guess.
-                      */}
-                    <button
-                      type="button"
-                      className="press-bloom flex h-9 w-full items-center overflow-hidden rounded-[10px] bg-[#09090bcc] pl-9 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#09090b]"
-                    >
-                      <span className="flex-1 text-center text-[14px] font-semibold leading-none text-white">
-                        {t({ en: 'Add database', uk: 'Додати базу' })}
-                      </span>
-                      <span className="grid h-9 w-9 flex-none place-items-center text-[var(--white-480)]">
-                        <IconAdd size={24} />
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* the rooms the board names but does not draw */}
-              <div className="flex flex-col gap-[3px] px-1">
-                {ROOMS.map(({ id, Icon, label }) => (
-                  <MenuRow key={id} Icon={Icon} label={t(label)} onClick={() => setRoom(id)} />
-                ))}
-              </div>
-            </div>
-          </ScrollArea>
-        </div>
-      </nav>
+      <CloudMenu room={room} setRoom={setRoom} t={t} />
 
       {/* ──────────────────────────── content column ───────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -475,7 +722,26 @@ export function CloudSurface() {
           <div className="flex-none">
             <div className="pane-in-head flex items-center pl-9 pr-6">
               {/* 25 above and 24 below a 38.4 line make the board's 87 — a hair lower than centred */}
-              <h2 className="flex-none pb-6 pt-[25px] font-display text-[32px] font-bold leading-[1.2] text-white">{title}</h2>
+              {/* the title ROLLS between rooms — the verb roll of the Publish panel's card (motion.ts
+                  `verbRoll`): the old word up and out in 160 ms, the next up into place from 10 px
+                  below after a 60 ms beat; `popLayout` takes the leaving word out of the flow so the
+                  line never doubles in height. `onUpdate` keeps the fades on the main thread. */}
+              <h2 className="relative flex-none pb-6 pt-[25px] font-display text-[32px] font-bold leading-[1.2] text-white">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={title}
+                    data-cloud-title-word
+                    className="inline-block"
+                    variants={reduce ? verbRollFade : verbRoll}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    onUpdate={noop}
+                  >
+                    {title}
+                  </motion.span>
+                </AnimatePresence>
+              </h2>
               <div className="ml-14 flex min-w-0 flex-1 justify-center">
                 <label className="flex h-10 w-full min-w-0 max-w-[400px] items-center gap-4 rounded-full bg-[var(--gray-900)] pl-2 pr-[7px]">
                   <span className="grid h-6 w-6 flex-none place-items-center text-[var(--gray-500)]">
@@ -509,8 +775,20 @@ export function CloudSurface() {
               </div>
             </div>
 
+            {/* the column headings leave with the table (140 ms, flat) and come back with one (200 ms);
+                keyed by "is there a table", not by which — Meals and Orders share them, and a fade between
+                two identical rows would be a blink for nothing */}
+            <AnimatePresence mode="wait" initial={false}>
             {table && (
-              <div data-cloud-headings className="pane-in-cols h-[47px] overflow-hidden border-t border-[var(--gray-750)]">
+              <motion.div
+                key="cols"
+                data-cloud-headings
+                className="pane-in-cols h-[47px] overflow-hidden border-t border-[var(--gray-750)]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } }}
+                exit={{ opacity: 0, transition: EXIT }}
+                onUpdate={noop}
+              >
                 <div ref={headRow} className="flex h-full w-max min-w-full items-center pl-9">
                   {HEADINGS.map((h) => (
                     <span
@@ -522,16 +800,30 @@ export function CloudSurface() {
                     </span>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
 
           {/* page */}
           <div data-cloud-page className="min-h-0 flex-1 border-t border-[var(--gray-800)] pt-2">
             <ScrollArea className="h-full" thumb="light">
+              {/* THE TABLE HANDS OVER, IT DOES NOT CROSSFADE (the question dock's double-exposure lesson):
+                  under `mode="wait"` the old page is gone in 140 ms before the new one mounts, and the new
+                  one fills in on its own — the rows cascade top-down (`.pane-in-row`, 30 ms apart), a room's
+                  note comes up the same way (`.pane-in-note`). */}
+              <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={room}
+                data-cloud-pagebody
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: EXIT }}
+                onUpdate={noop}
+              >
               {table ? (
                 <div className="flex flex-col gap-2.5 px-6">
-                  <div ref={scroller} data-cloud-list className="w-full overflow-x-auto">
+                  <div ref={scroller} data-cloud-list className="w-full overflow-x-auto" onScroll={(e) => syncHead(e.currentTarget)}>
                     {/* ⚠️ no inline `minWidth` here: it would BEAT `min-w-full` and pin the rows
                         to their natural 1553, leaving the last column — and the actions pinned
                         after it — short of the table's right edge. `w-max` already floors the
@@ -550,10 +842,12 @@ export function CloudSurface() {
                   )}
                 </div>
               ) : (
-                <p className="px-9 py-10 text-[15px] text-[var(--white-480)]">
+                <p className="pane-in-note px-9 py-10 text-[15px] text-[var(--white-480)]">
                   {t({ en: 'Nothing here yet.', uk: 'Тут поки порожньо.' })}
                 </p>
               )}
+              </motion.div>
+              </AnimatePresence>
             </ScrollArea>
           </div>
         </div>

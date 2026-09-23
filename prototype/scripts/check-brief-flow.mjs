@@ -4057,16 +4057,36 @@ await shot('30-plan-review')
 
   const dbs = await p.evaluate(() => [...document.querySelectorAll('[data-cloud-db]')].map((e) => {
     const r = e.getBoundingClientRect(); const g = getComputedStyle(e)
-    return { t: e.textContent, w: r.width, h: r.height, radius: g.borderTopLeftRadius, bg: g.backgroundColor, pl: g.paddingLeft, weight: g.fontWeight, color: g.color }
+    return { t: e.textContent, x: r.x, y: r.y, w: r.width, h: r.height, radius: g.borderTopLeftRadius, bg: g.backgroundColor, pl: g.paddingLeft, weight: g.fontWeight, color: g.color, bloom: e.classList.contains('press-bloom') }
   }))
-  check('the selected database row is 40 at radius 10, filled in the module’s accent at half strength',
-    dbs[0].h === 40 && dbs[0].radius === '10px' && dbs[0].bg === 'rgba(126, 87, 194, 0.5)' && dbs[0].weight === '600' && dbs[0].pl === '16px',
-    JSON.stringify(dbs[0]))
+  /* THE SELECTION PLATE IS ONE ELEMENT THAT FLIES (CloudSurface.tsx `CloudMenu`, 23.09.2026) — the selected
+     row's own background is clear; the accent plate under it is `[data-cloud-plate]`, seated on the row. */
+  const plate = await p.$eval('[data-cloud-plate]', (e) => { const r = e.getBoundingClientRect(); const g = getComputedStyle(e); return { x: r.x, y: r.y, w: r.width, h: r.height, radius: g.borderTopLeftRadius, bg: g.backgroundColor } })
+  check('the selected database row is 40 at radius 10, over the module’s accent at half strength — one plate, seated on it exactly',
+    dbs[0].h === 40 && plate.h === 40 && plate.radius === '10px' && plate.bg === 'rgba(126, 87, 194, 0.5)' && dbs[0].weight === '600' && dbs[0].pl === '16px'
+    && Math.abs(plate.x - dbs[0].x) < 0.6 && Math.abs(plate.y - dbs[0].y) < 0.6 && Math.abs(plate.w - dbs[0].w) < 0.6 && dbs[0].bg === 'rgba(0, 0, 0, 0)',
+    JSON.stringify({ row: dbs[0], plate }))
   check('…and the one beside it keeps the board’s own 15 of left padding, regular, at 48% white',
     dbs[1].pl === '15px' && dbs[1].weight === '400' && dbs[1].color === 'rgba(255, 255, 255, 0.48)', JSON.stringify(dbs[1]))
   const menuRows = await p.evaluate(() => [...document.querySelectorAll('[data-cloud-menurow]')].map((e) => e.getBoundingClientRect().height))
   check('five top-level menu rows (Database plus the four rooms), all 48',
     menuRows.length === 5 && menuRows.every((h) => h === 48), JSON.stringify(menuRows))
+
+  /* THE HOUSE HOVER AND THE PRESS BLOOM ON EVERY MENU BUTTON (designer 23.09.2026: «на эти кнопки тоже нужно
+     добавить эффект ховера и клика красивый наш»): 8 % white under the cursor on any row that is not on; the
+     bloom class on every row a press would change — never on the one already selected (the flight is the
+     acknowledgement, PlanVariantSwitch's rule); the Database header blooms only when it would change the room. */
+  const blooms = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-cloud-seat]')].map((e) => [e.dataset.cloudSeat, e.classList.contains('press-bloom')])))
+  check('every menu row a press would change carries the bloom, and only those',
+    blooms.database === false && blooms.meals === false && blooms.orders === true && blooms.emails === true && blooms.secrets === true && blooms.users === true && blooms.storage === true,
+    JSON.stringify(blooms))
+  await p.hover('[data-cloud-seat="users"]'); await p.waitForTimeout(220)
+  const washOff = await CSS('[data-cloud-seat="users"]', 'backgroundColor')
+  await p.hover('[data-cloud-seat="meals"]'); await p.waitForTimeout(220)
+  const washOn = await CSS('[data-cloud-seat="meals"]', 'backgroundColor')
+  check('hover washes an unselected row 8 % white and leaves the selected one alone',
+    washOff === 'rgba(255, 255, 255, 0.08)' && washOn === 'rgba(0, 0, 0, 0)', `${washOff} · ${washOn}`)
+  await p.mouse.move(600, 600)
 
   /* top bar + header */
   const close = await R('[data-cloud-close]')
@@ -4161,14 +4181,87 @@ await shot('30-plan-review')
     Math.abs(ride.before[1] - (ride.listRight - 8)) < 1.5 && Math.abs(ride.after[1] - (ride.listRight - 8)) < 1.5,
     `${ride.before[1].toFixed(1)} / ${ride.after[1].toFixed(1)} vs ${(ride.listRight - 8).toFixed(1)}`)
 
-  /* a room the board names but does not draw shows no table at all, rather than an empty one */
-  await p.evaluate(() => [...document.querySelectorAll('[data-cloud-menurow]')].find((e) => /Secrets/.test(e.textContent)).click())
-  await p.waitForTimeout(300)
+  /*
+   * THE DATABASE CARD FOLDS, THE PLATE FLIES, THE PAGE HANDS OVER (designer 23.09.2026, from a recording of the
+   * live editor: «когда ты уходишь в другой раздел например Email меню с Database схлопывает как на видео…
+   * сделать это более плавно и красиво в нашем стиле Apple liquid glass»). motion.ts `MENU_SPRING`,
+   * CloudSurface.tsx `CloudMenu`. Film the leave to Secrets per frame and hold it to the law:
+   *  · the fold's edge (clip height) goes from the content's natural height to 0 THROUGH intermediate frames on
+   *    a spring, and the rooms under it glide — Secrets' row moves up by the fold's full travel, dips a few px
+   *    past its seat (the bounce through zero) and comes back;
+   *  · the plate leaves the Meals row, grows from 40 × r10 to 48 × r12 and is ON the Secrets row at the end —
+   *    and already on it during the dip (it rides the fold's clock, not a spring of its own);
+   *  · the fold's glass leaves fast and flat (opacity 0 within ~180 ms) while the edge is still closing; once
+   *    the edge rests the folded content is `visibility: hidden` and inert, the card's fill is gone;
+   *  · the title rolls (two words in flight, then one), the headings and rows are gone within 300 ms, the room's
+   *    note is up; the column says `data-cloud-moving` while anything moves and drops it after.
+   */
+  const filmMenu = (id, ms) => p.evaluate(async ({ id, ms }) => {
+    const col = document.querySelector('[data-cloud-menu-list]')
+    const rel = (el) => { const r = el.getBoundingClientRect(); const c = col.getBoundingClientRect(); return [+(r.x - c.x).toFixed(2), +(r.y - c.y).toFixed(2), +r.width.toFixed(2), +r.height.toFixed(2)] }
+    const out = []; const t0 = performance.now()
+    document.querySelector(`[data-cloud-seat="${id}"]`).click()
+    await new Promise((res) => {
+      const tick = () => {
+        const now = performance.now() - t0
+        const plate = document.querySelector('[data-cloud-plate]'); const body = document.querySelector('[data-cloud-fold-body]')
+        out.push({ t: Math.round(now), plate: rel(plate), r: parseFloat(getComputedStyle(plate).borderTopLeftRadius),
+          fold: +document.querySelector('[data-cloud-fold]').getBoundingClientRect().height.toFixed(2),
+          secrets: rel(document.querySelector('[data-cloud-seat="secrets"]')), meals: rel(document.querySelector('[data-cloud-seat="meals"]')),
+          body: +(+getComputedStyle(body).opacity).toFixed(3), vis: getComputedStyle(body).visibility, inert: body.hasAttribute('inert'),
+          card: getComputedStyle(document.querySelector('[data-cloud-card]')).backgroundColor,
+          moving: col.hasAttribute('data-cloud-moving'), words: document.querySelectorAll('[data-cloud-title-word]').length,
+          heads: !!document.querySelector('[data-cloud-headings]'), rows: document.querySelectorAll('[data-cloud-row]').length })
+        if (now < ms) requestAnimationFrame(tick); else res()
+      }
+      requestAnimationFrame(tick)
+    })
+    return out
+  }, { id, ms })
+  const natural = await p.$eval('[data-cloud-fold-body]', (e) => e.offsetHeight)
+  const cardOpen = await CSS('[data-cloud-card]', 'backgroundColor')
+  const leave = await filmMenu('secrets', 900)
+  const L = leave[leave.length - 1]
+  const foldSteps = new Set(leave.map((s) => Math.round(s.fold))).size
+  const mids = leave.filter((s) => s.fold > 8 && s.fold < natural - 8).length
+  check('leaving Database, the fold’s edge closes from its natural height to 0 through intermediate frames',
+    leave[0].fold >= natural - 2 && L.fold === 0 && foldSteps >= 6 && mids >= 3, `${leave[0].fold} → ${L.fold}, ${foldSteps} distinct heights, ${mids} mid-frames of ${leave.length}`)
+  const secY = leave.map((s) => s.secrets[1])
+  const secRest = secY[secY.length - 1]
+  const dip = Math.min(...secY) - secRest
+  check('…and the Secrets row glides up by the fold’s travel, dips past its seat and comes back (the bounce through zero)',
+    Math.abs(secY[0] - secRest - (natural + 5)) < 1.5 && dip < -1.5 && dip > -12 && Math.abs(secY[secY.length - 1] - secRest) < 0.6,
+    `from ${secY[0]} to ${secRest} (travel ${(secY[0] - secRest).toFixed(1)} vs ${natural + 5}), dip ${dip.toFixed(2)}`)
+  const onRow = (s) => Math.abs(s.plate[1] - s.secrets[1]) < 0.75 && Math.abs(s.plate[3] - 48) < 0.6
+  const dipFrame = leave.reduce((a, s) => (s.secrets[1] < a.secrets[1] ? s : a), leave[0])
+  check('the plate leaves Meals as 40 × r10, lands on Secrets as 48 × r12 — and is ON the row through the dip',
+    leave[0].plate[3] === 40 && leave[0].r === 10 && onRow(L) && Math.abs(L.plate[2] - 236) < 0.6 && Math.abs(L.r - 12) < 0.05 && onRow(dipFrame)
+    && leave.some((s) => s.plate[1] > leave[0].plate[1] + 10 && s.plate[1] < L.plate[1] - 10),
+    `start ${JSON.stringify(leave[0].plate)} r${leave[0].r} → end ${JSON.stringify(L.plate)} r${L.r}; at the dip plate.y ${dipFrame.plate[1]} vs row.y ${dipFrame.secrets[1]}`)
+  const glassGone = leave.find((s) => s.body === 0)
+  check('…the fold’s glass leaves fast and flat, gone while the edge is still closing; folded, it is hidden and inert and the card’s fill is gone',
+    glassGone && glassGone.t < 200 && glassGone.fold > 4 && L.vis === 'hidden' && L.inert && /rgba\(\d+, \d+, \d+, 0\)/.test(L.card) && cardOpen === 'rgba(255, 255, 255, 0.08)',
+    `glass 0 at ${glassGone?.t} ms with the edge at ${glassGone?.fold}; card ${cardOpen} → ${L.card}; end ${L.vis} inert=${L.inert}`)
+  const roll = leave.filter((s) => s.words === 2).length
+  const bare = leave.find((s) => !s.heads && s.rows === 0)
+  check('the title rolls (two words in flight, then one), the table and its headings hand over within 300 ms, and the column stops saying it moves',
+    roll >= 3 && L.words === 1 && bare && bare.t < 300 && L.moving === false && leave.some((s) => s.moving),
+    `${roll} frames with two words; table gone at ${bare?.t} ms; moving at end ${L.moving}`)
   check('a room with nothing drawn for it shows no table and no headings',
     (await p.$('[data-cloud-headings]')) === null && (await p.$('[data-cloud-row]')) === null
     && /Nothing here yet/.test(await p.$eval('[data-cloud-window]', (e) => e.innerText)))
-  await p.evaluate(() => [...document.querySelectorAll('[data-cloud-db]')][0].click())
-  await p.waitForTimeout(300)
+  /* back: pressing Database always means the first table — the card unfolds to its natural height and the plate seats on Meals */
+  const back = await filmMenu('database', 900)
+  const B = back[back.length - 1]
+  const over = Math.max(...back.map((s) => s.fold)) - natural
+  check('pressing Database unfolds the card back to its natural height (through a soft overshoot) and opens the first table',
+    B.fold === natural && over > 1 && over < 12 && B.rows === 6 && B.heads && B.vis === 'visible' && !B.inert && B.card === 'rgba(255, 255, 255, 0.08)',
+    `edge ${back[0].fold} → ${B.fold} (natural ${natural}, over by ${over.toFixed(1)}); rows ${B.rows}`)
+  check('…and the plate is seated on Meals again, 40 × r10',
+    Math.abs(B.plate[1] - B.meals[1]) < 0.75 && Math.abs(B.plate[3] - 40) < 0.6 && Math.abs(B.r - 10) < 0.05, `${JSON.stringify(B.plate)} vs meals ${JSON.stringify(B.meals)} r${B.r}`)
+  /* let the card's arrival glint (1.2 s from the unfold) burn out before the pane-close film below: its
+     removal is a render of the menu, and the software rasteriser would pay for it in the fold's first frame */
+  await p.waitForTimeout(700)
 
   /*
    * THE PANE UNFOLDS FROM THE BUTTON THAT OPENED IT (designer, 22.09.2026, from two recordings of the
@@ -4253,9 +4346,13 @@ await shot('30-plan-review')
   /* the button lets go of the window only once the window is back in it (App.tsx `closingTile`) */
   const litWhileFolding = cP.filter((s) => s.t <= 300).every((s) => s.tile === 'rgba(149, 117, 205, 0.12)')
   const darkAfter = closeFilm.filter((s) => s.t >= 700).every((s) => s.tile === 'rgba(0, 0, 0, 0)')
+  /* ≥ 8 samples in the first 300 ms: the fold's first frame costs ~40 ms on the software rasteriser (measured
+     36–41 on both the 22.09 and the 23.09 builds, scratchpad/cloud-menu/close-frames.mjs) and a slow run keeps
+     ~10 — the floor is about the sampler, the lit/dark reads are the check */
   check('…and the rail tile stays lit for the whole fold — still the module’s violet at 300 ms, dark by 700 — so the window folds into a button that is still holding it',
-    litWhileFolding && darkAfter && cP.filter((s) => s.t <= 300).length >= 10,
-    JSON.stringify({ at300: cP.filter((s) => s.t <= 300).pop()?.tile, at700: closeFilm.find((s) => s.t >= 700)?.tile }))
+    litWhileFolding && darkAfter && cP.filter((s) => s.t <= 300).length >= 8,
+    JSON.stringify({ at300: cP.filter((s) => s.t <= 300).pop()?.tile, at700: closeFilm.find((s) => s.t >= 700)?.tile, samples300: cP.filter((s) => s.t <= 300).length,
+      firstUnlit: cP.filter((s) => s.t <= 300).find((s) => s.tile !== 'rgba(149, 117, 205, 0.12)'), firstLitAfter700: closeFilm.filter((s) => s.t >= 700).find((s) => s.tile !== 'rgba(0, 0, 0, 0)') }))
   await p.waitForTimeout(500)
   /* OPEN: press the button — a REAL click at (12,12) inside it, so the accent has a point to flood
      from — and film */

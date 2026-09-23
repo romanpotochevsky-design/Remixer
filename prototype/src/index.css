@@ -3879,6 +3879,15 @@ html[data-drag] .shell-aside { transition: none; }
   animation-delay: calc(var(--i, 0) * 30ms);
 }
 [data-pane-fresh] .pane-in-row { animation-delay: calc(0.3s + var(--i, 0) * 35ms); }
+/* a room's note ("Nothing here yet.") comes up the way a first row does — the page hands over
+   sequentially (CloudSurface.tsx, `mode="wait"`), so what arrives always arrives moving */
+.pane-in-note { animation: pane-in-y 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* THE CLOUD MENU FOLDS (CloudSurface.tsx `CloudMenu`, motion.ts `MENU_SPRING`): while the card folds or
+   the plate flies the column carries `data-cloud-moving`, and a row sliding under a still cursor must not
+   light up — hover is a gesture of the cursor, not of the content (the question dock's rule). The row that
+   is on has no hover of its own to suppress. */
+[data-cloud-moving] [data-cloud-seat]:hover { background-color: transparent; }
+[data-cloud-moving] [data-cloud-db]:not([aria-current]):hover { color: var(--white-480); }
 /* THE RIM THAT RIDES THE CLIP (App.tsx `PaneRim`): four 1×1 lines scaled along their length — a scaled
    1px stays 1px thick — and four r16 corner arcs, placed every frame at the clip's edge by transform.
    Lit in the module's tone while the glass moves (the group's opacity is the pane's `glow`), gone once

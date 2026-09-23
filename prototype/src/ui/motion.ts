@@ -994,3 +994,45 @@ export const verbRollFade = {
 } as const
 /** The host's glide to where the new verb leaves it — the incoming verb's own curve. */
 export const HOST_GLIDE = { duration: 0.28, ease: [0.2, 0, 0, 1] } as const
+
+/*
+ * THE CLOUD WINDOW'S MENU — the Database card folds and the selection plate flies
+ * (modules/cloud/CloudSurface.tsx `CloudMenu`; designer, 23.09.2026, from a recording of the
+ * live editor: «когда ты уходишь в другой раздел например Email меню с Database схлопывает
+ * как на видео… тебе нужно сделать это более плавно и красиво в нашем стиле Apple liquid
+ * glass», and on the menu's buttons: «эффект ховера и клика красивый наш, и позаботится об
+ * анимации переключения и переходах»).
+ *
+ * What the recording shows (scratchpad/cloud-menu, 30 fps): the live card opens and closes
+ * in ~5 frames, linear, and the rooms under it jump with it; the selected plate carries a
+ * Material ripple artefact. What replaces it here:
+ *  · ONE SPRING FOR THE WHOLE MENU. The fold's edge (the clip's height), the 5px under the
+ *    card, the card's glass and the selection plate's box (top, left, size, radius) all ride
+ *    `MENU_SPRING`, started on the same tick — a linear system on identical parameters follows
+ *    one normalised curve, so the plate flying DOWN to a room row meets that row, gliding UP
+ *    as the card folds under it, exactly at the end, and overshoots it by the same soft
+ *    fraction the row overshoots its seat. Softer than the house `SPRING` (ω 17.9 rad/s, ζ .75:
+ *    ~3 % past the target, at rest in ~330 ms — a 160px fold with a 4px dip and return), because
+ *    the thing moving is a card of rows, not a pill on a track.
+ *  · THE GLASS FOLLOWS THE EDGE (the Reveal's law): the folding content leaves fast and flat
+ *    (`menuGlass.out`, 140 ms) while the edge closes on the spring; unfolding, it comes up a
+ *    beat behind the edge from slightly small and slightly high, and the card's rim catches the
+ *    module's violet light (`.glass-glint`). The card's own fill is a function of the same
+ *    progress — 8 % white when open, nothing when folded, so the folded Database row is a plain
+ *    room row and not a group with a plate around it.
+ *  · Under reduced motion the fold and the plate change in one commit and the glass only fades.
+ */
+export const MENU_SPRING = { type: 'spring', stiffness: 320, damping: 27, mass: 1 } as const
+export const menuGlass = {
+  in: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: 'spring', duration: 0.46, bounce: 0.2, delay: 0.05, opacity: { duration: 0.24, delay: 0.08, ease: [0.2, 0, 0, 1] } },
+  },
+  out: { opacity: 0, scale: 0.98, y: -4, transition: EXIT },
+} as const
+export const menuGlassFade = {
+  in: { opacity: 1, transition: { duration: 0.24, delay: 0.06, ease: [0.2, 0, 0, 1] } },
+  out: { opacity: 0, transition: EXIT },
+} as const

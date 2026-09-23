@@ -695,6 +695,14 @@ export default function App() {
     setClosingTile(null)
   }, [surface])
   const holdPanel = canvasSettling || surfaceJustLeft
+  /* ⚠️ THE FIRST FRAME OF THE FOLD IS PAINTED BEFORE THAT EFFECT RUNS. `closingTile` is set after the
+     commit that turned `surface` to 'preview', so the render that starts the fold saw `on` false and
+     `closingTile` null — one frame with the tile unlit, a 120 ms colour transition started towards dark
+     and pulled back by the next render: the tile dipped .12 → .08 → .12 at the top of every close
+     (caught by the suite's sampler 23.09.2026, `firstUnlit` at 18 ms). The ref still holds the surface
+     that is leaving while this render runs (`surfaceJustLeft` reads it the same way), so the leaving
+     tile is known in render, and the effect's `closingTile` only carries it on for the rest of the fold. */
+  const leavingTile: Surface | null = prevSurface.current !== 'preview' && surface === 'preview' ? prevSurface.current : null
 
   /*
    * The glow waits for the send choreography to finish.
@@ -1274,7 +1282,7 @@ export default function App() {
                    While a flood is on, the button's own paint SNAPS (no colour transition) and wears no
                    hover wash: any second coat under or over the overlay's 12 % would brighten the tile
                    for the frames they overlap — traced as a step at the hand-over. */
-                const lit = (on || (goes != null && closingTile === goes)) && !(fill && !(fill.dir === 'in' && fill.phase === 'hold'))
+                const lit = (on || (goes != null && (closingTile === goes || leavingTile === goes))) && !(fill && !(fill.dir === 'in' && fill.phase === 'hold'))
                 const paint = fill ? '' : ' transition-colors duration-[var(--dur-fast)] ease-std'
                 const hover = lit || fill ? '' : ' text-white hover:bg-[var(--white-100)]'
                 return (
