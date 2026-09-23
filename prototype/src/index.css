@@ -1219,6 +1219,30 @@
     background: linear-gradient(to bottom right, #ffffff33 0%, #ffffff0d 50%, #ffffff26 100%);
   }
   /*
+   * THE ATTACHED CHIP ANSWERS THE CURSOR AND THE PRESS (HomePage.tsx `AttachedChip`; designer
+   * 23.09.2026: «для появления и удаления домена внутри поля ввода: нужно добавить ховер
+   * эффекты и клик эффекты!»). Under the cursor the pill's glass steps up a stop — the board's
+   * 4 % fill to the house's 8 % hover wash, the number every control here lights by — and its
+   * ✕ wears the glass family's own wash and bloom (`glass-interactive`) plus a squeeze of the
+   * glyph on the press. The squeeze sits on the GLYPH, not the button: motion owns the
+   * button's inline `transform` for the arrival pop, and an inline value beats an `:active`
+   * rule for the rest of the button's life.
+   */
+  .attach-chip {
+    transition: background-color var(--dur-fast) var(--ease-std);
+  }
+  .attach-chip:hover {
+    background-color: var(--white-100);
+  }
+  .attach-x-ink {
+    display: grid;
+    place-items: center;
+    transition: transform var(--dur-fast) var(--ease-std);
+  }
+  .attach-x:active .attach-x-ink {
+    transform: scale(0.78);
+  }
+  /*
    * THE CHIP — glass at the size of a word (designer, 11.09.2026, on the Recommended
    * plate: "ты можешь эту пилюлю сделать дизайн пилюли в стиле Apple liquid glass?",
    * and "сделай ее скругленной полностью").

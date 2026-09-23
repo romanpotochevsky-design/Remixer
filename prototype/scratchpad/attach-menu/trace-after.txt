@@ -1,0 +1,190 @@
+
+ENTRANCE (menu grows out of the "+")
+  11  box 338.5,402.7 178.9×90.3  scale 0.86  op 0  glint 0  rows 0  origin 18px 18px
+  27  box 338.5,402.7 178.9×90.3  scale 0.8602  op 0.003  glint 0  rows 0  origin 18px 18px
+  54  box 338.4,402.6 180.6×91.2  scale 0.8685  op 0.23  glint 0  rows 0  origin 18px 18px
+  79  box 337.8,402 186.6×94.2  scale 0.8973  op 0.669  glint 0  rows 0  origin 18px 18px
+ 103  box 337.3,401.5 193×97.4  scale 0.9278  op 0.839  glint 0  rows 0.02  origin 18px 18px
+ 129  box 336.8,401 198.5×100.2  scale 0.9545  op 0.929  glint 0  rows 0.161  origin 18px 18px
+ 182  box 336.4,400.6 202.9×102.4  scale 0.9755  op 0.978  glint 0.174  rows 0.354  origin 18px 18px
+ 210  box 336,400.2 207.5×104.8  scale 0.9978  op 1  glint 0.384  rows 0.683  origin 18px 18px
+ 239  box 336,400.1 208.5×105.2  scale 1.0022  op 1  glint 0.483  rows 0.803  origin 18px 18px
+ 300  box 335.9,400.1 208.7×105.3  scale 1.0032  op 1  glint 0.776  rows 0.936  origin 18px 18px
+ 357  box 336,400.2 208.3×105.2  scale 1.0015  op 1  glint 0.931  rows 0.983  origin 18px 18px
+ 411  box 336,400.2 208.1×105  scale 1.0004  op 1  glint 0.985  rows 0.997  origin 18px 18px
+ 463  box 336,400.2 208×105  scale 1  op 1  glint 1  rows 1  origin 18px 18px
+ 491  box 336,400.2 208×105  scale 1  op 1  glint 0.981  rows 1  origin 18px 18px
+ 552  box 336,400.2 208×105  scale 1  op 1  glint 0.898  rows 1  origin 18px 18px
+ 603  box 336,400.2 208×105  scale 1  op 1  glint 0.772  rows 1  origin 18px 18px
+ 682  box 336,400.2 208×105  scale 1  op 1  glint 0.55  rows 1  origin 18px 18px
+ 738  box 336,400.2 208×105  scale 1  op 1  glint 0.434  rows 1  origin 18px 18px
+ 796  box 336,400.2 208×105  scale 1  op 1  glint 0.305  rows 1  origin 18px 18px
+ 854  box 336,400.2 208×105  scale 1  op 1  glint 0.228  rows 1  origin 18px 18px
+ 919  box 336,400.2 208×105  scale 1  op 1  glint 0.146  rows 1  origin 18px 18px
+
+PLUS  336,400.19,36,36 
+MENU  336,400.19,208,105 
+BOX   336,400.19,208,105
+menu on the "+" box: dx 0 dy 0  size 208 × 105 (board 208 × 105)
+box style {"backgroundColor":"rgb(82, 82, 91)","borderRadius":"10px","paddingLeft":"2px","paddingTop":"4px","boxShadow":"rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(39, 39, 39, 0.33) 0px 8px 16px 0px"}
+ROWS [{"label":"Attach File","off":false,"box":[338,404.19,204,48],"radius":"8px","pad":"12px","gap":"12px","color":"rgb(255, 255, 255)","font":"15px/24px","bg":"rgba(0, 0, 0, 0)"},{"label":"Attach Domain","off":false,"box":[338,453.19,204,48],"radius":"8px","pad":"12px","gap":"12px","color":"rgb(255, 255, 255)","font":"15px/24px","bg":"rgba(0, 0, 0, 0)"}]
+ICON {"box":[24,24],"svg":[24,24],"fill":"rgb(255, 255, 255)","color":"rgb(255, 255, 255)"}
+
+HOVER row bg rgba(255, 255, 255, 0.08) (expect rgba(255,255,255,0.08))
+BLOOM during press [{"cls":"press-bloom flex h-12 w-full items-center gap-3 rounded-[8px] px-3 text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]","r":204,"op":"1"},{"cls":"press-bloom flex h-12 w-full items-center gap-3 rounded-[8px] px-3 text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]","r":204,"op":"1"},{"cls":"glass-ripples","r":204,"op":"1"},{"cls":"glass-ripple","r":148.50836181640625,"op":"0.926978"}]
+
+RESIZE root → domains (208×105 → 280×203)
+   7  box 336,400.2 208×105  groups [{"n":2,"op":1,"x":0},{"n":4,"op":0,"x":36}]  items 6
+  31  box 336,400.2 208.5×105.7  groups [{"n":2,"op":1,"x":-0.1},{"n":4,"op":0,"x":35.8}]  items 6
+  62  box 336,400.2 226.6×130.3  groups [{"n":2,"op":0.81,"x":-4.6},{"n":4,"op":0,"x":29.9}]  items 6
+  95  box 336,400.2 246.8×157.8  groups [{"n":2,"op":0.51,"x":-11.7},{"n":4,"op":0,"x":21.9}]  items 6
+ 123  box 336,400.2 261.3×177.6  groups [{"n":2,"op":0.17,"x":-19.9},{"n":4,"op":0,"x":15.1}]  items 6
+ 154  box 336,400.2 270.5×190  groups [{"n":4,"op":0,"x":9.9}]  items 4
+ 189  box 336,400.2 276.7×198.5  groups [{"n":4,"op":0.22,"x":5.3}]  items 4
+ 221  box 336,400.2 279.6×202.5  groups [{"n":4,"op":0.46,"x":2.3}]  items 4
+ 254  box 336,400.2 280.6×203.9  groups [{"n":4,"op":0.65,"x":0.7}]  items 4
+ 287  box 336,400.2 280.8×204.1  groups [{"n":4,"op":0.82,"x":-0.2}]  items 4
+ 321  box 336,400.2 280.6×203.8  groups [{"n":4,"op":0.94,"x":-0.5}]  items 4
+ 354  box 336,400.2 280.4×203.5  groups [{"n":4,"op":1,"x":-0.5}]  items 4
+ 396  box 336,400.2 280.2×203.3  groups [{"n":4,"op":1,"x":-0.4}]  items 4
+ 433  box 336,400.2 280×203.1  groups [{"n":4,"op":1,"x":-0.3}]  items 4
+ 463  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":-0.2}]  items 4
+ 490  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":-0.1}]  items 4
+ 521  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":-0.1}]  items 4
+ 554  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+ 587  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+ 621  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+ 654  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+ 687  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+ 721  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+ 754  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+ 787  box 336,400.2 280×203  groups [{"n":4,"op":1,"x":0}]  items 4
+NAMES [{"label":"fit-ration.com","h":48},{"label":"odesa-coffee-roasters.com","h":48},{"label":"design-portfolio.net","h":48},{"label":"vegan-burger-delivery.co","h":48}]
+LIST box 336,400.19,280,203  corner drift 0 0
+
+EXIT (Escape)
+   2  scale 1  op 1
+  22  scale 1  op 1
+  43  scale 0.9977  op 0.961
+  45  scale 0.9918  op 0.864
+  62  scale 0.9912  op 0.853
+  79  scale 0.9845  op 0.742
+  97  scale 0.9767  op 0.612
+ 112  scale 0.9673  op 0.455
+ 129  scale 0.9587  op 0.311
+ 145  scale 0.9481  op 0.135
+ 162  gone
+ 178  gone
+ 195  gone
+ 211  gone
+ 228  gone
+ 245  gone
+ 261  gone
+ 278  gone
+ 295  gone
+ 311  gone
+ 328  gone
+ 345  gone
+ 361  gone
+ 378  gone
+ 395  gone
+ 411  gone
+
+CHIP ARRIVAL (pick odesa-coffee-roasters.com)
+  15  field 164  menu 1  chip scale 0.86 tx -6 op 0  body 0.00@1.060  ✕ 0.00@0.500  glint 0  origin 0px 18px
+  35  field 164  menu 0.99  chip scale 0.8627 tx -5.9 op 0.046  body 0.00@1.060  ✕ 0.00@0.500  glint 0  origin 0px 18px
+  49  field 164  menu 0.93  chip scale 0.8769 tx -5.3 op 0.406  body 0.00@1.060  ✕ 0.00@0.500  glint 0  origin 0px 18px
+  68  field 164  menu 0.85  chip scale 0.8918 tx -4.6 op 0.597  body 0.00@1.060  ✕ 0.00@0.500  glint 0  origin 0px 18px
+  86  field 164  menu 0.73  chip scale 0.9139 tx -3.7 op 0.751  body 0.00@1.060  ✕ 0.00@0.500  glint 0  origin 0px 18px
+ 106  field 164  menu 0.59  chip scale 0.9344 tx -2.8 op 0.844  body 0.00@1.056  ✕ 0.00@0.500  glint 0  origin 0px 18px
+ 122  field 164  menu 0.41  chip scale 0.9545 tx -1.9 op 0.911  body 0.18@1.047  ✕ 0.00@0.500  glint 0  origin 0px 18px
+ 139  field 164  menu 0.24  chip scale 0.9687 tx -1.3 op 0.95  body 0.47@1.039  ✕ 0.00@0.500  glint 0.022  origin 0px 18px
+ 156  field 164  menu 0.06  chip scale 0.9801 tx -0.9 op 0.975  body 0.65@1.031  ✕ 0.00@0.500  glint 0.084  origin 0px 18px
+ 173  field 164  menu null  chip scale 0.9884 tx -0.5 op 0.991  body 0.76@1.024  ✕ 0.15@0.516  glint 0.174  origin 0px 18px
+ 190  field 164  menu null  chip scale 0.9948 tx -0.2 op 0.998  body 0.84@1.018  ✕ 0.36@0.585  glint 0.279  origin 0px 18px
+ 223  field 164  menu null  chip scale 1.0019 tx 0.1 op 1  body 0.93@1.009  ✕ 0.69@0.766  glint 0.483  origin 0px 18px
+ 256  field 164  menu null  chip scale 1.0043 tx 0.2 op 1  body 0.98@1.004  ✕ 0.93@0.911  glint 0.649  origin 0px 18px
+ 289  field 164  menu null  chip scale 1.0041 tx 0.2 op 1  body 1.00@1.001  ✕ 1.00@0.992  glint 0.776  origin 0px 18px
+ 322  field 164  menu null  chip scale 1.003 tx 0.1 op 1  body 1.00@1.000  ✕ 1.00@1.020  glint 0.867  origin 0px 18px
+ 356  field 164  menu null  chip scale 1.0019 tx 0.1 op 1  body 1.00@1.000  ✕ 1.00@1.022  glint 0.931  origin 0px 18px
+ 389  field 164  menu null  chip scale 1.0009 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.014  glint 0.972  origin 0px 18px
+ 422  field 164  menu null  chip scale 1.0003 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.006  glint 0.994  origin 0px 18px
+ 456  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.001  glint 1  origin 0px 18px
+ 489  field 164  menu null  chip scale 0.9999 tx 0 op 1  body 1.00@1.000  ✕ 1.00@0.999  glint 0.981  origin 0px 18px
+ 523  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@0.999  glint 0.932  origin 0px 18px
+ 556  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@0.999  glint 0.859  origin 0px 18px
+ 589  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.773  origin 0px 18px
+ 622  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.681  origin 0px 18px
+ 656  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.592  origin 0px 18px
+ 689  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.51  origin 0px 18px
+ 726  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.434  origin 0px 18px
+ 756  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.366  origin 0px 18px
+ 789  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.305  origin 0px 18px
+ 823  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.252  origin 0px 18px
+ 856  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.205  origin 0px 18px
+ 892  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.164  origin 0px 18px
+ 925  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.129  origin 0px 18px
+ 956  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.099  origin 0px 18px
+ 992  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.074  origin 0px 18px
+1023  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.053  origin 0px 18px
+1056  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.036  origin 0px 18px
+1089  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.022  origin 0px 18px
+1123  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.012  origin 0px 18px
+1161  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.005  origin 0px 18px
+1191  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0.001  origin 0px 18px
+1222  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0  origin 0px 18px
+1256  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0  origin 0px 18px
+1289  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0  origin 0px 18px
+1323  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0  origin 0px 18px
+1356  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0  origin 0px 18px
+1389  field 164  menu null  chip scale 1 tx 0 op 1  body 1.00@1.000  ✕ 1.00@1.000  glint 0  origin 0px 18px
+FIELD 138 → 164  CHIP 336,330.19,217.78,36  inset 16 16
+chip style {"backgroundColor":"rgba(255, 255, 255, 0.04)","backdropFilter":"blur(16px)","borderRadius":"9999px","paddingLeft":"12px","paddingRight":"8px","gap":"8px","fontSize":"14px","color":"rgb(255, 255, 255)"}
+chip hover bg rgba(255, 255, 255, 0.08)
+✕ hover {"bg":"rgba(255, 255, 255, 0.04)","wash":"attach-x-ink|[object SVGAnimatedString]|[object SVGAnimatedString]","after":"1"}
+✕ press ink "matrix(0.788371, 0, 0, 0.788371, 0, 0)"  bloom ["glass-ripples","glass-ripple"]
+
+CHIP REMOVAL (✕)
+   6  field 164  chip scale 1 op 1 origin 200.781px 18px
+  30  field 164  chip scale 0.9978 op 1 origin 200.781px 18px
+  49  field 164  chip scale 0.9922 op 1 origin 200.781px 18px
+  68  field 164  chip scale 0.9838 op 1 origin 200.781px 18px
+  85  field 164  chip scale 0.9733 op 1 origin 200.781px 18px
+ 103  field 164  chip scale 0.9609 op 1 origin 200.781px 18px
+ 122  field 164  chip scale 0.9317 op 1 origin 200.781px 18px
+ 139  field 164  chip scale 0.9151 op 0.868 origin 200.781px 18px
+ 155  field 164  chip scale 0.8973 op 0.631 origin 200.781px 18px
+ 172  field 164  chip scale 0.8785 op 0.381 origin 200.781px 18px
+ 189  field 164  chip scale 0.8584 op 0.113 origin 200.781px 18px
+ 213  field 164  gone  focus INPUTDescribe the site you want
+ 240  field 164  gone  focus INPUTDescribe the site you want
+ 256  field 164  gone  focus INPUTDescribe the site you want
+ 272  field 164  gone  focus INPUTDescribe the site you want
+ 305  field 164  gone  focus INPUTDescribe the site you want
+ 339  field 164  gone  focus INPUTDescribe the site you want
+ 372  field 164  gone  focus INPUTDescribe the site you want
+ 405  field 164  gone  focus INPUTDescribe the site you want
+ 439  field 164  gone  focus INPUTDescribe the site you want
+ 472  field 164  gone  focus INPUTDescribe the site you want
+ 505  field 164  gone  focus INPUTDescribe the site you want
+ 539  field 138  gone  focus INPUTDescribe the site you want
+ 572  field 138  gone  focus INPUTDescribe the site you want
+ 606  field 138  gone  focus INPUTDescribe the site you want
+ 639  field 138  gone  focus INPUTDescribe the site you want
+ 672  field 138  gone  focus INPUTDescribe the site you want
+ 705  field 138  gone  focus INPUTDescribe the site you want
+ 744  field 138  gone  focus INPUTDescribe the site you want
+ 772  field 138  gone  focus INPUTDescribe the site you want
+ 805  field 138  gone  focus INPUTDescribe the site you want
+ 839  field 138  gone  focus INPUTDescribe the site you want
+ 873  field 138  gone  focus INPUTDescribe the site you want
+ 905  field 138  gone  focus INPUTDescribe the site you want
+FIELD after 138
+
+FILE chip {"text":"brand-guidelines.pdf","h":36,"icon":true}  field 164  menu open? false
+after ✕ on file chip: field 138  chip gone true
+
+PAGE-LOAD chip scale over first frames (should be 1 or hidden by hero entrance, never a spring): [1,1,1,1,1,1,1,1,1,1,1,1]
+page-load field 164  glint on load-chip? false
+
+done

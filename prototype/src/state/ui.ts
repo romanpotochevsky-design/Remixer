@@ -275,6 +275,13 @@ interface UIStore {
    * lives in figma-spec-add-template.md §7.4.)
    */
   attachedTemplate: number | null
+  /**
+   * A FILE attached to the prompt from the composer's «+» menu (board 30871:57297 draws
+   * `Attach File` white beside `Attach Domain`, 23.09.2026). Only the name: this prototype has no
+   * upload and nothing downstream reads it — like the template, it decorates THIS draft and dies
+   * with it in `openBuilder`. Shown as the same 36-tall glass chip the domain wears.
+   */
+  attachedFile: string | null
   /** The template mid-flight between the stage and the tile — see TemplateFlight. */
   tplFlight: TemplateFlight | null
   /** Bumped by `settleAttachedTile` — see it. */
@@ -369,6 +376,8 @@ interface UIStore {
    */
   attachTemplate: (libIndex: number, id: ThumbId, from: FlightRect | null) => void
   detachTemplate: () => void
+  attachFile: (name: string) => void
+  detachFile: () => void
   /** The attachment tile was clicked: the picker opens on that template alone
    *  and the object flies out of the tile into the stage. */
   openAttachedPreview: (libIndex: number, id: ThumbId, from: FlightRect) => void
@@ -413,6 +422,7 @@ export const useUI = create<UIStore>((set, get) => ({
   pickerCard: null,
   tileSettle: 0,
   attachedTemplate: null,
+  attachedFile: null,
   tplFlight: null,
   surface: 'preview',
   surfaceFrom: null,
@@ -453,7 +463,7 @@ export const useUI = create<UIStore>((set, get) => ({
     const arrive = reduce ? 240 : BOOT_ARRIVE_MS
     set({ boot: 'darken' })
     bootAfter(darken, () =>
-      set({ page: 'builder', boot: glow ? 'glow' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, tplFlight: null }))
+      set({ page: 'builder', boot: glow ? 'glow' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, attachedFile: null, tplFlight: null }))
     if (glow) bootAfter(darken + glow, () => set({ boot: 'arrive' }))
     bootAfter(darken + glow + arrive, () => set({ boot: null }))
   },
@@ -504,6 +514,8 @@ export const useUI = create<UIStore>((set, get) => ({
       tplFlight: from ? { id, from, to: 'tile' } : null,
     }),
   detachTemplate: () => set({ attachedTemplate: null, tplFlight: null }),
+  attachFile: (name) => set({ attachedFile: name }),
+  detachFile: () => set({ attachedFile: null }),
   openAttachedPreview: (index, id, from) =>
     set({
       templatePickerOpen: true,

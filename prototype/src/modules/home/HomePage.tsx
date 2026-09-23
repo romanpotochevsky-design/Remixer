@@ -48,7 +48,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AnimationEvent } from 'react'
-import { animate, useMotionValue, useReducedMotion } from 'motion/react'
+import { animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { useT } from '@/i18n'
@@ -56,14 +56,14 @@ import { startBuild } from '@/modules/chat/send'
 import { TEMPLATE_LIBRARY } from '@/data/templates'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
-import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight, IconClose } from '@/ui/icons'
+import { LogoRemixer, IconPlus, IconMic, IconEnter, IconChevronRight, IconClose, IconAttachFile } from '@/ui/icons'
 import { AttachMenu } from './AttachMenu'
 import { LogoRemixerAnimated } from '@/ui/LogoRemixerAnimated'
 import { HomeDock } from './Dock'
 import { TemplatePicker } from './TemplatePicker'
 import { TemplateFlight } from './TemplateFlight'
 import { Thumb } from './thumbs'
-import { FIELD_CLOSE, FIELD_GROW } from '@/ui/motion'
+import { FIELD_CLOSE, FIELD_GROW, chipIn, chipInBody, chipInBadge, chipInFade } from '@/ui/motion'
 import {
   barRowShift, barTextShift, CHIP_H,
   FIELD_PAD_B, FIELD_RADIUS, rectOf,
@@ -604,9 +604,11 @@ function useSnapSlide(
 }
 
 /**
- * THE ATTACHED DOMAIN — `attached template` 28734:65592 → `container` 30771:30981 on board
+ * THE ATTACHED CHIP — `attached template` 28734:65592 → `container` 30771:30981 on board
  * 28726:64760, which is the same Attachments bar carrying a NAME instead of a picture
- * (designer, 21.09.2026).
+ * (designer, 21.09.2026). Two things wear it: the DOMAIN this intake is for (`world.intakeDomain`)
+ * and, since 23.09.2026, a FILE picked from the «+» menu (`ui.attachedFile`) — one component, two
+ * facts, so a change of glass reaches both.
  *
  * 36 tall at radius 999, blur 16: pl 12 · the name at 14 regular white · gap 8 · an 18px
  * round ✕ of the same material · pr 8. Every number is the board's (the state-layer's
@@ -625,31 +627,96 @@ function useSnapSlide(
  * ⚠️ AND THE BLUR EARNS ITS PLACE HERE, unlike the switch in the screen's corner: behind this
  * chip is the field's own 80%-black glass over the hero's painted colour field, so there is
  * something to sample. Same rule — look at what is behind — different place, different answer.
+ *
+ * IT ARRIVES AS GLASS AND LEAVES INTO ITS ✕ (designer 23.09.2026: «красивую, стильную и плавную
+ * анимацию в нашем стиле Apple liquid glass появления и удаления домена внутри поля ввода…
+ * ховер эффекты и клик эффекты»). Arrival — ui/motion.ts `chipIn` / `chipInBody` /
+ * `chipInBadge`: the pill inflates from its left end with one soft overshoot, the word focuses
+ * in a beat later, the ✕ pops in last, the rim glints white for a second (`.glass-glint`). Only
+ * when `arrive` is true — a chip that is on the page when it loads (a link with `g=`) simply
+ * stands. Removal is the tile's rule: the chip collapses INTO its ✕ (scale .85, 190 ms, flat,
+ * the origin ON the badge) and only then does the world change, so the field's close-up
+ * (`useFieldClose`) follows the chip leaving instead of pulling the ground from under it.
+ * Hover: the pill's glass steps up a stop (index.css `.attach-chip`), the ✕ takes the glass
+ * family's wash and bloom and squeezes its glyph on the press.
  */
-function AttachedDomain({ domain }: { domain: string }) {
-  const { t } = useT()
-  const set = useWorld((s) => s.set)
+/** The one prop that keeps motion 11 off WAAPI (AcceleratedAnimation.supports) — see AttachMenu.tsx:
+ * a composited fade hands the element back at its pre-animation opacity for one frame. Filmed on
+ * the chip before the stub: the ✕ at opacity 0 for a frame at 283 ms of its own pop-in. */
+const keepOnMainThread = () => {}
+
+function AttachedChip({ label, icon, arrive, onRemove, removeLabel, mark }: {
+  label: string
+  /** A leading glyph inside the pill — the file chip's clip; the domain has none (board). */
+  icon?: React.ReactNode
+  /** Play the arrival — true for a chip attached by a press, false for one the page loads with. */
+  arrive: boolean
+  /** Commits the removal; called once the collapse has played. */
+  onRemove: () => void
+  removeLabel: string
+  /** The data attribute the chip answers to (`data-attach-domain` / `data-attach-file`). */
+  mark: string
+}) {
+  const reduced = useReducedMotion()
+  const box = useRef<HTMLSpanElement>(null)
+  /** Set while the collapse plays, so a second ✕ press cannot start it twice. */
+  const leaving = useRef(false)
+  const glint = arrive && !reduced
+
+  function remove() {
+    const el = box.current
+    if (!el || leaving.current) return
+    leaving.current = true
+    /* The ✕ is 18 wide and 8 in from the right edge: its centre is 17 from the pill's end.
+       Set here, not in the style prop — the arrival grows from the OTHER end. */
+    el.style.transformOrigin = 'calc(100% - 17px) 50%'
+    const anim = el.animate(
+      reduced
+        ? { opacity: [1, 0] }
+        : { transform: ['scale(1)', 'scale(0.85)'], opacity: [1, 1, 0] },
+      { duration: reduced ? 140 : 190, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
+    )
+    anim.onfinish = () => {
+      /* Focus would otherwise fall to <body>: the button the keyboard was on has just been
+         deleted. The field is where the flow continues. */
+      const input = el.closest('.he-composer')?.querySelector('input:not([type="file"])')
+      onRemove()
+      if (input instanceof HTMLElement) input.focus()
+    }
+  }
+
   return (
-    <span
-      data-attach-domain
-      style={{ height: CHIP_H }}
-      className="liquid-glass liquid-glass--attach flex items-center gap-2 rounded-full pl-3 pr-2 text-[14px] leading-none text-white"
+    <motion.span
+      ref={box}
+      {...{ [mark]: '' }}
+      data-attach-chip
+      style={{ height: CHIP_H, transformOrigin: 'left center' }}
+      variants={reduced ? chipInFade : chipIn}
+      initial={arrive ? 'initial' : false}
+      animate="animate"
+      onUpdate={keepOnMainThread}
+      className="attach-chip liquid-glass liquid-glass--attach flex items-center gap-2 rounded-full pl-3 pr-2 text-[14px] leading-none text-white"
     >
-      <span className="max-w-[320px] truncate">{domain}</span>
-      <button
+      {glint && <span className="glass-glint" aria-hidden />}
+      <motion.span variants={reduced ? chipInFade : chipInBody} onUpdate={keepOnMainThread} className="flex min-w-0 items-center gap-1.5">
+        {icon && <span className="grid h-4 w-4 flex-none place-items-center text-[var(--white-720)]">{icon}</span>}
+        <span className="max-w-[320px] truncate">{label}</span>
+      </motion.span>
+      <motion.button
         type="button"
-        onClick={() => set({ intakeDomain: null })}
-        aria-label={t({ en: 'Remove domain', uk: 'Прибрати домен' })}
-        /* No ripple, for the reason the tile's badge states: light blooming out of a control
-           whose whole job is to remove the thing beside it celebrates the wrong event. */
-        data-no-ripple
+        variants={reduced ? chipInFade : chipInBadge}
+        onUpdate={keepOnMainThread}
+        onClick={remove}
+        aria-label={removeLabel}
         /* Same material at a smaller size — the board gives the `Close` its own fill and its
-           own stroke, identical to the pill's, so it is the same glass and not a hole in it. */
-        className="liquid-glass liquid-glass--attach grid h-[18px] w-[18px] flex-none place-items-center rounded-full text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+           own stroke, identical to the pill's, so it is the same glass and not a hole in it.
+           `glass-interactive`: the family's 8 % wash under the cursor and the bloom on the press
+           (designer 23.09.2026 asked for both here; the 21.09 `data-no-ripple` is withdrawn). */
+        className="attach-x liquid-glass liquid-glass--attach glass-interactive grid h-[18px] w-[18px] flex-none place-items-center rounded-full text-white"
       >
-        <IconClose size={9} />
-      </button>
-    </span>
+        <span className="attach-x-ink"><IconClose size={9} /></span>
+      </motion.button>
+    </motion.span>
   )
 }
 
@@ -796,12 +863,25 @@ function Composer() {
   const [attachOpen, setAttachOpen] = useState(false)
   const attachBtn = useRef<HTMLButtonElement>(null)
   /*
+   * THE FILE CHIP (board 30871:57297 draws `Attach File` white, 23.09.2026): the menu row opens
+   * the browser's own picker through this hidden input, and the chosen file's NAME becomes a chip
+   * beside the domain's — `ui.attachedFile`, a decoration of this draft like the template. No
+   * upload exists in this prototype and nothing downstream reads the name.
+   */
+  const attachedFile = useUI((s) => s.attachedFile)
+  const attachFile = useUI((s) => s.attachFile)
+  const detachFile = useUI((s) => s.detachFile)
+  const fileInput = useRef<HTMLInputElement>(null)
+  /* A chip attached by a PRESS arrives as glass; one the page loads with (a link carrying `g=`)
+     just stands. Set by the menu's handlers, read by the chips as they mount. */
+  const arrived = useRef(false)
+  /*
    * THE ATTACHMENTS BAR IS AS TALL AS ITS TALLEST ATTACHMENT, and everything below
    * it follows from that one number (`attachment.ts` § barTextShift/barRowShift,
    * both closed against the boards: the tile board draws the field 184, the domain
    * board 164, and the same two formulas hit both). Tile 56, chip 36, nothing 0.
    */
-  const barH = hasTile ? TILE : intakeDomain ? CHIP_H : 0
+  const barH = hasTile ? TILE : intakeDomain || attachedFile ? CHIP_H : 0
   const hasBar = barH > 0
   /*
    * A template alone arms Build too — a lit tile beside a dead button would
@@ -955,7 +1035,27 @@ function Composer() {
         {hasBar && (
           <div className="flex items-center gap-2 pl-4" style={{ height: barH }}>
             {attachedIndex != null && <AttachedTile index={attachedIndex} />}
-            {intakeDomain && <AttachedDomain domain={intakeDomain} />}
+            {intakeDomain && (
+              <AttachedChip
+                key={intakeDomain}
+                mark="data-attach-domain"
+                label={intakeDomain}
+                arrive={arrived.current}
+                onRemove={() => setWorld({ intakeDomain: null })}
+                removeLabel={t({ en: 'Remove domain', uk: 'Прибрати домен' })}
+              />
+            )}
+            {attachedFile && (
+              <AttachedChip
+                key={attachedFile}
+                mark="data-attach-file"
+                label={attachedFile}
+                icon={<IconAttachFile size={16} />}
+                arrive={arrived.current}
+                onRemove={detachFile}
+                removeLabel={t({ en: 'Remove file', uk: 'Прибрати файл' })}
+              />
+            )}
           </div>
         )}
 
@@ -1044,8 +1144,23 @@ function Composer() {
             <AttachMenu
               open={attachOpen}
               onClose={() => setAttachOpen(false)}
-              onDomain={(domain) => setWorld({ intakeDomain: domain })}
+              onDomain={(domain) => { arrived.current = true; setWorld({ intakeDomain: domain }) }}
+              onFile={() => fileInput.current?.click()}
               anchor={attachBtn}
+            />
+            {/* the browser's picker behind `Attach File`; `value` cleared so the same file can be
+                picked again after its chip was removed */}
+            <input
+              ref={fileInput}
+              type="file"
+              tabIndex={-1}
+              aria-hidden
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) { arrived.current = true; attachFile(f.name) }
+                e.target.value = ''
+              }}
             />
 
             {/* "Add template" 28616:58682 — 123×36 r999 glass; label Proxima

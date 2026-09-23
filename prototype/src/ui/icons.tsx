@@ -825,3 +825,23 @@ export const IconTrash = ({ size = 24, className }: IconProps) => (
     <path d="M10.4 10.2v7M13.6 10.2v7" />
   </svg>
 )
+
+/**
+ * THE COMPOSER'S ATTACH MENU GLYPHS — Material Symbols, the kit's own family (the rail's
+ * `Close M` / `Add` / `Database M` are its names, CLAUDE.md § rail), on the 24 grid the board
+ * gives each leading element (board 30871:57297, `Menu list item: -2 density`, 23.09.2026).
+ * Both are the symbols' own outlines drawn in the font's 960 space, so the ink is the kit's to
+ * the pixel: `attach_file` — the clip stands upright, not the diagonal paperclip that stood
+ * here before — and `language` for the domain row. The vectors themselves are asset URLs
+ * on figma.com, which this session's proxy refuses; the font's paths are public.
+ */
+export const IconAttachFile = ({ size = 24, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 -960 960 960" fill="currentColor" className={className} aria-hidden>
+    <path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z" />
+  </svg>
+)
+export const IconLanguage = ({ size = 24, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 -960 960 960" fill="currentColor" className={className} aria-hidden>
+    <path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-82q26-36 45-75t31-83H404q12 44 31 83t45 75Zm-104-16q-18-33-31.5-68.5T322-320H204q29 50 72.5 87t99.5 55Zm208 0q56-18 99.5-55t72.5-87H638q-9 38-22.5 73.5T584-178ZM170-400h136q-3-20-4.5-39.5T300-480q0-21 1.5-40.5T306-560H170q-5 20-7.5 39.5T160-480q0 21 2.5 40.5T170-400Zm216 0h188q3-20 4.5-39.5T580-480q0-21-1.5-40.5T574-560H386q-3 20-4.5 39.5T380-480q0 21 1.5 40.5T386-400Zm268 0h136q5-20 7.5-39.5T800-480q0-21-2.5-40.5T790-560H654q3 20 4.5 39.5T660-480q0 21-1.5 40.5T654-400Zm-16-240h118q-29-50-72.5-87T584-782q18 33 31.5 68.5T638-640Zm-234 0h152q-12-44-31-83t-45-75q-26 36-45 75t-31 83Zm-200 0h118q9-38 22.5-73.5T376-782q-56 18-99.5 55T204-640Z" />
+  </svg>
+)

@@ -3788,10 +3788,12 @@ await shot('30-plan-review')
     !card.includes('spaceship') && goalWas.length > 0)
 }
 
-/* ============================ H. a DOMAIN attached to the prompt on the Home page
- *  Figma 28726:64760 «Domain-Only Customer» + the menu instance 30771:31103 (designer,
- *  21.09.2026). A DreamHost panel customer arrives with a name already chosen, so the
- *  intake has to be able to say which domain this build is for.
+/* ============================ H. a DOMAIN (or a FILE) attached to the prompt on the Home page
+ *  Figma 28726:64760 «Domain-Only Customer» + the `Menu` frame 30871:57297 (designer 21.09.2026;
+ *  re-read 23.09.2026 after his side-by-side of board and build: the board had MOVED — the menu
+ *  now sits ON the "+" box, corner to corner, its rows are the kit's 48, and both rows are white).
+ *  Plus his order of the same day: Liquid Glass motion for the menu opening and closing, for the
+ *  chip arriving in and leaving the field, hover and press on all of it.
  *
  *  ⚠️ `i=dh-free` and NOT the suite's usual NEW_PROJECT: that query carries `i=none`, an
  *  account with no domains, where the menu is correctly empty and there is nothing to pick.
@@ -3800,6 +3802,27 @@ await shot('30-plan-review')
   const HOME_WITH_DOMAINS = 'p=empty&h=empty&a=trial&t=1&c=2000&i=dh-free'
   const box = (sel) => p.$eval(sel, (el) => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((n) => +n.toFixed(2)) })
   const gone = (sel) => p.$(sel).then((n) => !n)
+  const monotone = (xs, dir, eps = 0.011) => xs.every((v, i) => i === 0 || (dir > 0 ? v >= xs[i - 1] - eps : v <= xs[i - 1] + eps))
+  /* Sample per rAF for `ms` after running `act` in the page — the film every motion check here reads. */
+  const film = (act, read, ms) => p.evaluate(async ({ act, read, ms }) => {
+    const out = []; const t0 = performance.now()
+    // eslint-disable-next-line no-new-func
+    new Function(act)()
+    const reader = new Function('return (' + read + ')')()
+    await new Promise((res) => {
+      const tick = () => { const now = performance.now() - t0; out.push({ t: Math.round(now), ...reader() }); if (now < ms) requestAnimationFrame(tick); else res() }
+      requestAnimationFrame(tick)
+    })
+    return out
+  }, { act, read: read.toString(), ms })
+  const menuFrame = () => {
+    const m = document.querySelector('[role="menu"]')
+    if (!m) return { none: true }
+    const g = getComputedStyle(m); const bx = m.querySelector('[data-attach-box]'); const r = bx.getBoundingClientRect()
+    const glint = bx.querySelector('.glass-glint')
+    const groups = [...bx.querySelectorAll('.flex.flex-col')].map((gr) => +(+getComputedStyle(gr).opacity).toFixed(3))
+    return { x: +r.left.toFixed(1), y: +r.top.toFixed(1), w: +r.width.toFixed(1), h: +r.height.toFixed(1), scale: +new DOMMatrix(g.transform).a.toFixed(4), op: +(+g.opacity).toFixed(3), glint: glint ? +(+getComputedStyle(glint).opacity).toFixed(3) : 0, groups }
+  }
 
   await p.goto(at(HOME_WITH_DOMAINS), { waitUntil: 'networkidle' })
   /* ⚠️ 2.6s, not the usual 700ms: the hero's entrance (`home-rise-in`, 0.8s at 1.25s)
@@ -3808,27 +3831,46 @@ await shot('30-plan-review')
      442.83 once it has landed — a 2.4px error that looks exactly like a layout bug. */
   await p.waitForTimeout(2600)
   const bare = await box('.he-composer')
-  const bareInput = await box('.he-composer input')
+  const bareInput = await box('.he-composer input:not([type="file"])')
   const bareChips = await box('.he-chips')
   check('the bare field is the drawn 138', bare[3] === 138, String(bare[3]))
-  check('nothing is attached to a fresh intake', await gone('[data-attach-domain]'))
+  check('nothing is attached to a fresh intake', await gone('[data-attach-domain]') && await gone('[data-attach-file]'))
 
-  await p.click('[data-attach-open]')
-  await p.waitForTimeout(450)
+  /*
+   * THE MENU GROWS OUT OF THE "+" IT COVERS (motion.ts `attachMenuIn`): .86 → 1 on a spring
+   * with one soft overshoot, from the button's centre; the glass solid before it has finished
+   * growing; the rim catching light (`.glass-glint`) and letting it go. Filmed per rAF.
+   */
+  const entrance = await film(`document.querySelector('[data-attach-open]').click()`, menuFrame, 720)
+  const ent = entrance.filter((f) => !f.none)
+  const entScale = ent.map((f) => f.scale), entOp = ent.map((f) => f.op), entGlint = ent.map((f) => f.glint)
+  check('the attach menu grows out of the "+" — from under .9 through one soft overshoot to 1',
+    ent.length > 20 && entScale[0] < 0.9 && Math.max(...entScale) > 1.002 && Math.abs(entScale.at(-1) - 1) < 0.002,
+    `${entScale[0]} → max ${Math.max(...entScale)} → ${entScale.at(-1)}`)
+  check('…solid before it has finished growing, and never a frame of the glass missing',
+    /* the glass is at ≥ .9 while the spring is still under .99 — sampled at ~30 ms a frame,
+       so the bar is where every run lands, not the one frame the first film happened to catch */
+    monotone(entOp, 1) && ent.some((f) => f.op >= 0.9 && f.scale < 0.99),
+    entOp.join(' '))
+  check('…its rim catching light and already letting it go',
+    Math.max(...entGlint) > 0.6 && entGlint.at(-1) < Math.max(...entGlint) - 0.1,
+    `peak ${Math.max(...entGlint)}, at 720 ms ${entGlint.at(-1)}`)
+  await p.waitForTimeout(500)
   await shot('33-attach-menu')
+
   const plus = await box('[data-attach-open]')
   const menu = await box('[role="menu"]')
-  /* The board's own box: 208 × 89 = 4 + 40 + 1 + 40 + 4. It is what forbids the dimmed
-     row a subtitle (AttachMenu.tsx). */
-  check('the attach menu is the board’s 208 × 89', menu[2] === 208 && menu[3] === 89, menu.join(','))
+  const mbox = await box('[data-attach-box]')
+  /* The board's own box: 208 × 105 = 4 + 48 + 1 + 48 + 4 — the kit's `-2 density` rows. */
+  check('the attach menu is the board’s 208 × 105', mbox[2] === 208 && mbox[3] === 105, mbox.join(','))
   /*
-   * AND IT OPENS DOWNWARD OUT OF THE "+", at the board's own offset: the `Menu` instance
-   * sits at (364, 610) where the button's box is (340, 602, 36, 36) — 24 right, 8 down,
-   * covering the button row it grew from. The designer had to say this twice: the first
-   * build read that overlap as a loose placement and hung the menu above the field.
+   * AND ITS BOX SITS EXACTLY ON THE "+" BOX — `Menu` at (16, 112) in the field, where `Buttons ›
+   * Left` puts the 36 × 36 "+": no offset, corner to corner, the menu covering the button it
+   * grew from. The 21.09 build read the (then) instance at +24 / +8 and left a sliver of the "+"
+   * showing beside the menu — the thing the designer's screenshot pair pointed at.
    */
-  check('…opening downward out of the "+", 24 right and 8 down, where the board puts it',
-    Math.abs(menu[0] - (plus[0] + 24)) < 0.6 && Math.abs(menu[1] - (plus[1] + 8)) < 0.6,
+  check('…its box exactly on the "+" box, corner to corner, as the board places it',
+    Math.abs(menu[0] - plus[0]) < 0.6 && Math.abs(menu[1] - plus[1]) < 0.6,
     `menu ${menu.join(',')} | + ${plus.join(',')}`)
   /*
    * ⚠️ WHICH ONLY WORKS BECAUSE THE MENU IS OUT OF THE HERO. The hero is a clipped panel,
@@ -3847,41 +3889,121 @@ await shot('30-plan-review')
     return !!el?.closest('[role="menu"]')
   }, [menu[0] + menu[2] / 2, menu[1] + menu[3] - 20])
   check('…and it paints above the prompt-chip row', onTop)
+  const boxStyle = await p.$eval('[data-attach-box]', (el) => { const g = getComputedStyle(el); return { bg: g.backgroundColor, r: g.borderRadius, px: g.paddingLeft, py: g.paddingTop, shadow: g.boxShadow } })
+  check('…Gray/600 at radius 10, inset 2 / 4, under the board’s shadow',
+    boxStyle.bg === 'rgb(82, 82, 91)' && boxStyle.r === '10px' && boxStyle.px === '2px' && boxStyle.py === '4px' && boxStyle.shadow.includes('rgba(39, 39, 39, 0.33) 0px 8px 16px'),
+    JSON.stringify(boxStyle))
 
-  const rows = await p.$$eval('[role="menu"] [role="menuitem"]', (els) => els.map((e) => ({ label: e.innerText.trim(), off: e.disabled })))
+  const rows = await p.$$eval('[role="menu"] [role="menuitem"]', (els) => els.map((e) => {
+    const g = getComputedStyle(e); const lab = e.querySelector('span:last-child'); const gl = getComputedStyle(lab); const ico = e.querySelector('span:first-child svg')
+    return { label: e.innerText.trim(), off: e.disabled, h: e.getBoundingClientRect().height, r: g.borderRadius, px: g.paddingLeft, gap: g.gap, ink: gl.color, font: gl.fontSize + '/' + gl.lineHeight, icon: ico ? ico.getBoundingClientRect().width : 0 }
+  }))
   check('the menu draws the board’s two rows', rows.length === 2 && /Attach File/.test(rows[0].label) && /Attach Domain/.test(rows[1].label),
     rows.map((r) => r.label).join(' | '))
-  check('Attach File is dimmed, because this prototype has no files', rows[0].off === true)
+  /* Both rows are drawn enabled and white — the board's word, and it retired the 21.09 dimming
+     of `Attach File`: it now opens the browser's file picker (below). */
+  check('…both white and enabled, like the board draws them',
+    rows.every((r) => r.off === false && r.ink === 'rgb(255, 255, 255)'), JSON.stringify(rows.map((r) => [r.off, r.ink])))
+  check('…the kit’s 48-tall rows at radius 8, px 12, gap 12, a 24 leading glyph, the label 15/24',
+    rows.every((r) => r.h === 48 && r.r === '8px' && r.px === '12px' && r.gap === '12px' && r.icon === 24 && r.font === '15px/24px'),
+    JSON.stringify(rows.map((r) => [r.h, r.r, r.px, r.gap, r.icon, r.font])))
 
-  await p.click('[role="menu"] [role="menuitem"]:last-child')
-  await p.waitForTimeout(350)
+  /* HOVER AND PRESS on a row: the house 8 % wash under the cursor, the house bloom from the press. */
+  const row2 = await box('[role="menu"] [role="menuitem"]:nth-child(2)')
+  await p.mouse.move(row2[0] + 60, row2[1] + 24)
+  await p.waitForTimeout(260)
+  const rowHover = await p.$eval('[role="menu"] [role="menuitem"]:nth-child(2)', (e) => getComputedStyle(e).backgroundColor)
+  check('a row lights the house 8 % under the cursor', rowHover === 'rgba(255, 255, 255, 0.08)', rowHover)
+  await p.mouse.down()
+  await p.waitForTimeout(40)
+  const bloom1 = await p.evaluate(() => document.querySelector('[role="menu"] .glass-ripple')?.getBoundingClientRect().width ?? 0)
+  await p.waitForTimeout(110)
+  const bloom2 = await p.evaluate(() => document.querySelector('[role="menu"] .glass-ripple')?.getBoundingClientRect().width ?? 0)
+  check('…and blooms from the press, the bloom still growing a frame later', bloom1 > 0 && bloom2 > bloom1, `${bloom1} → ${bloom2}`)
+  /* Release OUTSIDE the row: a pointerup on it is the click that picks. */
+  await p.mouse.move(row2[0] - 400, row2[1] + 24)
+  await p.mouse.up()
+  await p.waitForTimeout(400)
+
+  /*
+   * ATTACH DOMAIN: the BOX resizes on a spring (208 × 105 → 280 × 203 for four names) with its
+   * corner on the "+" never moving, and the two lists hand over one after the other — never
+   * both on screen (the dock's double-exposure lesson).
+   */
+  const level = await film(`document.querySelector('[role="menu"] [role="menuitem"]:last-child').click()`, menuFrame, 700)
+  const lv = level.filter((f) => !f.none)
+  check('Attach Domain resizes the box on a spring, 208 × 105 → 280 × 203, through intermediate frames',
+    lv[0].w === 208 && lv.at(-1).w === 280 && lv.at(-1).h === 203 && lv.some((f) => f.w > 220 && f.w < 270),
+    `${lv[0].w}×${lv[0].h} → ${lv.at(-1).w}×${lv.at(-1).h}`)
+  check('…the two lists handing over one after the other, never both visible',
+    lv.every((f) => f.groups.filter((o) => o > 0.25).length <= 1),
+    lv.map((f) => f.groups.join('/')).join(' '))
+  check('…and the box’s corner on the "+" never moving',
+    lv.every((f) => Math.abs(f.x - lv[0].x) < 0.6 && Math.abs(f.y - lv[0].y) < 0.6),
+    `${lv[0].x},${lv[0].y}`)
   await shot('34-attach-domain-list')
   const names = await p.$$eval('[role="menu"] [role="menuitem"]', (els) => els.map((e) => e.innerText.trim()))
-  check('…and Attach Domain lists the names this account actually owns',
+  check('…listing the names this account actually owns',
     names.join(' · ') === 'fit-ration.com · odesa-coffee-roasters.com · design-portfolio.net · vegan-burger-delivery.co',
     names.join(' · '))
   /* A real name does not fit the drawn 208; that level is ours and undrawn. */
-  const list = await box('[role="menu"]')
-  check('…in a box wide enough for a real domain name', list[2] === 280, String(list[2]))
-  check('…whose corner by the "+" has not moved, and which the window still holds',
-    Math.abs(list[0] - menu[0]) < 0.6 && Math.abs(list[1] - menu[1]) < 0.6
-      && list[1] + list[3] < 900 - 8,
-    `${list.join(',')} vs ${menu.join(',')}`)
+  const list = await box('[data-attach-box]')
+  check('…in a box wide enough for a real domain name, which the window still holds',
+    list[2] === 280 && list[1] + list[3] < 900 - 8, list.join(','))
 
-  await p.keyboard.press('Escape')
-  await p.waitForTimeout(300)
-  check('Escape closes it, like every menu in this shell', await gone('[role="menu"]'))
+  /* ESCAPE: the house exit — 140 ms, flat, back toward the "+", no frame of it flashing back. */
+  const exit = await film(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`, menuFrame, 400)
+  const ex = exit.filter((f) => !f.none)
+  check('Escape closes it like every menu in this shell — in under 300 ms, shrinking, never flashing back',
+    exit.at(-1).none && exit.findIndex((f) => f.none) > 0 && ex.at(-1).t < 300
+      && monotone(ex.map((f) => f.op), -1) && monotone(ex.map((f) => f.scale), -1) && ex.at(-1).op < 0.5 && ex.at(-1).scale < 0.97,
+    ex.map((f) => `${f.op}@${f.scale}`).join(' '))
+  check('…and the menu is gone', await gone('[role="menu"]'))
 
-  await p.click('[data-attach-open]')
-  await p.waitForTimeout(400)
-  await p.click('[role="menu"] [role="menuitem"]:last-child')
-  await p.waitForTimeout(350)
-  await p.click('[role="menu"] [role="menuitem"]:nth-child(2)')
-  await p.waitForTimeout(900)
+  /*
+   * A PICKED NAME ARRIVES AS GLASS (motion.ts `chipIn` / `chipInBody` / `chipInBadge`): a beat
+   * after the pick, once the menu has begun to recede, the pill inflates from its left end with
+   * one soft overshoot, its word focuses in a beat later, the ✕ pops in last, the rim glints.
+   */
+  await p.click('[data-attach-open]'); await p.waitForTimeout(600)
+  await p.click('[role="menu"] [role="menuitem"]:last-child'); await p.waitForTimeout(600)
+  const arrival = await film(`document.querySelector('[role="menu"] [role="menuitem"]:nth-child(2)').click()`, () => {
+    const c = document.querySelector('[data-attach-domain]'); const m = document.querySelector('[role="menu"]')
+    const field = +document.querySelector('.he-composer').getBoundingClientRect().height.toFixed(1)
+    const menu = m ? +(+getComputedStyle(m).opacity).toFixed(3) : null
+    if (!c) return { field, menu, none: true }
+    const g = getComputedStyle(c); const body = c.querySelector(':scope > span:not(.glass-glint)'); const x = c.querySelector('button'); const glint = c.querySelector('.glass-glint')
+    const gb = getComputedStyle(body); const gx = getComputedStyle(x)
+    return { field, menu, scale: +new DOMMatrix(g.transform).a.toFixed(4), op: +(+g.opacity).toFixed(3), bodyOp: +(+gb.opacity).toFixed(3), bodyScale: +new DOMMatrix(gb.transform).a.toFixed(4), xOp: +(+gx.opacity).toFixed(3), xScale: +new DOMMatrix(gx.transform).a.toFixed(4), glint: glint ? +(+getComputedStyle(glint).opacity).toFixed(3) : 0 }
+  }, 1400)
+  const ar = arrival.filter((f) => !f.none)
+  const arScale = ar.map((f) => f.scale)
+  check('a picked name arrives as glass: the pill inflates from under .9 through one soft overshoot to 1',
+    ar.length > 30 && arScale[0] < 0.9 && Math.max(...arScale) > 1.002 && Math.abs(arScale.at(-1) - 1) < 0.002,
+    `${arScale[0]} → max ${Math.max(...arScale)} → ${arScale.at(-1)}`)
+  const firstSeen = ar.find((f) => f.op > 0.3)
+  check('…a beat after the pick, with the menu already receding',
+    !!firstSeen && firstSeen.t >= 40 && (firstSeen.menu === null || firstSeen.menu < 0.9),
+    firstSeen ? `chip visible at ${firstSeen.t} ms, menu ${firstSeen.menu}` : 'never visible')
+  const bodyFirst = ar.find((f) => f.bodyOp > 0.5), xFirst = ar.find((f) => f.xOp > 0.5)
+  check('…its word focusing in a beat later (1.06 → 1) and the ✕ popping in last (.5 → 1 with a bounce)',
+    ar[0].bodyScale >= 1.05 && Math.abs(ar.at(-1).bodyScale - 1) < 0.002 && ar[0].xScale <= 0.51 && Math.max(...ar.map((f) => f.xScale)) > 1.005 && Math.abs(ar.at(-1).xScale - 1) < 0.002
+      && !!bodyFirst && !!xFirst && xFirst.t > bodyFirst.t,
+    `body ${ar[0].bodyScale} (seen ${bodyFirst?.t}) · ✕ ${ar[0].xScale} → ${Math.max(...ar.map((f) => f.xScale))} (seen ${xFirst?.t})`)
+  check('…the rim glinting and letting go within 1.4 s',
+    Math.max(...ar.map((f) => f.glint)) > 0.9 && ar.at(-1).glint < 0.05,
+    `peak ${Math.max(...ar.map((f) => f.glint))}, end ${ar.at(-1).glint}`)
+  const menuOps = arrival.map((f) => f.menu).filter((v) => v !== null)
+  check('…with no frame of the chip, its parts or the leaving menu flashing',
+    monotone(ar.map((f) => f.op), 1) && monotone(ar.map((f) => f.bodyOp), 1) && monotone(ar.map((f) => f.xOp), 1) && monotone(menuOps, -1),
+    `menu ${menuOps.join(' ')}`)
+  check('…the field open on the drawn 164 from the first frame, so the chip lands in a bar that is already there',
+    arrival.every((f) => f.field === 164), arrival.map((f) => f.field).join(' '))
   await shot('35-domain-attached')
+
   const withChip = await box('.he-composer')
   const chip = await box('[data-attach-domain]')
-  const chipInput = await box('.he-composer input')
+  const chipInput = await box('.he-composer input:not([type="file"])')
   const chipChips = await box('.he-chips')
   const chipName = await p.$eval('[data-attach-domain]', (el) => el.innerText.trim())
   check('the picked name sits in the composer', chipName === 'odesa-coffee-roasters.com', chipName)
@@ -3928,6 +4050,26 @@ await shot('30-plan-review')
   /* The box grows DOWNWARD: the hero above it must not move a pixel. */
   check('…while nothing above the field moves', Math.abs(withChip[1] - bare[1]) < 0.6, `${bare[1]} → ${withChip[1]}`)
 
+  /* HOVER AND PRESS on the chip: the pill steps up to the house 8 %, its ✕ takes the glass
+     family's wash, squeezes its glyph and blooms on the press. */
+  await p.mouse.move(chip[0] + 40, chip[1] + 18)
+  await p.waitForTimeout(260)
+  const chipHover = await p.$eval('[data-attach-domain]', (e) => getComputedStyle(e).backgroundColor)
+  check('the pill steps up to the house 8 % under the cursor', chipHover === 'rgba(255, 255, 255, 0.08)', chipHover)
+  const xb = await box('[data-attach-domain] button')
+  await p.mouse.move(xb[0] + 9, xb[1] + 9)
+  await p.waitForTimeout(260)
+  const xHover = await p.$eval('[data-attach-domain] button', (e) => ({ glass: e.classList.contains('glass-interactive'), wash: getComputedStyle(e, '::after').opacity }))
+  check('…and its ✕ takes the glass family’s wash', xHover.glass && xHover.wash === '1', JSON.stringify(xHover))
+  await p.mouse.down()
+  await p.waitForTimeout(90)
+  const xPress = await p.evaluate(() => ({ ink: new DOMMatrix(getComputedStyle(document.querySelector('[data-attach-domain] .attach-x-ink')).transform).a, bloom: !!document.querySelector('[data-attach-domain] .glass-ripple') }))
+  check('…squeezing its glyph and blooming on the press', xPress.ink < 0.85 && xPress.bloom, JSON.stringify(xPress))
+  await p.mouse.move(chip[0] - 300, chip[1] + 18)
+  await p.mouse.up()
+  await p.waitForTimeout(400)
+  check('…and a press released off the ✕ removes nothing', !(await gone('[data-attach-domain]')))
+
   /* A name is not a description of a site — the designer's own sentence about this
      customer. A template arms Build; a domain does not. */
   const armed = await p.$eval('button:has-text("Build")', (el) => !el.disabled)
@@ -3945,16 +4087,63 @@ await shot('30-plan-review')
   check('…without the name being typed into the prompt for them',
     firstSaid === 'Bella’s Bakery', firstSaid)
 
-  /* And the ✕ takes it off again, all the way back to the bare 138. */
+  /*
+   * THE ✕ COLLAPSES THE CHIP INTO ITSELF BEFORE THE WORLD CHANGES (HomePage.tsx `AttachedChip`):
+   * scale → .85 into the badge, 190 ms, flat; only then `onRemove`, so the field's close-up
+   * follows the chip leaving instead of pulling the ground from under it. A chip the page LOADS
+   * with (a link carrying `g=`) does not play its arrival.
+   */
   await p.goto(at(HOME_WITH_DOMAINS + '&g=fit-ration.com'), { waitUntil: 'networkidle' })
+  const early = await p.evaluate(async () => { const out = []; for (let i = 0; i < 10; i++) { const c = document.querySelector('[data-attach-domain]'); out.push(c ? +new DOMMatrix(getComputedStyle(c).transform).a.toFixed(3) : null); await new Promise(requestAnimationFrame) } return out })
+  check('a chip the page loads with simply stands — no arrival spring, no glint',
+    early.every((v) => v === 1) && await gone('[data-attach-domain] .glass-glint'), JSON.stringify(early))
   await p.waitForTimeout(2600)
   check('a link can carry the domain a panel customer arrived with',
     (await p.$eval('[data-attach-domain]', (el) => el.innerText.trim())) === 'fit-ration.com')
-  await p.click('[data-attach-domain] button')
-  await p.waitForTimeout(900)
+  const removal = await film(`document.querySelector('[data-attach-domain] button').click()`, () => {
+    const c = document.querySelector('[data-attach-domain]')
+    const field = +document.querySelector('.he-composer').getBoundingClientRect().height.toFixed(1)
+    if (!c) return { field, none: true, focus: document.activeElement?.getAttribute('aria-label') || document.activeElement?.tagName }
+    const g = getComputedStyle(c)
+    return { field, scale: +new DOMMatrix(g.transform).a.toFixed(4), op: +(+g.opacity).toFixed(3), origin: g.transformOrigin }
+  }, 900)
+  const rm = removal.filter((f) => !f.none), rmGone = removal.find((f) => f.none)
+  /* 190 ms to .85 at ~30 ms a frame: the last frame the chip exists in reads ~.9, the .85 is
+     the frame it is removed on. So the bar is .92, and the shape (monotone, from the badge). */
+  check('the ✕ collapses the chip into itself — shrinking toward .85 from an origin on the badge, the field still 164 while it plays',
+    rm.length > 4 && Math.min(...rm.map((f) => f.scale)) <= 0.92 && rm.every((f) => f.field === 164) && monotone(rm.map((f) => f.scale), -1) && monotone(rm.map((f) => f.op), -1)
+      && /^\d+(\.\d+)?px 18px$/.test(rm.at(-1).origin) && parseFloat(rm.at(-1).origin) > 100,
+    `scale ${rm.map((f) => f.scale).join(' ')} · origin ${rm.at(-1)?.origin}`)
+  check('…gone within 300 ms, and only then does the field close to the bare 138',
+    !!rmGone && rmGone.t < 300 && rmGone.field === 164 && removal.at(-1).field === 138,
+    `gone at ${rmGone?.t} ms (field ${rmGone?.field}) → ${removal.at(-1).field}`)
+  check('…the keyboard landing back in the field', rmGone?.focus === 'Describe the site you want', String(rmGone?.focus))
   await shot('36-domain-detached')
   const off = await box('.he-composer')
-  check('…and its ✕ puts the field back on the bare 138', off[3] === 138 && await gone('[data-attach-domain]'), String(off[3]))
+  check('…and the field is back on the bare 138', off[3] === 138 && await gone('[data-attach-domain]'), String(off[3]))
+
+  /*
+   * ATTACH FILE: the board draws the row enabled, so it is — it opens the browser's file picker,
+   * and the chosen file's NAME becomes a chip of the same glass (`ui.attachedFile`). Nothing
+   * downstream reads it, exactly as nothing downstream reads the template's picture.
+   */
+  await p.click('[data-attach-open]'); await p.waitForTimeout(600)
+  const [chooser] = await Promise.all([
+    p.waitForEvent('filechooser', { timeout: 3000 }).catch(() => null),
+    p.click('[role="menu"] [role="menuitem"]:first-child'),
+  ])
+  check('Attach File opens the browser’s file picker', !!chooser)
+  if (chooser) await chooser.setFiles({ name: 'brand-guidelines.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') })
+  await p.waitForTimeout(900)
+  check('…and the menu has closed on the pick', await gone('[role="menu"]'))
+  const fileChip = await p.$eval('[data-attach-file]', (e) => ({ text: e.innerText.trim(), h: e.getBoundingClientRect().height, icon: !!e.querySelector('svg'), glass: e.classList.contains('liquid-glass--attach') })).catch(() => null)
+  check('…and the picked file’s name lands in the bar as a chip of the same glass, with its clip',
+    !!fileChip && fileChip.text === 'brand-guidelines.pdf' && fileChip.h === 36 && fileChip.icon && fileChip.glass, JSON.stringify(fileChip))
+  check('…the field on the same 164 a domain gives it', (await box('.he-composer'))[3] === 164)
+  await shot('37-file-attached')
+  await p.click('[data-attach-file] button')
+  await p.waitForTimeout(800)
+  check('…and its ✕ takes it back to 138', (await box('.he-composer'))[3] === 138 && await gone('[data-attach-file]'))
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════

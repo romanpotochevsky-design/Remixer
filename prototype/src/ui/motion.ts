@@ -1036,3 +1036,71 @@ export const menuGlassFade = {
   in: { opacity: 1, transition: { duration: 0.24, delay: 0.06, ease: [0.2, 0, 0, 1] } },
   out: { opacity: 0, transition: EXIT },
 } as const
+
+/*
+ * THE COMPOSER'S ATTACH MENU AND ITS CHIPS (modules/home/AttachMenu.tsx; HomePage.tsx
+ * `AttachedChip`; designer 23.09.2026: «нужно добавить красивые и плавные анимации стильные в
+ * нашем стиле для открытия и закрытия дропдауна, для появления и удаления домена внутри поля
+ * ввода: нужно добавить ховер эффекты и клик эффекты!… в нашем стиле Apple liquid glass»).
+ *
+ *  · THE MENU GROWS OUT OF THE "+" IT COVERS. Board 30871:57297 sets the menu's box exactly on
+ *    the button's (both at (16, 112) in the field), so the point it comes from is the button's
+ *    centre — `transform-origin 18px 18px` — not a corner: .86 → 1 on a soft spring with one
+ *    visible overshoot, opacity on its own short curve so the glass is solid before it has
+ *    finished growing, the rows a beat behind (`popoverContent`), the rim catching light
+ *    (`.glass-glint`, the arriving-block signature). Leaving is the house exit: 140 ms, flat,
+ *    back toward the same point. Between its two levels the BOX resizes on `ATTACH_MENU_RESIZE`
+ *    and the lists hand over sequentially (`stepSwap`, forward) — never two lists at once.
+ *  · A CHIP ARRIVES AS GLASS — the thread cards' law (Card Arrival) at the size of a word: a beat
+ *    (60 ms) after the pick, once the menu has begun to recede and the bar has opened, the pill
+ *    inflates from its LEFT end (.86 → 1, one soft overshoot, 6 px of travel from where the menu
+ *    stood), its word focuses in a beat later (1.06 → 1), the ✕ pops in last, and the rim
+ *    glints white for 1.1 s. It LEAVES by collapsing into its ✕ (WAAPI in the chip, the tile's
+ *    rule: the layout changes only once that has played, so the field's close-up follows the chip
+ *    rather than pulling the ground from under it).
+ *  Under reduced motion the displacements and scales are DROPPED (the `…Fade` twins), never jumped.
+ */
+export const ATTACH_MENU_SPRING = { type: 'spring', duration: 0.46, bounce: 0.24 } as const
+export const ATTACH_MENU_RESIZE = { type: 'spring', duration: 0.42, bounce: 0.18 } as const
+export const attachMenuIn = {
+  initial: { opacity: 0, scale: 0.86 },
+  animate: { opacity: 1, scale: 1, transition: { ...ATTACH_MENU_SPRING, opacity: { duration: 0.16, ease: [0.2, 0, 0, 1] } } },
+  exit: { opacity: 0, scale: 0.94, transition: EXIT },
+} as const
+export const attachMenuInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.16, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+export const chipIn = {
+  initial: { opacity: 0, scale: 0.86, x: -6 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    x: 0,
+    /* A beat (60 ms) after the pick: the menu has begun to recede and the bar has opened before
+       the object lands in it — the Card Arrival order (dock first, card 80 ms later). Filmed
+       without the beat: chip and menu started on the same frame, two things at once. */
+    transition: { type: 'spring', duration: 0.5, bounce: 0.26, delay: 0.06, opacity: { duration: 0.18, delay: 0.06, ease: [0.2, 0, 0, 1] } },
+  },
+} as const
+export const chipInBody = {
+  initial: { opacity: 0, scale: 1.06 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: 'spring', duration: 0.44, bounce: 0.16, delay: 0.12, opacity: { duration: 0.2, delay: 0.14, ease: [0.2, 0, 0, 1] } },
+  },
+} as const
+export const chipInBadge = {
+  initial: { opacity: 0, scale: 0.5 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: 'spring', duration: 0.4, bounce: 0.3, delay: 0.2, opacity: { duration: 0.12, delay: 0.2 } },
+  },
+} as const
+export const chipInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
+} as const
