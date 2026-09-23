@@ -4207,10 +4207,31 @@ await shot('30-plan-review')
   /* ── the window ──────────────────────────────────────────────────────────────── */
   const win = await R('[data-cloud-window]')
   /* the base and the sheet on it — the pair the board's own `Dashboard` and `Page content` print */
-  check('the window base is 24% black over --gray-900, the house window recipe (board `Dashboard`)',
-    (await CSS('[data-cloud-window]', 'backgroundColor')) === 'rgb(24, 24, 27)'
-    && /rgba\(9, 9, 11, 0\.24\)/.test(await CSS('[data-cloud-window]', 'backgroundImage')),
-    await CSS('[data-cloud-window]', 'backgroundImage'))
+  /* Since 24.09.2026 the base is written FLAT (`--window-base`, board 30887:57756 prints the
+     composite as #141417) — so the assert is on the PIXEL, which is the part that must not move:
+     0.24·#09090b over #18181b is rgb(20,20,23) either way. The old assert read the expression. */
+  check('the window base is the house recipe — 24% black over --gray-900 — written flat as #141417 (board `Dashboard` / 30887:57756)',
+    (await CSS('[data-cloud-window]', 'backgroundColor')) === 'rgb(20, 20, 23)'
+    && (await CSS('[data-cloud-window]', 'backgroundImage')) === 'none',
+    `${await CSS('[data-cloud-window]', 'backgroundColor')} · image ${await CSS('[data-cloud-window]', 'backgroundImage')}`)
+  /* THE MENU COLUMN LIFTS AT ITS FOOT (board 30887:57756 `Menu`): flat base for the top seven
+     eighths, then a ramp to Neutral Alpha/50 flattened over it. Both stops opaque — a ramp is
+     the one thing a translucent layer cannot carry without multiplying down its own length. */
+  const menuBg = await CSS('nav[aria-label="Cloud menu"]', 'backgroundImage')
+  check('…and the MENU column ramps at its foot: flat to 87.455%, then up to #1d1d20 — the lift that hides the card’s seam',
+    /linear-gradient\(rgb\(20, 20, 23\) 87\.455%, rgb\(29, 29, 32\)\)/.test(menuBg), menuBg)
+  const menuPx = await p.evaluate(async () => {
+    const n = document.querySelector('nav[aria-label="Cloud menu"]')
+    const r = n.getBoundingClientRect()
+    /* read the lift where it is whole: the gutter left of the card, clear of the rounded corner */
+    const probe = (frac) => {
+      const el = document.elementFromPoint(r.x + 3, r.y + (r.height - 1) * frac)
+      return el === n || n.contains(el)
+    }
+    return { mid: probe(0.5), foot: probe(0.96) }
+  })
+  check('…measured on the gutter, not inferred: the column owns its own paint top and bottom',
+    menuPx.mid && menuPx.foot, JSON.stringify(menuPx))
   const sheet = await p.$eval('[data-cloud-page]', (n) => {
     const g = getComputedStyle(n.parentElement)
     const r = n.parentElement.getBoundingClientRect()

@@ -216,6 +216,17 @@
     --gray-800: #27272a;
     --gray-750: #33333a;
     --gray-700: #3f3f46;
+    /* THE WINDOW BASE, WRITTEN FLAT ON PURPOSE (board 30887:57756, designer 24.09.2026).
+       `--window-base` is 24 % black over `--gray-900` and `--window-lift` is Neutral Alpha/50
+       (4 % white) over THAT — both composites the boards used to print as stacked translucent
+       layers, taken opaque here. Same reasoning the designer gave for #313133 on the domain row:
+       a translucent layer that meets another translucent layer doubles where they overlap, and
+       the menu column now carries a RAMP between these two, which a translucent ramp over a
+       translucent base cannot express without multiplying. Verified: 0.24·#09090b over #18181b
+       = rgb(20,20,23) = #141417; 4 % white over that = rgb(29,29,32) = #1d1d20 — the two stops
+       the board prints verbatim. Move either, and the arithmetic above is what re-derives them. */
+    --window-base: #141417;
+    --window-lift: #1d1d20;
     --gray-600: #52525b;
     --gray-500: #71717a;
     --gray-400: #a1a1aa;

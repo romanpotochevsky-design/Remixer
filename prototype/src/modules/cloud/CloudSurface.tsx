@@ -367,7 +367,19 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
   return (
     /* ⚠️ NOT aria-label="Cloud": that is the rail BUTTON's name, and two things answering
        to one name is how a query means the wrong element (it cost a check run here). */
-    <nav className="flex w-[264px] flex-none flex-col py-2 pl-2" aria-label="Cloud menu">
+    /* THE COLUMN LIFTS AT ITS FOOT (board 30887:57756 `Menu`, designer 24.09.2026: "обрати
+       внимание как я по хитрому сделал цвет фона под меню, чтобы не было видно швов").
+       The board fills this 264 column with `linear-gradient(to bottom, #141417 87.455%, #1d1d20)`
+       — flat window base for the top seven eighths, then a ramp that brightens by exactly
+       Neutral Alpha/50 at the very bottom. Both stops are opaque BECAUSE it is a ramp: over a
+       translucent base the two alphas would multiply down its length. The card above stays
+       translucent (8 % white) on purpose — that is what carries the lift up into the card's own
+       foot, so the card dissolves into the column instead of ending on a line. */
+    <nav
+      className="flex w-[264px] flex-none flex-col py-2 pl-2"
+      style={{ background: 'linear-gradient(to bottom, var(--window-base) 87.455%, var(--window-lift))' }}
+      aria-label="Cloud menu"
+    >
       {/* Conteiner 256: 8% white on 8% white — the stroke sits INSIDE the 256 on the
           board, so it is an inset shadow here and the box stays 256 (the law this
           project has paid for on every card it has drawn). */}
@@ -676,9 +688,12 @@ export function CloudSurface() {
       data-cloud-window
       className="flex h-full overflow-hidden rounded-[16px] border border-[var(--gray-800)]"
       style={{
-        /* 24% black over --gray-900, the house window base — the same recipe DomainsSurface
-           has carried since 27085:106964, and the board's `Dashboard` node prints it verbatim. */
-        background: 'linear-gradient(rgba(9,9,11,0.24), rgba(9,9,11,0.24)), var(--gray-900)',
+        /* The house window base — 24 % black over `--gray-900`, the recipe DomainsSurface has
+           carried since 27085:106964. WRITTEN FLAT as `--window-base` since 24.09.2026: board
+           30887:57756 prints this composite as the opaque `#141417`, and the menu column below
+           now ramps FROM it, so both ends of that ramp have to speak one language. The pixel is
+           unchanged — rgb(20,20,23) either way (the arithmetic is on the token). */
+        background: 'var(--window-base)',
         boxShadow: '0px 8px 8px rgba(0,0,0,0.12), 0px 56px 72px rgba(0,0,0,0.12)',
       }}
     >
