@@ -252,6 +252,10 @@
     /* 48% — Figma Text/Default/Secondary. The Home page leans on it for card meta,
        the inactive tab label and the kebab; the ladder's 40% and 70% both miss. */
     --white-480: #ffffff7a;
+    /* 32% — Figma Text/Default/Tertiary. The Analytics chart's axis labels, the one place
+       the kit reaches below 48% for TYPE (board 30934:93319); the ladder's 20% and 40%
+       both miss it, and this is a real step in the kit. */
+    --white-320: #ffffff52;
     /* 56% — Figma Neutral Alpha/600. The muted half of the picker's two-tone
        heading (`We'll remix it.`, boards 28626:542 / 28734:66375); 48% and 70%
        both miss it, and this is a real step in the kit. */

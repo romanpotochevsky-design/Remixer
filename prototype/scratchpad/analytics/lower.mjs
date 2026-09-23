@@ -1,0 +1,16 @@
+import { chromium } from 'playwright'
+const BASE = process.env.BASE || 'http://localhost:4173'
+const b = await chromium.launch({ executablePath: process.env.CHROME })
+const p = await b.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 2 })
+await p.goto(`${BASE}/?p=built&v=true&u=0&a=paid&i=dh-free&d=staging&t=22&c=640`, { waitUntil: 'networkidle' })
+await p.waitForTimeout(700)
+await p.click('.home-card-face')
+await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+await p.waitForTimeout(500)
+await p.click('nav.arrive-rail [aria-label="Analytics"]')
+await p.waitForTimeout(1400)
+await p.evaluate(() => { const s = document.querySelector('[data-analytics-window] [data-scroll]') || [...document.querySelectorAll('[data-analytics-window] *')].find((e) => e.scrollHeight > e.clientHeight + 10); if (s) s.scrollTop = s.scrollHeight })
+await p.waitForTimeout(500)
+const el = await p.$('[data-analytics-window]')
+await el.screenshot({ path: 'scratchpad/analytics/lower.png' })
+await b.close()

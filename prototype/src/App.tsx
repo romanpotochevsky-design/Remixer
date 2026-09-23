@@ -28,6 +28,7 @@ import { DOMAIN_STATUS, domainStatus } from '@/modules/domains/status'
 import { ConfirmHost } from '@/ui/ConfirmDialog'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { CloudSurface } from '@/modules/cloud/CloudSurface'
+import { AnalyticsSurface } from '@/modules/analytics/AnalyticsSurface'
 import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
 import { PanelCart } from '@/modules/panel/PanelCart'
@@ -64,22 +65,29 @@ function Glass({ children, className = '' }: { children: React.ReactNode; classN
  *
  *   Style      tile rgba(80,185,123,.10)   ink #50b97b
  *   Extension  tile Blue/200 #2554f71f     ink Blue/1000 #1587ff  (our --action)
- *   Analytics  tile rgba(255,179,0,.10)    ink #ffb300
+ *   Analytics  tile rgba(102,187,106,.10)  ink #66bb6a
  *   Cloud      tile rgba(149,117,205,.12)  ink #9575cd
+ *
+ * ⚠️ ANALYTICS IS GREEN, NOT THE AMBER THIS NOTE CARRIED UNTIL 24.09.2026. The designer sent
+ * the button itself with the Analytics board — a green plate under a green glyph — and the
+ * board paints the whole window in that same #66bb6a (the selected tab's ring and label, the
+ * deltas, the chart). A module whose window is green cannot unfold from an amber button: the
+ * pane's rim is lit in the rail's tone. The amber is kept in the session note as the reading
+ * that was replaced, in case the state sheet was right and the screenshot was a one-off.
  *
  * ⚠️ Extension's two blues are NOT one colour: the tile is the kit's `Blue/200` (#2554f7
  * at 12%), the glyph is `Blue/1000 Dark Mode Blue` = #1587ff. Read with `get_variable_defs`
  * in the DARK theme, which prints both; the reference export collapses them into the light
  * theme's single rgba — the same trap this project has paid for on every board it has read.
  *
- * ⚠️ Only Cloud has a window to open today, so only Cloud can take the selected state. A
- * button that lights up and shows nothing would be a lie; the other three keep their
- * accents here, ready for the day their surfaces exist.
+ * ⚠️ Only Analytics and Cloud have a window to open today, so only those two can take the
+ * selected state. A button that lights up and shows nothing would be a lie; Style and
+ * Integrations keep their accents here, ready for the day their surfaces exist.
  */
 const RAIL = [
   { id: 'style', label: 'Website Styles', Icon: IconStyle, tile: 'rgba(80,185,123,0.1)', ink: '#50b97b', goes: null },
   { id: 'integrations', label: 'Integrations', Icon: IconExtension, tile: '#2554f71f', ink: 'var(--action)', goes: null },
-  { id: 'analytics', label: 'Analytics', Icon: IconAnalytics, tile: 'rgba(255,179,0,0.1)', ink: '#ffb300', goes: null },
+  { id: 'analytics', label: 'Analytics', Icon: IconAnalytics, tile: 'rgba(102,187,106,0.1)', ink: '#66bb6a', goes: 'analytics' },
   { id: 'cloud', label: 'Cloud', Icon: IconCloud, tile: 'rgba(149,117,205,0.12)', ink: '#9575cd', goes: 'cloud' },
   // Domains and Email still have no home in the rail. That gap is the audit's headline.
 ] as const
@@ -1160,6 +1168,18 @@ export default function App() {
                 flyer={{ node: <IconCloud size={25} />, to: '[data-cloud-mark]', into: [126, 87, 194] }}
               >
                 <CloudSurface />
+              </CanvasPane>
+            ) : surface === 'analytics' ? (
+              /* lit by the button that opened it: the rail's Analytics accent (#66bb6a) on the rim */
+              <CanvasPane
+                key="analytics"
+                id="analytics"
+                tone="102 187 106"
+                canvas={canvasRef}
+                /* the chart plate flies from the rail glyph (#66bb6a) to its seat in the top bar (white) */
+                flyer={{ node: <IconAnalytics size={24} />, to: '[data-analytics-mark]', from: [102, 187, 106], into: [255, 255, 255] }}
+              >
+                <AnalyticsSurface />
               </CanvasPane>
             ) : surface === 'domains' ? (
               /* the window leaves as ONE object — frame, bar and sheet — not sheet first, frame after */

@@ -46,6 +46,12 @@ export type Surface =
    * button in the right rail, which lights up in its own accent while it is here.
    */
   | 'cloud'
+  /**
+   * The Analytics window (modules/analytics/AnalyticsSurface.tsx, Figma 30934:93319): who
+   * came to the site this week, from where and on what. Opened by the Analytics button in
+   * the right rail, which lights up in its own green while it is here.
+   */
+  | 'analytics'
 
 /**
  * The viewport box of the control a surface was opened FROM — the rail's Cloud button, the
