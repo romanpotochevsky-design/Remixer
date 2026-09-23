@@ -4052,8 +4052,8 @@ await shot('30-plan-review')
   const mark = await R('[data-cloud-menu] svg')
   check('the menu header is 84 tall with the 25-wide cloud at 20 and the word 10 after it',
     head[3] === 84 && mark[2] === 25 && Math.round(mark[0] - card[0]) === 20, `${head[3]} · ${mark[2]} · ${Math.round(mark[0] - card[0])}`)
-  check('…set in Gilroy 24 bold', (await CSS('[data-cloud-menu] > div:first-child span', 'fontSize')) === '24px'
-    && (await CSS('[data-cloud-menu] > div:first-child span', 'fontWeight')) === '700')
+  check('…set in Gilroy 24 bold', (await CSS('[data-cloud-menu] [data-cloud-title]', 'fontSize')) === '24px'
+    && (await CSS('[data-cloud-menu] [data-cloud-title]', 'fontWeight')) === '700')
 
   const dbs = await p.evaluate(() => [...document.querySelectorAll('[data-cloud-db]')].map((e) => {
     const r = e.getBoundingClientRect(); const g = getComputedStyle(e)
@@ -4192,7 +4192,22 @@ await shot('30-plan-review')
         origin: pane ? getComputedStyle(pane).transformOrigin : null, fresh: pane ? pane.hasAttribute('data-pane-fresh') : null,
         site: site ? +(+getComputedStyle(site).opacity).toFixed(3) : null, siteS: site ? scaleOf(site) : null, siteZ: site ? zOf(site) : null,
         glint: glint ? +(+getComputedStyle(glint).opacity).toFixed(2) : null, rows: rows.length ? rows : null,
-        tile: getComputedStyle(document.querySelector('nav.arrive-rail [aria-label="Cloud"]')).backgroundColor })
+        tile: getComputedStyle(document.querySelector('nav.arrive-rail [aria-label="Cloud"]')).backgroundColor,
+        ...(() => {
+          /* the polish (23.09.2026): the rim riding the clip, the flyer, the contents' settle, the rail flood */
+          const mat = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return null; const a = m.match(/matrix\(([^)]+)\)/); return a ? a[1].split(',').map(Number) : null }
+          const rim = pane?.querySelector('[data-pane-rim]'); const topLine = rim?.querySelector('.pane-rim-line'); const tm = topLine ? mat(topLine) : null
+          const flyer = pane?.querySelector('[data-pane-flyer]'); const fm = flyer ? mat(flyer) : null
+          const mark = pane?.querySelector('[data-cloud-mark]'); const settleEl = pane?.querySelector('[data-pane-settle]'); const sm = settleEl ? mat(settleEl) : null
+          const btn = document.querySelector('nav.arrive-rail [aria-label="Cloud"]'); const fill = btn.querySelector('.rail-fill')
+          const fr = fill ? getComputedStyle(fill).clipPath.match(/circle\(([\d.]+)px/) : null
+          return {
+            rimO: rim ? +(+getComputedStyle(rim).opacity).toFixed(2) : null, rimTopY: tm ? tm[5] : null, rimTopLen: tm ? tm[0] : null, rimParts: rim ? rim.children.length : 0,
+            flyX: fm ? fm[4] : null, flyColor: flyer ? getComputedStyle(flyer).color : null, flying: pane ? pane.hasAttribute('data-pane-flying') : null, markVis: mark ? getComputedStyle(mark).visibility : null,
+            settle: sm ? +sm[0].toFixed(4) : null,
+            fillR: fr ? +fr[1] : null, fillDir: fill ? fill.dataset.railFill : null, fillPt: fill ? [fill.style.getPropertyValue('--fx'), fill.style.getPropertyValue('--fy')] : null, fillBg: fill ? getComputedStyle(fill).backgroundColor : null, glyph: getComputedStyle(btn).color,
+          }
+        })() })
       last = now
       if (now - t0 < ms) requestAnimationFrame(tick)
     }
@@ -4218,7 +4233,7 @@ await shot('30-plan-review')
   const cMono = cLeft.every((v, i) => v !== null && (i === 0 || v >= cLeft[i - 1] - 0.5))
   const foldsFirst = cP.filter((s) => s.pane < 0.9).every((s) => s.clip[3] > 400)
   check('Cloud closes by FOLDING back into the rail button: the clip’s left edge travels monotonically from the canvas edge to the button’s footprint, and the pane dissolves only once it is small',
-    cP.length >= 8 && cLeft[0] < 12 && near(cLeft[cLeft.length - 1], geom.foot[3], 6) && cMono && foldsFirst && cP[cP.length - 1].pane < 0.12 && cP[cP.length - 1].paneS <= 0.985 && !!closeFilm.find((s) => s.pane === null),
+    cP.length >= 8 && cLeft[0] < 12 && near(cLeft[cLeft.length - 1], geom.foot[3], 6) && cMono && foldsFirst && cP[cP.length - 1].pane <= 0.2 /* last sampled frame; the fold's promise chain reaches 0 before removal, the sampler may miss it by a frame */ && cP[cP.length - 1].paneS <= 0.985 && !!closeFilm.find((s) => s.pane === null),
     JSON.stringify({ frames: cP.length, left0: cLeft[0], leftLast: cLeft[cLeft.length - 1], want: geom.foot[3], mono: cMono, foldsFirst, lastO: cP[cP.length - 1]?.pane, lastS: cP[cP.length - 1]?.paneS }))
   const cUp = cS.every((s, i) => i === 0 || s.site >= cS[i - 1].site - 0.001)
   const cScaleUp = cS.every((s, i) => i === 0 || s.siteS >= cS[i - 1].siteS - 0.0005)
@@ -4233,8 +4248,10 @@ await shot('30-plan-review')
     litWhileFolding && darkAfter && cP.filter((s) => s.t <= 300).length >= 10,
     JSON.stringify({ at300: cP.filter((s) => s.t <= 300).pop()?.tile, at700: closeFilm.find((s) => s.t >= 700)?.tile }))
   await p.waitForTimeout(500)
-  /* OPEN: press the button, film */
-  const [openFilm] = await Promise.all([filmCanvas(1300), p.evaluate(() => document.querySelector('nav.arrive-rail [aria-label="Cloud"]').click())])
+  /* OPEN: press the button — a REAL click at (12,12) inside it, so the accent has a point to flood
+     from — and film */
+  const cloudBtn = await (await p.$('nav.arrive-rail [aria-label="Cloud"]')).boundingBox()
+  const [openFilm] = await Promise.all([filmCanvas(1300), p.mouse.click(cloudBtn.x + 12, cloudBtn.y + 12)])
   const oP = openFilm.filter((s) => s.pane !== null), oS = openFilm.filter((s) => s.site !== null)
   const oLeft = oP.map((s) => s.clip?.[3] ?? null)
   const landed = oP.find((s) => s.clip[3] <= 0.5)
@@ -4251,9 +4268,46 @@ await shot('30-plan-review')
       && !!originGot && near(originGot[0], originW[0], 1.5) && near(originGot[1], originW[1], 1.5),
     JSON.stringify({ frames: oP.length, left0: oLeft[0], right0: oP[0]?.clip[1], boxW: geom.box.w, mono: oMonoDown, landedAt: landed?.t, minInset, lastLeft: oP[oP.length - 1]?.clip[3], origin: oP[0]?.origin, originWant }))
   const solid = oP.find((s) => s.pane >= 0.95)
-  check('…it is solid glass within 140 ms (a pane sliding over the site, not a fade) and focuses onto place from 1.015 → 1',
-    !!solid && solid.t <= 140 && oP[0].paneS > 1.006 && oP[0].paneS <= 1.016 && near(oP[oP.length - 1].paneS, 1, 0.0015) && oP[oP.length - 1].pane === 1,
+  check('…it is solid glass within 140 ms (a pane sliding over the site, not a fade), and the FRAME does not scale on the way in',
+    !!solid && solid.t <= 140 && oP.every((s) => near(s.paneS, 1, 0.0015)) && oP[oP.length - 1].pane === 1,
     JSON.stringify({ solidAt: solid?.t, s0: oP[0]?.paneS, sLast: oP[oP.length - 1]?.paneS }))
+  /* THE CONTENTS SETTLE INTO THE FRAME (23.09.2026, motion.ts `PANE_SETTLE`): what is inside the window
+     breathes once — from above 1, through a dip below 1, back to 1 — while the frame stands still */
+  const st = oP.filter((s) => s.settle !== null)
+  const stMin = Math.min(...st.map((s) => s.settle))
+  check('…and the CONTENTS settle inside it — from ~1.02 down through a dip below 1 (≤ .995) and back to 1 within 800 ms, the frame itself never moving',
+    st.length >= 10 && st[0].settle > 1.01 && stMin <= 0.995 && stMin >= 0.985 && !!st.find((s) => s.t >= 600 && near(s.settle, 1, 0.003)) && near(st[st.length - 1].settle, 1, 0.002),
+    JSON.stringify({ s0: st[0]?.settle, min: stMin, minAt: st.find((s) => s.settle === stMin)?.t, last: st[st.length - 1]?.settle }))
+  /* THE RIM RIDES THE CLIP (App.tsx `PaneRim`): eight parts, the top line's translateY equal to the clip's
+     top inset on every frame, lit (opacity 1) while the clip moves, cooled to nothing once landed */
+  const rimFrames = oP.filter((s) => s.rimTopY !== null)
+  const rimTracks = rimFrames.every((s) => Math.abs(s.rimTopY - s.clip[0]) <= 1.5)
+  const rimLitInFlight = rimFrames.filter((s) => s.clip[3] > 20).every((s) => s.rimO >= 0.98)
+  const rimCooled = rimFrames.length && rimFrames[rimFrames.length - 1].rimO <= 0.05
+  check('…the moving edge is a REAL edge: an eight-part rim rides the clip (its top line sits on the clip’s top inset every frame, within 1.5 px), lit for the whole flight and cooled to nothing by the end of the film',
+    rimFrames.length >= 20 && oP[0].rimParts === 8 && rimTracks && rimLitInFlight && rimCooled,
+    JSON.stringify({ frames: rimFrames.length, parts: oP[0]?.rimParts, tracks: rimTracks, lit: rimLitInFlight, lastO: rimFrames[rimFrames.length - 1]?.rimO }))
+  /* THE MARK FLIES WITH THE EDGE (App.tsx `PaneFlyer`): from the button's glyph to its seat, colour
+     #9575cd → #7e57c2, the real mark hidden until the clone has landed */
+  const fl = oP.filter((s) => s.flyX !== null)
+  const flyMono = fl.every((s, i) => i === 0 || s.flyX <= fl[i - 1].flyX + 0.5)
+  const flew = fl.length >= 8 && fl[0].flyX > 600 && near(fl[fl.length - 1].flyX, 0, 0.5) && flyMono
+  const landedAt = oP.find((s) => s.flying === false)
+  const hiddenWhileFlying = oP.filter((s) => s.flying).every((s) => s.markVis === 'hidden')
+  check('…the window’s cloud FLIES with the edge: the clone travels 600+ px from the button’s glyph to its seat, monotonically, turning from the rail’s violet to the header’s, the real mark hidden until it has landed',
+    flew && !!landedAt && landedAt.t > 250 && hiddenWhileFlying && oP[oP.length - 1].markVis === 'visible' && /rgb\(126, 87, 194\)/.test(fl[fl.length - 1].flyColor) && /rgb\(14\d, 1[01]\d, 20\d\)/.test(fl[0].flyColor),
+    JSON.stringify({ frames: fl.length, x0: fl[0]?.flyX, xLast: fl[fl.length - 1]?.flyX, c0: fl[0]?.flyColor, cLast: fl[fl.length - 1]?.flyColor, landedAt: landedAt?.t, hiddenWhileFlying }))
+  /* THE ACCENT FLOODS THE TILE FROM THE POINT OF THE CLICK (App.tsx `RailFill`): clipped to a circle at
+     (12,12) growing 0 → 72, the button's own paint transparent (no hover wash) until the circle has
+     covered it, then the selected tint with the overlay gone */
+  const ff = oP.filter((s) => s.fillR !== null)
+  const fillGrows = ff.every((s, i) => i === 0 || s.fillR >= ff[i - 1].fillR - 0.01)
+  const fillPoint = ff[0]?.fillPt ?? null
+  const baseDuringFill = ff.filter((s) => s.fillDir === 'in').every((s) => s.tile === 'rgba(0, 0, 0, 0)')
+  check('the rail tile takes its accent as a FLOOD from the point of the click: a circle at the pointer (12,12) grows 0 → 72 monotonically in the selected paint, the button under it bare (no hover wash) until covered, then painted itself with the overlay gone',
+    ff.length >= 10 && ff[0].fillR < 30 && ff[ff.length - 1].fillR >= 71 && fillGrows && baseDuringFill && !!ff.find((s) => s.fillDir === 'hold') && fillPoint?.join() === '12px,12px'
+      && oP[oP.length - 1].fillR === null && oP[oP.length - 1].tile === 'rgba(149, 117, 205, 0.12)' && oP[oP.length - 1].glyph === 'rgb(149, 117, 205)',
+    JSON.stringify({ frames: ff.length, r0: ff[0]?.fillR, rLast: ff[ff.length - 1]?.fillR, grows: fillGrows, bare: baseDuringFill, point: fillPoint, tileEnd: oP[oP.length - 1]?.tile, glyphEnd: oP[oP.length - 1]?.glyph }))
   const oDown = oS.every((s, i) => i === 0 || s.site <= oS[i - 1].site + 0.001)
   check('…the site RECEDES under it — below in z, scale falling toward .955, fading late (still ≥ .8 while the pane covers half), gone within 480 ms',
     /* the last SAMPLED frame of the site can sit anywhere on the tail of its fade (frames on the software
@@ -4275,7 +4329,24 @@ await shot('30-plan-review')
   const worst = Math.max(...openFilm.slice(1).map((s) => s.dt), ...closeFilm.slice(1).map((s) => s.dt))
   check('…on frames that never stall (worst interval under 120 ms on the software rasteriser, both directions)', worst < 120, `${worst} ms`)
   check('the rail buttons carry the house press bloom', (await p.$eval('nav.arrive-rail [aria-label="Cloud"]', (e) => e.classList.contains('press-bloom'))))
-  await p.waitForTimeout(400)
+  await p.waitForTimeout(700)
+  /* CLOSE BY THE BUTTON: the accent DRAINS back into the point of the click while the pane folds, the
+     button's own paint resting from the first frame, the cloud flying back to the glyph */
+  await p.mouse.move(800, 800); await p.waitForTimeout(150)
+  const [drainFilm] = await Promise.all([filmCanvas(900), p.mouse.click(cloudBtn.x + 36, cloudBtn.y + 36)])
+  const df = drainFilm.filter((s) => s.fillR !== null && s.fillDir === 'out')
+  const drainShrinks = df.every((s, i) => i === 0 || s.fillR <= df[i - 1].fillR + 0.01)
+  const drainPoint = df[0]?.fillPt ?? null
+  const backFlight = drainFilm.filter((s) => s.flyX !== null)
+  check('closing by the button DRAINS the accent back into the point of the click (a circle at (36,36) shrinking 72 → 0 monotonically) while the button’s own paint rests from the first frame, and the cloud flies back to the glyph',
+    df.length >= 8 && df[0].fillR >= 60 && df[df.length - 1].fillR <= 5 && drainShrinks && df.every((s) => s.tile === 'rgba(0, 0, 0, 0)') && drainPoint?.join() === '36px,36px'
+      && backFlight.length >= 8 && backFlight[backFlight.length - 1].flyX > backFlight[0].flyX + 400 && drainFilm[drainFilm.length - 1].fillR === null,
+    JSON.stringify({ frames: df.length, r0: df[0]?.fillR, rLast: df[df.length - 1]?.fillR, shrinks: drainShrinks, point: drainPoint, fly: [backFlight[0]?.flyX, backFlight[backFlight.length - 1]?.flyX] }))
+  await p.mouse.move(800, 800); await p.waitForTimeout(500)
+  /* back to the open window for the checks that follow */
+  await p.mouse.click(cloudBtn.x + 24, cloudBtn.y + 24)
+  await p.waitForTimeout(1300)
+  await p.mouse.move(800, 800); await p.waitForTimeout(150)
 
   /* out again */
   await p.keyboard.press('Escape')

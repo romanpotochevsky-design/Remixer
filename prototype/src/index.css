@@ -1432,6 +1432,49 @@
     opacity: 0;
   }
 
+  /* ------------------------------------------------------------------------
+   * THE ACCENT FLOODS THE TILE (App.tsx `RailFill`, designer 23.09.2026: «чтобы другой цвет как-то
+   * прикольно заливался от места клика»). The overlay wears the SELECTED paint — the tinted tile and
+   * a copy of the glyph in the accent — and is clipped to a circle that grows from the point of the
+   * click until it covers the 48 box (radius 72 > its far corner); the button's own paint under it
+   * stays resting until the circle has covered it. `::after` is a second coat of the same tint fading
+   * out: the tile flares to twice its tint at the click and settles — the button emitting the window.
+   * Draining (`out`) is the same circle shrinking back into the point of the click. Base values are
+   * the END states, so under reduced motion (animations off) the overlay simply stands full or gone.
+   * Transform-free: clip-path and opacity only, on a 48px element.
+   * ---------------------------------------------------------------------- */
+  .rail-fill {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: inherit;
+    background: var(--fill);
+    pointer-events: none;
+    clip-path: circle(72px at var(--fx) var(--fy));
+  }
+  .rail-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--fill);
+    opacity: 0;
+  }
+  .rail-fill[data-rail-fill='in'] { animation: rail-fill-in 0.46s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  /* the hold: the button has taken the selected paint itself — the overlay keeps only its glyph (the
+     same colour as the button's now) so no second coat of tint sits on the tile for the hand-over */
+  .rail-fill[data-rail-fill='hold'] { background: transparent; }
+  .rail-fill[data-rail-fill='hold']::after { display: none; }
+  .rail-fill[data-rail-fill='in']::after { animation: rail-fill-pulse 0.5s ease-out both; }
+  .rail-fill[data-rail-fill='out'] {
+    clip-path: circle(0px at var(--fx) var(--fy));
+    animation: rail-fill-out 0.36s cubic-bezier(0.4, 0, 0.6, 1) both;
+  }
+  @keyframes rail-fill-in  { from { clip-path: circle(0px at var(--fx) var(--fy)); } to { clip-path: circle(72px at var(--fx) var(--fy)); } }
+  @keyframes rail-fill-out { from { clip-path: circle(72px at var(--fx) var(--fy)); } to { clip-path: circle(0px at var(--fx) var(--fy)); } }
+  @keyframes rail-fill-pulse { from { opacity: 1; } to { opacity: 0; } }
+
   /*
    * Siri edge glow — the process indicator for the preview frame.
    *
@@ -3836,6 +3879,45 @@ html[data-drag] .shell-aside { transition: none; }
   animation-delay: calc(var(--i, 0) * 30ms);
 }
 [data-pane-fresh] .pane-in-row { animation-delay: calc(0.3s + var(--i, 0) * 35ms); }
+/* THE RIM THAT RIDES THE CLIP (App.tsx `PaneRim`): four 1×1 lines scaled along their length — a scaled
+   1px stays 1px thick — and four r16 corner arcs, placed every frame at the clip's edge by transform.
+   Lit in the module's tone while the glass moves (the group's opacity is the pane's `glow`), gone once
+   it has landed, where the window's own hairline shows through. */
+.pane-rim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: rgb(var(--glint-rgb, 255 255 255) / 0.62);
+}
+.pane-rim-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  background: currentColor;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.pane-rim-corner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 8px 8px;
+  overflow: visible;
+  will-change: transform;
+}
+/* THE MARK THAT FLIES WITH THE EDGE (App.tsx `PaneFlyer`): the clone of the window's mark, seated where
+   the real mark rests and carried by transform; the real mark hides while the pane says it is flying. */
+.pane-flyer {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  will-change: transform;
+}
+[data-canvas-pane]:not([data-pane-flying]) .pane-flyer { visibility: hidden; }
+[data-pane-flying] [data-cloud-mark] { visibility: hidden; }
 @keyframes pane-in-x    { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
 @keyframes pane-in-y    { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes pane-in-fade { from { opacity: 0; } to { opacity: 1; } }

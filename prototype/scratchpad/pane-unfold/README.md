@@ -1,13 +1,14 @@
-# pane-unfold — the canvas hand-over (site ⇄ Cloud / Domains / Plan), 22.09.2026
+# pane-unfold — the canvas hand-over (site ⇄ Cloud / Domains / Plan), 22–23.09.2026
 
-The law: `docs/knowledge/design-system.md` §7 «Окно разворачивается из своей кнопки»; the spec for
-developers: `docs/handoff/pane-unfold-spec.md`. What the live editor does, frame by frame:
+The law: `docs/knowledge/design-system.md` §7 «Окно разворачивается из своей кнопки», its 23.09 polish
+«Полировка разворота…» and «Rail Flood»; the spec for developers: `docs/handoff/pane-unfold-spec.md` (§9 = polish + flood). What the live editor does, frame by frame:
 `../live-editor/sheet-a1.jpg … sheet-b1.jpg` and `docs/research/live-ai-editor.md`.
 
 | file | what |
 |---|---|
 | `geometry.mjs` | canvas content box, site box, rail button box, chip box — the numbers `paneFrom` works from |
 | `trace.mjs` | rAF-sampled film of both directions: pane clip (parsed inset), opacity, scale; site opacity, scale; glint; rows; `data-pane-fresh`; frame intervals. `BASE=` dev (5174) or preview (4173) |
+| `trace2.mjs` | the 23.09 film: open by a real click at (12,12) of the Cloud button, close by a click at (36,36) — adds the rim (`topY`, `topLen`, parts, opacity), the flyer (x, color, `data-pane-flying`, mark visibility), the settle scale and the rail flood (circle radius, dir, base bg, glyph color). Contact sheets `sheet-open-v2.jpg` / `sheet-close-v2.jpg`; `zoom-slow-*.jpg` are crops of the leading edge at ×0.1 |
 | `slowmo.mjs` | stills at ×0.1 — clocks patched in `addInitScript` (motion's spring is main-thread here), CSS cascade slowed by `playbackRate`; `sheet-open.jpg` / `sheet-close.jpg` are its contact sheets |
 | `chip.mjs` | the Domains window opened from the topbar chip: where its clip starts (above the canvas) |
 | `phases.mjs` | hand-driven stills (styles written by hand) — superseded by `slowmo.mjs`, kept for the method |

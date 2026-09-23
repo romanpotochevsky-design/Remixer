@@ -20,6 +20,8 @@
  * may animate width, height, blur or colour on a per-frame basis.
  */
 
+import type { Easing } from 'motion/react'
+
 /** The house spring: quick, one barely-perceptible overshoot, settles clean. */
 export const SPRING = { type: 'spring', stiffness: 520, damping: 34, mass: 0.9 } as const
 
@@ -801,9 +803,33 @@ export const surface = {
  * the button it came from, not to whatever opened the next one. ⚠️ The clip's inset is in the pane's
  * own pixels (both ends), never `%` at one end and `px` at the other — motion cannot mix the units.
  */
-/** Per-pane geometry, in the pane's own pixels: where the clip starts/ends and the transform origin. */
-export type PaneCustom = { from: string; rest: string; origin: string }
-/** The unfold: one spring for the clip and the focus, whose overshoot lands outside the box. */
+/*
+ * POLISH, 23.09.2026 (designer: «делай анимацию открытия/закрытия окна как ты предложил») — four things
+ * the first cut lacked, all driven by ONE progress value `p` (0 = folded into the button, 1 = the canvas),
+ * animated imperatively in App.tsx `CanvasPane` (motion values, not variants, so the rim and the flyer can
+ * read the same clock):
+ *  · A REAL EDGE ON THE MOVING CLIP (`PaneRim`). A clip opens a picture through a window, and the frame on
+ *    the window does not move — the dock bubble's lesson («бордер глючит»): during the unfold the visible
+ *    edge was a raw cut through the window, and the hairline plus the glint appeared only on landing.
+ *    Now four 1px lines and four r16 corner arcs ride the clip edge (transform only — a 1×1 line scaled
+ *    along its length stays 1px thick), LIT in the module's tone while the glass moves (`glow` 1) and
+ *    cooling to nothing over .5 s once it has landed, where the window's own hairline takes over.
+ *  · THE MARK FLIES WITH THE EDGE (`PaneFlyer`). The window's cloud mark rides just inside the leading
+ *    corner of the clip from the rail button's glyph to its seat in the menu header — position and colour
+ *    (#9575cd → #7e57c2) both functions of `p`, so it flies back on the fold for free. The real mark is
+ *    hidden while `data-pane-flying` is on the pane. Two clouds are on screen for the flight — the tile
+ *    keeps its own, as an iOS home-screen icon stays while its app zooms out of it.
+ *  · THE CONTENTS SETTLE VISIBLY (`PANE_SETTLE`). The clip lands crisp; the picture INSIDE the frame
+ *    (`data-pane-settle`, a wrapper the surface provides via `usePaneSettle`) breathes once — 1.03 → .99 →
+ *    1.002 → 1 over 720 ms. A real spring on a 1.5 % travel overshoots by .06 % — invisible — so the dip
+ *    is written as keyframes. On the frame itself a dip would open a gap between the rim and the window's
+ *    border; on the contents it reads as the picture settling into the glass.
+ *  · The pane no longer scales on the way in (the settle took that job); on the way out it still goes a
+ *    hair smaller (.98) with the fold.
+ * The rail button answers with its own light — see App.tsx `RailFill` (the accent floods the tile from
+ * the point of the click) — and stays lit until the pane has folded back into it.
+ */
+/** The unfold: one spring for the clip, whose overshoot lands outside the box. */
 export const PANE_OPEN = { type: 'spring', duration: 0.62, bounce: 0.12 } as const
 /** The fold: faster, no bounce (rule 4). `PANE_CLOSE_MS` is the same number for the rail tile that
  *  stays lit until the pane has folded back into it (App.tsx `closingTile`). */
@@ -811,30 +837,19 @@ export const PANE_CLOSE_MS = 360
 export const PANE_CLOSE = { duration: PANE_CLOSE_MS / 1000, ease: [0.4, 0, 0.2, 1] } as const
 /** How long the pane counts as "just arrived" for its contents' cascade (index.css `[data-pane-fresh]`). */
 export const PANE_FRESH_MS = 1100
-export const canvasPane = {
-  initial: (c: PaneCustom) => ({ clipPath: c.from, opacity: 0, scale: 1.015 }),
-  animate: (c: PaneCustom) => ({
-    clipPath: c.rest,
-    opacity: 1,
-    scale: 1,
-    /* the pane is opaque glass sliding over the site, so it is solid almost at once: the short ramp
-       is for a clip that starts INSIDE the canvas (the middle-of-the-canvas fallback, the chip
-       above the top edge), where a hard-edged patch popping in would be a cut. Traced: a longer
-       ramp left the pane's leading strip translucent over the site for ~60 ms — a crossfade. */
-    transition: { clipPath: PANE_OPEN, scale: PANE_OPEN, opacity: { duration: 0.12, ease: [0.2, 0, 0, 1] } },
-  }),
-  exit: (c: PaneCustom) => ({
-    clipPath: c.from,
-    opacity: 0,
-    scale: 0.98,
-    transition: {
-      clipPath: PANE_CLOSE,
-      scale: PANE_CLOSE,
-      /* it folds first and dissolves last: a fade while it is still large would be a crossfade */
-      opacity: { duration: 0.2, delay: 0.16, ease: [0.4, 0, 1, 1] },
-    },
-  }),
-}
+/** The contents' settle inside the landed frame: one visible breath, written as keyframes. */
+export const PANE_SETTLE_FROM = 1.03
+export const PANE_SETTLE_KEYS = [PANE_SETTLE_FROM, 0.99, 1.002, 1]
+export const PANE_SETTLE = { duration: 0.72, times: [0, 0.5, 0.78, 1], ease: ['easeOut', 'easeInOut', 'easeOut'] as Easing[] }
+/** The pane's opacity: solid almost at once — it is glass sliding over the site, not a fade. */
+export const PANE_SOLID = { duration: 0.12, ease: [0.2, 0, 0, 1] } as const
+/** The fold's dissolve: spent LAST, so the leaving window is never a large translucent thing. */
+export const PANE_DISSOLVE = { duration: 0.2, delay: 0.16, ease: [0.4, 0, 1, 1] } as const
+/** The moving rim cools once the pane has landed and the window's own hairline shows through. */
+export const PANE_RIM_COOL = { duration: 0.5, ease: [0.2, 0, 0, 1] } as const
+/** Reduced motion: the pane simply comes up and goes in place. */
+export const PANE_FADE_IN = { duration: 0.24, ease: [0.2, 0, 0, 1] } as const
+export const PANE_FADE_OUT = { duration: 0.16, ease: [0.4, 0, 1, 1] } as const
 /** The site as the ground the pane stands on: back into the dark under an arriving pane, forward
  *  under a leaving one. */
 export const SITE_FORWARD = { type: 'spring', duration: 0.6, bounce: 0.08 } as const
@@ -855,14 +870,7 @@ export const canvasSite = {
     transition: { duration: 0.4, ease: [0.4, 0, 0.6, 1], opacity: { duration: 0.4, ease: [0.7, 0, 1, 1] } },
   },
 } as const
-/* Reduced motion: no clip, no scale, no offset — the pane and the site simply cross-dissolve in
-   place, the leaving one first (the pane's fade is delayed by nothing here: with no clip there is no
-   fold to wait for). */
-export const canvasPaneFade = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.24, ease: [0.2, 0, 0, 1] } },
-  exit: { opacity: 0, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } },
-} as const
+/* Reduced motion for the site: no scale, no offset — it simply comes up and goes in place. */
 export const canvasSiteFade = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.22, ease: [0.2, 0, 0, 1] } },

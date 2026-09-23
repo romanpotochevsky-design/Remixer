@@ -10,8 +10,8 @@
  * Everything still renders from the world store — the scenario console and flows
  * drive this shell exactly as they drove the old one.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, usePresence, useReducedMotion, useTransform, type MotionStyle, type MotionValue } from 'motion/react'
 import { useWorld, canUseAI, hasPlan, registrantUnconfirmed } from '@/state/world'
 import { useUI, fromRect, MOBILE_WIDTH, MOBILE_HEIGHT, type Surface, type SurfaceFrom } from '@/state/ui'
 import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
@@ -34,7 +34,7 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiriGlow } from '@/ui/SiriGlow'
-import { SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, canvasPane, canvasPaneFade, PANE_FRESH_MS, PANE_CLOSE_MS, type PaneCustom } from '@/ui/motion'
+import { SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, PANE_OPEN, PANE_CLOSE, PANE_CLOSE_MS, PANE_FRESH_MS, PANE_SETTLE, PANE_SETTLE_FROM, PANE_SETTLE_KEYS, PANE_SOLID, PANE_DISSOLVE, PANE_RIM_COOL, PANE_FADE_IN, PANE_FADE_OUT } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
@@ -375,19 +375,11 @@ function SimulatedEmail() {
  */
 const keepOnMainThread = () => {}
 
-/**
- * A SURFACE'S PANE ON THE CANVAS — the box a surface (Domains, Plan, Cloud) stands in, unfolding from
- * the control that opened it and folding back into it (motion.ts `canvasPane` has the law). It
- * measures ONCE, at mount: the trigger's viewport box (`ui.surfaceFrom`) against the canvas's content
- * box, into a `clip-path: inset(…)` in the pane's own pixels plus a transform origin at the trigger's
- * centre. That copy is what the exit reads too — so a pane folds back to the button it came from,
- * whatever has been pressed since.
- *
- * `data-pane-fresh` marks the first 1.1 s: the window's contents cascade in under it (index.css «THE
- * PANE THAT UNFOLDS»); when it goes, every animation it gated has already finished, so nothing snaps.
- * `tone` lights the rim glint in the module's colour (the Cloud window's violet); the default is white.
- */
 const PANE_R = 16
+/** What a pane measures once, at mount: its start clip (the trigger's footprint) in its own pixels. */
+type PaneGeom =
+  | { kind: 'px'; t: number; r: number; b: number; l: number; w: number; h: number; origin: { x: number; y: number } }
+  | { kind: 'pct' }
 const canvasBox = (main: HTMLElement | null) => {
   if (!main) return null
   const r = main.getBoundingClientRect()
@@ -396,53 +388,252 @@ const canvasBox = (main: HTMLElement | null) => {
   return { x: r.x + pl, y: r.y + pt, w: r.width - pl - pr, h: r.height - pt - pb }
 }
 const px = (n: number) => `${Math.round(n * 10) / 10}px`
-function paneFrom(from: SurfaceFrom | null, main: HTMLElement | null): PaneCustom {
+function paneGeometry(from: SurfaceFrom | null, main: HTMLElement | null): PaneGeom {
   const box = canvasBox(main)
   /* no press behind this surface (a scenario, a link), or a canvas that is still opening (the plan's
      `Review` opens the preview and the surface in one commit): grow from the middle, in percentages
      at BOTH ends, since the pane's final pixels are not known yet */
-  if (!from || !box || box.w < 200 || box.h < 200) {
-    return { from: `inset(12% 12% 12% 12% round ${PANE_R}px)`, rest: `inset(0% 0% 0% 0% round ${PANE_R}px)`, origin: '50% 50%' }
-  }
-  const t = from.y - box.y
-  const l = from.x - box.x
-  const r = box.x + box.w - (from.x + from.w)
-  const b = box.y + box.h - (from.y + from.h)
+  if (!from || !box || box.w < 200 || box.h < 200) return { kind: 'pct' }
   return {
-    from: `inset(${px(t)} ${px(r)} ${px(b)} ${px(l)} round ${PANE_R}px)`,
-    rest: `inset(0px 0px 0px 0px round ${PANE_R}px)`,
-    origin: `${px(from.x + from.w / 2 - box.x)} ${px(from.y + from.h / 2 - box.y)}`,
+    kind: 'px',
+    t: from.y - box.y,
+    l: from.x - box.x,
+    r: box.x + box.w - (from.x + from.w),
+    b: box.y + box.h - (from.y + from.h),
+    w: box.w,
+    h: box.h,
+    origin: { x: from.x + from.w / 2 - box.x, y: from.y + from.h / 2 - box.y },
   }
 }
-function CanvasPane({ id, tone, canvas, children }: { id: string; tone?: string; canvas: RefObject<HTMLElement>; children: ReactNode }) {
-  const reduce = useReducedMotion()
-  const [custom] = useState<PaneCustom>(() => paneFrom(useUI.getState().surfaceFrom, canvas.current))
-  const [fresh, setFresh] = useState(true)
-  useEffect(() => {
-    const id = window.setTimeout(() => setFresh(false), PANE_FRESH_MS)
-    return () => window.clearTimeout(id)
-  }, [])
+/** The clip at progress v — 0 is the trigger's footprint, 1 the whole canvas. Same units at both ends. */
+const clipAt = (g: PaneGeom, v: number) =>
+  g.kind === 'px'
+    ? `inset(${px(g.t * (1 - v))} ${px(g.r * (1 - v))} ${px(g.b * (1 - v))} ${px(g.l * (1 - v))} round ${PANE_R}px)`
+    : `inset(${(12 * (1 - v)).toFixed(3)}% ${(12 * (1 - v)).toFixed(3)}% ${(12 * (1 - v)).toFixed(3)}% ${(12 * (1 - v)).toFixed(3)}% round ${PANE_R}px)`
+
+/**
+ * The pane's motion, offered to the surface inside it: `settle` is the contents' one breath as the frame
+ * lands (motion.ts `PANE_SETTLE`). A surface wraps what is INSIDE its frame in a `motion.div` with
+ * `style={{ scale: settle }}` (`data-pane-settle`) — the frame itself must not breathe, or a gap would
+ * open between the moving rim and the window's own border.
+ */
+const PaneMotionContext = createContext<{ settle: MotionValue<number> } | null>(null)
+export function usePaneSettle(): MotionValue<number> | null {
+  return useContext(PaneMotionContext)?.settle ?? null
+}
+
+type RGB = [number, number, number]
+const mixRgb = (a: RGB, b: RGB, t: number) => `rgb(${a.map((c, i) => Math.round(c + (b[i] - c) * t)).join(' ')})`
+/** The element's layout position inside `host`, transforms ignored — the offset chain, not the rect: at
+ *  mount the menu card is already parked 10px left by its cascade and the contents stand at 1.03. */
+const restWithin = (host: HTMLElement, el: HTMLElement) => {
+  let x = 0, y = 0
+  let n: HTMLElement | null = el
+  while (n && n !== host) {
+    const parent = n.offsetParent as HTMLElement | null
+    x += n.offsetLeft + (parent && parent !== host ? parent.clientLeft : 0)
+    y += n.offsetTop + (parent && parent !== host ? parent.clientTop : 0)
+    n = parent
+  }
+  return { x, y, w: el.offsetWidth, h: el.offsetHeight }
+}
+
+/**
+ * THE RIM THAT RIDES THE CLIP — the moving edge is a real edge (the dock bubble's lesson, «бордер
+ * глючит»: a clip opens a picture through a window, and the frame on the window does not move). Four 1×1
+ * lines scaled along their length (so they stay 1px thick) and four r16 corner arcs, placed each frame at
+ * the clip's edge from the same progress `p`; lit in the module's tone while the glass moves (`glow` 1),
+ * cooling to nothing once it has landed, where the window's own hairline shows through. Transform only.
+ * Everything beyond the pane's box is cut by its `overflow: hidden` — the rim comes out from under the
+ * rail with the pane.
+ */
+function PaneRim({ p, glow, geom, tone }: { p: MotionValue<number>; glow: MotionValue<number>; geom: Extract<PaneGeom, { kind: 'px' }>; tone?: string }) {
+  const parts = useRef<(HTMLElement | SVGSVGElement | null)[]>([])
+  const paint = (v: number) => {
+    const x0 = geom.l * (1 - v), y0 = geom.t * (1 - v)
+    const x1 = geom.w - geom.r * (1 - v), y1 = geom.h - geom.b * (1 - v)
+    const R = PANE_R
+    const w = Math.max(0, x1 - x0 - 2 * R), h = Math.max(0, y1 - y0 - 2 * R)
+    const [top, bottom, left, right, tl, tr, br, bl] = parts.current
+    if (!top || !bottom || !left || !right || !tl || !tr || !br || !bl) return
+    top.style.transform = `translate(${x0 + R}px, ${y0}px) scaleX(${w})`
+    bottom.style.transform = `translate(${x0 + R}px, ${y1 - 1}px) scaleX(${w})`
+    left.style.transform = `translate(${x0}px, ${y0 + R}px) scaleY(${h})`
+    right.style.transform = `translate(${x1 - 1}px, ${y0 + R}px) scaleY(${h})`
+    tl.style.transform = `translate(${x0}px, ${y0}px)`
+    tr.style.transform = `translate(${x1 - R}px, ${y0}px) rotate(90deg)`
+    br.style.transform = `translate(${x1 - R}px, ${y1 - R}px) rotate(180deg)`
+    bl.style.transform = `translate(${x0}px, ${y1 - R}px) rotate(270deg)`
+  }
+  useMotionValueEvent(p, 'change', paint)
+  useLayoutEffect(() => { paint(p.get()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (i: number) => (el: HTMLElement | SVGSVGElement | null) => { parts.current[i] = el }
+  const arc = (i: number) => (
+    <svg key={i} ref={set(i)} className="pane-rim-corner" viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+      <path d="M16 .5A15.5 15.5 0 0 0 .5 16" fill="none" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  )
   return (
-    <motion.div
-      data-canvas-pane={id}
-      data-pane-fresh={fresh ? '' : undefined}
-      className="absolute bottom-2 left-2 right-0 top-0 z-10 rounded-[16px]"
-      custom={custom}
-      variants={reduce ? canvasPaneFade : canvasPane}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      onUpdate={keepOnMainThread}
-      /* promoted for its lifetime: the clip and the scale are written every frame of the unfold,
-         and a layer of its own is what keeps that a compositor update, not a repaint of the window */
-      style={{ transformOrigin: custom.origin, willChange: 'clip-path, transform, opacity' }}
-    >
-      {children}
-      <span className="glass-glint" style={tone ? ({ '--glint-rgb': tone } as CSSProperties) : undefined} aria-hidden />
-    </motion.div>
+    <motion.span className="pane-rim" data-pane-rim style={{ opacity: glow, '--glint-rgb': tone } as MotionStyle} aria-hidden>
+      <i ref={set(0)} className="pane-rim-line" />
+      <i ref={set(1)} className="pane-rim-line" />
+      <i ref={set(2)} className="pane-rim-line" />
+      <i ref={set(3)} className="pane-rim-line" />
+      {[4, 5, 6, 7].map(arc)}
+    </motion.span>
   )
 }
 
+/**
+ * THE MARK THAT FLIES WITH THE EDGE — the window's own mark (the Cloud window's cloud) travels from the
+ * rail button's glyph to its seat in the menu header, riding just inside the leading corner of the clip:
+ * its position and its colour are both functions of the pane's progress `p`, so on the fold it flies
+ * back for free. The real mark is hidden while the pane carries `data-pane-flying`. The seat is measured
+ * by layout (`restWithin`), not by rect: at mount the menu card is parked 10px left by its cascade and
+ * the contents stand at 1.03, and a rect would have measured both.
+ */
+function PaneFlyer({ p, geom, to, from, into, children }: {
+  p: MotionValue<number>; geom: Extract<PaneGeom, { kind: 'px' }>
+  to: string; from: RGB; into: RGB; children: ReactNode
+}) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [seat, setSeat] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  /* The pane is found from the flyer's OWN node, never through the pane's ref: on a mount, a child's
+     layout effect runs before its ancestors' refs are attached, so a ref to the pane would still be null
+     here in production. Dev hid that — StrictMode runs layout effects twice and the second pass saw
+     the ref — so the flyer flew on 5174 and never on the built file (caught by check:brief, 23.09). */
+  const hostOf = (el: HTMLElement | null) => el?.closest<HTMLElement>('[data-canvas-pane]') ?? null
+  useLayoutEffect(() => {
+    const host = hostOf(ref.current)
+    const target = host?.querySelector<HTMLElement>(to)
+    if (host && target) setSeat(restWithin(host, target))
+  }, [to])
+  const paint = (v: number) => {
+    const el = ref.current, host = hostOf(el)
+    if (!el || !host || !seat) return
+    const k = Math.max(0, Math.min(1, v))
+    const dx = (geom.origin.x - (seat.x + seat.w / 2)) * (1 - k)
+    const dy = (geom.origin.y - (seat.y + seat.h / 2)) * (1 - k)
+    el.style.transform = `translate(${dx}px, ${dy}px)`
+    el.style.color = mixRgb(from, into, k)
+    host.toggleAttribute('data-pane-flying', v < 0.999)
+  }
+  useMotionValueEvent(p, 'change', paint)
+  useLayoutEffect(() => { paint(p.get()) }, [seat]) // eslint-disable-line react-hooks/exhaustive-deps
+  /* Rendered from the first frame (the seat is measured from it), hidden by CSS until the pane says
+     `data-pane-flying` — which `paint` sets in the same commit the seat lands in, before paint. */
+  return (
+    <span ref={ref} className="pane-flyer" data-pane-flyer aria-hidden style={seat ? { left: seat.x, top: seat.y, width: seat.w, height: seat.h } : undefined}>
+      {children}
+    </span>
+  )
+}
+
+/**
+ * A SURFACE'S PANE ON THE CANVAS — the box a surface (Domains, Plan, Cloud) stands in, unfolding from
+ * the control that opened it and folding back into it (motion.ts `PANE_OPEN` and the polish note above
+ * it have the law). It measures ONCE, at mount: the trigger's viewport box (`ui.surfaceFrom`) against
+ * the canvas's content box, into a clip in the pane's own pixels plus a transform origin at the
+ * trigger's centre. That copy is what the exit reads too — so a pane folds back to the button it came
+ * from, whatever has been pressed since.
+ *
+ * One progress value `p` drives the clip, the rim and the flyer; opacity, the exit's hair of scale and
+ * the contents' settle are their own values. All of it is animated imperatively on motion values —
+ * main-thread, so nothing hands an element back at a pre-animation value for a frame — and the pane
+ * calls `safeToRemove` itself once the fold is done.
+ *
+ * `data-pane-fresh` marks the first 1.1 s: the window's contents cascade in under it (index.css «THE
+ * PANE THAT UNFOLDS»); when it goes, every animation it gated has already finished, so nothing snaps.
+ * `tone` lights the rim and the glint in the module's colour (the Cloud window's violet); the default is
+ * white. `flyer` is the mark that travels from the button to its seat (`to` — a selector inside the pane).
+ */
+const PANE_FLYER_FROM: RGB = [149, 117, 205]
+function CanvasPane({ id, tone, canvas, flyer, children }: {
+  id: string; tone?: string; canvas: RefObject<HTMLElement>
+  flyer?: { node: ReactNode; to: string; from?: RGB; into: RGB }
+  children: ReactNode
+}) {
+  const reduce = useReducedMotion()
+  const [present, safeToRemove] = usePresence()
+  const presentRef = useRef(true)
+  presentRef.current = present
+  const [geom] = useState<PaneGeom>(() => paneGeometry(useUI.getState().surfaceFrom, canvas.current))
+  const p = useMotionValue(reduce ? 1 : 0)
+  const opacity = useMotionValue(0)
+  const scale = useMotionValue(1)
+  const settle = useMotionValue(reduce ? 1 : PANE_SETTLE_FROM)
+  const glow = useMotionValue(reduce ? 0 : 1)
+  const clipPath = useTransform(p, (v) => clipAt(geom, v))
+  const [fresh, setFresh] = useState(true)
+  const [ctx] = useState(() => ({ settle }))
+
+  /* the unfold */
+  useEffect(() => {
+    if (reduce) {
+      animate(opacity, 1, PANE_FADE_IN)
+    } else {
+      const clip = animate(p, 1, PANE_OPEN)
+      animate(opacity, 1, PANE_SOLID)
+      animate(settle, PANE_SETTLE_KEYS, PANE_SETTLE)
+      /* the rim cools once the pane has landed — not on a fold that interrupted the unfold (a stopped
+         animation resolves its promise too) */
+      clip.then(() => { if (presentRef.current && p.get() > 0.99) animate(glow, 0, PANE_RIM_COOL) })
+    }
+    const id = window.setTimeout(() => setFresh(false), PANE_FRESH_MS)
+    return () => window.clearTimeout(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* the fold — back into the button, dissolving only once small; then the pane removes itself */
+  useEffect(() => {
+    if (present) return
+    glow.set(1)
+    const runs = reduce
+      ? [animate(opacity, 0, PANE_FADE_OUT)]
+      : [animate(p, 0, PANE_CLOSE), animate(scale, 0.98, PANE_CLOSE), animate(opacity, 0, PANE_DISSOLVE)]
+    Promise.all(runs).then(() => safeToRemove())
+  }, [present]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const origin = geom.kind === 'px' ? `${px(geom.origin.x)} ${px(geom.origin.y)}` : '50% 50%'
+  return (
+    <PaneMotionContext.Provider value={ctx}>
+      <motion.div
+        data-canvas-pane={id}
+        data-pane-fresh={fresh ? '' : undefined}
+        className="absolute bottom-2 left-2 right-0 top-0 z-10 overflow-hidden rounded-[16px]"
+        /* promoted for its lifetime: the clip is written every frame of the unfold, and a layer of its
+           own is what keeps that a compositor update, not a repaint of the window */
+        style={{ clipPath, opacity, scale, transformOrigin: origin, willChange: 'clip-path, transform, opacity' }}
+      >
+        {children}
+        {geom.kind === 'px' && <PaneRim p={p} glow={glow} geom={geom} tone={tone} />}
+        {geom.kind === 'px' && flyer && (
+          <PaneFlyer p={p} geom={geom} to={flyer.to} from={flyer.from ?? PANE_FLYER_FROM} into={flyer.into}>
+            {flyer.node}
+          </PaneFlyer>
+        )}
+        <span className="glass-glint" style={tone ? ({ '--glint-rgb': tone } as CSSProperties) : undefined} aria-hidden />
+      </motion.div>
+    </PaneMotionContext.Provider>
+  )
+}
+
+/**
+ * THE ACCENT FLOODS THE TILE FROM THE POINT OF THE CLICK (designer, 23.09.2026: «после клика меняется
+ * цвет в этих кнопках, чтобы другой цвет как-то прикольно заливался от места клика»). A rail button's
+ * selected state — the tinted tile and the tinted glyph — used to arrive as a 120 ms colour transition.
+ * Now an overlay in the selected colours, holding its own copy of the glyph, is clipped to a circle that
+ * grows from where the pointer landed (`--fx/--fy`) until it covers the tile (radius 72 > the far corner
+ * of a 48 box); the tile and the glyph under it stay in their resting colours until the circle has
+ * covered them, then the button takes the selected paint itself and the overlay goes — same colours, so
+ * the hand-over is invisible. A second layer of the same tint fades out on top (`::after`): the tile
+ * flares to twice its tint at the click and settles — the button emitting the window it opens. Closing
+ * by the button drains the colour back into the point of the click; closing by ✕ or Esc has no point,
+ * and the tile stays lit for the fold and fades (`closingTile`). Keyboard activation floods from the
+ * centre. CSS: index.css «THE ACCENT FLOODS THE TILE».
+ */
+const RAIL_FILL_MS = 460
+const RAIL_HOLD_MS = 160
+type RailFill = { id: string; x: number; y: number; dir: 'in' | 'out'; phase: 'run' | 'hold'; key: number }
 export default function App() {
   const { world } = useWorld()
   const { surface, openSurface, closeSurface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
@@ -473,6 +664,24 @@ export default function App() {
    * the truth about the state; only the paint lingers.
    */
   const [closingTile, setClosingTile] = useState<Surface | null>(null)
+  const [railFill, setRailFill] = useState<RailFill | null>(null)
+  const railFillTimers = useRef<number[]>([])
+  const floodTile = (id: string, e: ReactMouseEvent<HTMLElement>, dir: 'in' | 'out') => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const byPointer = e.detail !== 0
+    const fill: RailFill = { id, dir, phase: 'run', key: Date.now(), x: byPointer ? e.clientX - r.left : r.width / 2, y: byPointer ? e.clientY - r.top : r.height / 2 }
+    railFillTimers.current.forEach((t) => window.clearTimeout(t))
+    setRailFill(fill)
+    if (dir === 'in') {
+      /* the button takes the selected paint while the overlay still covers it, then the overlay goes */
+      railFillTimers.current = [
+        window.setTimeout(() => setRailFill((f) => (f && f.key === fill.key ? { ...f, phase: 'hold' } : f)), RAIL_FILL_MS),
+        window.setTimeout(() => setRailFill((f) => (f && f.key === fill.key ? null : f)), RAIL_FILL_MS + RAIL_HOLD_MS),
+      ]
+    } else {
+      railFillTimers.current = [window.setTimeout(() => setRailFill((f) => (f && f.key === fill.key ? null : f)), PANE_CLOSE_MS + 60)]
+    }
+  }
   useEffect(() => {
     const was = prevSurface.current
     prevSurface.current = surface
@@ -930,7 +1139,14 @@ export default function App() {
               </CanvasPane>
             ) : surface === 'cloud' ? (
               /* lit by the button that opened it: the rail's Cloud accent (#9575cd) on the rim */
-              <CanvasPane key="cloud" id="cloud" tone="149 117 205" canvas={canvasRef}>
+              <CanvasPane
+                key="cloud"
+                id="cloud"
+                tone="149 117 205"
+                canvas={canvasRef}
+                /* the window's cloud flies from the rail glyph (#9575cd) to its seat in the menu header (#7e57c2) */
+                flyer={{ node: <IconCloud size={25} />, to: '[data-cloud-mark]', into: [126, 87, 194] }}
+              >
                 <CloudSurface />
               </CanvasPane>
             ) : surface === 'domains' ? (
@@ -1052,26 +1268,50 @@ export default function App() {
             >
               {RAIL.map(({ id, label, Icon, tile, ink, goes }, i) => {
                 const on = goes != null && surface === goes
-                /* painted as selected while its pane is still folding back into it */
-                const lit = on || (goes != null && closingTile === goes)
+                const fill = railFill && railFill.id === id ? railFill : null
+                /* painted as selected while its pane is still folding back into it — unless the accent is
+                   still flooding in (the overlay paints) or draining out (the base is already resting).
+                   While a flood is on, the button's own paint SNAPS (no colour transition) and wears no
+                   hover wash: any second coat under or over the overlay's 12 % would brighten the tile
+                   for the frames they overlap — traced as a step at the hand-over. */
+                const lit = (on || (goes != null && closingTile === goes)) && !(fill && !(fill.dir === 'in' && fill.phase === 'hold'))
+                const paint = fill ? '' : ' transition-colors duration-[var(--dur-fast)] ease-std'
+                const hover = lit || fill ? '' : ' text-white hover:bg-[var(--white-100)]'
                 return (
                   <motion.button
                     key={id}
                     title={label}
                     aria-label={label}
                     aria-pressed={on}
-                    /* the pane unfolds from THIS box (`surfaceFrom`), and folds back into it */
-                    onClick={(e) => { if (goes) (on ? closeSurface() : openSurface(goes, fromRect(e.currentTarget))) }}
+                    /* the pane unfolds from THIS box (`surfaceFrom`), and folds back into it; the accent
+                       floods the tile from the point of the click, and drains back into it */
+                    onClick={(e) => {
+                      if (!goes) return
+                      floodTile(id, e, on ? 'out' : 'in')
+                      if (on) closeSurface()
+                      else openSurface(goes, fromRect(e.currentTarget))
+                    }}
                     /* One after the other from the top, 70ms apart: the rail fills in the
                        direction it is read. Only transform and opacity, so the stagger
                        costs the compositor and nothing else. */
                     initial={{ opacity: 0, scale: 0.82, y: -6 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ ...SPRING, delay: 0.12 + i * 0.07 }}
-                    className={`press-bloom grid h-12 w-12 place-items-center rounded-[16px] transition-colors duration-[var(--dur-fast)] ease-std${lit ? '' : ' text-white hover:bg-[var(--white-100)]'}`}
-                    style={lit ? { background: tile, color: ink } : undefined}
+                    className={`press-bloom grid h-12 w-12 place-items-center rounded-[16px]${paint}${hover}${lit || fill ? '' : ''}`}
+                    style={lit ? { background: tile, color: ink } : fill ? { color: '#fff' } : undefined}
                   >
                     <Icon size={24} />
+                    {fill && (
+                      <span
+                        key={fill.key}
+                        className="rail-fill"
+                        data-rail-fill={fill.dir === 'in' && fill.phase === 'hold' ? 'hold' : fill.dir}
+                        aria-hidden
+                        style={{ '--fx': `${fill.x}px`, '--fy': `${fill.y}px`, '--fill': tile, color: ink } as CSSProperties}
+                      >
+                        <Icon size={24} />
+                      </span>
+                    )}
                   </motion.button>
                 )
               })}

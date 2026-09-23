@@ -63,7 +63,9 @@
  *   does too — the row wants 1553.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { motion } from 'motion/react'
 import { useUI } from '@/state/ui'
+import { usePaneSettle } from '@/App'
 import { useT, type Text } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { CLOUD_TABLES, type CloudRow } from '@/data/cloud'
@@ -348,6 +350,7 @@ export function CloudSurface() {
   }, [closeSurface])
 
   const title = table ? table.title : t(ROOMS.find((r) => r.id === room)?.label ?? { en: 'Cloud', uk: 'Cloud' })
+  const settle = usePaneSettle()
 
   return (
     <div
@@ -360,6 +363,11 @@ export function CloudSurface() {
         boxShadow: '0px 8px 8px rgba(0,0,0,0.12), 0px 56px 72px rgba(0,0,0,0.12)',
       }}
     >
+      {/* THE CONTENTS SETTLE INTO THE FRAME (App.tsx `usePaneSettle`, motion.ts `PANE_SETTLE`): one
+          visible breath, 1.03 → .99 → 1, on what is INSIDE the window — never on the window itself,
+          or a gap would open between the pane's moving rim and this border. Centre origin: a lens
+          focusing, not a slide. Outside a pane (there is none today) the wrapper simply stands. */}
+      <motion.div data-pane-settle className="flex h-full w-full" style={{ scale: settle ?? 1 }}>
       {/* ───────────────────────────── menu, 264 ───────────────────────────── */}
       {/* ⚠️ NOT aria-label="Cloud": that is the rail BUTTON's name, and two things answering
           to one name is how a query means the wrong element (it cost a check run here). */}
@@ -369,8 +377,12 @@ export function CloudSurface() {
             project has paid for on every card it has drawn). */}
         <div data-cloud-menu className="pane-in-menu flex min-h-0 flex-1 flex-col rounded-[14px] bg-[var(--white-100)] shadow-[inset_0_0_0_1px_var(--white-100)]">
           <div className="flex h-[84px] flex-none items-center gap-2.5 pl-5">
-            <IconCloud size={25} className="flex-none text-[#7e57c2]" />
-            <span className="font-display text-[24px] font-bold leading-[1.2] text-white">Cloud</span>
+            {/* the mark the pane flies in from the rail button (App.tsx `PaneFlyer`): hidden while the
+                flight is on, shown once the clone has landed on this very box */}
+            <span data-cloud-mark className="flex flex-none text-[#7e57c2]">
+              <IconCloud size={25} />
+            </span>
+            <span data-cloud-title className="font-display text-[24px] font-bold leading-[1.2] text-white">Cloud</span>
           </div>
 
           <ScrollArea className="min-h-0 flex-1" thumb="light">
@@ -529,6 +541,7 @@ export function CloudSurface() {
           </div>
         </div>
       </div>
+      </motion.div>
     </div>
   )
 }
