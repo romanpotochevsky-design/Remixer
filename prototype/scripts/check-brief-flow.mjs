@@ -4704,6 +4704,218 @@ await shot('30-plan-review')
     (await p.$('[data-cloud-window]')) === null)
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════
+ * J · THE ANALYTICS WINDOW
+ *
+ * Board 30934:93319, Dashboard node 30934:94405 (the geometry is spelled out at the head
+ * of `modules/analytics/AnalyticsSurface.tsx`). What these guard is the set of numbers that
+ * came off the board and cannot be re-derived from the code: the card heights that only
+ * close because every ring is an INSET shadow, the axis positions, the two column headers
+ * the board itself draws 3 apart, and the accent the designer replaced amber with.
+ * ═══════════════════════════════════════════════════════════════════════════════════ */
+{
+  const R = (sel) => p.$eval(sel, (n) => { const r = n.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 100) / 100) })
+  const CSS = (sel, prop) => p.$eval(sel, (n, q) => getComputedStyle(n)[q], prop)
+
+  await p.goto(at('p=built&v=true&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
+  await p.waitForTimeout(700)
+  await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(500)
+
+  await p.click('nav.arrive-rail [aria-label="Analytics"]')
+  await p.waitForTimeout(1400)
+  await p.mouse.move(800, 800)
+  await p.waitForTimeout(200)
+  await shot('40-analytics-window')
+  check('the rail’s Analytics button opens the Analytics window', !!(await p.$('[data-analytics-window]')))
+
+  /* GREEN, NOT AMBER — the designer sent the button itself with the board (24.09.2026): a green
+     plate under a green glyph, the same #66bb6a the window is painted in. A module whose window
+     is green cannot unfold from an amber button, because the pane's rim is lit in the rail's tone. */
+  const sel = await p.$eval('nav.arrive-rail [aria-label="Analytics"]', (e) => { const g = getComputedStyle(e); return [g.backgroundColor, g.color] })
+  check('…and the button takes the board’s GREEN selected state, not the state sheet’s amber',
+    sel[0] === 'rgba(102, 187, 106, 0.1)' && sel[1] === 'rgb(102, 187, 106)', sel.join(' · '))
+
+  /* ── the window and its sheet ────────────────────────────────────────────────── */
+  const win = await R('[data-analytics-window]')
+  check('the window is the house frame: `--window-base` flat, radius 16, a `--gray-800` hairline',
+    (await CSS('[data-analytics-window]', 'backgroundColor')) === 'rgb(20, 20, 23)'
+    && (await CSS('[data-analytics-window]', 'borderTopLeftRadius')) === '16px'
+    && (await CSS('[data-analytics-window]', 'borderTopColor')) === 'rgb(39, 39, 42)',
+    `${await CSS('[data-analytics-window]', 'backgroundColor')} · ${await CSS('[data-analytics-window]', 'borderTopColor')}`)
+  const mark = await p.$eval('[data-analytics-mark]', (e) => {
+    const plate = e.parentElement.getBoundingClientRect(), g = getComputedStyle(e.parentElement)
+    const topbar = e.closest('div').parentElement.getBoundingClientRect()
+    return { glyph: Math.round(e.getBoundingClientRect().height), plate: [plate.width, plate.height], rad: g.borderTopLeftRadius, bg: g.backgroundColor, barH: topbar.height }
+  })
+  check('the top bar is 48 with the module’s 24 glyph in a 32 `Black/600` plate at radius 10 (30934:95671)',
+    mark.barH === 48 && mark.glyph === 24 && mark.plate.join() === '32,32' && mark.rad === '10px' && mark.bg === 'rgba(9, 9, 11, 0.56)',
+    JSON.stringify(mark))
+  const sheet = await p.$eval('[data-analytics-window] h2', (n) => {
+    const s = n.closest('div').parentElement, r = s.getBoundingClientRect(), g = getComputedStyle(s)
+    return { y: r.y, bg: g.backgroundColor, line: g.borderTopColor, w: g.borderTopWidth, rad: g.borderTopLeftRadius }
+  })
+  check('the page sheet is `--window-lift` under an 8 % white hairline at radius 16 — there is no menu column on this board, so it runs the whole width',
+    sheet.bg === 'rgb(29, 29, 32)' && sheet.line === 'rgba(255, 255, 255, 0.08)' && sheet.w === '1px' && sheet.rad === '16px',
+    JSON.stringify(sheet))
+  check('…and it starts under the 48 top bar', Math.round(sheet.y - win[1]) === 49, String(Math.round(sheet.y - win[1])))
+
+  /* ── header 88 ───────────────────────────────────────────────────────────────── */
+  const head = await p.evaluate(() => {
+    const h = document.querySelector('[data-analytics-window] h2'), sl = document.querySelector('[data-analytics-range]')
+    const hr = h.getBoundingClientRect(), sr = sl.getBoundingClientRect(), g = getComputedStyle(h)
+    const box = h.parentElement.getBoundingClientRect()
+    return { boxH: Math.round(box.height), pad: Math.round(hr.y - box.y), size: g.fontSize, lh: g.lineHeight, weight: g.fontWeight,
+             sel: [Math.round(sr.width), Math.round(sr.height)], selRing: getComputedStyle(sl).boxShadow, selRad: getComputedStyle(sl).borderTopLeftRadius,
+             right: Math.round(box.right - sr.right) }
+  })
+  check('the header is 88 with the title in Gilroy 32 / 38.4 semibold, its line box 28 down (30934:94528)',
+    head.boxH === 88 && head.pad === 0 && head.size === '32px' && head.lh === '38.4px' && head.weight === '600', JSON.stringify(head))
+  check('…and the range select is 168 × 40 at radius 10 with a `--gray-700` INSET ring, 24 in from the header’s right edge',
+    head.sel.join() === '168,40' && head.selRad === '10px' && /rgb\(63, 63, 70\) 0px 0px 0px 1px inset/.test(head.selRing) && head.right === 24,
+    JSON.stringify([head.sel, head.selRad, head.right]))
+  check('…reading "Last 7 days" — the board’s "Last 24 hours" cannot sit over a Sun…Sat axis, and unlike the y axis that one HAS a single right value',
+    /Last 7 days/.test(await p.$eval('[data-analytics-range]', (e) => e.textContent)),
+    await p.$eval('[data-analytics-range]', (e) => e.textContent))
+
+  /* ── the metrics card ────────────────────────────────────────────────────────── */
+  const card = await R('[data-analytics-metrics]')
+  check('the metrics card closes on the board’s 500 — which it only does because every ring here is an INSET shadow, never a border',
+    Math.abs(card[3] - 500) < 0.5, String(card[3]))
+  check('…with the board’s split radii (28 on top, 16 at the foot), 5 % white and a `--gray-800` ring',
+    (await CSS('[data-analytics-metrics]', 'borderTopLeftRadius')) === '28px'
+    && (await CSS('[data-analytics-metrics]', 'borderBottomLeftRadius')) === '16px'
+    && (await CSS('[data-analytics-metrics]', 'backgroundColor')) === 'rgba(255, 255, 255, 0.05)'
+    && /rgb\(39, 39, 42\) 0px 0px 0px 1px inset/.test(await CSS('[data-analytics-metrics]', 'boxShadow')))
+  const strip = await p.evaluate(() => {
+    const e = document.querySelector('[data-analytics-tab]').parentElement, r = e.getBoundingClientRect(), g = getComputedStyle(e)
+    const outer = e.parentElement.getBoundingClientRect()
+    return { h: Math.round(r.height * 100) / 100, rad: g.borderTopLeftRadius, bg: g.backgroundColor, ring: g.boxShadow,
+             gap: g.columnGap, pad: g.padding, top: Math.round(r.y - outer.y) }
+  })
+  check('the tab strip is 99 at radius 24 on `--gray-850`, ringed `--gray-750`, p-8 with 10 between tabs, 8 down from the card’s top',
+    Math.abs(strip.h - 99) < 0.2 && strip.rad === '24px' && strip.bg === 'rgb(31, 31, 34)' && /rgb\(51, 51, 58\) 0px 0px 0px 1px inset/.test(strip.ring)
+    && strip.gap === '10px' && strip.pad === '8px' && strip.top === 8, JSON.stringify(strip))
+
+  const tabs = await p.evaluate(() => [...document.querySelectorAll('[data-analytics-tab]')].map((e) => {
+    const r = e.getBoundingClientRect(), g = getComputedStyle(e)
+    return { on: !!e.dataset.on, h: Math.round(r.height * 100) / 100, ring: g.boxShadow, bg: g.backgroundColor }
+  }))
+  check('five tabs: the selected one 80 on `--gray-750` inside a 2px #66bb6a ring, the other four 83 on nothing inside a 1px `--gray-750` ring (30934:94641 / 94665)',
+    tabs.length === 5 && tabs[0].on && Math.abs(tabs[0].h - 80) < 1 && tabs[0].bg === 'rgb(51, 51, 58)'
+    && /rgb\(102, 187, 106\) 0px 0px 0px 2px inset/.test(tabs[0].ring)
+    && tabs.slice(1).every((t) => !t.on && Math.abs(t.h - 83) < 0.2 && t.bg === 'rgba(0, 0, 0, 0)' && /rgb\(51, 51, 58\) 0px 0px 0px 1px inset/.test(t.ring)),
+    JSON.stringify(tabs.map((t) => [t.on, t.h])))
+
+  /* ── the chart ───────────────────────────────────────────────────────────────── */
+  const chart = await p.evaluate(() => {
+    const g = document.querySelector('[data-analytics-graph]'), plot = g.parentElement
+    const axis = plot.previousElementSibling, ar = axis.getBoundingClientRect()
+    const days = g.previousElementSibling, dr = days.getBoundingClientRect()
+    const pr = plot.getBoundingClientRect(), gr = g.getBoundingClientRect()
+    const lines = [...plot.querySelectorAll('span[style*="top"], [data-analytics-baseline]')]
+    return {
+      axisH: Math.round(ar.height * 100) / 100,
+      labels: [...axis.children].map((e) => Math.round((e.getBoundingClientRect().y - ar.y) * 100) / 100),
+      dayTop: Math.round((dr.y - pr.y) * 100) / 100, dayH: dr.height, days: days.children.length,
+      graphTop: Math.round((gr.y - pr.y) * 100) / 100, graphH: gr.height, graphLeft: Math.round((gr.x - pr.x) * 100) / 100,
+      grid: lines.map((e) => getComputedStyle(e).backgroundColor),
+      points: g.querySelector('polyline').getAttribute('points'),
+      stroke: getComputedStyle(g.querySelector('polyline')).stroke,
+      vector: g.querySelector('polyline').getAttribute('vector-effect'),
+    }
+  })
+  check('the y axis is the board’s: five labels in a 356 column at 0 · 79.75 · 159.5 · 239.25 · 319',
+    chart.axisH === 356 && chart.labels.join() === '0,79.75,159.5,239.25,319', JSON.stringify(chart.labels))
+  check('the seven-day row sits at 332, 24 tall, and the graph box hangs at top 40 × 175 on `left-px` (30934:94840)',
+    chart.dayTop === 332 && chart.dayH === 24 && chart.days === 7 && chart.graphTop === 40 && chart.graphH === 175 && chart.graphLeft === 1,
+    JSON.stringify([chart.dayTop, chart.dayH, chart.days, chart.graphTop, chart.graphH, chart.graphLeft]))
+  check('four gridlines at 8 % white with the BASELINE at 12 % — the board’s node carries both tokens, and its bottom line measures twice the ink of the four above it',
+    chart.grid.length === 5 && chart.grid.slice(0, 4).every((c) => c === 'rgba(255, 255, 255, 0.08)') && chart.grid[4] === 'rgba(255, 255, 255, 0.12)',
+    chart.grid.join(' · '))
+  const xs = chart.points.split(' ').map((q) => Number(q.split(',')[0]))
+  check('the series is seven evenly spaced vertices in #66bb6a, its stroke pinned against the box’s horizontal stretch',
+    xs.length === 7 && xs[0] === 0 && xs[6] === 1000 && xs.slice(1).every((x, i) => Math.abs(x - xs[i] - 1000 / 6) < 0.1)
+    && chart.stroke === 'rgb(102, 187, 106)' && chart.vector === 'non-scaling-stroke',
+    JSON.stringify({ xs, stroke: chart.stroke }))
+
+  /* the strip is not a picture: pressing a tab redraws the chart under it */
+  await p.click('[data-analytics-tab]:nth-of-type(3)')
+  await p.waitForTimeout(250)
+  const after = await p.$eval('[data-analytics-graph] polyline', (e) => e.getAttribute('points'))
+  const onNow = await p.$$eval('[data-analytics-tab]', (es) => es.map((e) => !!e.dataset.on))
+  check('a tab is a control, not a picture: pressing the third redraws the series and moves the selected state',
+    after !== chart.points && onNow.join() === 'false,false,true,false,false', JSON.stringify(onNow))
+  await p.click('[data-analytics-tab]:nth-of-type(1)')
+  await p.waitForTimeout(250)
+
+  /* ── the four breakdown cards ────────────────────────────────────────────────── */
+  const cards = await p.evaluate(() => [...document.querySelectorAll('[data-analytics-card]')].map((e) => {
+    const r = e.getBoundingClientRect(), h = e.querySelector('h3').getBoundingClientRect()
+    const inner = e.querySelector('div > div'), g = getComputedStyle(inner)
+    return { id: e.dataset.analyticsCardId, h: Math.round(r.height * 100) / 100, headTop: Math.round((h.y - r.y) * 100) / 100,
+             ring: g.boxShadow, rad: g.borderTopLeftRadius, gap: g.rowGap,
+             title: [getComputedStyle(e.querySelector('h3')).fontSize, getComputedStyle(e.querySelector('h3')).fontWeight] }
+  }))
+  check('the four cards close on the board’s 314 / 314 / 311 / 311',
+    cards.map((c) => c.h).join() === '314,314,311,311', JSON.stringify(cards.map((c) => [c.id, c.h])))
+  check('…and the left column’s headers are the board’s 24 down against the right column’s 20 — one component, drifted between two columns, reproduced rather than quietly evened out',
+    cards.map((c) => c.headTop).join() === '24,20,24,20', JSON.stringify(cards.map((c) => c.headTop)))
+  check('…each list boxed in a `--gray-750` ring at radius 12 with 6 between rows, under a Gilroy 20 semibold title',
+    cards.every((c) => /rgb\(51, 51, 58\) 0px 0px 0px 1px inset/.test(c.ring) && c.rad === '12px' && c.gap === '6px'
+      && c.title[0] === '20px' && c.title[1] === '600'), JSON.stringify(cards[0]))
+
+  const rows = await p.evaluate(() => {
+    const card = document.querySelector('[data-analytics-card-id="country"]')
+    const bars = [...card.querySelectorAll('[data-analytics-bar]')]
+    const divs = [...card.querySelectorAll('div > span[aria-hidden]')].filter((e) => e.clientHeight === 1)
+    const label = card.querySelector('[data-analytics-label]')
+    return {
+      pct: bars.map((e) => Math.round((e.getBoundingClientRect().width / e.parentElement.getBoundingClientRect().width) * 1000) / 10),
+      h: bars[0].getBoundingClientRect().height, bg: getComputedStyle(bars[0]).backgroundColor, rad: getComputedStyle(bars[0]).borderTopLeftRadius,
+      divider: divs.length ? getComputedStyle(divs[0]).backgroundColor : null, dividers: divs.length,
+      labelOverflow: getComputedStyle(label).overflow, trackOverflow: getComputedStyle(label.parentElement).overflow,
+      flags: card.querySelectorAll('[data-analytics-flag]').length,
+    }
+  })
+  check('a row’s bar is its share of the list’s own maximum, 32 tall at 8 % white and radius 8 — the board’s widths encode nothing (110 draws wider than 227 there)',
+    rows.pct[0] === 100 && rows.pct.every((v, i) => i === 0 || v < rows.pct[i - 1]) && rows.h === 32
+    && rows.bg === 'rgba(255, 255, 255, 0.08)' && rows.rad === '8px', JSON.stringify(rows.pct))
+  check('…four dividers for five rows, `--gray-800` as the board’s own render measures them (39,39,42 on a 41,41,44 card — a seam, not a line)',
+    rows.dividers === 4 && rows.divider === 'rgb(39, 39, 42)', `${rows.dividers} · ${rows.divider}`)
+  check('…and the clipping is on the TRACK, never on the cap-trimmed name: a `text-box-trim` box is only as tall as its capitals, so `overflow: hidden` there cuts every descender off',
+    rows.labelOverflow === 'visible' && rows.trackOverflow === 'hidden' && rows.flags === 5,
+    JSON.stringify([rows.labelOverflow, rows.trackOverflow, rows.flags]))
+
+  /* THE DATA ADDS UP — the one thing a dashboard is read by. Every list totals the unique
+     visitors the first tab prints, and the two count series total their own tabs. */
+  const sums = await p.evaluate(() => {
+    const num = (t) => Number(String(t).replace(/[^0-9]/g, ''))
+    return [...document.querySelectorAll('[data-analytics-card]')].map((c) => ({
+      id: c.dataset.analyticsCardId,
+      total: [...c.querySelectorAll('[data-analytics-bar]')]
+        .map((b) => num(b.parentElement.nextElementSibling.textContent)).reduce((a, x) => a + x, 0),
+    }))
+  })
+  check('the numbers agree with each other: Country, Source and Device each total the 1,842 unique visitors the first tab prints — a dashboard is the one screen a demo is read by adding up',
+    sums.filter((x) => x.id !== 'page').every((x) => x.total === 1842), JSON.stringify(sums))
+
+  /* ── out ─────────────────────────────────────────────────────────────────────── */
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(700)
+  await p.mouse.move(800, 800)
+  await p.waitForTimeout(200)
+  check('Escape closes the Analytics window and the rail button goes dark again',
+    (await p.$('[data-analytics-window]')) === null
+    && (await p.$eval('nav.arrive-rail [aria-label="Analytics"]', (e) => getComputedStyle(e).backgroundColor)) === 'rgba(0, 0, 0, 0)')
+  await p.click('nav.arrive-rail [aria-label="Analytics"]')
+  await p.waitForTimeout(900)
+  await p.click('nav.arrive-rail [aria-label="Analytics"]')
+  await p.waitForTimeout(700)
+  check('…and the button is a toggle, like Cloud’s', (await p.$('[data-analytics-window]')) === null)
+}
+
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
 await b.close()
 

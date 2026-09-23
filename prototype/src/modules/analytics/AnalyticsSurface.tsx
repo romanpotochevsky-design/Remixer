@@ -311,7 +311,7 @@ function Row({ row, max, flags }: { row: Breakdown; max: number; flags: boolean 
           aria-hidden
         />
         {flags && row.flag ? <span className="relative flex-none"><Flag code={row.flag} /></span> : null}
-        <span className={`relative text-[14px] font-medium text-white ${CAP}`}>{row.label}</span>
+        <span data-analytics-label className={`relative text-[14px] font-medium text-white ${CAP}`}>{row.label}</span>
       </div>
       <span className={`font-display flex-none text-right text-[14px] text-white ${CAP}`}>
         {row.count.toLocaleString('en-US')}
