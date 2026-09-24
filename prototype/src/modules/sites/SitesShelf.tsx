@@ -154,12 +154,21 @@ export function SitesShelf() {
   const main = root.current?.closest('main') ?? null
 
   return (
+    /*
+     * THE APPROACH HAPPENS INSIDE THE FRAME. The shelf comes into place from 1.05 and recedes to 1.04, and
+     * a scaled box is larger than its seat: unclipped, its top edge rode ~20 px up over the canvas toolbar
+     * and covered the bottom of Publish and the credits pill for the length of the approach (the designer's
+     * screenshot, 25.09.2026: «у анимации есть вот такие визуальные баги»). So the scaling shelf sits inside
+     * a clip cut to the canvas box with the window's own radius — the way the iPhone's home screen zooms
+     * behind a closing app WITHIN the screen, never over its bezel. The clip is the outer element; the
+     * opacity and scale ride the inner one, which is what the suite films as `[data-sites-shelf]`.
+     */
+    <div ref={root} data-sites-clip className="absolute bottom-2 left-2 right-0 top-0 z-10 overflow-hidden rounded-[16px]">
     <motion.div
-      ref={root}
       data-sites-shelf
       role="dialog"
       aria-label={title}
-      className="absolute bottom-2 left-2 right-0 top-0 z-10 flex flex-col overflow-hidden rounded-[16px] bg-[var(--window-base)] shadow-[inset_0_0_0_1px_var(--gray-800)]"
+      className="absolute inset-0 flex flex-col overflow-hidden rounded-[16px] bg-[var(--window-base)] shadow-[inset_0_0_0_1px_var(--gray-800)]"
       style={{ opacity: shelfO, scale: shelfS, transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
     >
       {/* the title row: what this is, and the one way to a new site — the Home page, where every site starts */}
@@ -203,6 +212,7 @@ export function SitesShelf() {
         main,
       )}
     </motion.div>
+    </div>
   )
 }
 

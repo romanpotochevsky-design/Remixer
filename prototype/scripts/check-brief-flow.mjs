@@ -5408,8 +5408,13 @@ await shot('30-plan-review')
       const shelf = document.querySelector('[data-sites-shelf]'); const sm = shelf ? mat(shelf) : null
       const fl = document.querySelector('[data-site-flight]'); const fm = fl ? mat(fl) : null
       const pr = park ? park.getBoundingClientRect() : null; const fr = fl ? fl.getBoundingClientRect() : null
+      /* the clip the scaling shelf sits in, and whether the toolbar's Publish is still the thing under its own bottom edge */
+      const clip = document.querySelector('[data-sites-clip]'); const cr = clip ? clip.getBoundingClientRect() : null
+      const pub = [...document.querySelectorAll('header button')].find((b) => /Publish/.test(b.textContent)); const pb = pub ? pub.getBoundingClientRect() : null
+      const hit = pb ? document.elementFromPoint(pb.left + pb.width / 2, pb.bottom - 2) : null
       s.push({ t: Math.round(now - t0), park: pm ? +pm[0].toFixed(4) : 1, parkBox: pr ? [pr.x, pr.y, pr.width, pr.height].map((n) => +n.toFixed(1)) : null,
-        shelf: shelf ? { o: +(+getComputedStyle(shelf).opacity).toFixed(3), s: sm ? +sm[0].toFixed(4) : 1 } : null,
+        clip: cr ? [cr.x, cr.y, cr.width, cr.height].map(Math.round) : null, publishClear: pub ? (hit === pub || pub.contains(hit)) : null,
+        shelf: shelf ? { o: +(+getComputedStyle(shelf).opacity).toFixed(3), s: sm ? +sm[0].toFixed(4) : 1, top: +shelf.getBoundingClientRect().y.toFixed(1) } : null,
         flight: fm ? { s: +fm[0].toFixed(4), box: [fr.x, fr.y, fr.width, fr.height].map((n) => +n.toFixed(1)) } : null,
         z: document.querySelector('[data-canvas-site]') ? getComputedStyle(document.querySelector('[data-canvas-site]')).zIndex : null })
       if (now - t0 < ms) setTimeout(() => requestAnimationFrame(tick), 0)
@@ -5450,6 +5455,13 @@ await shot('30-plan-review')
   check('…while the shelf comes into place behind it like the home screen behind a closing app: from slightly larger (≥ 1.03) down to 1 with the flight’s own spring, solid within ~300 ms, and it never launches larger than it started',
     shelfS[0] >= 1.03 && Math.max(...shelfS) <= 1.051 && near(shelfS[shelfS.length - 1], 1, 0.002) && shelfO[0] < 0.6 && (parkFrames.find((f) => f.shelf.o >= 0.99)?.t ?? 9999) <= 400 && shelfO[shelfO.length - 1] === 1,
     JSON.stringify({ shelfS: shelfS.filter((_, i) => i % 5 === 0), shelfO: shelfO.filter((_, i) => i % 5 === 0) }))
+  /* the designer's screenshot (25.09.2026): the enlarged shelf rode up over the toolbar and covered the bottom of
+     Publish and the credits pill for the approach — it now scales INSIDE a clip cut to the canvas box */
+  const clipFrames = parkFrames.filter((f) => f.clip)
+  const spilled = parkFrames.filter((f) => f.shelf.top < canvas.y - 0.5)
+  check('…and it approaches INSIDE the frame: the clip stays on the canvas box on every frame while the scaled shelf inside it reaches above the box, and the toolbar’s Publish button is the thing under its own bottom edge throughout — nothing of the shelf ever covers the toolbar',
+    clipFrames.length === parkFrames.length && clipFrames.every((f) => f.clip.join() === [canvas.x, canvas.y, canvas.w, canvas.h].map(Math.round).join()) && spilled.length > 0 && parkFrames.every((f) => f.publishClear === true),
+    JSON.stringify({ clip: clipFrames[0]?.clip, canvas, aboveBoxFrames: spilled.length, minTop: Math.min(...parkFrames.map((f) => f.shelf.top)), allClear: parkFrames.every((f) => f.publishClear === true) }))
   const shelf = await p.$eval('[data-sites-shelf]', (e) => ({
     title: e.querySelector('h2')?.textContent, newBtn: !!e.querySelector('[data-sites-new]'),
     cards: [...e.querySelectorAll('[data-site-card]')].map((c) => ({ id: c.dataset.siteCard, current: c.hasAttribute('data-site-current'), pic: getComputedStyle(c.querySelector('[data-site-picture]')).visibility, ratio: (() => { const r = c.querySelector('[data-site-thumb]').getBoundingClientRect(); return +(r.width / r.height).toFixed(3) })() })),
