@@ -162,13 +162,20 @@ export function SitesShelf() {
      * a clip cut to the canvas box with the window's own radius — the way the iPhone's home screen zooms
      * behind a closing app WITHIN the screen, never over its bezel. The clip is the outer element; the
      * opacity and scale ride the inner one, which is what the suite films as `[data-sites-shelf]`.
+     *
+     * NO PLATE UNDER THE SHELF (designer, 25.09.2026, with a screenshot of the list on the bare ground:
+     * «этому экрану со списком сайтов серый фон вообще не нужен, список не находится внутри дива с серым
+     * фоном, он просто на чёрном общем фоне сайта»). The first cut wore the canvas windows' chrome — the
+     * `--window-base` plate under a `gray-800` hairline. This is not a window; it is the shell's own ground
+     * with the customer's sites on it, so the shelf paints nothing of its own: the cards and the title sit
+     * on `--gray-950`, and the clip stays invisible (it only cuts the approach to the canvas box).
      */
     <div ref={root} data-sites-clip className="absolute bottom-2 left-2 right-0 top-0 z-10 overflow-hidden rounded-[16px]">
     <motion.div
       data-sites-shelf
       role="dialog"
       aria-label={title}
-      className="absolute inset-0 flex flex-col overflow-hidden rounded-[16px] bg-[var(--window-base)] shadow-[inset_0_0_0_1px_var(--gray-800)]"
+      className="absolute inset-0 flex flex-col overflow-hidden"
       style={{ opacity: shelfO, scale: shelfS, transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
     >
       {/* the title row: what this is, and the one way to a new site — the Home page, where every site starts */}
