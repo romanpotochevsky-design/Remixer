@@ -52,6 +52,14 @@ export type Surface =
    * the right rail, which lights up in its own green while it is here.
    */
   | 'analytics'
+  /**
+   * The shelf of the customer's sites (modules/sites/SitesShelf.tsx), opened from the site's
+   * name in the chat header. Not a window like the four above: the site on the canvas flies
+   * INTO its card on the shelf and the picked card flies OUT to fill the canvas — the iPhone's
+   * app-to-icon morph — so while this surface is up the site layer stays mounted, parked in
+   * its card (App.tsx, `useSitePark`).
+   */
+  | 'sites'
 
 /**
  * The viewport box of the control a surface was opened FROM — the rail's Cloud button, the

@@ -727,7 +727,7 @@ export const AXES: Axis[] = [
      * `My projects | Templates` tabs over it (Figma 28375:43006 / 28364:40053).
      */
     key: 'projects', group: G.home, label: { en: 'Sites they have', uk: 'Створені сайти' }, kind: 'options',
-    current: (w) => (w.projects.length ? 'one' : 'none'),
+    current: (w) => (w.projects.length ? 'theirs' : 'none'),
     options: [
       {
         value: 'none', label: { en: 'No projects yet', uk: 'Ще нічого немає' },
@@ -735,11 +735,23 @@ export const AXES: Axis[] = [
         patch: { projects: [] },
       },
       {
-        value: 'one', label: { en: 'One site', uk: 'Один сайт' },
-        hint: { en: 'the dock shows My projects', uk: 'у доку «My projects»' },
+        value: 'theirs', label: { en: 'Their four sites', uk: 'Їхні чотири сайти' },
+        hint: { en: 'the dock shows My projects; the header switches between them', uk: 'у доку «My projects»; шапка перемикає між ними' },
         patch: { projects: DEMO_PROJECTS },
       },
     ],
+  },
+  {
+    /*
+     * WHICH SITE THE BUILDER STANDS IN (25.09.2026, the site switcher in the chat header). One
+     * chip per demo site; the patch moves `site` alone, and `world.set` swaps the per-site slice
+     * with it — so this stages exactly what the switcher does, without the flight. Only while the
+     * shelf has more than one site to stand in.
+     */
+    key: 'site', group: G.project, label: { en: 'Open site', uk: 'Відкритий сайт' }, kind: 'options',
+    appliesWhen: (w) => w.projects.length > 1,
+    current: (w) => w.site,
+    options: DEMO_PROJECTS.map((p) => ({ value: p.id, label: { en: p.name, uk: p.name }, patch: { site: p.id } })),
   },
   {
     /*

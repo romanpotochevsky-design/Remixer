@@ -263,15 +263,21 @@ const MEALS = [
   { name: 'Protein Pancakes', kcal: 430, protein: 31, tint: 'linear-gradient(135deg,#f9ecdf,#f0d3b0)', emoji: '🥞' },
 ]
 
-export function SitePreview() {
+/**
+ * `path` pins the site to one page — the miniature on a shelf card (modules/sites/SiteMini.tsx)
+ * shows the home page whatever the canvas stands on, and a picture does not navigate, so its
+ * links are inert. Without it the site stands on `ui.previewPath` and its links move it.
+ */
+export function SitePreview({ path: pinned }: { path?: string } = {}) {
   const { t } = useT()
   const reduce = useReducedMotion()
   const answers = useWorld((s) => s.world.brief.answers)
   const outline = useWorld((s) => s.world.planEdits.outline)
   const previewPath = useUI((s) => s.previewPath)
-  const go = useUI((s) => s.setPreviewPath)
+  const setPath = useUI((s) => s.setPreviewPath)
+  const go = pinned !== undefined ? () => {} : setPath
   const pages = useMemo(() => sitePages(answers, outline), [answers, outline])
-  const path = normalizePath(previewPath)
+  const path = normalizePath(pinned ?? previewPath)
   const page = findPage(pages, path)
   return (
     <div className="relative h-full" data-prototype-note="generated site, not builder chrome">

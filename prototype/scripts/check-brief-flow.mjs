@@ -1394,7 +1394,7 @@ check('the canvas carries no site controls before there is a site',
 /* ⚠️ …which costs the counter its place on screen, so the claim is read off the WORLD.
    The questions and the plan are free; only `Start Building` spends. */
 check('the questions and the plan cost nothing',
-  (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').credits)) === 2000)
+  (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').credits)) === 2000)
 
 /* Review: the chat narrows back to the split and the document takes the canvas. */
 await p.click('[data-plan-review]'); await p.waitForTimeout(900); await shot('10-plan-review')
@@ -3057,7 +3057,7 @@ check('…and the typed prompt is built as given', await cardUp())
    * walk as before it. Everything else here is what the customer sees because of it.
    */
   const world = () => p.evaluate(() => {
-    const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}')
+    const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}')
     return { domain: w.domain, published: w.published }
   })
   for (const [v, want, label] of [
@@ -3101,7 +3101,7 @@ check('…and the typed prompt is built as given', await cardUp())
         const w = win(); const site = document.querySelector('.site-stage'); const panel = document.querySelector('[role="dialog"][aria-label="Publish"]')
         const glint = panel?.querySelector('.glass-glint')
         samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, winS: w ? scaleOf(w) : null, winY: w ? yOf(w) : null, winClip: w ? clipOf(w) : null, winZ: w ? zOf(w) : null,
-          site: site ? +getComputedStyle(site.parentElement).opacity : null, siteZ: site ? zOf(site.parentElement) : null,
+          site: site ? +getComputedStyle(site.closest('[data-canvas-site]')).opacity : null, siteZ: site ? zOf(site.closest('[data-canvas-site]')) : null,
           panel: panel ? +getComputedStyle(panel).opacity : null, panelS: panel ? scaleOf(panel) : null, glint: glint ? +getComputedStyle(glint).opacity : null })
         if (now - t0 < 1900) requestAnimationFrame(tick)
       }
@@ -4110,10 +4110,10 @@ await shot('30-plan-review')
   await p.click('button:has-text("Build")')
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 10000 })
   await p.waitForTimeout(600)
-  const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').intakeDomain)
+  const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').intakeDomain)
   check('the attached domain survives into the build', kept === 'odesa-coffee-roasters.com', String(kept))
   /* …and it is NOT smuggled into the prompt: the transcript is what the customer typed. */
-  const firstSaid = await p.evaluate(() => (JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').sent || [])[0]?.text ?? '')
+  const firstSaid = await p.evaluate(() => (JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').sent || [])[0]?.text ?? '')
   check('…without the name being typed into the prompt for them',
     firstSaid === 'Bella’s Bakery', firstSaid)
 
@@ -5099,11 +5099,11 @@ await shot('30-plan-review')
     JSON.stringify({ from: flight.from, to: flight.to, x0: fx[0], min: Math.min(...fx), last: fx[fx.length - 1], n: fx.length, seatMoved: flight.seatMoved }))
   await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
   check('…and the seats are real controls: the flight put the world on the unfold',
-    (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').paneMotion)) === 'unfold')
+    (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').paneMotion)) === 'unfold')
 
   /* ── SHEET ─────────────────────────────────────────────────────────────────────── */
   check('…and picking Sheet brings the house motion back', await setMotion('Sheet')
-    && (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').paneMotion)) === 'sheet')
+    && (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').paneMotion)) === 'sheet')
   let cloud = await bbox('Cloud'), an = await bbox('Analytics')
   const shOpen = await filmed(() => filmPanes(1200), () => p.mouse.click(cloud.x + 12, cloud.y + 12))
   const so = of(shOpen, 'cloud')
@@ -5339,8 +5339,12 @@ await shot('30-plan-review')
   const oldMono = swapFilm.map((f) => f.pages.find(([id]) => id === '/')?.[1]).filter((v) => v !== undefined).every((v, i, a) => i === 0 || v <= a[i - 1] + 0.001)
   const labelSwap = swapFilm.find((f) => f.label === 'Services')?.t
   const last = swapFilm[swapFilm.length - 1]
+  /* one software-raster frame (~40 ms) of slack on the hand-over: the old page's node leaves on the React commit
+     after its 120 ms exit lands, and on a 36–43 ms frame that commit can fall one frame after the new page's
+     opacity has passed .2 (measured 24–28 ms late on three runs, 25.09.2026) — a page at ≤ .2 alpha for one frame is
+     not the double exposure the rule forbids; a 60 ms overlap (seen once under load) still fails */
   check('picking Services hands the preview over SEQUENTIALLY: the home page fades out monotonically and is gone before the Services page passes .2, the new page settles at 1 within the film, and the pill read «Services» before either moved',
-    oldGone !== undefined && newStarts !== undefined && newStarts >= oldGone - 20 && oldMono && labelSwap !== undefined && labelSwap <= oldGone
+    oldGone !== undefined && newStarts !== undefined && newStarts >= oldGone - 45 && oldMono && labelSwap !== undefined && labelSwap <= oldGone
       && last.pages.length === 1 && last.pages[0][0] === '/services' && last.pages[0][1] === 1 && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'Services',
     JSON.stringify({ oldGone, newStarts, oldMono, labelSwap, last }))
   /* the footer's page links: the second door, and the pill follows again */
@@ -5358,6 +5362,170 @@ await shot('30-plan-review')
   check('reopened, the check sits on About and the field holds «/about» selected whole; Esc closes the menu, and so does a press anywhere outside it',
     re.field[0] === '/about' && re.field[1] === 0 && re.field[2] === 6 && re.current.join() === '/about' && escClosed && outClosed,
     JSON.stringify({ re, escClosed, outClosed }))
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════
+ * M · THE SITE SWITCHER — the site closes into its card, a card grows out to the canvas
+ *
+ * Designer, 25.09.2026, with a screenshot of the chat header and a recording of the live editor:
+ * «вместо слова "Remixer" мы будем писать сайта название и стрелочку вниз… клик по названию
+ * сайта… должен с прикольной анимацией открывать список, анимация типа такой как на айфоне
+ * когда ты нажимаешь на иконку приложения из нее сайт вылетает на весь экран… на видео есть
+ * пример этого, но оно реализовано плохо и некачественно». The recording (prototype/scratchpad/
+ * site-switch): a ~150 ms crossfade into a Projects page, a stock screenshot scaling up and
+ * crossfading into a different-looking site, a dark glowing canvas while it loads. Ours
+ * (modules/sites): the header's name and chevron; a shelf of the customer's sites on the canvas;
+ * the REAL site layer flying into its own card and parking there as the card's picture (park.ts —
+ * one object, no clone, no seam); a picked card's picture flying out to the canvas, the builder
+ * becoming that site under it (`world.site`, the per-site slice swapped by `set`); the glow
+ * marking the arrival; the way back the same in reverse; Esc.
+ * ═══════════════════════════════════════════════════════════════════════════════════ */
+{
+  await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
+  await p.waitForTimeout(800)
+  /* the Home dock is the same shelf: four cards, the first the live demo site drawn by itself */
+  const dock = await p.$$eval('.home-card-face', (els) => els.map((e) => ({ name: e.querySelector('.home-thumb + div p')?.textContent, live: !!e.querySelector('[data-site-mini]') })))
+  check('the Home dock shows the customer’s four sites — the live demo site first, drawn by itself (SiteMini), then three drawn ones',
+    dock.length === 4 && dock[0].name === 'fit-ration' && dock[0].live && dock.slice(1).every((d) => !d.live) && dock.map((d) => d.name).join() === 'fit-ration,synco.com,meridianroast.com,still-studio.com',
+    JSON.stringify(dock))
+  await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(600)
+  const near = (a, b, tol) => Math.abs(a - b) <= tol
+  const box = (sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } })
+  const world = () => p.evaluate(() => { const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}'); return { site: w.site, domain: w.domain, published: w.published, unpublished: w.unpublished, sent: (w.sent || []).length, stash: Object.keys(w.stash || {}) } })
+  const headerName = () => p.$eval('[data-site-name]', (e) => e.textContent)
+  /* per frame: the parked site's transform and box, the shelf's opacity and scale, a pick's clone */
+  const film = (ms) => p.evaluate(async (ms) => {
+    window.__filmArmed = (window.__filmArmed || 0) + 1
+    const mat = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return null; const a = m.match(/matrix\(([^)]+)\)/); return a ? a[1].split(',').map(Number) : null }
+    let tAct = null; const mark = () => { if (tAct === null) tAct = performance.now() }
+    addEventListener('pointerdown', mark, { capture: true, once: true }); addEventListener('keydown', mark, { capture: true, once: true })
+    const s = []; const t0 = performance.now()
+    const tick = () => {
+      const now = performance.now()
+      const park = document.querySelector('[data-site-park]'); const pm = park ? mat(park) : null
+      const shelf = document.querySelector('[data-sites-shelf]'); const sm = shelf ? mat(shelf) : null
+      const fl = document.querySelector('[data-site-flight]'); const fm = fl ? mat(fl) : null
+      const pr = park ? park.getBoundingClientRect() : null; const fr = fl ? fl.getBoundingClientRect() : null
+      s.push({ t: Math.round(now - t0), park: pm ? +pm[0].toFixed(4) : 1, parkBox: pr ? [pr.x, pr.y, pr.width, pr.height].map((n) => +n.toFixed(1)) : null,
+        shelf: shelf ? { o: +(+getComputedStyle(shelf).opacity).toFixed(3), s: sm ? +sm[0].toFixed(4) : 1 } : null,
+        flight: fm ? { s: +fm[0].toFixed(4), box: [fr.x, fr.y, fr.width, fr.height].map((n) => +n.toFixed(1)) } : null,
+        z: document.querySelector('[data-canvas-site]') ? getComputedStyle(document.querySelector('[data-canvas-site]')).zIndex : null })
+      if (now - t0 < ms) setTimeout(() => requestAnimationFrame(tick), 0)
+    }
+    requestAnimationFrame(tick)
+    await new Promise((r) => setTimeout(r, ms + 60))
+    removeEventListener('pointerdown', mark, true); removeEventListener('keydown', mark, true)
+    if (tAct === null) return s
+    const off = tAct - t0
+    return s.filter((x) => x.t >= off - 1).map((x) => ({ ...x, t: Math.round(x.t - off) }))
+  }, ms)
+  const filmed = async (start, act) => {
+    const before = await p.evaluate(() => window.__filmArmed || 0)
+    const f = start(); await p.waitForFunction((n) => (window.__filmArmed || 0) > n, before); await act(); return f
+  }
+  const mono = (arr, dir) => arr.every((v, i) => i === 0 || (dir === 'down' ? v <= arr[i - 1] + 1e-3 : v >= arr[i - 1] - 1e-3))
+
+  /* ── the header ────────────────────────────────────────────────────────────────── */
+  const head = await p.$eval('[data-site-switch]', (e) => ({ name: e.querySelector('[data-site-name]').textContent, expanded: e.getAttribute('aria-expanded'), inChatHeader: !!e.closest('aside header'), arrive: e.querySelector('[data-site-name]').classList.contains('arrive-word'), chev: getComputedStyle(e.querySelector('[data-site-chevron]')).transform }))
+  const chatHeaderText = await p.$eval('aside header', (e) => e.innerText)
+  check('the chat header names the open site where the wordmark stood — «fit-ration» with a chevron, the mark still beside it — and the word «Remixer» is no longer in that header',
+    head.name === 'fit-ration' && head.expanded === 'false' && head.inChatHeader && head.arrive && (head.chev === 'none' || head.chev === 'matrix(1, 0, 0, 1, 0, 0)') && !/Remixer/.test(chatHeaderText) && !!(await p.$('aside header button[aria-label="Back to Home"]')),
+    JSON.stringify({ head, chatHeaderText }))
+
+  /* ── open: the site closes into its card ───────────────────────────────────────── */
+  const canvas = await box('[data-canvas-site]')
+  const openFilm = await filmed(() => film(1000), () => p.click('[data-site-switch]'))
+  const parkFrames = openFilm.filter((f) => f.shelf)
+  const parks = parkFrames.map((f) => f.park)
+  const slot = await box('[data-site-card="fit-ration"] [data-site-thumb]')
+  const parkedBox = await box('[data-site-park]')
+  const expected = slot.w / canvas.w
+  check('opening the shelf flies the REAL site layer into its own card: its scale falls monotonically from 1 to card/canvas (one object, no clone), it stands above the shelf while it flies, and it lands ON the card’s picture box to the pixel',
+    parks.length > 8 && parks[0] > 0.7 && mono(parks.slice(0, parks.findIndex((v) => v <= expected + 0.02) + 1), 'down') && near(parks[parks.length - 1], expected, 0.005)
+      && parkFrames.every((f) => f.z === '20') && near(parkedBox.x, slot.x, 1) && near(parkedBox.y, slot.y, 1) && near(parkedBox.w, slot.w, 1.5) && near(parkedBox.h, slot.h, 1.5),
+    JSON.stringify({ parks: parks.filter((_, i) => i % 5 === 0), expected, parkedBox, slot }))
+  const shelfO = parkFrames.map((f) => f.shelf.o), shelfS = parkFrames.map((f) => f.shelf.s)
+  check('…while the shelf comes into place behind it like the home screen behind a closing app: from slightly larger (≥ 1.03) down to 1 with the flight’s own spring, solid within ~300 ms, and it never launches larger than it started',
+    shelfS[0] >= 1.03 && Math.max(...shelfS) <= 1.051 && near(shelfS[shelfS.length - 1], 1, 0.002) && shelfO[0] < 0.6 && (parkFrames.find((f) => f.shelf.o >= 0.99)?.t ?? 9999) <= 400 && shelfO[shelfO.length - 1] === 1,
+    JSON.stringify({ shelfS: shelfS.filter((_, i) => i % 5 === 0), shelfO: shelfO.filter((_, i) => i % 5 === 0) }))
+  const shelf = await p.$eval('[data-sites-shelf]', (e) => ({
+    title: e.querySelector('h2')?.textContent, newBtn: !!e.querySelector('[data-sites-new]'),
+    cards: [...e.querySelectorAll('[data-site-card]')].map((c) => ({ id: c.dataset.siteCard, current: c.hasAttribute('data-site-current'), pic: getComputedStyle(c.querySelector('[data-site-picture]')).visibility, ratio: (() => { const r = c.querySelector('[data-site-thumb]').getBoundingClientRect(); return +(r.width / r.height).toFixed(3) })() })),
+  }))
+  check('the shelf is «My projects»: a card per site cut to the CANVAS’s aspect (the card is the canvas, smaller), the open site’s card marked and its own picture dark under the parked site, a «New project» door, the chevron turned over, the button expanded',
+    shelf.title === 'My projects' && shelf.newBtn && shelf.cards.length === 4 && shelf.cards[0].id === 'fit-ration' && shelf.cards[0].current && shelf.cards[0].pic === 'hidden' && shelf.cards.slice(1).every((c) => !c.current && c.pic === 'visible')
+      && shelf.cards.every((c) => near(c.ratio, canvas.w / canvas.h, 0.02)) && (await p.$eval('[data-site-chevron]', (e) => getComputedStyle(e).transform)) === 'matrix(1, 0, 0, -1, 0, 0)' && (await p.$eval('[data-site-switch]', (e) => e.getAttribute('aria-expanded'))) === 'true',
+    JSON.stringify({ shelf, canvasRatio: canvas.w / canvas.h }))
+
+  /* ── pick another site: its card grows out to the canvas, the builder becomes it ── */
+  const pickFilm = await filmed(() => film(1300), () => p.click('[data-site-card="synco"] [data-site-open]'))
+  const flightFrames = pickFilm.filter((f) => f.flight)
+  const fs = flightFrames.map((f) => f.flight.s)
+  const lastFlight = flightFrames[flightFrames.length - 1]
+  const stillParked = flightFrames.every((f) => near(f.park, expected, 0.01))
+  const shelfGone = pickFilm.find((f) => !f.shelf && f.t > 100)?.t
+  const flightGone = pickFilm.find((f) => !f.flight && f.t > 100)?.t
+  check('picking synco.com flies THAT card’s picture out to the canvas — its scale rises monotonically from card/canvas to 1 and it lands on the canvas box to the pixel — while the parked site stays in its card; the shelf goes only after the clone has landed',
+    fs.length > 8 && fs[0] < 0.5 && mono(fs, 'up') && fs[fs.length - 1] > 0.99 && near(lastFlight.flight.box[0], canvas.x, 1.5) && near(lastFlight.flight.box[1], canvas.y, 1.5) && near(lastFlight.flight.box[2], canvas.w, 3) && stillParked && shelfGone !== undefined && flightGone !== undefined && shelfGone >= flightGone - 40,
+    JSON.stringify({ fs: fs.filter((_, i) => i % 5 === 0), last: lastFlight?.flight, canvas, stillParked, shelfGone, flightGone }))
+  await p.waitForTimeout(400)
+  const afterPick = { name: await headerName(), shelf: !!(await p.$('[data-sites-shelf]')), drawing: await p.$eval('[data-site-drawing]', (e) => e.dataset.siteDrawing).catch(() => null), world: await world(), park: await p.$eval('[data-site-park]', (e) => getComputedStyle(e).transform), spinning: !!(await p.$('header .animate-spin')), publish: await p.$eval('header button:has-text("Publish")', (e) => e.innerText), chat: await p.$eval('.chat-col', (e) => e.innerText).catch(() => ''), typing: await p.$$eval('.stream-word', (els) => els.length) }
+  check('…and on landing the builder IS synco.com: the header names it, the canvas shows its drawing at full width, the world stands in its slice (a live domain, published, two edits queued, its own two-message transcript) with fit-ration put away in the stash, the Publish button reads «Publish changes 2», and the transcript arrives already read — nothing types itself',
+    afterPick.name === 'synco.com' && !afterPick.shelf && afterPick.drawing === 'synco' && afterPick.park === 'none' && afterPick.world.site === 'synco' && afterPick.world.domain === 'live' && afterPick.world.published === true && afterPick.world.unpublished === 2 && afterPick.world.sent === 2 && afterPick.world.stash.includes('fit-ration')
+      && /Publish changes\s*2/.test(afterPick.publish) && /Black Friday/.test(afterPick.chat) && afterPick.typing === 0,
+    JSON.stringify({ ...afterPick, chat: afterPick.chat.slice(0, 80) }))
+  check('the switch is marked by the glow, once, as every preview arriving is: the reload pulse runs on the new site and is over within ~2.5 s',
+    afterPick.spinning && (await (async () => { await p.waitForTimeout(2400); return !(await p.$('header .animate-spin')) })()),
+    JSON.stringify({ spinning: afterPick.spinning }))
+
+  /* ── back: the shelf from synco, the parked drawing, fit-ration restored from the stash ── */
+  await p.click('[data-site-switch]'); await p.waitForTimeout(900)
+  const fromSynco = await p.$$eval('[data-site-card]', (els) => els.map((c) => [c.dataset.siteCard, c.hasAttribute('data-site-current'), getComputedStyle(c.querySelector('[data-site-picture]')).visibility]))
+  const parkedSynco = await box('[data-site-park]'); const slotSynco = await box('[data-site-card="synco"] [data-site-thumb]')
+  check('opened from synco.com the shelf marks ITS card and parks the drawing in it to the pixel; fit-ration’s card shows its own live picture again',
+    fromSynco.find(([id]) => id === 'synco')[1] && fromSynco.find(([id]) => id === 'synco')[2] === 'hidden' && fromSynco.find(([id]) => id === 'fit-ration')[2] === 'visible' && !fromSynco.find(([id]) => id === 'fit-ration')[1]
+      && near(parkedSynco.x, slotSynco.x, 1) && near(parkedSynco.y, slotSynco.y, 1) && near(parkedSynco.w, slotSynco.w, 1.5),
+    JSON.stringify({ fromSynco, parkedSynco, slotSynco }))
+  await p.click('[data-site-card="fit-ration"] [data-site-open]'); await p.waitForTimeout(1100)
+  const back = { name: await headerName(), shelf: !!(await p.$('[data-sites-shelf]')), h1: await p.$eval('.site-stage h1', (e) => e.textContent).catch(() => null), world: await world() }
+  check('picking fit-ration brings its slice back out of the stash: the header, the real generated page on the canvas (its h1), the free address, the demo thread',
+    back.name === 'fit-ration' && !back.shelf && back.h1 === 'Chef-made meals with exact macros' && back.world.site === 'fit-ration' && back.world.domain === 'staging' && back.world.stash.includes('synco'),
+    JSON.stringify(back))
+
+  /* ── Esc closes the way it opened: the site grows back out, the shelf recedes ─────── */
+  await p.waitForTimeout(2600)
+  await p.click('[data-site-switch]'); await p.waitForTimeout(900)
+  const escFilm = await filmed(() => film(900), () => p.keyboard.press('Escape'))
+  const escParks = escFilm.filter((f) => f.shelf).map((f) => f.park)
+  const escShelfO = escFilm.filter((f) => f.shelf).map((f) => f.shelf.o)
+  const escShelfS = escFilm.filter((f) => f.shelf).map((f) => f.shelf.s)
+  await p.waitForTimeout(200)
+  const afterEsc = { shelf: !!(await p.$('[data-sites-shelf]')), park: await p.$eval('[data-site-park]', (e) => getComputedStyle(e).transform), expanded: await p.$eval('[data-site-switch]', (e) => e.getAttribute('aria-expanded')), z: await p.$eval('[data-canvas-site]', (e) => getComputedStyle(e).zIndex), h1: await p.$eval('.site-stage h1', (e) => e.textContent).catch(() => null) }
+  check('Esc flies the site back out of its card — scale rising monotonically to 1 — while the shelf recedes (to ~1.04, dissolving), and only then does the surface close: no shelf, identity transform, the button collapsed, the site back on its layer',
+    escParks.length > 6 && escParks[0] < 0.5 && mono(escParks, 'up') && escShelfO[escShelfO.length - 1] < 0.15 && escShelfS[escShelfS.length - 1] > 1.02 && mono(escShelfO, 'down')
+      && !afterEsc.shelf && afterEsc.park === 'none' && afterEsc.expanded === 'false' && afterEsc.z === '0' && afterEsc.h1 === 'Chef-made meals with exact macros',
+    JSON.stringify({ escParks: escParks.filter((_, i) => i % 5 === 0), escShelfO: escShelfO.filter((_, i) => i % 5 === 0), escShelfS: escShelfS.filter((_, i) => i % 5 === 0), afterEsc }))
+
+  /* ── the console stages the same axis ─────────────────────────────────────────────── */
+  await p.keyboard.press('Control+.'); await p.waitForTimeout(400)
+  const consoleText = await text()
+  await p.keyboard.press('Control+.'); await p.waitForTimeout(300)
+  check('the scenario console carries the site as an axis — «Open site», one chip per site — and the shelf as «Their four sites»', /Open site/.test(consoleText) && /Their four sites/.test(consoleText))
+
+  /* ── a new site from Home is a new row on the shelf, named from its prompt ─────────── */
+  await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
+  await p.waitForTimeout(700)
+  await p.fill('input[aria-label="Describe the site you want"]', 'Bella’s Bakery in Odesa')
+  await p.keyboard.press('Enter')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(500)
+  const fresh = await p.evaluate(() => { const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}'); return { site: w.site, names: (w.projects || []).map((x) => x.name), domain: w.domain, stash: Object.keys(w.stash || {}), project: w.project } })
+  const freshHeader = await p.$eval('aside header', (e) => e.innerText)
+  check('a build from the Home composer opens a NEW site: a fresh row at the front of the shelf named from the prompt («bellas-bakery-odesa»), the free address, fit-ration’s slice in the stash — and while it has no site yet the header wears the wordmark',
+    /^site-/.test(fresh.site) && fresh.names[0] === 'bellas-bakery-odesa' && fresh.names.length === 5 && fresh.domain === 'staging' && fresh.stash.includes('fit-ration') && /Remixer/.test(freshHeader) && !(await p.$('[data-site-switch]')),
+    JSON.stringify({ fresh, freshHeader }))
 }
 
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))

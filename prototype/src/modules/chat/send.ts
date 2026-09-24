@@ -12,7 +12,9 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest, type OutlineEdits } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, type Message, type Suggest, type OutlineEdits, type HomeProject } from '@/state/world'
+import { CUSTOM_DOMAIN } from '@/data/domains'
+import { slugOf } from '@/modules/preview/pages'
 import type { Text } from '@/i18n'
 import { useUI, CHAT_MAX, type SurfaceFrom } from '@/state/ui'
 import { baselineThread, replyTo, streamDuration } from './thread'
@@ -735,16 +737,45 @@ export const asOther = (text: string) => (text.trim() ? `${OTHER}${text}` : '')
  * choreography or touches its timings — the builder shell must not be able to tell
  * which composer the message came from.
  */
+/**
+ * A handle from a first prompt, the way Lovable names a project: its first words, without the
+ * apostrophes and the small words between them, as a slug — «Bella's Bakery in Odesa» → `bellas-bakery`,
+ * «Build me a website for my yoga studio» → `yoga-studio`. Three words at most; `new-site` when nothing
+ * is left to name it by.
+ */
+const SMALL_WORDS = /^(a|an|the|my|our|your|for|of|in|on|at|to|and|with|about|me|us|it|is|that|this|build|make|create|design|website|site|page|landing|please|want|need|i|we)$/i
+export function nameFromPrompt(prompt: string): string {
+  const words = prompt.replace(/['’‘]/g, '').split(/[^\p{L}\p{N}-]+/u).filter((w) => w && !SMALL_WORDS.test(w))
+  const handle = slugOf(words.slice(0, 3).join(' '))
+  return handle === 'page' ? 'new-site' : handle
+}
+
 export function startBuild(prompt: string) {
   const text = prompt.trim()
   if (!text) return
-  const { set, preset } = useWorld.getState()
+  const { world, set, preset } = useWorld.getState()
   /* A generation still ticking from the previous site would keep writing beats into
      this one; the staged `chat` axis clears `world.build`, but not the timer behind it. */
   stopBuildClock()
+  /*
+   * A NEW SITE IS A NEW ROW ON THE SHELF (25.09.2026, with the site switcher). The builder
+   * stands in `world.site`, so a build that starts from the Home composer opens a NEW site
+   * rather than rebuilding the one that was open: a fresh id, a card at the front of the shelf,
+   * and — because `set` puts the leaving site's slice away when `site` moves — the old site's
+   * transcript, publish state and domain wait in the stash for the next switch. The name is
+   * what Lovable does with a first prompt: its first words, as a handle («Bella's Bakery» →
+   * `bellas-bakery`), and the picture is the live site, since that is what will be built.
+   * Open question to the designer: whether a new site should be named from the prompt at all,
+   * or from the brief's first answer, or asked for.
+   */
+  const id = `site-${Date.now().toString(36)}`
+  const row: HomeProject = { id, name: nameFromPrompt(text), updatedLabel: { en: 'Just now', uk: 'Щойно' }, thumb: 'live' }
   set(
     {
+      site: id, projects: [row, ...world.projects],
       project: 'empty', chat: 'empty', sent: [], unpublished: 0, published: false,
+      /* the free address, as every site starts — the leaving site's domain is stashed with it */
+      domain: 'staging', customDomain: CUSTOM_DOMAIN, icann: false, brief: EMPTY_BRIEF,
       /*
        * ⚠️ THE MODE BELONGS TO THE PROJECT, SO A NEW SITE GETS THE DEFAULT BACK.
        *

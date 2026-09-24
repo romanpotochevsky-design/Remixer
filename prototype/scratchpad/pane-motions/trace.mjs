@@ -23,7 +23,7 @@ const setMotion = async (m) => {
   }, label)
   await p.waitForTimeout(150)
   await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
-  const v = await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').paneMotion)
+  const v = await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').paneMotion)
   if (v !== m) throw new Error(`paneMotion is ${v}, wanted ${m}`)
 }
 

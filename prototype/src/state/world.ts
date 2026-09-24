@@ -159,28 +159,68 @@ export interface HomeProject {
   name: string
   /** Pre-rendered relative time: the prototype has no clock to derive one from. */
   updatedLabel: { en: string; uk: string }
-  /** Which miniature site the card shows (see modules/home/thumbs.tsx). */
-  thumb: ThumbId
+  /**
+   * Which picture the card shows. A drawn miniature (modules/home/thumbs.tsx) for a site
+   * the prototype only has a picture of, or `'live'` for a site the prototype can actually
+   * RENDER — the generated demo site (modules/preview/SitePreview.tsx). A live card shows
+   * that site itself, scaled down (modules/sites/SiteMini.tsx): the same pixels the canvas
+   * shows, which is what lets the canvas fly INTO the card and out of it as one object.
+   */
+  thumb: ThumbId | 'live'
 }
 
 /**
- * The one project Figma draws, verbatim (28364:40635 / 40636).
+ * THE CUSTOMER'S SHELF — every site they have, the one open in the builder first.
  *
- * ⚠️ `payments` is not a mistake. The board fills this card with template card 1's
- * screenshot (the PayNexus fintech page) — Figma placeholder reuse, the same habit
- * that gives two template cards the identical caption — and the page is signed off by
- * comparing renders side by side, so the drawn screenshot is the one to draw. A
- * dedicated `synco` thumbnail exists in thumbs.tsx for the day the real asset lands:
- * swap this one field and nothing else changes.
+ * Until 25.09.2026 this held the ONE card Figma draws for the Home dock (28364:40635 /
+ * 40636): `synco.com` with template card 1's PayNexus screenshot — the board's placeholder
+ * pairing. It became the truth about WHICH site is open the day the chat header grew a site
+ * switcher (designer: «вместо слова "Remixer" мы будем писать сайта название и стрелочку
+ * вниз»), and a switcher that named the open site `synco.com` over a page whose logo says
+ * `fit.` and whose address is `fit-ration.remixer.ai` would have been the lie the control
+ * exists to remove. So the first card IS the demo site — the designer already treats it so
+ * («у кастомера этот сайт первый в списке… пусть он будет по умолчанию неопубликованным»,
+ * 08.09.2026, about this very card) — named by its handle and drawn LIVE (its picture is the
+ * site itself, scaled), and the shelf carries three more so that switching has somewhere to
+ * go. Those three are drawn miniatures from thumbs.tsx: the prototype has one generated
+ * site, and a card that promises another would be caught by the canvas the moment it opened
+ * — so the canvas shows the drawing at full width instead, the way the template picker's
+ * stage already does.
+ *
+ * ⚠️ The Home dock renders THIS list too (one list, two homes), so its first card now shows
+ * the live demo site where the board drew the placeholder. Said to the designer, not hidden.
+ *
+ * A site is named the way the dock's board names it: by its address when it has one
+ * (`synco.com`), by its handle when it only has the free one (`fit-ration`). Open question
+ * to the designer whether a connected domain should rename the site.
  */
 export const DEMO_PROJECTS: HomeProject[] = [
   {
+    id: 'fit-ration',
+    name: 'fit-ration',
+    updatedLabel: { en: 'Updated 1 hour ago', uk: 'Оновлено годину тому' },
+    thumb: 'live',
+  },
+  {
     id: 'synco',
     name: 'synco.com',
-    updatedLabel: { en: 'Updated 1 hour ago', uk: 'Оновлено годину тому' },
-    thumb: 'payments',
+    updatedLabel: { en: 'Updated yesterday', uk: 'Оновлено вчора' },
+    thumb: 'synco',
+  },
+  {
+    id: 'meridian',
+    name: 'meridianroast.com',
+    updatedLabel: { en: 'Updated 3 days ago', uk: 'Оновлено 3 дні тому' },
+    thumb: 'coffee',
+  },
+  {
+    id: 'still',
+    name: 'still-studio.com',
+    updatedLabel: { en: 'Updated 2 weeks ago', uk: 'Оновлено 2 тижні тому' },
+    thumb: 'yoga',
   },
 ]
+
 
 /**
  * The pre-build brief: the questions Remixer asks when the first prompt is too thin
@@ -459,6 +499,23 @@ export interface World {
   /** Every site this customer has generated. Empty = the first-run Home page. */
   projects: HomeProject[]
   /**
+   * WHICH of those sites is open in the builder — the id of a row in `projects`.
+   *
+   * Every axis in `SITE_AXES` describes THIS site: its project state, transcript, publish
+   * state, domain. Moving `site` therefore means standing in another site, and `set` treats
+   * it so: the current site's slice is put away in `stash` and the new one's is taken out (or
+   * its demo default, `SITE_SLICES`). One `set({ site })` from anywhere — the shelf, the
+   * console, a link — and the whole shell is that site's. Travels in the URL as `s`.
+   */
+  site: string
+  /**
+   * The per-site slices that are NOT on screen: what each other site's axes were when the
+   * customer last stood in it, keyed by site id. Written only by `set` when `site` moves.
+   * Not a URL key (like `sent`, it is somebody's work, not a situation); a link therefore
+   * opens with an empty stash and the other sites in their demo defaults.
+   */
+  stash: Record<string, SiteSlice>
+  /**
    * What is sitting in the hosting panel's cart.
    *
    * The cart is genuinely outside Remixer — panel.dreamhost.com owns that page — but
@@ -490,6 +547,63 @@ export interface World {
 /** The composer's mode switcher (Figma 29697:54553). See `World.mode`. */
 export type ChatMode = 'autopilot' | 'build'
 
+/**
+ * THE AXES THAT BELONG TO ONE SITE — what `set` puts away and takes out when `site` moves.
+ *
+ * The rest of the world is the CUSTOMER's (account, credits, inventory, cart, the shelf itself)
+ * or a design switch (`planSimple`, `paneMotion`, `chipInkWhite`) — those stay put across a
+ * switch. `intakeDomain` stays too, for the reason `startBuild` gives: it was decided before
+ * any project existed. ⚠️ A new per-site axis has to be added HERE as well as to `startBuild`'s
+ * list, or a switch will carry it from one site into the next.
+ */
+export const SITE_AXES = [
+  'project', 'unpublished', 'published', 'mode', 'domain', 'customDomain', 'icann',
+  'chat', 'sent', 'brief', 'build', 'suggest', 'planEdits',
+] as const
+export type SiteAxis = (typeof SITE_AXES)[number]
+export type SiteSlice = Pick<World, SiteAxis>
+
+/** The slice of a world that belongs to the site it stands in. */
+export function sliceOf(w: World): SiteSlice {
+  const out = {} as Record<SiteAxis, unknown>
+  for (const k of SITE_AXES) out[k] = w[k]
+  return out as SiteSlice
+}
+
+/**
+ * What each demo site looks like the first time the customer switches to it. Three different
+ * publish states on purpose — a switch that landed every site on the same panel would prove
+ * nothing about the switch. Transcript ids start at 2001, clear of the demo thread (1…3) and the
+ * staged presets (1001…), so a switch never re-uses an id the chat has already animated.
+ */
+const SITE_BASE: Omit<SiteSlice, 'sent' | 'domain' | 'customDomain' | 'published' | 'unpublished'> = {
+  project: 'built', mode: 'autopilot', icann: false, chat: 'long',
+  brief: EMPTY_BRIEF, build: EMPTY_BUILD, suggest: EMPTY_SUGGEST, planEdits: EMPTY_PLAN_EDITS,
+}
+export const SITE_SLICES: Record<string, SiteSlice> = {
+  synco: {
+    ...SITE_BASE, domain: 'live', customDomain: 'synco.com', published: true, unpublished: 2,
+    sent: [
+      { id: 2001, who: 'user', text: { en: 'Put the Black Friday banner above the product grid and make the discount bigger.', uk: 'Постав банер Чорної п’ятниці над сіткою товарів і зроби знижку більшою.' } },
+      { id: 2002, who: 'ai', text: { en: 'Done — the banner now sits under the nav with the 30% set in the display size, and the grid starts right below it. Two edits are waiting to go live whenever you publish.', uk: 'Готово — банер тепер під навігацією, 30% набрано дисплейним кеглем, сітка починається одразу під ним. Дві правки чекають публікації.' } },
+    ],
+  },
+  meridian: {
+    ...SITE_BASE, domain: 'staging', customDomain: CUSTOM_DOMAIN, published: true, unpublished: 0,
+    sent: [
+      { id: 2001, who: 'user', text: { en: 'Add a subscription card next to the single-bag price.', uk: 'Додай картку підписки біля ціни за одну пачку.' } },
+      { id: 2002, who: 'ai', text: { en: 'Added a “Every 2 weeks” card beside the bag price with the 15% saving called out. It is live already — nothing waiting to publish.', uk: 'Додав картку «Кожні 2 тижні» біля ціни пачки з виділеною економією 15%. Уже опубліковано — нічого не чекає.' } },
+    ],
+  },
+  still: {
+    ...SITE_BASE, domain: 'staging', customDomain: CUSTOM_DOMAIN, published: false, unpublished: 0,
+    sent: [
+      { id: 2001, who: 'user', text: { en: 'Make the schedule readable on a phone.', uk: 'Зроби розклад читабельним на телефоні.' } },
+      { id: 2002, who: 'ai', text: { en: 'The schedule now stacks by day on narrow screens, with the class name and time on one line. Publish whenever you are ready to put the site live.', uk: 'Розклад тепер складається по днях на вузьких екранах, назва й час класу в одному рядку. Публікуйте, коли будете готові вивести сайт.' } },
+    ],
+  },
+}
+
 export const DEFAULT_WORLD: World = {
   lang: 'en',
   account: 'trial',
@@ -518,6 +632,8 @@ export const DEFAULT_WORLD: World = {
   customDomain: CUSTOM_DOMAIN,
   chat: 'long',
   projects: DEMO_PROJECTS,
+  site: 'fit-ration',
+  stash: {},
   cart: [],
   sent: [],
   brief: EMPTY_BRIEF,
@@ -591,6 +707,17 @@ export const registrantUnconfirmed = (w: World) => isCustomDomainConnected(w) &&
 export const trialDaysLeft = (w: World) => Math.max(0, 30 - w.trialDay)
 /** First run on the Home page: nothing generated yet, so the dock shows templates. */
 export const hasProjects = (w: World) => w.projects.length > 0
+/** The row of the shelf the builder stands in — or null for an id the shelf no longer has
+ *  (a site made in this session, after a reload rebuilt the shelf from a link's count). */
+export const currentSite = (w: World): HomeProject | null => w.projects.find((p) => p.id === w.site) ?? null
+/** What the chat header calls the open site. */
+export const siteName = (w: World): string => currentSite(w)?.name ?? w.site
+/** Stand in another site: put this one's slice away, take that one's out (see `World.site`). */
+export function switchSite(id: string) {
+  const { world, set, preset } = useWorld.getState()
+  if (id === world.site) return
+  set({ site: id }, preset)
+}
 
 /* ------------------------------------------------------------- validity */
 
@@ -728,7 +855,7 @@ export function violations(w: World): Violation[] {
 const KEYS: Record<string, keyof World> = {
   l: 'lang', a: 'account', t: 'trialDay', b: 'billing', c: 'credits', z: 'bonus',
   i: 'inventory', d: 'domain', p: 'project', u: 'unpublished', v: 'published', h: 'chat',
-  m: 'mode', k: 'icann', n: 'customDomain', g: 'intakeDomain',
+  m: 'mode', k: 'icann', n: 'customDomain', g: 'intakeDomain', s: 'site',
 }
 
 /**
@@ -809,8 +936,12 @@ interface Store {
    v5: a DEFAULT changed — `paneMotion` went from `unfold` to `sheet` (25.09.2026, the designer's
    pick). The stored world is read OVER `DEFAULT_WORLD`, so every browser that had opened the build
    would have kept `unfold` in its snapshot and never seen the house motion — the same way
-   `published: true` outlived its own default on 08.09.2026 (CLAUDE.md, the Publish panel). */
-const STORAGE_KEY = 'remixer-prototype/world/v5'
+   `published: true` outlived its own default on 08.09.2026 (CLAUDE.md, the Publish panel).
+   v6: the world grew `site` and `stash`, and a DEFAULT changed — `projects` is four sites with the
+   live demo site first where it was the board's one placeholder card (25.09.2026, the site
+   switcher). A v5 snapshot has no `site`, and its one-card shelf would leave the switcher with
+   nothing to switch to. */
+const STORAGE_KEY = 'remixer-prototype/world/v6'
 
 /*
  * THE SAME RULE `set` APPLIES TO A PATCH, FOR A WHOLE WORLD THAT ARRIVES WITHOUT ONE.
@@ -828,6 +959,17 @@ const STORAGE_KEY = 'remixer-prototype/world/v5'
 function normalizeIcann(w: World): World {
   return w.icann && !isCustomDomainActive(w) ? { ...w, icann: false } : w
 }
+/**
+ * …and the open site has to be ON the shelf. A link carries the shelf as a COUNT (`w`), so a
+ * site made in a session is not on the shelf a reload rebuilds, while `s` still names it. The
+ * axes on screen are still that site's (they travelled in the link); only the row is gone, so
+ * the builder stands in the first card rather than in a nameless one.
+ */
+function normalizeSite(w: World): World {
+  if (w.projects.some((p) => p.id === w.site)) return w
+  return { ...w, site: w.projects[0]?.id ?? DEFAULT_WORLD.site }
+}
+const normalize = (w: World) => normalizeSite(normalizeIcann(w))
 
 function initialWorld(): World {
   const fromUrl = paramsToWorld(window.location.search)
@@ -860,9 +1002,9 @@ function initialWorld(): World {
       Array.isArray(saved.sent) &&
       saved.sent.length > 0 &&
       saved.sent[saved.sent.length - 1].who === 'user'
-    return normalizeIcann({ ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent } : null) })
+    return normalize({ ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent } : null) })
   }
-  if (Object.keys(saved).length) return normalizeIcann({ ...DEFAULT_WORLD, ...saved })
+  if (Object.keys(saved).length) return normalize({ ...DEFAULT_WORLD, ...saved })
   return DEFAULT_WORLD
 }
 
@@ -880,6 +1022,21 @@ export const useWorld = create<Store>((set, get) => ({
   world: initialWorld(),
   preset: null,
   set: (patch, preset = null) => {
+    /*
+     * MOVING `site` MEANS STANDING IN ANOTHER SITE (see `World.site`). The site being left
+     * has its slice put away under its id; the site being entered gets its slice back — the
+     * one it was left in, or its demo default, or (a site the stash has never seen and the
+     * demo table does not name — a site made in this session) the axes as they stand. Whatever
+     * else the patch names wins over the restored slice: `startBuild` moves `site` AND says what
+     * the new site's axes are in the same call. The rules below then see a patch that already
+     * carries `chat` with `sent`, `brief`, `build`… so none of them fires by accident.
+     */
+    if (patch.site !== undefined && patch.site !== get().world.site) {
+      const w = get().world
+      const stash = { ...w.stash, [w.site]: sliceOf(w) }
+      const restored = stash[patch.site] ?? SITE_SLICES[patch.site] ?? null
+      patch = { ...(restored ?? {}), ...patch, stash }
+    }
     // Moving the chat axis means a different situation is being staged, so a
     // transcript typed under the old one is stale — unless the caller is the
     // composer, which always hands over both at once.

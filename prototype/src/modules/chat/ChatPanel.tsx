@@ -610,6 +610,21 @@ export function ChatPanel() {
     const last = thread[thread.length - 1]
     parked.current = last && last.who === 'user' ? last.id : -1
   }
+  /*
+   * A SITE SWITCH IS NOT A SEND (25.09.2026, the site switcher). The other site's whole transcript
+   * arrives in one commit with ids this pane has never seen, and per-message freshness would type
+   * its last answer out and spring its last question from the composer — a conversation that
+   * happened days ago, replayed as if it had just happened. Standing in another site is the same
+   * situation as the first paint: whatever is on screen has already been read.
+   */
+  const siteRef = useRef(world.site)
+  if (siteRef.current !== world.site) {
+    siteRef.current = world.site
+    seen.current = new Set(thread.map((m) => m.id))
+    fresh.current.clear()
+    const last = thread[thread.length - 1]
+    parked.current = last && last.who === 'user' ? last.id : -1
+  }
   for (const m of thread) if (!seen.current.has(m.id)) fresh.current.add(m.id)
   const isFresh = (id: number) => fresh.current.has(id)
 

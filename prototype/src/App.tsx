@@ -32,8 +32,11 @@ import { PlanSurface } from '@/modules/chat/PlanSurface'
 import { DomainModal } from '@/modules/domains/DomainModal'
 import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
-import { SitePreview } from '@/modules/preview/SitePreview'
+import { SiteStage } from '@/modules/preview/SiteStage'
 import { PageSwitcher } from '@/modules/preview/PageSwitcher'
+import { SiteSwitch } from '@/modules/sites/SiteSwitch'
+import { SitesShelf } from '@/modules/sites/SitesShelf'
+import { useSitePark } from '@/modules/sites/park'
 import { SiriGlow } from '@/ui/SiriGlow'
 import {
   SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, canvasSiteSheet,
@@ -790,6 +793,8 @@ export default function App() {
     setClosingTile(null)
   }, [surface])
   const holdPanel = canvasSettling || surfaceJustLeft
+  /* the site layer's parking transform — identity unless the sites shelf has it in its card (modules/sites/park.ts) */
+  const park = useSitePark()
   /*
    * THE WINDOWS' MOTION, AND WHETHER THIS IS A SWITCH. Both go to the panes as refs written in RENDER,
    * for the same reason `leavingTile` is computed here: the pane that is leaving reads them in the
@@ -801,7 +806,7 @@ export default function App() {
   const paneMotionRef = useRef<PaneMotion>(world.paneMotion)
   paneMotionRef.current = world.paneMotion
   const handoffRef = useRef(false)
-  handoffRef.current = prevSurface.current !== 'preview' && surface !== 'preview' && prevSurface.current !== surface
+  handoffRef.current = prevSurface.current !== 'preview' && prevSurface.current !== 'sites' && surface !== 'preview' && surface !== 'sites' && prevSurface.current !== surface
   /* ⚠️ THE FIRST FRAME OF THE FOLD IS PAINTED BEFORE THAT EFFECT RUNS. `closingTile` is set after the
      commit that turned `surface` to 'preview', so the render that starts the fold saw `on` false and
      `closingTile` null — one frame with the tile unlit, a 120 ms colour transition started towards dark
@@ -962,20 +967,31 @@ export default function App() {
         <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
           {/* the mark is the way back to the Home page, as it is in every builder
               in the category */}
-          <button
-            onClick={() => goHome()}
-            aria-label={t({ en: 'Back to Home', uk: 'На головну' })}
-            className="flex items-center"
-          >
-            <div className="grid w-14 place-items-center">
+          <div className="flex min-w-0 items-center">
+            <button
+              onClick={() => goHome()}
+              aria-label={t({ en: 'Back to Home', uk: 'На головну' })}
+              className="grid w-14 flex-none place-items-center"
+            >
               {/* `arrive-mark`: on the Home → builder arrival the mark lights up here, just
-                  before the wordmark unfolds from it (index.css "THE ARRIVAL") */}
+                  before the word beside it unfolds from it (index.css "THE ARRIVAL") */}
               <span className="arrive-mark grid h-8 w-8 place-items-center">
                 <LogoRemixer size={32} />
               </span>
-            </div>
-            <span className="arrive-word font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
-          </button>
+            </button>
+            {/*
+              * THE SLOT BESIDE THE MARK NAMES THE SITE (designer, 25.09.2026: «вместо слова "Remixer"
+              * мы будем писать сайта название и стрелочку вниз»): the open site's name and a chevron,
+              * the door to the shelf of the customer's sites (modules/sites). Until there is a site —
+              * through the brief and the build — the wordmark stands here as it always did: the rule
+              * that hides every control the site does not yet exist for, applied to its name.
+              */}
+            {world.project === 'built' ? (
+              <SiteSwitch />
+            ) : (
+              <span className="arrive-word font-display text-[20px] font-semibold leading-[1.2] text-white">Remixer</span>
+            )}
+          </div>
           {/*
             * THE PILL HOLDS ONE THING OR THE OTHER, never both (designer, 07.09.2026:
             * "кнопок история и скрыть чат тут быть не может").
@@ -1196,6 +1212,85 @@ export default function App() {
             */}
           <AnimatePresence initial={false}>
           {(() => {
+            /*
+             * THE SITE LAYER — one element for the whole session (`key="site"`), so leaving a window
+             * and closing the shelf both find it where it was. Its parking wrapper (`data-site-park`)
+             * carries the shelf's flight; at rest the wrapper is identity.
+             */
+            const siteLayer = (
+              <motion.div
+                key="site"
+                data-canvas-site
+                data-site-parked={surface === 'sites' ? '' : undefined}
+                className={`absolute bottom-2 left-2 right-0 top-0 ${surface === 'sites' ? 'z-20 pointer-events-none' : 'z-0'}`}
+                /* under an arriving SHEET the site steps back like the card behind an iOS sheet —
+                   smaller and a few px UP, the other way from the sheet (motion.ts `canvasSiteSheet`) */
+                variants={reduce ? canvasSiteFade : world.paneMotion === 'sheet' ? canvasSiteSheet : canvasSite}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                onUpdate={keepOnMainThread}
+                /* a layer of its own, so the recession is a compositor transform and not a repaint
+                   of the whole site on every frame */
+                style={{ willChange: 'transform, opacity' }}
+                /* the site is back on the ground: now the panel may come (see `hold`) */
+                onAnimationComplete={(def) => { if (def === 'animate') setCanvasSettling(false) }}
+              >
+                <motion.div
+                  data-site-park
+                  className="absolute inset-0 flex items-center justify-center"
+                  /* clipped and promoted ONLY while the shelf has it: at rest the stage clips itself, and a
+                     second permanently promoted full-canvas layer cost the software rasteriser a frame floor
+                     (the suite's 8-samples-in-300-ms floor read 7 with it on) */
+                  style={{ ...park, transformOrigin: '0 0', overflow: surface === 'sites' ? 'hidden' : 'visible', willChange: surface === 'sites' ? 'transform' : undefined }}
+                >
+                <motion.div
+                  /* the phone frame gets a hairline: floating on the ground, the site's
+                     own dark sections would otherwise bleed into the shell. Lovable
+                     outlines its preview the same way (measured border #41413D). */
+                  className={`site-stage relative overflow-hidden rounded-shell ${
+                    device === 'mobile' ? 'ring-1 ring-[#ffffff14]' : ''
+                  }`}
+                  initial={false}
+                  animate={{
+                    width: device === 'mobile' ? MOBILE_WIDTH : '100%',
+                    height: device === 'mobile' ? MOBILE_HEIGHT : '100%',
+                  }}
+                  style={{ maxHeight: '100%' }}
+                  transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
+                >
+                  {world.project === 'built' ? (
+                    /* During a reload the page itself stays put — the edge glow alone
+                       carries the "working" signal (no skeleton, no remount flicker). */
+                    <SiteStage />
+                  ) : (
+                    <div className="grid h-full place-items-center bg-[var(--gray-900)] px-6 text-center">
+                      {world.project === 'generating' ? (
+                        /* "pages", plural, was a lie: this pass builds ONE page and the
+                           site appears when that page is done (designer, 07.09.2026).
+                           The board draws this canvas bare, and bare in a static frame
+                           is fine; live, an unexplained dark rectangle for a minute
+                           reads as broken. One quiet line, and the detail — which
+                           section, what is happening to it — stays in the chat where
+                           the card already carries it. */
+                        <p className="text-[14px] text-[var(--white-400)]">
+                          {t({
+                            en: 'Your home page appears here as soon as it’s built',
+                            uk: 'Головна з’явиться тут, щойно буде готова',
+                          })}
+                        </p>
+                      ) : (
+                        <p className="text-[14px] text-[var(--white-300)]">
+                          {t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <SiriGlow active={glow} surface={world.project === 'built' ? 'split' : 'dark'} />
+                </motion.div>
+                </motion.div>
+              </motion.div>
+            )
             /* The plan document takes the canvas the same way the domains dashboard
                does — a surface in place of the site, not a modal over it. There is no
                site to preview at this point in the flow, so nothing is being covered. */
@@ -1236,72 +1331,22 @@ export default function App() {
               <CanvasPane key="domains" id="domains" canvas={canvasRef} motion={paneMotionRef} handoff={handoffRef}>
                 <DomainsSurface />
               </CanvasPane>
+            ) : surface === 'sites' ? (
+              /*
+               * THE SITES SHELF KEEPS THE SITE ON SCREEN (modules/sites, 25.09.2026). Unlike the four
+               * windows, it does not replace the site layer: the layer stays mounted — same key, no
+               * exit — and flies INTO its card on the shelf, parked there as the card's picture until
+               * the shelf goes (park.ts). So the layer is rendered here too, above the shelf and
+               * pointer-blind, and the shelf under it. An array, not a fragment: AnimatePresence tracks
+               * its children by key, and a fragment would hide both behind one keyless child.
+               */
+              [<SitesShelf key="sites" />, siteLayer]
             ) : (
-              <motion.div
-                key="site"
-                data-canvas-site
-                className="absolute bottom-2 left-2 right-0 top-0 z-0 flex items-center justify-center"
-                /* under an arriving SHEET the site steps back like the card behind an iOS sheet —
-                   smaller and a few px UP, the other way from the sheet (motion.ts `canvasSiteSheet`) */
-                variants={reduce ? canvasSiteFade : world.paneMotion === 'sheet' ? canvasSiteSheet : canvasSite}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                onUpdate={keepOnMainThread}
-                /* a layer of its own, so the recession is a compositor transform and not a repaint
-                   of the whole site on every frame */
-                style={{ willChange: 'transform, opacity' }}
-                /* the site is back on the ground: now the panel may come (see `hold`) */
-                onAnimationComplete={(def) => { if (def === 'animate') setCanvasSettling(false) }}
-              >
-                <motion.div
-                  /* the phone frame gets a hairline: floating on the ground, the site's
-                     own dark sections would otherwise bleed into the shell. Lovable
-                     outlines its preview the same way (measured border #41413D). */
-                  className={`site-stage relative overflow-hidden rounded-shell ${
-                    device === 'mobile' ? 'ring-1 ring-[#ffffff14]' : ''
-                  }`}
-                  initial={false}
-                  animate={{
-                    width: device === 'mobile' ? MOBILE_WIDTH : '100%',
-                    height: device === 'mobile' ? MOBILE_HEIGHT : '100%',
-                  }}
-                  style={{ maxHeight: '100%' }}
-                  transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
-                >
-                  {world.project === 'built' ? (
-                    /* During a reload the page itself stays put — the edge glow alone
-                       carries the "working" signal (no skeleton, no remount flicker). */
-                    <SitePreview />
-                  ) : (
-                    <div className="grid h-full place-items-center bg-[var(--gray-900)] px-6 text-center">
-                      {world.project === 'generating' ? (
-                        /* "pages", plural, was a lie: this pass builds ONE page and the
-                           site appears when that page is done (designer, 07.09.2026).
-                           The board draws this canvas bare, and bare in a static frame
-                           is fine; live, an unexplained dark rectangle for a minute
-                           reads as broken. One quiet line, and the detail — which
-                           section, what is happening to it — stays in the chat where
-                           the card already carries it. */
-                        <p className="text-[14px] text-[var(--white-400)]">
-                          {t({
-                            en: 'Your home page appears here as soon as it’s built',
-                            uk: 'Головна з’явиться тут, щойно буде готова',
-                          })}
-                        </p>
-                      ) : (
-                        <p className="text-[14px] text-[var(--white-300)]">
-                          {t({ en: 'Your site will appear here as Remixer builds it', uk: 'Ваш сайт з’явиться тут, щойно Remixer його збудує' })}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <SiriGlow active={glow} surface={world.project === 'built' ? 'split' : 'dark'} />
-                </motion.div>
-              </motion.div>
+              siteLayer
             )
           })()}
           </AnimatePresence>
+
           <PublishPanel hold={holdPanel} />
       {/* The design system's "are you sure?" — mounted ONCE, here, because its scrim covers
           the whole shell (board 30282:51628). Anything that needs it calls

@@ -36,6 +36,7 @@ import {
 import { ScrollArea } from '@/ui/ScrollArea'
 import { IconFullscreen, IconMoreVertical, IconPlus } from '@/ui/icons'
 import { Thumb } from './thumbs'
+import { SiteMini } from '@/modules/sites/SiteMini'
 import { rectOf } from './attachment'
 
 /** How many slots the shelf shows. Six is what the canonical board draws. */
@@ -586,7 +587,10 @@ function ProjectCard({ project }: { project: HomeProject }) {
      `built`, otherwise the builder opens on an empty canvas for a customer who is
      looking straight at their finished site. */
   function open() {
-    if (world.project !== 'built') set({ project: 'built' }, preset)
+    /* …and standing in THAT site: `site` moving swaps the per-site slice in (world.ts `set`);
+       a card whose slice says anything but `built` is corrected, as before. */
+    if (project.id !== world.site) set({ site: project.id }, preset)
+    if (useWorld.getState().world.project !== 'built') set({ project: 'built' }, preset)
     openBuilder()
   }
 
@@ -601,7 +605,8 @@ function ProjectCard({ project }: { project: HomeProject }) {
           height for it; inside the dock's fixed band it shrinks back to 216.
           Hover duration via `--card-hover-dur` — see TemplateCard. */}
       <div className="home-thumb relative w-full overflow-hidden rounded-[12px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1">
-        <Thumb id={project.thumb} className="absolute inset-0" />
+        {/* the live demo site is its own picture (SiteMini); the others are drawn */}
+        {project.thumb === 'live' ? <SiteMini className="absolute inset-0" /> : <Thumb id={project.thumb} className="absolute inset-0" />}
       </div>
 
       <div className="flex h-14 w-full flex-none items-center justify-between">
