@@ -4539,7 +4539,15 @@ await shot('30-plan-review')
           }
         })() })
       last = now
-      if (now - t0 < ms) requestAnimationFrame(tick)
+      /* re-arm from a timer, not from inside the callback: rAF callbacks run in request order, and motion's
+         frame loop re-requests its frame INSIDE its callback — a sampler re-requesting inside its own would keep
+         whatever order the first frame dealt (armed before the press, it runs FIRST every frame and reads the
+         value one frame behind, so a leaving pane's last sample is never its final value — measured 24.09.2026:
+         opacity .1–.24 and scale 1.0265 for a pass to 1.035, with the node gone before the next tick). Requested
+         after the batch, the sampler runs AFTER motion from the second frame on and reads what that frame paints;
+         the first frame still catches the committed values (p = 0 at the footprint), because that request was
+         made before the press */
+      if (now - t0 < ms) setTimeout(() => requestAnimationFrame(tick), 0)
     }
     requestAnimationFrame(tick)
     await new Promise((r) => setTimeout(r, ms + 80))
@@ -4983,7 +4991,9 @@ await shot('30-plan-review')
       s.push({ t: Math.round(now - t0), dt: Math.round(now - last), panes: [...document.querySelectorAll('[data-canvas-pane]')].map(snap),
         site: site ? { o: +(+getComputedStyle(site).opacity).toFixed(2), s: sm ? +sm[0].toFixed(3) : 1, y: sm ? Math.round(sm[5]) : 0 } : null })
       last = now
-      if (now - t0 < ms) requestAnimationFrame(tick)
+      /* re-armed from a timer so the sampler runs after motion's loop and reads the frame's own values — see
+         the Cloud block's filmCanvas */
+      if (now - t0 < ms) setTimeout(() => requestAnimationFrame(tick), 0)
     }
     requestAnimationFrame(tick)
     await new Promise((r) => setTimeout(r, ms + 60))
@@ -5044,8 +5054,8 @@ await shot('30-plan-review')
   const heldTo = oldSheet.filter((q) => q.o >= 0.5).slice(-1)[0]?.t
   check('switching windows as SHEETS stacks them: the old sheet steps back (.955, a few px up, to ~55 %) and stays there until the new one has landed over it, then goes',
     oldSheet.length >= 12 && Math.abs(Math.min(...oldSheet.map((q) => q.s)) - 0.955) < 0.003 && Math.min(...oldSheet.map((q) => q.y)) <= -8
-      /* ≤ .06, not === 0: the sampler and motion's frame loop share the rAF, and when the sampler runs first on
-         the final frame it reads the value one frame BEFORE the end — the node is unmounted before the next tick */
+      /* ≤ .06, not === 0: the sampler reads after motion's update (see filmPanes), so the last sample is normally the
+         final value; the tolerance is for a node React removes in the same task as motion's final frame */
       && heldTo >= 380 && oldLast.o <= 0.06 && oldLast.t >= 480
       && newSheet[0].y > 120 && newSheet[newSheet.length - 1].y === 0 && newSheet[newSheet.length - 1].o === 1
       && (await p.$$('[data-canvas-pane]')).length === 1,
