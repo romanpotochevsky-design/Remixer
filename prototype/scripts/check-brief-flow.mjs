@@ -4269,15 +4269,18 @@ await shot('30-plan-review')
   const sheet = await p.$eval('[data-cloud-page]', (n) => {
     const g = getComputedStyle(n.parentElement)
     const r = n.parentElement.getBoundingClientRect()
-    return { bg: g.backgroundColor, line: g.borderTopColor, w: g.borderTopWidth, rad: g.borderTopRightRadius, y: r.y }
+    return { bg: g.backgroundColor, line: g.boxShadow, border: g.borderTopWidth, rad: g.borderTopRightRadius, y: r.y }
   })
   /* REPAINTED 24.09.2026 (board 30911:59222, the designer: «есть отличия в цветах фона между тем что
      ты сделал и в макете»): the sheet's fill is `Neutral Alpha/50` — 4 % WHITE over the window base,
      which flattens to `--window-lift` #1d1d20, the same lift the menu column ramps up to. It was
      `--gray-900` #18181b. Assert the PIXEL, and assert it FLAT: the row fade below must end in this
      exact colour, and a stop cannot be composited for you. */
-  check('…and the page is a LIGHTER sheet on it: the lift #1d1d20 under a 1px 8%-white edge, corner 6 (board `Page content` / 30911:59222)',
-    sheet.bg === 'rgb(29, 29, 32)' && sheet.line === 'rgba(255, 255, 255, 0.08)' && sheet.w === '1px' && sheet.rad === '6px',
+  /* the edge is an INSET SHADOW since 24.09.2026 (measured against the Users board 30971:98655): Figma's
+     stroke sits inside the sheet and its content starts at y 0 under it; `border-t` had pushed the whole
+     page 1 px low on both boards. Same 1 px of 8 % white, no border. */
+  check('…and the page is a LIGHTER sheet on it: the lift #1d1d20 under a 1px 8%-white edge drawn INSIDE it (an inset shadow, no border), corner 6 (board `Page content` / 30911:59222)',
+    sheet.bg === 'rgb(29, 29, 32)' && sheet.line.endsWith('rgba(255, 255, 255, 0.08) 0px 1px 0px 0px inset') && sheet.border === '0px' && sheet.rad === '6px',
     JSON.stringify(sheet))
   check('…so the darker base is what shows behind the top bar — the strip the designer caught missing',
     Math.round(sheet.y - (await R('[data-cloud-window]'))[1]) === 49, String(Math.round(sheet.y - (await R('[data-cloud-window]'))[1])))
@@ -4481,8 +4484,10 @@ await shot('30-plan-review')
   const secRest = secY[secY.length - 1]
   const dip = Math.min(...secY) - secRest
   check('…and the Secrets row glides up by the fold’s travel, dips past its seat and comes back (the bounce through zero)',
-    Math.abs(secY[0] - secRest - (natural + 5)) < 1.5 && dip < -1.5 && dip > -12 && Math.abs(secY[secY.length - 1] - secRest) < 0.6,
-    `from ${secY[0]} to ${secRest} (travel ${(secY[0] - secRest).toFixed(1)} vs ${natural + 5}), dip ${dip.toFixed(2)}`)
+    /* the travel is the fold's content, the 5 under the card AND the card's own 4 above its header — the
+       Users board draws the folded menu as five plain rows at 0 · 51 · 102 · 153 · 204 (24.09.2026) */
+    Math.abs(secY[0] - secRest - (natural + 9)) < 1.5 && dip < -1.5 && dip > -12 && Math.abs(secY[secY.length - 1] - secRest) < 0.6,
+    `from ${secY[0]} to ${secRest} (travel ${(secY[0] - secRest).toFixed(1)} vs ${natural + 9}), dip ${dip.toFixed(2)}`)
   const onRow = (s) => Math.abs(s.plate[1] - s.secrets[1]) < 0.75 && Math.abs(s.plate[3] - 48) < 0.6
   const dipFrame = leave.reduce((a, s) => (s.secrets[1] < a.secrets[1] ? s : a), leave[0])
   check('the plate leaves Meals as 40 × r10, lands on Secrets as 48 × r12 — and is ON the row through the dip',
@@ -4501,6 +4506,146 @@ await shot('30-plan-review')
   check('a room with nothing drawn for it shows no table and no headings',
     (await p.$('[data-cloud-headings]')) === null && (await p.$('[data-cloud-row]')) === null
     && /Nothing here yet/.test(await p.$eval('[data-cloud-window]', (e) => e.innerText)))
+
+  /*
+   * THE USERS ROOM — Figma 30971:98655 (designer 24.09.2026: «вот макет для страницы Users в Cloud… сделай
+   * перфект пиксель как в макете»). `modules/cloud/UsersRoom.tsx`. Every number below is measured against the
+   * board in the sheet's own coordinates; the chrome is the board's, the data is fit·ration's
+   * (`data/cloudUsers.ts`). The board's width is 2560 and this suite runs at 1600, so what is held here is
+   * what does not depend on the width: heights, left-anchored x's, the right-edge insets, the colours.
+   */
+  await p.click('[data-cloud-seat="users"]')
+  await p.waitForSelector('[data-users-room]')
+  await p.waitForTimeout(1300)
+  await p.mouse.move(600, 600)
+  const U = await p.evaluate(() => {
+    const q = (s) => document.querySelector(s)
+    const S = q('[data-cloud-page]').parentElement.getBoundingClientRect()
+    const r = (el) => { const b = el.getBoundingClientRect(); return [+(b.x - S.x).toFixed(2), +(b.y - S.y).toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2)] }
+    const g = (el) => getComputedStyle(el)
+    const col = q('[data-cloud-menu-list]').getBoundingClientRect()
+    const seatY = (id) => +(q(`[data-cloud-seat="${id}"]`).getBoundingClientRect().y - col.y).toFixed(1)
+    const plate = q('[data-cloud-plate]')
+    const usersRow = q('[data-cloud-seat="users"]')
+    const word = q('[data-cloud-title-word]')
+    const stat = (id) => { const e = q(`[data-users-stat="${id}"]`); const [l, v] = e.querySelectorAll('span'); return { box: r(e), shadow: g(e).boxShadow, label: [g(l).fontSize, g(l).fontWeight, g(l).color, l.textContent], value: [g(v).fontSize, g(v).fontWeight, v.textContent] } }
+    const sw = [...document.querySelectorAll('[data-users-switch]')].map((e) => ({ box: r(e), on: e.getAttribute('aria-checked'), bg: g(e).backgroundColor, knob: r(e.firstElementChild), knobBg: g(e.firstElementChild).backgroundColor }))
+    const rows = [...document.querySelectorAll('[data-users-row]')].map((e) => ({ id: e.dataset.usersRow, box: r(e), shadow: g(e).boxShadow,
+      avatar: r(e.querySelector('.rounded-full')), tone: g(e.querySelector('.rounded-full')).backgroundColor, provider: e.querySelector('[data-users-provider]').dataset.usersProvider, text: e.innerText }))
+    const signin = q('[data-users-signin]')
+    const chart = q('[data-users-chart]')
+    const line = q('[data-users-graph] path:last-of-type')
+    return {
+      seats: ['database', 'emails', 'secrets', 'users', 'storage'].map(seatY),
+      plate: { y: +(plate.getBoundingClientRect().y - col.y).toFixed(1), h: plate.getBoundingClientRect().height, bg: g(plate).backgroundColor, r: g(plate).borderTopLeftRadius },
+      usersOn: { weight: g(usersRow.children[1]).fontWeight, glyph: usersRow.querySelector('svg path').getAttribute('d').slice(0, 40), color: g(usersRow.children[0]).color },
+      dbWeight: g(q('[data-cloud-seat="database"]').children[1]).fontWeight,
+      head: { h: q('h2').parentElement.getBoundingClientRect().height, word: g(word).fontWeight, size: g(word).fontSize, x: r(word)[0] },
+      total: stat('total'), week: stat('week'), add: { box: r(q('[data-users-add]')), radius: g(q('[data-users-add]')).borderTopLeftRadius, bg: g(q('[data-users-add]')).backgroundColor },
+      sheetW: S.width,
+      signin: { box: r(signin), bg: g(signin).backgroundColor, ring: g(signin.lastElementChild).boxShadow, well: r(q('[data-users-well]')), wellBg: g(q('[data-users-well]')).backgroundColor, wellR: g(q('[data-users-well]')).borderTopLeftRadius },
+      methods: [...document.querySelectorAll('[data-users-method]')].map((e) => ({ box: r(e), shadow: g(e).boxShadow, tint: g(e.firstElementChild).backgroundColor, av: r(e.firstElementChild) })),
+      sw,
+      chart: { box: r(chart), bg: g(chart).backgroundColor, ring: g(chart).boxShadow, title: q('[data-users-chart] h3').textContent },
+      axis: [...q('[data-users-axis]').children].map((e) => [e.textContent, r(e)[1]]),
+      grid: [...q('[data-users-grid]').children].map((e) => [r(e)[1], g(e).backgroundColor]),
+      graph: { box: r(q('[data-users-graph]')), stroke: line.getAttribute('stroke'), width: line.getAttribute('stroke-width') },
+      days: [...q('[data-users-grid]').nextElementSibling.children].map((e) => e.textContent),
+      people: r(q('[data-users-people]')), search: { box: r(q('[data-users-search]')), ring: g(q('[data-users-search]')).boxShadow, radius: g(q('[data-users-search]')).borderTopLeftRadius, ph: q('[data-users-search] input').placeholder },
+      headings: { box: r(q('[data-users-headings]')), rule: g(q('[data-users-headings]')).boxShadow, labels: [...q('[data-users-headings]').querySelectorAll('span')].filter((e) => !e.children.length).map((e) => [e.textContent, r(e)[0]]),
+        style: (() => { const e = q('[data-users-headings] span'); return [g(e).fontSize, g(e).fontWeight, g(e).color] })() },
+      list: { box: r(q('[data-users-list]')), rule: g(q('[data-users-list]')).boxShadow },
+      rows,
+      chip: (() => { const e = q('[data-users-chip]'); return e && { box: r(e), bg: g(e).backgroundColor, radius: g(e).borderTopLeftRadius, size: g(e).fontSize, row: e.closest('[data-users-row]').dataset.usersRow } })(),
+      text: q('[data-cloud-window]').innerText,
+      html: q('[data-cloud-window]').innerHTML.includes('chernov'),
+      tableGone: !q('[data-cloud-headings]') && !q('[data-cloud-row]') && !q('[data-cloud-window] label[class*="max-w-[400px]"]'),
+      pageRule: g(q('[data-cloud-pagebody]')).borderTopWidth,
+    }
+  })
+  check('Users: the folded menu is five plain rows at 0 · 51 · 102 · 153 · 204 — the card’s own 4 above Database folds with it (30971:98973)',
+    JSON.stringify(U.seats) === JSON.stringify([0, 51, 102, 153, 204]), JSON.stringify(U.seats))
+  check('…the plate sits on Users at the ROOM strength the board draws — #7E57C2 at 25 %, 48 × r12 (30971:99001), not the table row’s 50 %',
+    U.plate.y === 153 && U.plate.h === 48 && U.plate.bg === 'rgba(126, 87, 194, 0.25)' && U.plate.r === '12px', JSON.stringify(U.plate))
+  check('…and the row that is on wears the board’s FILLED `Users active` cut in white, semibold; Database folded is a regular row',
+    U.usersOn.weight === '600' && U.usersOn.glyph.startsWith('M2.66528 13.9867C2.66528 13.6684') && U.usersOn.color === 'rgb(255, 255, 255)' && U.dbWeight === '400',
+    JSON.stringify([U.usersOn, U.dbWeight]))
+  check('the header is the board’s 90, its title Gilroy 32 SEMIBOLD (30971:100597 — the Database board’s is bold) at pl-36',
+    Math.round(U.head.h) === 90 && U.head.word === '600' && U.head.size === '32px' && U.head.x === 36, JSON.stringify(U.head))
+  check('…and the table’s search, filter and «Add an object» have handed over — no table, no headings, no 400 pill, no rule under the header',
+    U.tableGone && U.pageRule === '0px', `${U.tableGone} · rule ${U.pageRule}`)
+  check('two stats, each a 48 tab 21 from the top: the label 13 medium in Deep Purple/200, the figure Gilroy 28 semibold; the first carries an 8 %-white divider inside its right edge',
+    U.total.box[1] === 21 && U.total.box[3] === 48 && U.week.box[3] === 48
+    && JSON.stringify(U.total.label.slice(0, 3)) === JSON.stringify(['13px', '500', 'rgb(179, 157, 219)']) && JSON.stringify(U.total.value.slice(0, 2)) === JSON.stringify(['28px', '600'])
+    && U.total.shadow.endsWith('rgba(255, 255, 255, 0.08) -1px 0px 0px 0px inset') && U.week.shadow === 'none'
+    && Math.round(U.week.box[0] - (U.total.box[0] + U.total.box[2])) === 24,
+    JSON.stringify([U.total, U.week]))
+  check('…the «+» is the kit’s bare 40 icon button at r10, 48 after the stats and 24 in from the sheet’s edge, 25 from the top',
+    U.add.box[2] === 40 && U.add.box[3] === 40 && U.add.radius === '10px' && U.add.bg === 'rgba(0, 0, 0, 0)' && U.add.box[1] === 25
+    && Math.round(U.sheetW - (U.add.box[0] + U.add.box[2])) === 24 && Math.round(U.add.box[0] - (U.week.box[0] + U.week.box[2])) === 48,
+    JSON.stringify(U.add))
+  check('the Sign-in card is 432 × 350 at (24, 90) — #242427 under a #2a2a2d ring drawn ABOVE its well; the well #1a1a1c, r16, 86 down',
+    JSON.stringify(U.signin.box) === JSON.stringify([24, 90, 432, 350]) && U.signin.bg === 'rgb(36, 36, 39)' && U.signin.ring.endsWith('rgb(42, 42, 45) 0px 0px 0px 1px inset')
+    && U.signin.well[1] === 176 && U.signin.well[3] === 264 && U.signin.wellBg === 'rgb(26, 26, 28)' && U.signin.wellR === '16px',
+    JSON.stringify(U.signin))
+  check('…three 88 rows split by 4 % white (the last by nothing), each a 40 avatar in its method’s tint — orange, purple, blue — at 16 in',
+    U.methods.length === 3 && U.methods.every((m, i) => m.box[3] === 88 && m.box[1] === 176 + 88 * i && m.av[0] === 40 && m.av[2] === 40)
+    && U.methods[0].shadow.endsWith('rgba(255, 255, 255, 0.04) 0px -1px 0px 0px inset') && U.methods[2].shadow === 'none'
+    && JSON.stringify(U.methods.map((m) => m.tint)) === JSON.stringify(['rgba(255, 183, 77, 0.15)', 'rgba(179, 157, 219, 0.15)', 'rgba(48, 134, 255, 0.15)']),
+    JSON.stringify(U.methods))
+  check('the switches are the board’s 46 × 28 at 354 in — on, off, on: Cloud purple / Gray/600 track, the 22 knob white at 21 or Gray/350 at 3',
+    U.sw.length === 3 && U.sw.every((w) => w.box[0] === 394 && w.box[2] === 46 && w.box[3] === 28 && w.knob[2] === 22)
+    && JSON.stringify(U.sw.map((w) => w.on)) === JSON.stringify(['true', 'false', 'true'])
+    && U.sw[0].bg === 'rgb(126, 87, 194)' && U.sw[1].bg === 'rgb(82, 82, 91)' && U.sw[0].knob[0] === 415 && U.sw[1].knob[0] === 397
+    && U.sw[0].knobBg === 'rgb(255, 255, 255)' && U.sw[1].knobBg === 'rgb(199, 199, 205)',
+    JSON.stringify(U.sw))
+  await p.click('[data-users-method="password"] [data-users-switch]')
+  await p.waitForTimeout(420)
+  const flipped = await p.$eval('[data-users-method="password"] [data-users-switch]', (e) => ({ on: e.getAttribute('aria-checked'), bg: getComputedStyle(e).backgroundColor, x: e.firstElementChild.getBoundingClientRect().x - e.getBoundingClientRect().x }))
+  check('…and a switch is a real control: pressing Email and password turns it on — the knob travels to 21, the track goes purple',
+    flipped.on === 'true' && flipped.bg === 'rgb(126, 87, 194)' && Math.round(flipped.x) === 21, JSON.stringify(flipped))
+  await p.click('[data-users-method="password"] [data-users-switch]')
+  check('the Chart card is 353 tall at (468, 90) — 12 after Sign-in — on Black/300 under a 5 %-white ring, titled as drawn',
+    U.chart.box[0] === 468 && U.chart.box[1] === 90 && U.chart.box[3] === 353 && U.chart.bg === 'rgba(9, 9, 11, 0.24)'
+    && U.chart.ring.endsWith('rgba(255, 255, 255, 0.05) 0px 0px 0px 1px inset') && U.chart.title === 'Chart',
+    JSON.stringify(U.chart))
+  check('…its axis spreads five labels 55.75 apart from 154, and its five gridlines sit on 161 + 60.25·n at 8 % white (30971:100966)',
+    JSON.stringify(U.axis.map((a) => a[0])) === JSON.stringify(['100%', '80%', '60%', '20%', '0%']) && U.axis.every((a, i) => Math.abs(a[1] - (154 + 55.75 * i)) < 0.05)
+    && U.grid.length === 5 && U.grid.every((l, i) => Math.abs(l[0] - (161 + 60.25 * i)) < 0.05 && l[1] === 'rgba(255, 255, 255, 0.08)'),
+    JSON.stringify([U.axis, U.grid]))
+  check('…the series is the board’s own path in Cloud purple, 3 wide, at the export’s origin (527.5, 192.5), over Sun…Sat',
+    U.graph.stroke === '#7e57c2' && U.graph.width === '3' && U.graph.box[0] === 527.5 && U.graph.box[1] === 192.5 && U.graph.box[3] === 177
+    && JSON.stringify(U.days) === JSON.stringify(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']),
+    JSON.stringify([U.graph, U.days]))
+  check('People starts at 443; its search is 256 × 40 at r10 under a 12 %-white ring, 16 down and 24 in from the sheet’s edge',
+    U.people[1] === 443 && U.search.box[1] === 459 && U.search.box[2] === 256 && U.search.box[3] === 40 && U.search.radius === '10px'
+    && U.search.ring.endsWith('rgba(255, 255, 255, 0.12) 0px 0px 0px 1px inset') && Math.round(U.sheetW - (U.search.box[0] + U.search.box[2])) === 24 && U.search.ph === 'Search',
+    JSON.stringify(U.search))
+  check('…the headings are 47 at 515 under a #33333a rule drawn inside, 12 medium at 32 %, Name at 48 — and the last column says «Last sign-in», not the board’s second «Provider»',
+    U.headings.box[1] === 515 && U.headings.box[3] === 47 && U.headings.rule.endsWith('rgb(51, 51, 58) 0px 1px 0px 0px inset')
+    && JSON.stringify(U.headings.style) === JSON.stringify(['12px', '500', 'rgba(255, 255, 255, 0.32)'])
+    && JSON.stringify(U.headings.labels.map((l) => l[0])) === JSON.stringify(['Name', 'Email', 'Logins', 'Provider', 'Last sign-in']) && U.headings.labels[0][1] === 48,
+    JSON.stringify(U.headings))
+  check('…the list opens under its own #33333a rule at 562, the rows 72 from 570 at x 24, the avatar at 40, split by 4 % white, the last by nothing',
+    U.list.box[1] === 562 && U.list.rule.endsWith('rgb(51, 51, 58) 0px 1px 0px 0px inset') && U.rows.length === 5
+    && U.rows.every((w, i) => w.box[0] === 24 && w.box[3] === 72 && w.box[1] === 570 + 72 * i && w.avatar[0] === 40 && w.avatar[2] === 40)
+    && U.rows.slice(0, -1).every((w) => w.shadow.endsWith('rgba(255, 255, 255, 0.04) 0px -1px 0px 0px inset')) && U.rows[4].shadow === 'none',
+    JSON.stringify(U.rows.map((w) => [w.id, w.box, w.shadow])))
+  check('the avatars wear the board’s five colours in its order, and the GREY one is the Unconfirmed account — a password sign-up that has never signed in',
+    JSON.stringify(U.rows.map((w) => w.tone)) === JSON.stringify(['rgb(0, 115, 236)', 'rgb(113, 113, 122)', 'rgb(255, 179, 0)', 'rgb(216, 27, 96)', 'rgb(104, 159, 56)'])
+    && U.chip && U.chip.row === 'liam' && U.chip.bg === 'rgb(63, 63, 70)' && U.chip.radius === '6px' && U.chip.box[3] === 24 && U.chip.size === '12px'
+    && U.rows[1].provider === 'email' && /No sign-ins/.test(U.rows[1].text) && /Never/.test(U.rows[1].text),
+    JSON.stringify([U.rows.map((w) => w.tone), U.chip]))
+  check('…providers are the board’s marks — mail and Google — and no row carries the board’s placeholder address (a real person’s)',
+    JSON.stringify(U.rows.map((w) => w.provider)) === JSON.stringify(['email', 'email', 'google', 'email', 'google']) && !U.html && !/chernov/i.test(U.text),
+    JSON.stringify(U.rows.map((w) => w.provider)))
+  await p.fill('[data-users-search] input', 'gmail')
+  await p.waitForTimeout(250)
+  const found = await p.evaluate(() => [...document.querySelectorAll('[data-users-row]')].map((e) => e.dataset.usersRow))
+  await p.fill('[data-users-search] input', '')
+  check('the People search filters by name or address: «gmail» leaves the three gmail accounts',
+    JSON.stringify(found) === JSON.stringify(['maya', 'sofia', 'priya']), JSON.stringify(found))
+  await p.waitForTimeout(300)
   /* back: pressing Database always means the first table — the card unfolds to its natural height and the plate seats on Meals */
   const back = await filmMenu('database', 900)
   const B = back[back.length - 1]

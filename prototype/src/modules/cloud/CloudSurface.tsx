@@ -4,8 +4,9 @@
  * Opened by the Cloud button in the right rail, it takes the canvas the way the domains
  * dashboard and the plan document do: a surface in place of the site, not a modal over it
  * (`state/ui.ts`, `Surface`). It is the site's backend in one screen — the databases behind
- * the page, plus the rooms the board names but does not draw: Emails · Secrets · Users ·
- * Storage.
+ * the page, plus the rooms the board names: Emails · Secrets · Users · Storage. Users has a
+ * board of its own since 24.09.2026 (30971:98655 — `UsersRoom.tsx`); the other three are still
+ * undrawn and show an empty note.
  *
  * ── WHAT THE BOARD SAYS, AND WHERE ITS NUMBERS COME FROM ─────────────────────────────
  *
@@ -66,17 +67,18 @@
  *   does too — the row wants 1553.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform } from 'motion/react'
 import { EXIT, MENU_SPRING, menuGlass, menuGlassFade, verbRoll, verbRollFade } from '@/ui/motion'
 import { useUI } from '@/state/ui'
 import { usePaneSettle } from '@/App'
 import { useT, type Text } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { CLOUD_TABLES, type CloudRow } from '@/data/cloud'
+import { IconCloud, IconFilter, IconAdd, IconTrash, IconPencil, IconSearchM, IconCloseM } from '@/ui/icons'
 import {
-  IconCloud, IconDatabase, IconMail, IconSecrets, IconUsers, IconStorage,
-  IconFilter, IconAdd, IconTrash, IconPencil, IconSearchM, IconCloseM,
-} from '@/ui/icons'
+  GlyphDatabase, GlyphDatabaseActive, GlyphMail, GlyphSecrets, GlyphUsers, GlyphUsersActive, GlyphStorage,
+} from './boardIcons'
+import { UsersHeaderTools, UsersRoom } from './UsersRoom'
 
 
 /* ─────────────────────────────── geometry, off the board ─────────────────────────────── */
@@ -99,27 +101,47 @@ const HEADINGS: { key: string; w: number; label: Text }[] = [
   { key: 'image_url', w: 56, label: { en: 'image_url', uk: 'image_url' } },
 ]
 
-/** The menu's second group — named by the board, all four still empty rooms. */
-const ROOMS = [
-  { id: 'emails', Icon: IconMail, label: { en: 'Emails', uk: 'Пошта' } as Text },
-  { id: 'secrets', Icon: IconSecrets, label: { en: 'Secrets', uk: 'Секрети' } as Text },
-  { id: 'users', Icon: IconUsers, label: { en: 'Users', uk: 'Користувачі' } as Text },
-  { id: 'storage', Icon: IconStorage, label: { en: 'Storage', uk: 'Сховище' } as Text },
+/**
+ * The menu's second group — named by the first board; Users has a board of its own since
+ * 24.09.2026 (30971:98655, `UsersRoom.tsx`), the other three are still empty rooms.
+ * Glyphs are the board's own exports (`boardIcons.tsx`): the outline cut at 48 % white, and the
+ * FILLED cut in white when the room is on — the board draws that cut for Users only, so the other
+ * three simply turn white.
+ */
+const ROOMS: { id: string; Icon: Glyph; OnIcon?: Glyph; label: Text }[] = [
+  { id: 'emails', Icon: GlyphMail, label: { en: 'Emails', uk: 'Пошта' } },
+  { id: 'secrets', Icon: GlyphSecrets, label: { en: 'Secrets', uk: 'Секрети' } },
+  { id: 'users', Icon: GlyphUsers, OnIcon: GlyphUsersActive, label: { en: 'Users', uk: 'Користувачі' } },
+  { id: 'storage', Icon: GlyphStorage, label: { en: 'Storage', uk: 'Сховище' } },
 ]
 
 
 /* ────────────────────────────────────── the menu ─────────────────────────────────────── */
 
+type Glyph = (p: { size?: number; className?: string }) => JSX.Element
+
 const FIRST_TABLE = CLOUD_TABLES[0].id
 const isTable = (id: string) => CLOUD_TABLES.some((x) => x.id === id)
 /** The board's 5 under the Database card, between it and the rooms — it folds with the card. */
 const CARD_GAP = 5
-/** The selection plate: the module's accent at half strength (30816:52025, the selected sub-row). */
-const PLATE = 'rgba(126,87,194,0.5)'
+/**
+ * The card's own 4 above its header row (30816:52025). It FOLDS too: the Users board (30971:98973)
+ * draws the folded menu as five plain rows at 0 · 51 · 102 · 153 · 204 — Database a room row like
+ * the others, with nothing above it — so the 4 belongs to the card, not to the row.
+ */
+const CARD_PAD = 4
+/**
+ * The selection plate: the module's accent, at TWO strengths the two boards draw — half on a
+ * database sub-row (30816:52025, where it sits inside the card's own 8 % glass) and a quarter on a
+ * room row (30971:99001 `state-layer`: #7E57C2 at 25 %). The one flying plate carries its alpha
+ * with it and lands on each at its own strength.
+ */
+const PLATE_RGB = '126,87,194'
+const PLATE_A_TABLE = 0.5
+const PLATE_A_ROOM = 0.25
 /** Keeps a motion element's fades on the main thread (see the verb roll in PublishPanel.tsx). */
 const noop = () => {}
 
-type Glyph = (p: { size?: number; className?: string }) => JSX.Element
 
 /**
  * A 48-tall top-level row: 24 icon box holding a 20 glyph, then the label. The row that is
@@ -131,8 +153,10 @@ type Glyph = (p: { size?: number; className?: string }) => JSX.Element
  * ⚠️ `relative z-[2]`: the rows paint ABOVE the selection plate (`z-[1]`), which flies under
  * them as a single element — see `CloudMenu`.
  */
-function MenuRow({ Icon, label, seat, strong, on, bloom = !on, expanded, onClick }: {
+function MenuRow({ Icon, OnIcon, label, seat, strong, on, bloom = !on, expanded, onClick }: {
   Icon: Glyph
+  /** the filled cut the board draws for an ON row (Users); without one the outline cut goes white */
+  OnIcon?: Glyph
   label: string
   /** The id the selection plate seats on (`data-cloud-seat`). */
   seat: string
@@ -157,7 +181,7 @@ function MenuRow({ Icon, label, seat, strong, on, bloom = !on, expanded, onClick
           renders it that way and that token is otherwise unclaimed in this window */}
       <span className={`grid h-6 w-6 flex-none place-items-center overflow-hidden transition-colors duration-[var(--dur-fast)] ease-std ${
         on ? 'text-white' : 'text-[var(--white-480)]'}`}>
-        <Icon size={20} />
+        {on && OnIcon ? <OnIcon size={20} /> : <Icon size={20} />}
       </span>
       <span className={`text-[15px] leading-none text-white${strong || on ? ' font-semibold' : ''}`}>{label}</span>
     </button>
@@ -188,7 +212,7 @@ function TableRow({ id, label, on, onClick }: { id: string; label: string; on: b
   )
 }
 
-type Box = { top: number; left: number; width: number; height: number; radius: number }
+type Box = { top: number; left: number; width: number; height: number; radius: number; alpha: number }
 
 /** An element's LAYOUT box inside `host` (transforms ignored), summed up the offsetParent chain. */
 function boxIn(el: HTMLElement, host: HTMLElement): Box {
@@ -200,7 +224,11 @@ function boxIn(el: HTMLElement, host: HTMLElement): Box {
     left += n.offsetLeft
     n = n.offsetParent as HTMLElement | null
   }
-  return { top, left, width: el.offsetWidth, height: el.offsetHeight, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 }
+  return {
+    top, left, width: el.offsetWidth, height: el.offsetHeight,
+    radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0,
+    alpha: el.hasAttribute('data-cloud-db') ? PLATE_A_TABLE : PLATE_A_ROOM,
+  }
 }
 
 /**
@@ -213,7 +241,8 @@ function boxIn(el: HTMLElement, host: HTMLElement): Box {
  * стиле Apple liquid glass» — so, from `MENU_SPRING` in ui/motion.ts (the law is written there):
  *
  *  · `p` — the fold's progress, 1 open / 0 folded — is THE ONE CLOCK. It writes the clip's
- *    height (p × the content's natural height), the 5px the card keeps under itself (p × 5),
+ *    height (p × the content's natural height), the 5px the card keeps under itself (p × 5), the
+ *    4px it keeps above its header (p × 4 — `CARD_PAD`, the Users board draws the folded rows flush),
  *    the card's glass (8 % white × p: folded, the Database row is a plain room row, not a group
  *    in a plate) and, past zero, the deficit as a negative bottom margin so the rooms dip a few
  *    pixels past their seat and come back (the Reveal's bounce through zero). All written to
@@ -247,6 +276,7 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
   const column = useRef<HTMLDivElement>(null)
   const wrap = useRef<HTMLDivElement>(null)
   const card = useRef<HTMLDivElement>(null)
+  const head = useRef<HTMLDivElement>(null)
   const clip = useRef<HTMLDivElement>(null)
   const sizer = useRef<HTMLDivElement>(null)
   const rooms = useRef<HTMLDivElement>(null)
@@ -256,6 +286,8 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
   const plateW = useMotionValue(0)
   const plateH = useMotionValue(0)
   const plateR = useMotionValue(10)
+  const plateA = useMotionValue(open ? PLATE_A_TABLE : PLATE_A_ROOM)
+  const plateBg = useTransform(plateA, (a) => `rgba(${PLATE_RGB},${+a.toFixed(4)})`)
   const [closed, setClosed] = useState(!open)
   const [arriving, setArriving] = useState(false)
   const seated = useRef(false)
@@ -268,14 +300,20 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
      clipped progress `u`, and its top GLUED to the target row's live position plus an offset that
      decays with `u`. When `u` reaches 1 the plate IS on the row and stays on it through the bounce.
      A hop with the fold at rest (table → table, room → room) is a plain spring flight. */
-  const ride = useRef<null | { from: Box; to: Box; toMoves: boolean; nat: number; vStart: number; pTo: number }>(null)
+  const ride = useRef<null | { from: Box; to: Box; k: number; vStart: number; pTo: number }>(null)
+  /* How far a seat moves per unit of the fold: rooms under the card move by the whole fold (its
+     content, the 5 under it and the card's own 4 above its header); rows INSIDE the card move by
+     the 4 alone; nothing else moves. */
+  const slope = (el: HTMLElement, nat: number) =>
+    rooms.current?.contains(el) ? nat + CARD_GAP + CARD_PAD : card.current?.contains(el) ? CARD_PAD : 0
 
   /* the fold, as a function of `p` — written straight to the elements (see above) */
   const paint = useCallback(() => {
     const v = p.get()
     const nat = sizer.current?.offsetHeight ?? 0
-    const edge = v * (nat + CARD_GAP)
+    const edge = v * (nat + CARD_GAP + CARD_PAD)
     if (clip.current) clip.current.style.height = `${Math.max(0, v * nat)}px`
+    if (head.current) head.current.style.paddingTop = `${Math.max(0, v * CARD_PAD)}px`
     if (wrap.current) {
       wrap.current.style.paddingBottom = `${Math.max(0, v * CARD_GAP)}px`
       wrap.current.style.marginBottom = `${Math.min(0, edge)}px`
@@ -285,16 +323,17 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
     if (r) {
       const u = Math.min(1, Math.max(0, (v - r.vStart) / (r.pTo - r.vStart)))
       const mix = (a: number, b: number) => a + (b - a) * u
-      /* everything under the card sits `edge` lower than its resting place — exactly, at every v */
-      const rowTop = r.toMoves ? r.to.top + (v - r.pTo) * (r.nat + CARD_GAP) : r.to.top
-      const rowStart = r.toMoves ? r.to.top + (r.vStart - r.pTo) * (r.nat + CARD_GAP) : r.to.top
+      /* every seat sits `(v − pTo)·k` from its resting place — exactly, at every v */
+      const rowTop = r.to.top + (v - r.pTo) * r.k
+      const rowStart = r.to.top + (r.vStart - r.pTo) * r.k
       plateTop.set(rowTop + (r.from.top - rowStart) * (1 - u))
       plateLeft.set(mix(r.from.left, r.to.left))
       plateW.set(mix(r.from.width, r.to.width))
       plateH.set(mix(r.from.height, r.to.height))
       plateR.set(mix(r.from.radius, r.to.radius))
+      plateA.set(mix(r.from.alpha, r.to.alpha))
     }
-  }, [p, plateTop, plateLeft, plateW, plateH, plateR])
+  }, [p, plateTop, plateLeft, plateW, plateH, plateR, plateA])
   useMotionValueEvent(p, 'change', paint)
   useLayoutEffect(paint, [paint])
 
@@ -308,9 +347,10 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
     const pTo = willOpen ? 1 : 0
     const nat = sizer.current?.offsetHeight ?? 0
     const box = boxIn(el, host)
-    /* everything under the card moves by the fold's remaining travel: the seat is where the
+    /* a seat under or in the card moves with the fold's remaining travel: the seat is where the
        row will REST, not where it stands now */
-    if (rooms.current?.contains(el)) box.top += (pTo - pNow) * (nat + CARD_GAP)
+    const k = slope(el, nat)
+    box.top += (pTo - pNow) * k
     const my = ++token.current
     if (!seated.current || reduce) {
       /* mount, or reduced motion: everything in one commit */
@@ -321,6 +361,7 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
       plateW.jump(box.width)
       plateH.jump(box.height)
       plateR.jump(box.radius)
+      plateA.jump(box.alpha)
       paint()
       setClosed(!willOpen)
       return
@@ -330,11 +371,11 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
       setClosed(false)
       setArriving(true)
     }
-    const from: Box = { top: plateTop.get(), left: plateLeft.get(), width: plateW.get(), height: plateH.get(), radius: plateR.get() }
+    const from: Box = { top: plateTop.get(), left: plateLeft.get(), width: plateW.get(), height: plateH.get(), radius: plateR.get(), alpha: plateA.get() }
     let runs
     if (pTo !== pNow) {
       /* the fold moves: the plate rides its clock (see `ride`) */
-      ride.current = { from, to: box, toMoves: !!rooms.current?.contains(el), nat, vStart: pNow, pTo }
+      ride.current = { from, to: box, k, vStart: pNow, pTo }
       runs = [animate(p, pTo, MENU_SPRING)]
     } else {
       ride.current = null
@@ -344,6 +385,7 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
         animate(plateW, box.width, MENU_SPRING),
         animate(plateH, box.height, MENU_SPRING),
         animate(plateR, box.radius, MENU_SPRING),
+        animate(plateA, box.alpha, MENU_SPRING),
       ]
     }
     /* ⚠️ `stop()` on a motion animation RESOLVES its promise (the Reveal's lesson), so a later
@@ -402,19 +444,22 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
               data-cloud-plate
               aria-hidden
               className="pointer-events-none absolute z-[1]"
-              style={{ top: plateTop, left: plateLeft, width: plateW, height: plateH, borderRadius: plateR, backgroundColor: PLATE }}
+              style={{ top: plateTop, left: plateLeft, width: plateW, height: plateH, borderRadius: plateR, backgroundColor: plateBg }}
             />
 
             {/* the database card: header, then the fold */}
             <div ref={wrap} data-cloud-card-wrap>
               <div ref={card} data-cloud-card className="relative rounded-[16px]">
                 {arriving && <span className="glass-glint" style={{ '--glint-rgb': '149 117 205' } as CSSProperties} aria-hidden />}
-                <div className="px-1 pt-1">
+                {/* the 4 above the header is the CARD's and folds with it (`CARD_PAD`, written by `paint`) */}
+                <div ref={head} className="px-1">
+                  {/* open, the board draws the header semibold over the filled `Database active` cut (still
+                      at 48 %, 30816:49569); folded it is a plain room row — outline cut, regular (30971:98973) */}
                   <MenuRow
-                    Icon={IconDatabase}
+                    Icon={open ? GlyphDatabaseActive : GlyphDatabase}
                     seat="database"
                     label={t({ en: 'Database', uk: 'База даних' })}
-                    strong
+                    strong={open}
                     expanded={open}
                     bloom={room !== FIRST_TABLE}
                     onClick={() => setRoom(FIRST_TABLE)}
@@ -464,8 +509,8 @@ function CloudMenu({ room, setRoom, t }: { room: string; setRoom: (id: string) =
 
             {/* the rooms the board names but does not draw */}
             <div ref={rooms} className="flex flex-col gap-[3px] px-1">
-              {ROOMS.map(({ id, Icon, label }) => (
-                <MenuRow key={id} Icon={Icon} seat={id} label={t(label)} on={room === id} onClick={() => setRoom(id)} />
+              {ROOMS.map(({ id, Icon, OnIcon, label }) => (
+                <MenuRow key={id} Icon={Icon} OnIcon={OnIcon} seat={id} label={t(label)} on={room === id} onClick={() => setRoom(id)} />
               ))}
             </div>
           </div>
@@ -685,6 +730,8 @@ export function CloudSurface() {
   }, [closeSurface])
 
   const title = table ? table.title : t(ROOMS.find((r) => r.id === room)?.label ?? { en: 'Cloud', uk: 'Cloud' })
+  /* the one room with a board of its own (30971:98655) — its header and page are `UsersRoom.tsx` */
+  const users = room === 'users'
   const settle = usePaneSettle()
 
   return (
@@ -744,21 +791,29 @@ export function CloudSurface() {
           * behind the menu column. Reading only the leaf nodes had made the whole window one flat
           * tone, and the hairline under the top bar vanished with it; the designer's own crop caught it.
           */}
-        <div className="flex min-h-0 flex-1 flex-col rounded-tr-[6px] border-t border-[var(--white-100)] bg-[var(--window-lift)]">
+        {/* ⚠️ the top hairline is an INSET SHADOW, not `border-t` (24.09.2026, measured against 30971:98655):
+            Figma's stroke sits inside the sheet and takes no part in its layout, so the board's header starts
+            at y 0 under it; a CSS border pushed every child 1 px down — the whole page sat one pixel low on
+            both boards. The line itself is the same 1 px of 8 % white, and it follows the 6 px corner. */}
+        <div className="flex min-h-0 flex-1 flex-col rounded-tr-[6px] bg-[var(--window-lift)] shadow-[inset_0_1px_0_var(--white-100)]">
           {/* header: title · search · actions, then the column headings */}
           <div className="flex-none">
-            <div className="pane-in-head flex items-center pl-9 pr-6">
+            {/* THE USERS HEADER IS 90, NOT 87 (30971:100587): the same title with 27 under it instead of 24,
+                and the stats beside it — the row is pinned to the drawn 90 so the 38.4 line doesn't make it 90.4 */}
+            <div className="pane-in-head flex items-center pl-9 pr-6" style={users ? { height: 90 } : undefined}>
               {/* 25 above and 24 below a 38.4 line make the board's 87 — a hair lower than centred */}
               {/* the title ROLLS between rooms — the verb roll of the Publish panel's card (motion.ts
                   `verbRoll`): the old word up and out in 160 ms, the next up into place from 10 px
                   below after a 60 ms beat; `popLayout` takes the leaving word out of the flow so the
                   line never doubles in height. `onUpdate` keeps the fades on the main thread. */}
-              <h2 className="relative flex-none pb-6 pt-[25px] font-display text-[32px] font-bold leading-[1.2] text-white">
+              <h2 className={`relative flex-none pt-[25px] font-display text-[32px] font-bold leading-[1.2] text-white ${users ? 'pb-[27px]' : 'pb-6'}`}>
                 <AnimatePresence mode="popLayout" initial={false}>
+                  {/* the Database board sets the title Gilroy BOLD (30816:52075), the Users board SEMIBOLD
+                      (30971:100597) — one component, two weights: shipped per room, raised with the designer */}
                   <motion.span
                     key={title}
                     data-cloud-title-word
-                    className="inline-block"
+                    className={`inline-block${users ? ' font-semibold' : ''}`}
                     variants={reduce ? verbRollFade : verbRoll}
                     initial="initial"
                     animate="animate"
@@ -769,37 +824,63 @@ export function CloudSurface() {
                   </motion.span>
                 </AnimatePresence>
               </h2>
-              <div className="ml-14 flex min-w-0 flex-1 justify-center">
-                <label className="flex h-10 w-full min-w-0 max-w-[400px] items-center gap-4 rounded-full bg-[var(--gray-900)] pl-2 pr-[7px]">
-                  <span className="grid h-6 w-6 flex-none place-items-center text-[var(--gray-500)]">
-                    <IconSearchM size={24} />
-                  </span>
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={t({ en: 'Search', uk: 'Пошук' })}
-                    className="min-w-0 flex-1 bg-transparent pt-px text-[15px] text-white outline-none placeholder:text-[var(--gray-500)]"
-                  />
-                </label>
-              </div>
-              <div className="ml-4 flex flex-none items-center gap-4">
-                <button
-                  type="button"
-                  aria-label={t({ en: 'Filter', uk: 'Фільтр' })}
-                  className="press-bloom grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--white-100)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+              {/* the right side hands over with the room: the table's search and actions, or the Users stats —
+                  sequential (140 ms out, 200 ms in), never two sets at once */}
+              <AnimatePresence mode="wait" initial={false}>
+              {users ? (
+                <motion.div
+                  key="users-tools"
+                  className="ml-14 flex min-w-0 flex-1 items-center self-stretch"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } }}
+                  exit={{ opacity: 0, transition: EXIT }}
+                  onUpdate={noop}
                 >
-                  <IconFilter size={24} />
-                </button>
-                <button
-                  type="button"
-                  className="press-bloom flex h-10 items-center gap-[7px] rounded-[10px] bg-[#7e57c2] pl-5 pr-2 text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#8d68cd]"
+                  <UsersHeaderTools t={t} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="table-tools"
+                  className="flex min-w-0 flex-1 items-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } }}
+                  exit={{ opacity: 0, transition: EXIT }}
+                  onUpdate={noop}
                 >
-                  <span className="text-[14px] font-semibold leading-none">
-                    {t({ en: 'Add an object', uk: 'Додати обʼєкт' })}
-                  </span>
-                  <IconAdd size={24} />
-                </button>
-              </div>
+                <div className="ml-14 flex min-w-0 flex-1 justify-center">
+                  <label className="flex h-10 w-full min-w-0 max-w-[400px] items-center gap-4 rounded-full bg-[var(--gray-900)] pl-2 pr-[7px]">
+                    <span className="grid h-6 w-6 flex-none place-items-center text-[var(--gray-500)]">
+                      <IconSearchM size={24} />
+                    </span>
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={t({ en: 'Search', uk: 'Пошук' })}
+                      className="min-w-0 flex-1 bg-transparent pt-px text-[15px] text-white outline-none placeholder:text-[var(--gray-500)]"
+                    />
+                  </label>
+                </div>
+                <div className="ml-4 flex flex-none items-center gap-4">
+                  <button
+                    type="button"
+                    aria-label={t({ en: 'Filter', uk: 'Фільтр' })}
+                    className="press-bloom grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--white-100)] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+                  >
+                    <IconFilter size={24} />
+                  </button>
+                  <button
+                    type="button"
+                    className="press-bloom flex h-10 items-center gap-[7px] rounded-[10px] bg-[#7e57c2] pl-5 pr-2 text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[#8d68cd]"
+                  >
+                    <span className="text-[14px] font-semibold leading-none">
+                      {t({ en: 'Add an object', uk: 'Додати обʼєкт' })}
+                    </span>
+                    <IconAdd size={24} />
+                  </button>
+                </div>
+                </motion.div>
+              )}
+              </AnimatePresence>
             </div>
 
             {/* the column headings leave with the table (140 ms, flat) and come back with one (200 ms);
@@ -833,21 +914,26 @@ export function CloudSurface() {
           </div>
 
           {/* page */}
-          <div data-cloud-page className="min-h-0 flex-1 border-t border-[var(--gray-800)] pt-2">
+          {/* THE PAGE HANDS OVER WHOLE, its rule included. A table's page opens under a --gray-800 line and
+              8 of air (the headings' floor); the Users page has neither — its cards start right under the
+              90 header (30971:100701 at y 90). So the line lives on each room's own body, not on this
+              container: a rule toggled here would move the page that is still leaving by 9 px. */}
+          <div data-cloud-page className="min-h-0 flex-1">
+            {/* THE TABLE HANDS OVER, IT DOES NOT CROSSFADE (the question dock's double-exposure lesson):
+                under `mode="wait"` the old page is gone in 140 ms before the new one mounts, and the new
+                one fills in on its own — the rows cascade top-down (`.pane-in-row`, 30 ms apart), a room's
+                note comes up the same way (`.pane-in-note`), the Users cards and people likewise. */}
+            <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={room}
+              data-cloud-pagebody
+              className={`h-full${users ? '' : ' border-t border-[var(--gray-800)] pt-2'}`}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: EXIT }}
+              onUpdate={noop}
+            >
             <ScrollArea className="h-full" thumb="light">
-              {/* THE TABLE HANDS OVER, IT DOES NOT CROSSFADE (the question dock's double-exposure lesson):
-                  under `mode="wait"` the old page is gone in 140 ms before the new one mounts, and the new
-                  one fills in on its own — the rows cascade top-down (`.pane-in-row`, 30 ms apart), a room's
-                  note comes up the same way (`.pane-in-note`). */}
-              <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={room}
-                data-cloud-pagebody
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transition: EXIT }}
-                onUpdate={noop}
-              >
               {table ? (
                 <div className="flex flex-col gap-2.5 px-6">
                   <div ref={scroller} data-cloud-list className="w-full overflow-x-auto" onScroll={(e) => syncHead(e.currentTarget)}>
@@ -868,14 +954,16 @@ export function CloudSurface() {
                     </p>
                   )}
                 </div>
+              ) : users ? (
+                <UsersRoom />
               ) : (
                 <p className="pane-in-note px-9 py-10 text-[15px] text-[var(--white-480)]">
                   {t({ en: 'Nothing here yet.', uk: 'Тут поки порожньо.' })}
                 </p>
               )}
-              </motion.div>
-              </AnimatePresence>
             </ScrollArea>
+            </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
