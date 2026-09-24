@@ -9,10 +9,11 @@
  * "Режим показа" hides the handle so only the keyboard opens it.
  */
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld, violations, type World } from '@/state/world'
-import { AXES, GROUPS, PRESETS, PRESET_GROUPS, describe } from '@/state/scenarios'
+import { AXES, GROUPS, PRESETS, PRESET_GROUPS, describe, type Axis } from '@/state/scenarios'
 import { ScrollArea } from '@/ui/ScrollArea'
+import { segmentedPill } from '@/ui/motion'
 import { useT } from '@/i18n'
 
 const EASE = [0.2, 0, 0, 1] as const
@@ -284,6 +285,15 @@ export function ScenarioPanel() {
                             </div>
                           )}
 
+                          {axis.kind === 'segmented' && (
+                            <Segmented
+                              axis={axis}
+                              value={axis.current ? axis.current(world) : String(world[axis.key])}
+                              blocked={(opt) => blocked(axis.key, opt.patch ?? ({ [axis.key]: opt.value } as Partial<World>))}
+                              onPick={(opt) => set(opt.patch ?? ({ [axis.key]: opt.value } as Partial<World>))}
+                            />
+                          )}
+
                           {axis.kind === 'number' && (
                             <input
                               type="range"
@@ -349,5 +359,68 @@ export function ScenarioPanel() {
         )}
       </AnimatePresence>
     </>
+  )
+}
+
+/**
+ * THE CONSOLE'S SEGMENTED CONTROL — one track, equal seats, one capsule that flies to the chosen
+ * seat on the house spring (`segmentedPill`, the law of the Home dock's tabs, its filter chips and
+ * the Build Plan switch). Labels only change colour; nothing scales. The designer's word for the
+ * window-motion switch was «сегмент контрол», and a row of separate chips (`kind: 'options'`) is
+ * not one — a segmented control is a single object whose selection MOVES between positions.
+ *
+ * Console idiom, not product glass: the track is the console's own light grey, the capsule the
+ * console's ink (neutral-900), so the instrument reads as part of the console and not as a
+ * product control that escaped into it. `initial={false}`: on mount the capsule IS at its seat.
+ */
+function Segmented({ axis, value, blocked, onPick }: {
+  axis: Axis
+  value: string
+  blocked: (opt: NonNullable<Axis['options']>[number]) => { reason: { en: string; uk: string } } | null | undefined
+  onPick: (opt: NonNullable<Axis['options']>[number]) => void
+}) {
+  const { t } = useT()
+  const reduce = useReducedMotion()
+  const opts = axis.options ?? []
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value))
+  return (
+    <div
+      data-segmented={String(axis.key)}
+      role="radiogroup"
+      className="relative grid h-8 items-center rounded-full bg-black/[0.06] p-1"
+      style={{ gridTemplateColumns: `repeat(${opts.length}, minmax(0, 1fr))` }}
+    >
+      <motion.span
+        aria-hidden
+        data-seg-thumb=""
+        className="absolute rounded-full bg-neutral-900"
+        style={{ top: 4, bottom: 4, left: 4, width: `calc((100% - 8px) / ${opts.length})` }}
+        initial={false}
+        animate={{ x: `${idx * 100}%` }}
+        transition={reduce ? { duration: 0 } : segmentedPill.transition}
+      />
+      {opts.map((opt) => {
+        const on = opt.value === value
+        const block = on ? null : blocked(opt)
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-pressed={on}
+            data-on={on || undefined}
+            disabled={!!block}
+            onClick={() => { if (!on) onPick(opt) }}
+            title={block ? t(block.reason) : opt.hint ? t(opt.hint) : undefined}
+            className={`relative z-[1] h-6 rounded-full px-3 text-[12px] font-medium leading-none transition-colors duration-200 ${
+              on ? 'text-white' : block ? 'cursor-not-allowed text-neutral-400 line-through' : 'text-neutral-700 hover:text-neutral-900'
+            }`}
+          >
+            {t(opt.label)}
+          </button>
+        )
+      })}
+    </div>
   )
 }

@@ -528,7 +528,13 @@ export interface Axis {
   key: keyof World
   group: Text
   label: Text
-  kind: 'options' | 'number' | 'toggle'
+  /**
+   * `options` — a row of chips; `segmented` — the same mutually exclusive choice as ONE track with a
+   * capsule that flies to the chosen seat (the console's segmented control, on the house spring
+   * `segmentedPill`). The designer asked for the window motions «в виде сегмент контроля», and a
+   * row of chips is not that: a segmented control is a single object whose selection MOVES.
+   */
+  kind: 'options' | 'segmented' | 'number' | 'toggle'
   options?: AxisOption[]
   min?: number
   max?: number
@@ -568,7 +574,7 @@ export const AXES: Axis[] = [
      * stays the default until he picks; the other two are world.ts `PaneMotion`. A design A/B like
      * `planSimple` — not a project fact, so `startBuild` leaves it alone.
      */
-    key: 'paneMotion', group: G.windows, label: { en: 'Window motion', uk: 'Рух вікон' }, kind: 'options',
+    key: 'paneMotion', group: G.windows, label: { en: 'Window motion', uk: 'Рух вікон' }, kind: 'segmented',
     options: [
       { value: 'unfold', label: { en: 'Unfold', uk: 'Розгортання' }, hint: { en: 'Grows out of its rail button, a lit rim on the edge', uk: 'Виростає зі своєї кнопки в рейлі, світлий обід по кромці' } },
       { value: 'sheet', label: { en: 'Sheet', uk: 'Аркуш' }, hint: { en: 'Rises from below; the site steps back like the card behind an iOS sheet', uk: 'Піднімається знизу; сайт відступає, як картка за аркушем iOS' } },

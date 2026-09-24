@@ -5019,16 +5019,42 @@ await shot('30-plan-review')
   const of = (film, id) => film.map((f) => ({ t: f.t, ...(f.panes.find((q) => q.id === id) || {}) })).filter((q) => q.o !== undefined)
   const monotone = (arr, key, dir) => arr.every((q, i) => i === 0 || (dir > 0 ? q[key] >= arr[i - 1][key] - 1e-6 : q[key] <= arr[i - 1][key] + 1e-6))
 
-  /* the console offers the three, as one segmented row */
+  /* the console offers the three as ONE SEGMENTED CONTROL (the designer's word: «в виде сегмент
+     контроля»): a single track, three equal seats, a capsule under the chosen one — not a row of chips */
   await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
   const seg = await p.evaluate(() => {
-    const lab = [...document.querySelectorAll('[data-console] label')].find((l) => l.textContent.trim() === 'Window motion')
-    const row = lab?.parentElement?.nextElementSibling
-    return row ? [...row.querySelectorAll('button')].map((b) => [b.textContent.trim(), /bg-neutral-900/.test(b.className)]) : null
+    const track = document.querySelector('[data-segmented="paneMotion"]')
+    if (!track) return null
+    const thumb = track.querySelector('[data-seg-thumb]')
+    const seats = [...track.querySelectorAll('button')]
+    const tr = thumb.getBoundingClientRect(), sr = seats.map((b) => b.getBoundingClientRect())
+    return {
+      seats: seats.map((b) => [b.textContent.trim(), b.getAttribute('aria-pressed') === 'true']),
+      oneTrack: getComputedStyle(track).borderRadius !== '0px' && seats.every((b) => b.parentElement === track),
+      equal: Math.max(...sr.map((r) => r.width)) - Math.min(...sr.map((r) => r.width)) < 1,
+      thumbUnderFirst: Math.abs(tr.left - sr[0].left) < 1 && Math.abs(tr.width - sr[0].width) < 1,
+    }
   })
+  check('the console offers the three window motions as ONE segmented control — one track, three equal seats, the capsule under Unfold by default',
+    !!seg && JSON.stringify(seg.seats) === JSON.stringify([['Unfold', true], ['Sheet', false], ['Focus', false]]) && seg.oneTrack && seg.equal && seg.thumbUnderFirst,
+    JSON.stringify(seg))
+  /* …and the capsule FLIES: pick Sheet and film the thumb — it leaves seat 1 and lands on seat 2 on the
+     house spring (one soft overshoot), the seats themselves never moving */
+  const flight = await p.evaluate(async () => {
+    const track = document.querySelector('[data-segmented="paneMotion"]')
+    const thumb = track.querySelector('[data-seg-thumb]'); const seats = [...track.querySelectorAll('button')]
+    const seat1 = seats[1].getBoundingClientRect(); const seat0 = seats[0].getBoundingClientRect()
+    const xs = []; const t0 = performance.now()
+    seats[1].click()
+    await new Promise((r) => { const tick = () => { xs.push({ t: Math.round(performance.now() - t0), x: thumb.getBoundingClientRect().left, s1: seats[1].getBoundingClientRect().left }); if (performance.now() - t0 < 900) requestAnimationFrame(tick); else r() }; requestAnimationFrame(tick) })
+    return { from: seat0.left, to: seat1.left, xs, seatMoved: xs.some((q) => Math.abs(q.s1 - seat1.left) > 0.5) }
+  })
+  const fx = flight.xs.map((q) => q.x)
+  check('…and picking Sheet FLIES the capsule from seat 1 to seat 2 on the house spring — through the gap, one soft overshoot, seats standing still',
+    fx.length >= 12 && Math.abs(fx[0] - flight.from) < 12 && Math.abs(fx[fx.length - 1] - flight.to) < 0.6 && Math.max(...fx) > flight.to + 0.5 && Math.max(...fx) < flight.to + 12
+      && fx.some((x) => x > flight.from + 8 && x < flight.to - 8) && !flight.seatMoved,
+    JSON.stringify({ from: flight.from, to: flight.to, x0: fx[0], max: Math.max(...fx), last: fx[fx.length - 1], n: fx.length, seatMoved: flight.seatMoved }))
   await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
-  check('the console offers the three window motions as one segmented row, Unfold selected by default',
-    JSON.stringify(seg) === JSON.stringify([['Unfold', true], ['Sheet', false], ['Focus', false]]), JSON.stringify(seg))
 
   /* ── SHEET ─────────────────────────────────────────────────────────────────────── */
   check('…and the Sheet option is a real control (it flips the world)', await setMotion('Sheet')
