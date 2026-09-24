@@ -882,9 +882,14 @@ export const canvasSite = {
  * вариант хороший и он похож на наш apple liquid glass стиль анимаций. но я бы хотел посмотреть еще
  * на какие то вариант 2 других анимаций открытия и закрытия этих больших окон и переключения между
  * ними… с другой задумкой абсолютно и концепцией… очень стильные, современные, плавные… не бить по
- * глазам и не надоедливыми»). The unfold stays (`PANE_OPEN` above — the window grows out of its
- * button); these are the other two ideas, switched in the console (world.ts `PaneMotion`), and each
- * is one idea carried through open, close AND the switch from one window to another:
+ * глазам и не надоедливыми»). The unfold stays in the system (`PANE_OPEN` above — the window grows out
+ * of its button); these are the other two ideas, switched in the console (world.ts `PaneMotion`), and
+ * each is one idea carried through open, close AND the switch from one window to another.
+ * ✅ 25.09.2026 — he picked the SHEET: «сделать анимацию Sheet по умолчанию, а переключатель можно
+ * оставить… пусть это будет анимация наша фирменная в дизайн системе для переключения вот таких больших
+ * окон». It is the default and the design-system motion for large canvas windows; the constants below
+ * are therefore house numbers, not a candidate's — change them the way the dock bubble's are changed,
+ * by a measured decision. The switch stays so he can still hold the other two next to it:
  *
  *  · SHEET — the window is a sheet of glass that RISES from below the canvas and sits down, while the
  *    site steps BACK into depth like the card behind an iOS sheet (scale .94, a few px up, dimming).

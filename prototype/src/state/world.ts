@@ -101,6 +101,17 @@ export type Project = 'empty' | 'generating' | 'built'
  *   · `focus`  — the window FOCUSES INTO PLACE from slightly behind (.94 → 1, no travel, no bounce —
  *                macOS opening a window); switching windows is a pass through depth: the old one
  *                comes forward past the viewer and dissolves, the new one arrives from behind.
+ *
+ * ✅ THE SHEET IS THE HOUSE MOTION (designer, 25.09.2026, having compared the three on the live
+ * build: «Я думаю что нужно сделать анимацию Sheet по умолчанию, а переключатель можно оставить» →
+ * «пусть это будет анимация наша фирменная в дизайн системе для переключения вот таких больших
+ * окон и ее нужно ко всем подобным кейсам подключить»). So `sheet` is the default, and it is the
+ * design-system motion for every LARGE CANVAS WINDOW — Cloud, Analytics, Domains (from the chip and
+ * from the Publish panel's door) and the Build Plan review all stand in the one `CanvasPane`, so all
+ * four wear it by construction. The console switch stays as his comparison tool; `unfold` and `focus`
+ * remain in the system as the two ideas he weighed it against, not as alternatives a product state
+ * picks. (Whether the template picker and the checkout sheet — modal sheets over a scrim, not canvas
+ * windows — count as "similar cases" is his call and is asked, not decided here.)
  */
 export type PaneMotion = 'unfold' | 'sheet' | 'focus'
 export type Chat = 'empty' | 'short' | 'long' | 'working' | 'error'
@@ -428,10 +439,10 @@ export interface World {
    */
   planSimple: boolean
   /**
-   * WHICH MOTION THE CANVAS WINDOWS WEAR — see `PaneMotion`. A design A/B for the designer to
-   * compare in front of the same windows; `unfold` is what shipped and stays the default until he
-   * picks. Not a project fact and not a URL key: `startBuild` leaves it alone, exactly as it
-   * leaves `planSimple` and `chipInkWhite`.
+   * WHICH MOTION THE CANVAS WINDOWS WEAR — see `PaneMotion`. `sheet` since 25.09.2026 — the
+   * designer's pick, and the house motion for large canvas windows; the console switch stays so he
+   * can still put the other two next to it. Not a project fact and not a URL key: `startBuild`
+   * leaves it alone, exactly as it leaves `planSimple` and `chipInkWhite`.
    */
   paneMotion: PaneMotion
   /**
@@ -503,7 +514,7 @@ export const DEFAULT_WORLD: World = {
   chipInkWhite: false,
   intakeDomain: null,
   planSimple: true,
-  paneMotion: 'unfold',
+  paneMotion: 'sheet',
   customDomain: CUSTOM_DOMAIN,
   chat: 'long',
   projects: DEMO_PROJECTS,
@@ -794,8 +805,12 @@ interface Store {
    v4: the brief grew a fifth question at the FRONT (18.09.2026, board 30594:24360), which
    is the rarer half of this rule — no field changed shape, but `brief.step` is an INDEX and
    its meaning did. A v3 snapshot paused on step 3 would reopen one question to the left, and
-   a fully answered v3 brief would show its new first row as unanswered for ever. */
-const STORAGE_KEY = 'remixer-prototype/world/v4'
+   a fully answered v3 brief would show its new first row as unanswered for ever.
+   v5: a DEFAULT changed — `paneMotion` went from `unfold` to `sheet` (25.09.2026, the designer's
+   pick). The stored world is read OVER `DEFAULT_WORLD`, so every browser that had opened the build
+   would have kept `unfold` in its snapshot and never seen the house motion — the same way
+   `published: true` outlived its own default on 08.09.2026 (CLAUDE.md, the Publish panel). */
+const STORAGE_KEY = 'remixer-prototype/world/v5'
 
 /*
  * THE SAME RULE `set` APPLIES TO A PATCH, FOR A WHOLE WORLD THAT ARRIVES WITHOUT ONE.

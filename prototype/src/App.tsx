@@ -579,6 +579,10 @@ const tint = (tone?: string) => (tone ? { '--glint-rgb': tone, '--glint-k': PANE
  *   · `focus`  — focuses into place from .94 with no travel and no bounce.
  * The rim and the flyer belong to the unfold alone — they ride a clip edge, and the other two move the
  * window as one object, whose own hairline is the edge. The glint lands with all three.
+ * ✅ Since 25.09.2026 the SHEET is the default and the house motion for these windows (the designer's
+ * pick: «сделать анимацию Sheet по умолчанию, а переключатель можно оставить… анимация наша фирменная в
+ * дизайн системе для переключения вот таких больших окон»); every window that stands in this pane —
+ * Cloud, Analytics, Domains from either door, the plan review — wears it without being asked.
  *
  * `handoff` is the parent's word on whether this pane is one end of a SWITCH between two windows (read
  * in render, so it is right in the first frame — the same trick as `leavingTile`). A sheet leaving into
@@ -601,8 +605,9 @@ function CanvasPane({ id, tone, canvas, flyer, motion: motionRef, handoff, child
   const presentRef = useRef(true)
   presentRef.current = present
   const [geom] = useState<PaneGeom>(() => paneGeometry(useUI.getState().surfaceFrom, canvas.current))
-  /* the motion this pane ARRIVED in — the rim, the flyer and the clip exist only for the unfold */
-  const [arrivedAs] = useState<PaneMotion>(() => motionRef.current ?? 'unfold')
+  /* the motion this pane ARRIVED in — the rim, the flyer and the clip exist only for the unfold; with
+     nothing said, the house motion (the sheet) */
+  const [arrivedAs] = useState<PaneMotion>(() => motionRef.current ?? 'sheet')
   const unfold = arrivedAs === 'unfold'
   const p = useMotionValue(reduce || !unfold ? 1 : 0)
   const opacity = useMotionValue(0)
@@ -647,7 +652,7 @@ function CanvasPane({ id, tone, canvas, flyer, motion: motionRef, handoff, child
   /* the leaving — in whatever motion the world wears NOW; then the pane removes itself */
   useEffect(() => {
     if (present) return
-    const mode = motionRef.current ?? 'unfold'
+    const mode = motionRef.current ?? 'sheet'
     const switching = !!handoff.current
     /* motion's controls are thenable, not Promises — adopt them so the chain below types */
     const done = (a: { then: (r: VoidFunction) => unknown }) => new Promise<void>((r) => a.then(() => r()))

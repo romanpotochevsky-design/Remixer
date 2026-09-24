@@ -570,9 +570,11 @@ export const AXES: Axis[] = [
      * HOW THE CANVAS WINDOWS MOVE (24.09.2026) — three motions, three ideas, one segmented switch
      * so the designer can compare them on Cloud, Analytics and Domains without leaving the shell
      * (his ask, with a recording of the unfold: «сделай еще 2 других варианта… с другой задумкой
-     * абсолютно и концепцией… в консоле в виде сегмент контроля»). `unfold` is what shipped and
-     * stays the default until he picks; the other two are world.ts `PaneMotion`. A design A/B like
-     * `planSimple` — not a project fact, so `startBuild` leaves it alone.
+     * абсолютно и концепцией… в консоле в виде сегмент контроля»). He picked on 25.09.2026: `sheet`
+     * is the default and the house motion for large canvas windows («сделать анимацию Sheet по
+     * умолчанию, а переключатель можно оставить»); the switch stays as his comparison tool, the
+     * three are world.ts `PaneMotion`. A design A/B like `planSimple` — not a project fact, so
+     * `startBuild` leaves it alone.
      */
     key: 'paneMotion', group: G.windows, label: { en: 'Window motion', uk: 'Рух вікон' }, kind: 'segmented',
     options: [

@@ -74,6 +74,23 @@ const errors = []
 p.on('pageerror', (e) => errors.push(e.message))
 
 const shot = (n) => p.screenshot({ path: `${OUT}/${n}.png` })
+/**
+ * Pick a canvas-window motion in the console's segmented control (world.ts `PaneMotion`). The SHEET is
+ * the house default since 25.09.2026 (the designer's pick); the blocks that film the UNFOLD's own law —
+ * the clip from the rail button, the lit rim, the flying mark, the drain — pick it here first and put
+ * the sheet back when they are done, because `paneMotion` is not a URL key: it lives in the stored
+ * world and outlives every `goto` of this run. Returns whether a seat with that label was found.
+ */
+const pickMotion = async (label) => {
+  await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
+  const hit = await p.evaluate((label) => {
+    const btn = [...document.querySelectorAll('[data-segmented="paneMotion"] button')].find((b) => b.textContent.trim() === label)
+    if (!btn) return false
+    btn.click(); return true
+  }, label)
+  await p.waitForTimeout(150); await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
+  return hit
+}
 const previewState = () => p.evaluate(() => document.querySelector('[data-preview]')?.getAttribute('data-preview'))
 const asideWidth = () => p.$eval('aside', (el) => el.getBoundingClientRect().width)
 /**
@@ -1377,7 +1394,7 @@ check('the canvas carries no site controls before there is a site',
 /* ⚠️ …which costs the counter its place on screen, so the claim is read off the WORLD.
    The questions and the plan are free; only `Start Building` spends. */
 check('the questions and the plan cost nothing',
-  (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').credits)) === 2000)
+  (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').credits)) === 2000)
 
 /* Review: the chat narrows back to the split and the document takes the canvas. */
 await p.click('[data-plan-review]'); await p.waitForTimeout(900); await shot('10-plan-review')
@@ -3040,7 +3057,7 @@ check('…and the typed prompt is built as given', await cardUp())
    * walk as before it. Everything else here is what the customer sees because of it.
    */
   const world = () => p.evaluate(() => {
-    const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}')
+    const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}')
     return { domain: w.domain, published: w.published }
   })
   for (const [v, want, label] of [
@@ -3069,6 +3086,7 @@ check('…and the typed prompt is built as given', await cardUp())
       const main = document.querySelector('main')
       const win = () => [...main.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Domains')?.closest('main > *')
       const scaleOf = (el) => { const m = getComputedStyle(el).transform; const a = m && m !== 'none' ? m.match(/matrix\(([^)]+)\)/) : null; return a ? +a[1].split(',')[0] : 1 }
+      const yOf = (el) => { const m = getComputedStyle(el).transform; const a = m && m !== 'none' ? m.match(/matrix\(([^)]+)\)/) : null; return a ? Math.round(+a[1].split(',')[5]) : 0 }
       /* the computed style collapses `inset(0px 0px 0px 0px …)` to `inset(0px …)`: expand the shorthand */
       const clipOf = (el) => { const m = getComputedStyle(el).clipPath.match(/inset\(([^)]*)\)/); if (!m) return null; const v = m[1].split('round')[0].trim().split(/\s+/).map(parseFloat); return v.length === 1 ? [v[0], v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0], v[1]] : v.length === 3 ? [v[0], v[1], v[2], v[1]] : v }
       const zOf = (el) => { const z = getComputedStyle(el).zIndex; return z === 'auto' ? 0 : +z }
@@ -3078,7 +3096,7 @@ check('…and the typed prompt is built as given', await cardUp())
         const now = performance.now()
         const w = win(); const site = document.querySelector('.site-stage'); const panel = document.querySelector('[role="dialog"][aria-label="Publish"]')
         const glint = panel?.querySelector('.glass-glint')
-        samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, winS: w ? scaleOf(w) : null, winClip: w ? clipOf(w) : null, winZ: w ? zOf(w) : null,
+        samples.push({ t: Math.round(now - t0), win: w ? +getComputedStyle(w).opacity : null, winS: w ? scaleOf(w) : null, winY: w ? yOf(w) : null, winClip: w ? clipOf(w) : null, winZ: w ? zOf(w) : null,
           site: site ? +getComputedStyle(site.parentElement).opacity : null, siteZ: site ? zOf(site.parentElement) : null,
           panel: panel ? +getComputedStyle(panel).opacity : null, panelS: panel ? scaleOf(panel) : null, glint: glint ? +getComputedStyle(glint).opacity : null })
         if (now - t0 < 1900) requestAnimationFrame(tick)
@@ -3097,22 +3115,24 @@ check('…and the typed prompt is built as given', await cardUp())
     const monoUp = siteFrames.every((s, i) => i === 0 || s.site >= siteFrames[i - 1].site - 0.001)
     const panelMono = hand.filter((s) => s.panel !== null).every((s, i, a) => i === 0 || s.panel >= a[i - 1].panel - 0.001)
     /*
-     * THE PANE FOLDS BACK INTO ITS BUTTON (22.09.2026, motion.ts `canvasPane`; before that the window
-     * faded and shrank to .975 under `mode="wait"`). Its CLIP travels — the inset the window was opened
-     * from, or the middle-of-the-canvas fallback when no press stands behind it (this window was opened
-     * by the topbar chip, so the clip heads up to the chip) — and its opacity is spent LAST, over the
-     * final 200 ms of 360, so the leaving window is never a large translucent thing over the site.
+     * THE WINDOW LEAVES AS A SHEET (25.09.2026 — the designer made the sheet the house motion for these
+     * windows; motion.ts § TWO MORE WAYS A WINDOW CAN ARRIVE, App.tsx `CanvasPane`). It DROPS: translateY
+     * grows monotonically toward 22 % of its own height, it shrinks a hair (→ .97), and its opacity is
+     * spent in the SECOND half (a 180 ms dissolve that starts at 140 ms), so the leaving window is never a
+     * large translucent thing over the site. Until 24.09 this window folded its clip back into the chip
+     * (the unfold's law, still filmed in block I on the unfold picked explicitly).
      */
     const winShrunk = winFrames.length > 0 && winFrames[winFrames.length - 1].winS <= 0.985
-    const clipMoved = winFrames.length > 1 && winFrames[0].winClip !== null && winFrames[winFrames.length - 1].winClip !== null
-      && winFrames[winFrames.length - 1].winClip[3] > winFrames[0].winClip[3] + 100
-    const foldsBeforeFading = winFrames.filter((s) => s.win < 0.9).every((s) => s.winClip !== null && s.winClip[3] > 200)
-    check(`Connect: the Domains window LEAVES over several frames — its clip folding toward the chip that opened it, a hair smaller, dissolving only once it is small, never flashing back — ${label}`,
-      winFrames.length >= 4 && winFrames[winFrames.length - 1].win < 0.4 && monoDown && !!winGone && winShrunk && clipMoved && foldsBeforeFading,
-      JSON.stringify({ frames: winFrames.length, last: winFrames[winFrames.length - 1]?.win, lastScale: winFrames[winFrames.length - 1]?.winS, clip0: winFrames[0]?.winClip, clipLast: winFrames[winFrames.length - 1]?.winClip, mono: monoDown, goneAt: winGone?.t, foldsBeforeFading }))
-    /* the site is one layer DOWN and comes forward under the folding window from the first frame: its
-       opacity rises monotonically, and the window stays above it (z) so the two never draw through
-       each other — the clip decides which one a pixel shows */
+    const winDrops = winFrames.length > 1 && winFrames.every((s, i) => i === 0 || s.winY >= winFrames[i - 1].winY - 1)
+      && winFrames[winFrames.length - 1].winY >= 100
+    const dropsBeforeFading = winFrames.filter((s) => s.win < 0.9).every((s) => s.winY > 40)
+    const noClip = winFrames.every((s) => s.winClip === null || s.winClip.every((v) => v === 0))
+    check(`Connect: the Domains window LEAVES as a SHEET over several frames — dropping monotonically toward 22 % of its height, a hair smaller, dissolving only in the second half, never flashing back, no clip in play — ${label}`,
+      winFrames.length >= 4 && winFrames[winFrames.length - 1].win < 0.4 && monoDown && !!winGone && winShrunk && winDrops && dropsBeforeFading && noClip,
+      JSON.stringify({ frames: winFrames.length, last: winFrames[winFrames.length - 1]?.win, lastScale: winFrames[winFrames.length - 1]?.winS, y0: winFrames[0]?.winY, yLast: winFrames[winFrames.length - 1]?.winY, mono: monoDown, goneAt: winGone?.t, dropsBeforeFading, noClip }))
+    /* the site is one layer DOWN and comes forward under the dropping window from the first frame — the
+       card the iOS sheet was lifted off, coming back to size: its opacity rises monotonically, and the
+       window stays above it (z) so the two never draw through each other */
     check(`…the site comes forward UNDER it from the first frame — below it in z, opacity rising monotonically to 1 — ${label}`,
       siteFrames.length >= 4 && siteFrames[0].t <= 40 && siteFrames[0].site < 0.3 && !!siteFull && monoUp
         && winFrames.every((s) => s.winZ > s.siteZ),
@@ -4086,10 +4106,10 @@ await shot('30-plan-review')
   await p.click('button:has-text("Build")')
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 10000 })
   await p.waitForTimeout(600)
-  const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').intakeDomain)
+  const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').intakeDomain)
   check('the attached domain survives into the build', kept === 'odesa-coffee-roasters.com', String(kept))
   /* …and it is NOT smuggled into the prompt: the transcript is what the customer typed. */
-  const firstSaid = await p.evaluate(() => (JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').sent || [])[0]?.text ?? '')
+  const firstSaid = await p.evaluate(() => (JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').sent || [])[0]?.text ?? '')
   check('…without the name being typed into the prompt for them',
     firstSaid === 'Bella’s Bakery', firstSaid)
 
@@ -4173,6 +4193,10 @@ await shot('30-plan-review')
   await p.click('.home-card-face')
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
   await p.waitForTimeout(500)
+  /* this block films the UNFOLD — the clip from the button, the rim, the flyer, the flood and the drain —
+     which since 25.09.2026 is no longer the default (the sheet is, block K). Pick it explicitly; the
+     sheet is put back at the end of the block. */
+  check('the console still offers the Unfold, and picking it is what puts this block on it', await pickMotion('Unfold'))
 
   /* ── the rail, before anything is open ───────────────────────────────────────── */
   const rail = await p.evaluate(() => {
@@ -4490,7 +4514,9 @@ await shot('30-plan-review')
    * THE PANE UNFOLDS FROM THE BUTTON THAT OPENED IT (designer, 22.09.2026, from two recordings of the
    * live editor's site ⇄ Cloud switch: «сделать эту анимацию перехода намного прикольнее, плавнее и более
    * стильно… в Apple liquid glass стиле… не навязчивую, не бьёт по глазам»). motion.ts `canvasPane` /
-   * `canvasSite`, App.tsx `CanvasPane`. Film both directions and hold them to the law:
+   * `canvasSite`, App.tsx `CanvasPane`. Filmed with the Unfold picked in the console (top of this block):
+   * since 25.09.2026 the house motion is the SHEET (block K), and the unfold stays in the system as the
+   * idea it was weighed against — its law is still its law. Film both directions and hold them to it:
    *  · the pane's CLIP starts at the rail button's footprint (outside the canvas, to the right) and lands
    *    on the canvas on a spring whose overshoot stays outside the box; its transform origin is the
    *    button's centre; it is solid within 140 ms (a sliding pane, not a fade);
@@ -4740,6 +4766,8 @@ await shot('30-plan-review')
   await p.waitForTimeout(600)
   check('…and the button is a toggle: pressing it again puts the site back on the canvas',
     (await p.$('[data-cloud-window]')) === null)
+  /* the house motion back on for everything after this block */
+  await pickMotion('Sheet')
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════
@@ -4955,32 +4983,31 @@ await shot('30-plan-review')
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════
- * K · THREE MOTIONS FOR THE CANVAS WINDOWS — sheet, focus, and the unfold still itself
+ * K · THREE MOTIONS FOR THE CANVAS WINDOWS — the sheet as the house motion, focus, and the
+ *     unfold still itself
  *
  * Designer, 24.09.2026, with a recording of the unfold: «сделай еще 2 других варианта…
  * с другой задумкой абсолютно и концепцией… переключатель в консоле в виде сегмент
- * контроля». `world.paneMotion` (world.ts `PaneMotion`, motion.ts § TWO MORE WAYS A WINDOW
- * CAN ARRIVE). Each motion is one idea carried through OPEN, SWITCH (Cloud → Analytics) and
- * CLOSE, and each is filmed here on the production build the way the unfold is (block I):
- * per-frame opacity / transform / z-index of every pane on the canvas and of the site.
+ * контроля»; and 25.09.2026, having compared them: «нужно сделать анимацию Sheet по
+ * умолчанию, а переключатель можно оставить… пусть это будет анимация наша фирменная в
+ * дизайн системе для переключения вот таких больших окон». `world.paneMotion` (world.ts
+ * `PaneMotion`, motion.ts § TWO MORE WAYS A WINDOW CAN ARRIVE). Each motion is one idea
+ * carried through OPEN, SWITCH (Cloud → Analytics) and CLOSE, and each is filmed here on the
+ * production build the way the unfold is (block I): per-frame opacity / transform / z-index
+ * of every pane on the canvas and of the site. The block starts on a CLEARED store, so the
+ * first thing it proves is the default itself.
  * ═══════════════════════════════════════════════════════════════════════════════════ */
 {
+  /* a fresh browser: the stored world is what carries `paneMotion` across every goto of this run
+     (block I put the sheet back, but a proof of the DEFAULT must not lean on that) */
+  await p.evaluate(() => localStorage.clear())
   await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
   await p.waitForTimeout(700)
   await p.click('.home-card-face')
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
   await p.waitForTimeout(500)
 
-  const setMotion = async (label) => {
-    await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
-    const hit = await p.evaluate((label) => {
-      const btn = [...document.querySelectorAll('[data-console] button')].find((b) => b.textContent.trim() === label)
-      if (!btn) return false
-      btn.click(); return true
-    }, label)
-    await p.waitForTimeout(150); await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
-    return hit
-  }
+  const setMotion = pickMotion
   const filmPanes = (ms) => p.evaluate(async (ms) => {
     window.__filmArmed = (window.__filmArmed || 0) + 1
     const mat = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return null; const a = m.match(/matrix\(([^)]+)\)/); return a ? a[1].split(',').map(Number) : null }
@@ -5019,8 +5046,20 @@ await shot('30-plan-review')
   const of = (film, id) => film.map((f) => ({ t: f.t, ...(f.panes.find((q) => q.id === id) || {}) })).filter((q) => q.o !== undefined)
   const monotone = (arr, key, dir) => arr.every((q, i) => i === 0 || (dir > 0 ? q[key] >= arr[i - 1][key] - 1e-6 : q[key] <= arr[i - 1][key] + 1e-6))
 
+  /* THE DEFAULT, proved on the product and not on the store: the store is written only on the first
+     `set` (world.ts `syncUrl`), so on a cleared browser it is still empty here — the proof is the window
+     itself. Open Cloud with the console untouched: the pane must arrive tagged as a sheet. */
+  const cloud0 = await bbox('Cloud')
+  await p.mouse.click(cloud0.x + 12, cloud0.y + 12); await p.waitForTimeout(150)
+  const freshTag = await p.$eval('[data-canvas-pane]', (e) => e.dataset.paneMotion)
+  await p.waitForTimeout(900); await p.keyboard.press('Escape'); await p.waitForTimeout(700)
+  await p.mouse.move(800, 800); await p.waitForTimeout(200)
+  check('a fresh world wears the SHEET — the house motion for large canvas windows (designer, 25.09.2026): Cloud, opened before the console is touched, arrives tagged as a sheet',
+    freshTag === 'sheet' && (await p.$('[data-canvas-pane]')) === null, String(freshTag))
+
   /* the console offers the three as ONE SEGMENTED CONTROL (the designer's word: «в виде сегмент
-     контроля»): a single track, three equal seats, a capsule under the chosen one — not a row of chips */
+     контроля»): a single track, three equal seats, a capsule under the chosen one — not a row of chips.
+     The capsule sits under the SHEET, the middle seat, on a fresh world. */
   await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
   const seg = await p.evaluate(() => {
     const track = document.querySelector('[data-segmented="paneMotion"]')
@@ -5032,33 +5071,35 @@ await shot('30-plan-review')
       seats: seats.map((b) => [b.textContent.trim(), b.getAttribute('aria-pressed') === 'true']),
       oneTrack: getComputedStyle(track).borderRadius !== '0px' && seats.every((b) => b.parentElement === track),
       equal: Math.max(...sr.map((r) => r.width)) - Math.min(...sr.map((r) => r.width)) < 1,
-      thumbUnderFirst: Math.abs(tr.left - sr[0].left) < 1 && Math.abs(tr.width - sr[0].width) < 1,
+      thumbUnderSheet: Math.abs(tr.left - sr[1].left) < 1 && Math.abs(tr.width - sr[1].width) < 1,
     }
   })
-  check('the console offers the three window motions as ONE segmented control — one track, three equal seats, the capsule under Unfold by default',
-    !!seg && JSON.stringify(seg.seats) === JSON.stringify([['Unfold', true], ['Sheet', false], ['Focus', false]]) && seg.oneTrack && seg.equal && seg.thumbUnderFirst,
+  check('the console offers the three window motions as ONE segmented control — one track, three equal seats, the capsule under Sheet (the house motion) by default',
+    !!seg && JSON.stringify(seg.seats) === JSON.stringify([['Unfold', false], ['Sheet', true], ['Focus', false]]) && seg.oneTrack && seg.equal && seg.thumbUnderSheet,
     JSON.stringify(seg))
-  /* …and the capsule FLIES: pick Sheet and film the thumb — it leaves seat 1 and lands on seat 2 on the
-     house spring (one soft overshoot), the seats themselves never moving */
+  /* …and the capsule FLIES: pick Unfold and film the thumb — it leaves the middle seat and lands on the
+     first on the house spring (one soft overshoot, now to the LEFT), the seats themselves never moving */
   const flight = await p.evaluate(async () => {
     const track = document.querySelector('[data-segmented="paneMotion"]')
     const thumb = track.querySelector('[data-seg-thumb]'); const seats = [...track.querySelectorAll('button')]
     const seat1 = seats[1].getBoundingClientRect(); const seat0 = seats[0].getBoundingClientRect()
     const xs = []; const t0 = performance.now()
-    seats[1].click()
-    await new Promise((r) => { const tick = () => { xs.push({ t: Math.round(performance.now() - t0), x: thumb.getBoundingClientRect().left, s1: seats[1].getBoundingClientRect().left }); if (performance.now() - t0 < 900) requestAnimationFrame(tick); else r() }; requestAnimationFrame(tick) })
-    return { from: seat0.left, to: seat1.left, xs, seatMoved: xs.some((q) => Math.abs(q.s1 - seat1.left) > 0.5) }
+    seats[0].click()
+    await new Promise((r) => { const tick = () => { xs.push({ t: Math.round(performance.now() - t0), x: thumb.getBoundingClientRect().left, s0: seats[0].getBoundingClientRect().left }); if (performance.now() - t0 < 900) requestAnimationFrame(tick); else r() }; requestAnimationFrame(tick) })
+    return { from: seat1.left, to: seat0.left, xs, seatMoved: xs.some((q) => Math.abs(q.s0 - seat0.left) > 0.5) }
   })
   const fx = flight.xs.map((q) => q.x)
-  check('…and picking Sheet FLIES the capsule from seat 1 to seat 2 on the house spring — through the gap, one soft overshoot, seats standing still',
-    fx.length >= 12 && Math.abs(fx[0] - flight.from) < 12 && Math.abs(fx[fx.length - 1] - flight.to) < 0.6 && Math.max(...fx) > flight.to + 0.5 && Math.max(...fx) < flight.to + 12
-      && fx.some((x) => x > flight.from + 8 && x < flight.to - 8) && !flight.seatMoved,
-    JSON.stringify({ from: flight.from, to: flight.to, x0: fx[0], max: Math.max(...fx), last: fx[fx.length - 1], n: fx.length, seatMoved: flight.seatMoved }))
+  check('…and picking Unfold FLIES the capsule from the Sheet seat to the Unfold seat on the house spring — through the gap, one soft overshoot past the seat, seats standing still',
+    fx.length >= 12 && Math.abs(fx[0] - flight.from) < 12 && Math.abs(fx[fx.length - 1] - flight.to) < 0.6 && Math.min(...fx) < flight.to - 0.5 && Math.min(...fx) > flight.to - 12
+      && fx.some((x) => x < flight.from - 8 && x > flight.to + 8) && !flight.seatMoved,
+    JSON.stringify({ from: flight.from, to: flight.to, x0: fx[0], min: Math.min(...fx), last: fx[fx.length - 1], n: fx.length, seatMoved: flight.seatMoved }))
   await p.keyboard.press('Control+.'); await p.waitForTimeout(350)
+  check('…and the seats are real controls: the flight put the world on the unfold',
+    (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').paneMotion)) === 'unfold')
 
   /* ── SHEET ─────────────────────────────────────────────────────────────────────── */
-  check('…and the Sheet option is a real control (it flips the world)', await setMotion('Sheet')
-    && (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v4') || '{}').paneMotion)) === 'sheet')
+  check('…and picking Sheet brings the house motion back', await setMotion('Sheet')
+    && (await p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v5') || '{}').paneMotion)) === 'sheet')
   let cloud = await bbox('Cloud'), an = await bbox('Analytics')
   const shOpen = await filmed(() => filmPanes(1200), () => p.mouse.click(cloud.x + 12, cloud.y + 12))
   const so = of(shOpen, 'cloud')
@@ -5136,6 +5177,22 @@ await shot('30-plan-review')
     uo.length >= 5 && uo[0].motion === 'unfold' && uo.every((q) => q.y === 0 && q.s === 1) && !!(await p.$('[data-canvas-pane] [data-pane-rim]')),
     JSON.stringify(uo[0]))
   await p.keyboard.press('Escape'); await p.waitForTimeout(600)
+  await p.mouse.move(800, 800); await p.waitForTimeout(200)
+  /* …and the house motion is left on, as a customer would find it */
+  await setMotion('Sheet')
+
+  /* ── THE SHEET IS THE MOTION OF EVERY LARGE WINDOW, not of Cloud alone ─────────────
+     «ко всем подобным кейсам подключить»: the four windows that stand in the one `CanvasPane` — Cloud,
+     Analytics, Domains (from the chip) and the plan review — arrive tagged as sheets without anyone
+     picking anything. Analytics and Domains are opened here; Cloud is the film above, the plan review is
+     the same pane by construction (App.tsx) and is exercised by case A. */
+  const tagOf = async (open) => { await open(); await p.waitForTimeout(150); const tag = await p.$eval('[data-canvas-pane]', (e) => e.dataset.paneMotion); await p.waitForTimeout(900); return tag }
+  const anTag = await tagOf(async () => { an = await bbox('Analytics'); await p.mouse.click(an.x + 24, an.y + 24) })
+  await p.keyboard.press('Escape'); await p.waitForTimeout(700); await p.mouse.move(800, 800); await p.waitForTimeout(200)
+  const domTag = await tagOf(() => p.evaluate(() => [...document.querySelectorAll('header button')].find((e) => /remixer\.ai/.test(e.innerText)).click()))
+  check('the sheet is on EVERY large canvas window, not on Cloud alone: Analytics from the rail and Domains from the address chip both arrive tagged as sheets with nothing picked',
+    anTag === 'sheet' && domTag === 'sheet', JSON.stringify({ analytics: anTag, domains: domTag }))
+  await p.keyboard.press('Escape'); await p.waitForTimeout(700)
   await p.mouse.move(800, 800); await p.waitForTimeout(200)
 }
 
