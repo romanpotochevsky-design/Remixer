@@ -337,6 +337,19 @@ interface UIStore {
    */
   previewOpen: boolean
   /**
+   * WHICH PAGE OF THE SITE THE PREVIEW SHOWS — the route, as a path (`/`, `/about`). The page
+   * switcher in the canvas toolbar (modules/preview/PageSwitcher.tsx, designer 25.09.2026 with a
+   * recording of Lovable's route picker: «вместо этой кнопки мы по классике хотим туда вставить
+   * переключатель страниц сайта… логику работы… как у lovable один в один») writes it, and so does
+   * the site itself when a link inside the preview is followed — the pill reads whatever the
+   * preview stands on, exactly as Lovable's pill follows the iframe's route. Navigation, not world:
+   * the console has no business staging which page somebody is looking at, and every door into the
+   * builder starts on the home page (`openBuilder` resets it). A path the outline does not know
+   * (typed into the switcher's "enter path") stays here as typed and the site answers with its own
+   * not-found page — Lovable's app would show its 404 route the same way.
+   */
+  previewPath: string
+  /**
    * Is the simplified Build Plan's window standing tall? (Figma 30596:27064 draws the
    * chevron that does it, at the right of the card's header.)
    *
@@ -394,6 +407,8 @@ interface UIStore {
   setDevice: (d: Device) => void
   setChatWidth: (px: number) => void
   setPreviewOpen: (open: boolean) => void
+  /** The page switcher or a link inside the site: the preview goes to this path. */
+  setPreviewPath: (path: string) => void
   togglePlanTall: () => void
   togglePreview: () => void
   /** `from` is the pressed control's box — the pane unfolds from it; omit for a press-less open. */
@@ -442,6 +457,7 @@ export const useUI = create<UIStore>((set, get) => ({
   reloading: false,
   boot: null,
   previewOpen: true,
+  previewPath: '/',
   planTall: false,
   panel: null,
 
@@ -469,7 +485,7 @@ export const useUI = create<UIStore>((set, get) => ({
     const arrive = reduce ? 240 : BOOT_ARRIVE_MS
     set({ boot: 'darken' })
     bootAfter(darken, () =>
-      set({ page: 'builder', boot: glow ? 'glow' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, attachedFile: null, tplFlight: null }))
+      set({ page: 'builder', boot: glow ? 'glow' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, attachedFile: null, tplFlight: null, previewPath: '/' }))
     if (glow) bootAfter(darken + glow, () => set({ boot: 'arrive' }))
     bootAfter(darken + glow + arrive, () => set({ boot: null }))
   },
@@ -542,6 +558,7 @@ export const useUI = create<UIStore>((set, get) => ({
   setDevice: (device) => set({ device }),
   setChatWidth: (chatWidth) => set({ chatWidth }),
   setPreviewOpen: (previewOpen) => set({ previewOpen }),
+  setPreviewPath: (previewPath) => set({ previewPath }),
   togglePreview: () => set({ previewOpen: !get().previewOpen }),
   togglePlanTall: () => set({ planTall: !get().planTall }),
   openSurface: (surface, from = null) => set({ surface, surfaceFrom: from, publishOpen: false }),

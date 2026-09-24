@@ -14,7 +14,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState
 import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, usePresence, useReducedMotion, useTransform, type MotionStyle, type MotionValue } from 'motion/react'
 import { useWorld, canUseAI, hasPlan, registrantUnconfirmed , type PaneMotion } from '@/state/world'
 import { useUI, fromRect, MOBILE_WIDTH, MOBILE_HEIGHT, type Surface, type SurfaceFrom } from '@/state/ui'
-import { STAGING_HOST, CUSTOM_DOMAIN } from '@/data/domains'
+import { CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { PlanVariantSwitch } from '@/modules/chat/PlanVariantSwitch'
 /* `domainIsHome` rides along with the panel deliberately: it is the panel's own reading of
@@ -23,8 +23,7 @@ import { PlanVariantSwitch } from '@/modules/chat/PlanVariantSwitch'
    own domain from `propagating` on, while its DOT keeps the truth about the domain not
    answering yet (`domainStatus` below, off `registrantUnconfirmed`). Two facts, two
    channels, one predicate each. */
-import { PublishPanel, domainIsHome, canPublish } from '@/modules/publish/PublishPanel'
-import { DOMAIN_STATUS, domainStatus } from '@/modules/domains/status'
+import { PublishPanel, canPublish } from '@/modules/publish/PublishPanel'
 import { ConfirmHost } from '@/ui/ConfirmDialog'
 import { DomainsSurface } from '@/modules/domains/DomainsSurface'
 import { CloudSurface } from '@/modules/cloud/CloudSurface'
@@ -34,6 +33,7 @@ import { DomainModal } from '@/modules/domains/DomainModal'
 import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SitePreview } from '@/modules/preview/SitePreview'
+import { PageSwitcher } from '@/modules/preview/PageSwitcher'
 import { SiriGlow } from '@/ui/SiriGlow'
 import {
   SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, canvasSiteSheet,
@@ -46,7 +46,7 @@ import {
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
-  LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone, IconGrid,
+  LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone,
   IconChevronDown, IconCoin, IconStyle, IconExtension, IconAnalytics, IconCloud,
   IconChatBubble, IconExpand,
 } from '@/ui/icons'
@@ -731,7 +731,7 @@ const RAIL_HOLD_MS = 160
 type RailFill = { id: string; x: number; y: number; dir: 'in' | 'out'; phase: 'run' | 'hold'; key: number }
 export default function App() {
   const { world } = useWorld()
-  const { surface, openSurface, closeSurface, openDomains, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
+  const { surface, openSurface, closeSurface, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
 
   /*
    * A SURFACE IS LEAVING THE CANVAS. From the moment `surface` goes back to the preview until
@@ -926,31 +926,6 @@ export default function App() {
   const { t } = useT()
 
   /*
-   * WHICH address the chip prints is world truth, exactly like the Publish panel's field.
-   * `customDomain` is what startConnect writes (state/world.ts, "WHICH domain is attached to
-   * this project"), so a customer who connected `trulieve.com` now reads `trulieve.com` here
-   * instead of the constant this used to print while the panel two clicks away said the real
-   * name. CUSTOM_DOMAIN survives only as the fallback default, for a world carrying no name.
-   *
-   * The staging half reads the same STAGING_HOST the Publish panel reads, rather than keeping
-   * a second copy of the free preview address: one literal for the whole app, so the chip can
-   * never drift from the panel. The host itself is `remixer.ai` and lives in data/domains.ts.
-   *
-   * ⚠️ WHEN IT SWITCHES IS NOT A SECOND OPINION EITHER, AS OF TONIGHT (D5, 14.09.2026).
-   * The test used to be spelled out here as live-or-multiple, and the panel's was written
-   * separately one file away — so through the whole padlock beat the panel printed the
-   * custom domain and this chip printed the staging one: two addresses on screen at once,
-   * for the seconds the walk lasts. Both now ask `domainIsHome`, which is the
-   * panel's own function. Swapping the branches here would be the same bug mirrored: the
-   * domain DOES answer by this beat (a certificate cannot be issued before it does), it
-   * simply is not secured yet — and the amber dot beside it is what says so.
-   */
-  const address = domainIsHome(world) ? world.customDomain || CUSTOM_DOMAIN : STAGING_HOST
-
-  /** …and HOW that address is doing, in the Publish panel's tones. See DOMAIN_STATUS. */
-  const status = domainStatus(world)
-
-  /*
    * ONE ACTION, ONE VERB — "Publish changes", the same words the panel's own button
    * carries (Figma 28071:53189). This button said "Update" until the designer settled
    * it on 14.09.2026: pushing edits to visitors who already have the old version is one
@@ -1117,38 +1092,14 @@ export default function App() {
             </Glass>
           </div>
 
-          {/* center: project button, 280×40 — the live address in permanent chrome */}
-          <button
-            onClick={(e) => (status && status !== 'live'
-              /* Every state the dot marks except a working address is reported BY the
-                 Publish panel, in its own card with its own way out — in flight, waiting
-                 on the first press (`ready`), or stuck. So the chip opens that panel, not
-                 the domains window; there is no status page any more. A live address has
-                 nothing left to report, so it goes back to the domains dashboard.
-
-                 ⚠️ WHICH IS WHY THE DOOR FOLLOWS THE DOT AND IS NOT A SECOND TEST. A live
-                 domain still owing a registrant confirmation used to read `live` here and
-                 land the customer on the domains dashboard — a list of names, while the
-                 one thing they can actually do about it (the card, its Resend, the letter
-                 beside it) was in the panel they had just been sent away from. It reads
-                 `working` now, so this same ternary routes it to the panel with every
-                 other unfinished state. The fix lives in `domainStatus`, once. */
-              ? togglePublish(true)
-              : openDomains('home', null, fromRect(e.currentTarget)))}
-            title={status ? t(DOMAIN_STATUS[status].note) : undefined}
-            className="mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]/[0.04]"
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="grid h-6 w-6 flex-none place-items-center text-[var(--white-400)]">
-                <IconGrid size={22} />
-              </span>
-              {status && (
-                <span className={`h-1.5 w-1.5 flex-none rounded-full ${DOMAIN_STATUS[status].dot}`} aria-hidden />
-              )}
-              <span className="truncate text-[15px] font-semibold leading-[1.4]">{address}</span>
-            </span>
-            <span className="flex-none text-[var(--white-400)]"><IconChevronDown size={18} /></span>
-          </button>
+          {/* centre: the PAGE SWITCHER, in the board's 280 × 40 project-button box (Figma
+              25819:143144). It replaced the address chip on 25.09.2026 (designer, with a recording
+              of Lovable's route picker: «вместо этой кнопки мы по классике хотим туда вставить
+              переключатель страниц сайта»): the pill reads the page the preview stands on, the
+              menu under it lists the plan's pages with a search field, and the preview follows.
+              The address, its status and the door to the Domains window live in the Publish panel,
+              which was already the one place the connection is read (13.09.2026). */}
+          <PageSwitcher />
 
           {/* right: credits (amber, permanent — never move it off the toolbar) + Publish */}
           <div className="flex items-center gap-2">

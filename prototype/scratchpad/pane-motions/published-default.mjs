@@ -13,7 +13,7 @@ const out = { stored: await p.evaluate(() => Object.keys(localStorage)) }
 let c = await bbox('Cloud'); await p.mouse.click(c.x + 12, c.y + 12); await p.waitForTimeout(80); out.cloudEarly = await snap(); await p.waitForTimeout(900); out.cloudLanded = await snap()
 const an = await bbox('Analytics'); await p.mouse.click(an.x + 24, an.y + 24); await p.waitForTimeout(80); out.switchEarly = await snap(); await p.waitForTimeout(1000); out.switchLanded = await snap()
 await p.keyboard.press('Escape'); await p.waitForTimeout(800)
-await p.evaluate(() => [...document.querySelectorAll('header button')].find((e) => /remixer\.ai/.test(e.innerText)).click()); await p.waitForTimeout(80); out.domainsEarly = await snap(); await p.waitForTimeout(900); out.domainsLanded = await snap()
+await p.click('header button:has-text("Publish")'); await p.waitForTimeout(600); await p.click('[role="dialog"][aria-label="Publish"] button:has-text("Buy or connect a domain")'); await p.waitForTimeout(80); out.domainsEarly = await snap(); await p.waitForTimeout(900); out.domainsLanded = await snap()
 await p.keyboard.press('Escape'); await p.waitForTimeout(700)
 await p.keyboard.press('Control+.'); await p.waitForTimeout(400)
 out.seats = await p.evaluate(() => [...document.querySelectorAll('[data-segmented="paneMotion"] button')].map((b) => [b.textContent.trim(), b.getAttribute('aria-pressed')]))

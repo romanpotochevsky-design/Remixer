@@ -3048,7 +3048,7 @@ check('…and the typed prompt is built as given', await cardUp())
    * name by itself, and the panel then titled itself for a press nobody made.
    *
    * A staged state cannot catch that, because it is a TRANSITION — so this one is the real
-   * thing: topbar chip → domains dashboard → Connect → the sheet, the six seconds of the
+   * thing: Publish panel's door → domains dashboard → Connect → the sheet, the six seconds of the
    * attach timeline, and then the press. Run for BOTH customers, because the defect had
    * exactly one of them: the site that had been published before, which is the commonest
    * shape in the flow.
@@ -3069,10 +3069,14 @@ check('…and the typed prompt is built as given', await cardUp())
     await p.click('.home-card-face')
     await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 15000 })
     await p.waitForTimeout(500)
-    /* the address chip with no domain on it is the door to the dashboard (App.tsx) */
-    await p.evaluate(() => [...document.querySelectorAll('header button')]
-      .find((e) => /remixer\.ai/.test(e.innerText)).click())
-    await p.waitForTimeout(800)
+    /* the door to the dashboard is the Publish panel's dashed card («Buy or connect a domain»):
+       since 25.09.2026 the toolbar's centre is the PAGE SWITCHER (block L), and the address chip
+       that used to be the other door is gone with its status dot — the panel was already the one
+       place the connection is read (13.09.2026). Opening the dashboard closes the panel. */
+    await p.click('header button:has-text("Publish")')
+    await p.waitForTimeout(700)
+    await p.click('[role="dialog"][aria-label="Publish"] button:has-text("Buy or connect a domain")')
+    await p.waitForTimeout(900)
     await p.locator('button:has-text("Connect")').first().click()
     await p.waitForTimeout(800)
     /*
@@ -5183,17 +5187,177 @@ await shot('30-plan-review')
 
   /* ── THE SHEET IS THE MOTION OF EVERY LARGE WINDOW, not of Cloud alone ─────────────
      «ко всем подобным кейсам подключить»: the four windows that stand in the one `CanvasPane` — Cloud,
-     Analytics, Domains (from the chip) and the plan review — arrive tagged as sheets without anyone
-     picking anything. Analytics and Domains are opened here; Cloud is the film above, the plan review is
+     Analytics, Domains (from the Publish panel's door) and the plan review — arrive tagged as sheets
+     without anyone picking anything. Analytics and Domains are opened here; Cloud is the film above, the plan review is
      the same pane by construction (App.tsx) and is exercised by case A. */
   const tagOf = async (open) => { await open(); await p.waitForTimeout(150); const tag = await p.$eval('[data-canvas-pane]', (e) => e.dataset.paneMotion); await p.waitForTimeout(900); return tag }
   const anTag = await tagOf(async () => { an = await bbox('Analytics'); await p.mouse.click(an.x + 24, an.y + 24) })
   await p.keyboard.press('Escape'); await p.waitForTimeout(700); await p.mouse.move(800, 800); await p.waitForTimeout(200)
-  const domTag = await tagOf(() => p.evaluate(() => [...document.querySelectorAll('header button')].find((e) => /remixer\.ai/.test(e.innerText)).click()))
-  check('the sheet is on EVERY large canvas window, not on Cloud alone: Analytics from the rail and Domains from the address chip both arrive tagged as sheets with nothing picked',
+  const domTag = await tagOf(async () => {
+    await p.click('header button:has-text("Publish")'); await p.waitForTimeout(600)
+    await p.click('[role="dialog"][aria-label="Publish"] button:has-text("Buy or connect a domain")')
+  })
+  check('the sheet is on EVERY large canvas window, not on Cloud alone: Analytics from the rail and Domains from the Publish panel’s door both arrive tagged as sheets with nothing picked',
     anTag === 'sheet' && domTag === 'sheet', JSON.stringify({ analytics: anTag, domains: domTag }))
   await p.keyboard.press('Escape'); await p.waitForTimeout(700)
   await p.mouse.move(800, 800); await p.waitForTimeout(200)
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════
+ * L · THE PAGE SWITCHER — Lovable's route picker, in our glass
+ *
+ * Designer, 25.09.2026, with a 30 s recording of Lovable's preview toolbar: «вместо этой
+ * кнопки мы по классике хотим туда вставить переключатель страниц сайта… саму логику и UX
+ * делаем как у lovable на видео один в один, но дизайн, анимации и эффекты используем
+ * наши». The recording, frame by frame (prototype/scratchpad/lov-pages): a pill with the
+ * current route and a chevron; a menu under it, as wide as the pill, with a search field
+ * pre-filled with the current route SELECTED (not filtering) over a list with a check on
+ * the current route; the highlight follows the pointer and carries a glyph; a press closes
+ * the menu, the pill reads the new route AT ONCE, the preview follows; typing that matches
+ * nothing collapses the list to «Go to <typed>»; ✕ clears; the pill follows the site's own
+ * navigation. Ours: names not routes (the plan's outline, pages.ts), the toolbar's glass
+ * grown from the pill (motion.ts `pageMenuIn`), the house hover and bloom, the site's own
+ * not-found page for an unknown path, a sequential page handover in the preview.
+ * ═══════════════════════════════════════════════════════════════════════════════════ */
+{
+  await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
+  await p.waitForTimeout(700)
+  await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(600)
+  const near = (a, b, tol) => Math.abs(a - b) <= tol
+  const label = () => p.$eval('[data-page-label]', (e) => e.textContent)
+  const pagePath = () => p.$eval('[data-site-page]', (e) => e.dataset.sitePage)
+  const rows = () => p.$$eval('[data-page-row]', (els) => els.map((e) => ({ path: e.dataset.pageRow, text: e.textContent, active: e.hasAttribute('data-active'), current: e.hasAttribute('data-current'), goto: e.hasAttribute('data-page-goto'), h: e.getBoundingClientRect().height, bg: getComputedStyle(e).backgroundColor, enter: !!e.querySelector('span:last-child svg') })))
+  /* per-frame: the menu's opacity / scale / y, the glint, the chevron's flip, the site's pages */
+  const film = (ms) => p.evaluate(async (ms) => {
+    window.__filmArmed = (window.__filmArmed || 0) + 1
+    const mat = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return null; const a = m.match(/matrix\(([^)]+)\)/); return a ? a[1].split(',').map(Number) : null }
+    let tAct = null; const mark = () => { if (tAct === null) tAct = performance.now() }
+    addEventListener('pointerdown', mark, { capture: true, once: true }); addEventListener('keydown', mark, { capture: true, once: true })
+    const s = []; const t0 = performance.now()
+    const tick = () => {
+      const now = performance.now(); const menu = document.querySelector('[data-page-menu]'); const m = menu ? mat(menu) : null
+      const chev = document.querySelector('[data-page-chevron]'); const cm = chev ? mat(chev) : null; const glint = menu?.querySelector('.glass-glint')
+      s.push({ t: Math.round(now - t0), menu: menu ? { o: +(+getComputedStyle(menu).opacity).toFixed(3), s: m ? +m[0].toFixed(4) : 1, y: m ? +m[5].toFixed(1) : 0, glint: glint ? +(+getComputedStyle(glint).opacity).toFixed(2) : 0 } : null,
+        chev: cm ? +cm[3].toFixed(2) : 1, label: document.querySelector('[data-page-label]')?.textContent,
+        pages: [...document.querySelectorAll('[data-site-page]')].map((e) => [e.dataset.sitePage, +(+getComputedStyle(e).opacity).toFixed(2)]) })
+      if (now - t0 < ms) setTimeout(() => requestAnimationFrame(tick), 0)
+    }
+    requestAnimationFrame(tick)
+    await new Promise((r) => setTimeout(r, ms + 60))
+    removeEventListener('pointerdown', mark, true); removeEventListener('keydown', mark, true)
+    if (tAct === null) return s
+    const off = tAct - t0
+    return s.filter((x) => x.t >= off - 1).map((x) => ({ ...x, t: Math.round(x.t - off) }))
+  }, ms)
+  const filmed = async (start, act) => {
+    const before = await p.evaluate(() => window.__filmArmed || 0)
+    const f = start(); await p.waitForFunction((n) => (window.__filmArmed || 0) > n, before); await act(); return f
+  }
+
+  /* ── the pill ──────────────────────────────────────────────────────────────────── */
+  const pill = await p.$eval('[data-page-switch]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { x: r.x, y: r.y, w: r.width, h: r.height, r: cs.borderTopLeftRadius, border: cs.borderTopColor, expanded: e.getAttribute('aria-expanded'), inHeader: !!e.closest('header') } })
+  check('the toolbar’s centre is the PAGE SWITCHER in the board’s 280 × 40 project-button box (radius 10, NA/200 rim), reading the page the preview stands on — Home — with the menu closed',
+    pill.w === 280 && pill.h === 40 && pill.r === '10px' && pill.border === 'rgba(255, 255, 255, 0.12)' && pill.inHeader && pill.expanded === 'false' && (await label()) === 'Home' && (await pagePath()) === '/',
+    JSON.stringify({ ...pill, label: await label() }))
+  check('…and the address chip is gone from the toolbar: no header button prints the staging host (the address lives in the Publish panel)',
+    (await p.$$eval('header button', (els) => els.filter((e) => /remixer\.ai/.test(e.innerText)).length)) === 0)
+
+  /* ── open: the menu grows out of the pill ───────────────────────────────────────── */
+  const openFilm = await filmed(() => film(900), () => p.mouse.click(pill.x + 140, pill.y + 20))
+  const of = openFilm.filter((f) => f.menu)
+  const solidAt = of.find((f) => f.menu.o >= 0.99)?.t
+  const monoO = of.every((f, i) => i === 0 || f.menu.o >= of[i - 1].menu.o - 0.001)
+  const monoS = of.every((f, i) => i === 0 || f.menu.s >= of[i - 1].menu.s - 0.0005)
+  const glintPeak = Math.max(...of.map((f) => f.menu.glint))
+  check('pressing the pill GROWS the menu out of it: from .92 and 8 px up, scale and opacity rising monotonically, solid within 260 ms while still growing, the rim catching light (glint > .3 within the film)',
+    of.length >= 10 && of[0].menu.s <= 0.94 && of[0].menu.y <= -6 && of[0].menu.o < 0.5 && monoO && monoS && solidAt !== undefined && solidAt <= 260 && of.find((f) => f.t === solidAt).menu.s < 1 && of[of.length - 1].menu.s >= 0.999 && glintPeak > 0.3,
+    JSON.stringify({ first: of[0], solidAt, monoO, monoS, glintPeak, last: of[of.length - 1] }))
+  check('…and the chevron flips (scaleY 1 → −1) on the same beat',
+    openFilm[0].chev === 1 && openFilm[openFilm.length - 1].chev === -1 && openFilm.some((f) => f.chev > -0.9 && f.chev < 0.9),
+    JSON.stringify(openFilm.map((f) => f.chev).filter((v, i, a) => a.indexOf(v) === i).slice(0, 8)))
+  await p.waitForTimeout(200)
+  const menu = await p.$eval('[data-page-menu]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { left: r.left, top: r.top, width: r.width, inBody: e.parentElement === document.body, blur: cs.backdropFilter, bg: cs.backgroundColor, r: cs.borderTopLeftRadius, role: e.getAttribute('role') } })
+  check('the menu hangs UNDER the pill — left edge to left edge, the pill’s 280 wide, 6 px below its bottom — in <body>, as the toolbar’s glass (blur 16, rgba(24,24,27,.8), radius 12), a listbox',
+    near(menu.left, pill.x, 0.5) && near(menu.width, pill.w, 0.5) && near(menu.top, pill.y + pill.h + 6, 0.5) && menu.inBody && /blur\(16px\)/.test(menu.blur) && menu.bg === 'rgba(24, 24, 27, 0.8)' && menu.r === '12px' && menu.role === 'listbox',
+    JSON.stringify({ menu, pill: [pill.x, pill.y + pill.h] }))
+  const field = await p.$eval('[data-page-input]', (e) => ({ value: e.value, focused: document.activeElement === e, sel: [e.selectionStart, e.selectionEnd], placeholder: e.placeholder, clear: !!document.querySelector('[data-page-clear]') }))
+  check('the field is focused, PRE-FILLED with the current route «/» selected whole, with a ✕ to clear — and the list under it is NOT filtered by that pre-fill',
+    field.focused && field.value === '/' && field.sel[0] === 0 && field.sel[1] === 1 && field.placeholder === 'Find page or enter path' && field.clear && (await rows()).length === 4,
+    JSON.stringify(field))
+  const r0 = await rows()
+  check('the rows are the plan’s pages in the outline’s order — Home · About · Services · Contact — 40 tall, a check on the current page only, the FIRST row highlighted (the house 8 % wash) and carrying the enter glyph',
+    r0.map((r) => r.text).join('·') === 'Home·About·Services·Contact' && r0.map((r) => r.path).join('·') === '/·/about·/services·/contact' && r0.every((r) => r.h === 40)
+      && r0.map((r) => r.current).join() === 'true,false,false,false' && r0.map((r) => r.active).join() === 'true,false,false,false'
+      && r0[0].bg === 'rgba(255, 255, 255, 0.08)' && r0[0].enter && r0.slice(1).every((r) => r.bg === 'rgba(0, 0, 0, 0)' && !r.enter),
+    JSON.stringify(r0.map((r) => [r.text, r.active, r.current, r.bg])))
+  /* the highlight follows the pointer, then the keyboard continues from there */
+  const r3 = await (await p.$('[data-page-row="/services"]')).boundingBox()
+  await p.mouse.move(r3.x + 60, r3.y + 20); await p.waitForTimeout(150)
+  const hov = await rows()
+  await p.keyboard.press('ArrowDown'); await p.waitForTimeout(100)
+  const down = await rows()
+  check('the highlight FOLLOWS THE POINTER (over Services only Services wears the wash and the glyph), and ↓ continues from there to Contact',
+    hov.map((r) => r.active).join() === 'false,false,true,false' && hov[2].bg === 'rgba(255, 255, 255, 0.08)' && hov[2].enter && down.map((r) => r.active).join() === 'false,false,false,true',
+    JSON.stringify({ hov: hov.map((r) => r.active), down: down.map((r) => r.active) }))
+  /* typing filters; emptying the field brings everything back and drops the ✕ */
+  await p.keyboard.type('con'); await p.waitForTimeout(150)
+  const filtered = await rows()
+  for (let i = 0; i < 3; i++) await p.keyboard.press('Backspace')
+  await p.waitForTimeout(150)
+  const emptied = { rows: (await rows()).length, value: await p.$eval('[data-page-input]', (e) => e.value), clear: !!(await p.$('[data-page-clear]')) }
+  check('typing filters the list by name (`con` → Contact alone, highlighted), and an emptied field shows every page again with no ✕',
+    filtered.length === 1 && filtered[0].text === 'Contact' && filtered[0].active && emptied.rows === 4 && emptied.value === '' && !emptied.clear,
+    JSON.stringify({ filtered: filtered.map((r) => r.text), emptied }))
+  /* a path the outline does not know → one «Go to» row → the site's own not-found page */
+  await p.keyboard.type('promo'); await p.waitForTimeout(150)
+  const goto = await rows()
+  const closeFilm = await filmed(() => film(700), () => p.keyboard.press('Enter'))
+  const cf = closeFilm.filter((f) => f.menu)
+  const cMono = cf.every((f, i) => i === 0 || f.menu.o <= cf[i - 1].menu.o + 0.001)
+  const gone = closeFilm.find((f) => !f.menu)
+  check('typing what matches no page collapses the list to ONE row — «Go to /promo», with the arrow glyph — and Enter takes it: the menu leaves in ≤ 180 ms, fading monotonically, back toward the pill (scale → .96), never flashing back',
+    goto.length === 1 && goto[0].goto && goto[0].text === 'Go to /promo' && goto[0].path === '/promo' && goto[0].active
+      && cf.length >= 4 && cMono && !!gone && gone.t <= 260 && cf[cf.length - 1].menu.o <= 0.25 && cf[cf.length - 1].menu.s <= 0.985,
+    JSON.stringify({ goto, frames: cf.length, lastO: cf[cf.length - 1]?.menu.o, lastS: cf[cf.length - 1]?.menu.s, goneAt: gone?.t }))
+  const labelAt = closeFilm.find((f) => f.label === '/promo')?.t
+  await p.waitForTimeout(500)
+  check('…the pill reads the new route AT ONCE (the label changes in the first frames of the press, before the menu is gone) and the preview stands on the site’s own not-found page for it — the old page gone, the chevron back down',
+    labelAt !== undefined && labelAt <= (gone?.t ?? 0) && (await label()) === '/promo' && (await pagePath()) === '/promo' && !!(await p.$('[data-site-notfound]'))
+      && (await p.$$('[data-site-page]')).length === 1 && (await p.$eval('[data-page-switch]', (e) => e.getAttribute('aria-expanded'))) === 'false' && closeFilm[closeFilm.length - 1].chev === 1,
+    JSON.stringify({ labelAt, goneAt: gone?.t, label: await label(), page: await pagePath() }))
+  /* the site's own link home moves the pill — the pill follows the site */
+  await p.click('[data-site-notfound] [data-site-link="/"]'); await p.waitForTimeout(700)
+  check('a link INSIDE the site («Back to home» on the not-found page) moves the preview and the pill follows it — Home, «/»',
+    (await label()) === 'Home' && (await pagePath()) === '/' && !!(await p.$('.site-stage h1')))
+  /* picking a page: the preview hands over sequentially, the label first */
+  await p.mouse.click(pill.x + 140, pill.y + 20); await p.waitForTimeout(500)
+  const swapFilm = await filmed(() => film(900), () => p.click('[data-page-row="/services"]'))
+  const oldGone = swapFilm.find((f) => !f.pages.some(([id]) => id === '/'))?.t
+  const newStarts = swapFilm.find((f) => f.pages.some(([id, o]) => id === '/services' && o > 0.2))?.t
+  const oldMono = swapFilm.map((f) => f.pages.find(([id]) => id === '/')?.[1]).filter((v) => v !== undefined).every((v, i, a) => i === 0 || v <= a[i - 1] + 0.001)
+  const labelSwap = swapFilm.find((f) => f.label === 'Services')?.t
+  const last = swapFilm[swapFilm.length - 1]
+  check('picking Services hands the preview over SEQUENTIALLY: the home page fades out monotonically and is gone before the Services page passes .2, the new page settles at 1 within the film, and the pill read «Services» before either moved',
+    oldGone !== undefined && newStarts !== undefined && newStarts >= oldGone - 20 && oldMono && labelSwap !== undefined && labelSwap <= oldGone
+      && last.pages.length === 1 && last.pages[0][0] === '/services' && last.pages[0][1] === 1 && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'Services',
+    JSON.stringify({ oldGone, newStarts, oldMono, labelSwap, last }))
+  /* the footer's page links: the second door, and the pill follows again */
+  const foot = await p.$('[data-site-page] [data-site-link="/about"]'); await foot.scrollIntoViewIfNeeded(); await p.waitForTimeout(200); await foot.click(); await p.waitForTimeout(700)
+  check('the site’s footer carries its pages as links, and following «About» there moves the pill to About',
+    (await label()) === 'About' && (await pagePath()) === '/about' && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'About')
+  /* reopen: the check moved, the field holds the new route; Esc and a press outside close */
+  await p.mouse.click(pill.x + 140, pill.y + 20); await p.waitForTimeout(500)
+  const re = { field: await p.$eval('[data-page-input]', (e) => [e.value, e.selectionStart, e.selectionEnd]), current: (await rows()).filter((r) => r.current).map((r) => r.path) }
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+  const escClosed = !(await p.$('[data-page-menu]'))
+  await p.mouse.click(pill.x + 140, pill.y + 20); await p.waitForTimeout(500)
+  await p.mouse.click(1000, 600); await p.waitForTimeout(300)
+  const outClosed = !(await p.$('[data-page-menu]'))
+  check('reopened, the check sits on About and the field holds «/about» selected whole; Esc closes the menu, and so does a press anywhere outside it',
+    re.field[0] === '/about' && re.field[1] === 0 && re.field[2] === 6 && re.current.join() === '/about' && escClosed && outClosed,
+    JSON.stringify({ re, escClosed, outClosed }))
 }
 
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
