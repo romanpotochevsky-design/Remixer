@@ -9,11 +9,12 @@
  * the proposals on one structure.
  *
  * Paths are derived, Lovable-style: the first page is `/`, every other page is `/` + a slug of
- * its English name (`About` → `/about`, `Item page` → `/item-page`). The customer never types
- * these unless they want to — the switcher's rows show NAMES, because a Remixer customer knows
- * the site by the pages the plan named, not by routes (the glossary's de-jargon rule); the path
- * is there for the "enter path" half of Lovable's field, and for the pill when the preview stands
- * on an address the outline does not know.
+ * its English name (`About` → `/about`, `Item page` → `/item-page`). Since the menu's own board
+ * (Figma 31076:31629, 25.09.2026) the switcher's rows and its pill PRINT these routes — the board
+ * lists `/`, `/blog`, `/about`…, which replaced the names (Home, About…) the rows showed that
+ * morning. The names still drive everything else: the route is derived from the page's name, so
+ * rename a page in the plan and its route follows, and the filter still finds a page by its name
+ * (`con` finds `/contact`).
  */
 import { buildOutline } from '@/modules/chat/build'
 import type { BriefAnswers } from '@/modules/chat/brief'

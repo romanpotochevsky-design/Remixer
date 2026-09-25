@@ -83,12 +83,15 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
    *  themselves (the chat parks a new message at the top of the view; the Home
    *  page's chip row and card row are stepped by a button). */
   viewportRef?: React.MutableRefObject<HTMLDivElement | null>
+  /** Extra classes on the thumb itself, for a surface whose board DRAWS its scrollbar (the
+   *  page menu's persistent 4 px bar in its own 10 px column) rather than floating ours. */
+  thumbClassName?: string
   children: React.ReactNode
 }
 
 export function ScrollArea({
   className = '', innerClassName = '', thumb = 'light', axis = 'y',
-  viewportRef, onMetrics, children, onScroll, ...rest
+  viewportRef, onMetrics, thumbClassName = '', children, onScroll, ...rest
 }: Props) {
   const scroller = useRef<HTMLDivElement | null>(null)
   const bar = useRef<HTMLDivElement>(null)
@@ -170,7 +173,7 @@ export function ScrollArea({
       >
         {children}
       </div>
-      <b ref={bar} className={`${THUMB_CLASS[thumb]} ${AXIS_CLASS[axis]}`} data-off aria-hidden />
+      <b ref={bar} className={`${THUMB_CLASS[thumb]} ${AXIS_CLASS[axis]} ${thumbClassName}`} data-off aria-hidden />
     </div>
   )
 }

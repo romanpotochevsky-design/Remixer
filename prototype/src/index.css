@@ -1049,6 +1049,15 @@
     background: #0000005e;
     box-shadow: 0 0 0 1px #ffffff8c;
   }
+  /* a DRAWN scrollbar (the page menu, Figma 31076:37774): always shown while the list overflows,
+     4 wide at 2 from the column's edge, `White/300` = 24 % white. `[data-off]` still hides it
+     when nothing overflows. */
+  .scroll-thumb--drawn { opacity: 1; right: 2px; background: #ffffff3d; transition: none; }
+  /* the page menu's field opens pre-filled with the current route SELECTED whole — typing replaces
+     it (Lovable's law) — but its board draws that moment as plain `#c7c7cd` text, no selection
+     band; the band is hidden only while the pre-fill stands, a selection the customer makes later
+     shows as usual */
+  [data-page-input][data-prefill]::selection { background: transparent; color: #c7c7cd; }
 
   /*
    * Liquid glass. The Figma kit's glass controls (and Apple's Liquid Glass they nod to)

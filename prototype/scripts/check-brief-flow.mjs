@@ -5360,9 +5360,12 @@ await shot('30-plan-review')
  * the current route; the highlight follows the pointer and carries a glyph; a press closes
  * the menu, the pill reads the new route AT ONCE, the preview follows; typing that matches
  * nothing collapses the list to «Go to <typed>»; ✕ clears; the pill follows the site's own
- * navigation. Ours: names not routes (the plan's outline, pages.ts), the toolbar's glass
- * grown from the pill (motion.ts `pageMenuIn`), the house hover and bloom, the site's own
- * not-found page for an unknown path, a sequential page handover in the preview.
+ * navigation. Ours: the menu's OWN BOARD (Figma 31076:31629, 25.09.2026) — ON the pill corner on
+ * corner, solid Gray/700 at r10 under a 4 % rim and a 0 8 32 shadow, a 47 + 1 field (the board's
+ * search glyph at 32 %, the route in #c7c7cd, no ✕), the kit's 48 rows printing ROUTES with a
+ * check and Semibold on the current one, five rows before a drawn 4 px bar in a 10 px column —
+ * grown from the pill it covers (motion.ts `pageMenuIn`), the house hover and bloom, the site's
+ * own not-found page for an unknown path, a sequential page handover in the preview.
  * ═══════════════════════════════════════════════════════════════════════════════════ */
 {
   await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
@@ -5373,7 +5376,7 @@ await shot('30-plan-review')
   const near = (a, b, tol) => Math.abs(a - b) <= tol
   const label = () => p.$eval('[data-page-label]', (e) => e.textContent)
   const pagePath = () => p.$eval('[data-site-page]', (e) => e.dataset.sitePage)
-  const rows = () => p.$$eval('[data-page-row]', (els) => els.map((e) => ({ path: e.dataset.pageRow, text: e.textContent, active: e.hasAttribute('data-active'), current: e.hasAttribute('data-current'), goto: e.hasAttribute('data-page-goto'), h: e.getBoundingClientRect().height, bg: getComputedStyle(e).backgroundColor, enter: !!e.querySelector('span:last-child svg') })))
+  const rows = () => p.$$eval('[data-page-row]', (els) => els.map((e) => ({ path: e.dataset.pageRow, text: e.querySelector('[data-page-text]').textContent, active: e.hasAttribute('data-active'), current: e.hasAttribute('data-current'), goto: e.hasAttribute('data-page-goto'), h: e.getBoundingClientRect().height, y: e.getBoundingClientRect().y, w: e.getBoundingClientRect().width, bg: getComputedStyle(e).backgroundColor, weight: getComputedStyle(e.querySelector('[data-page-text]')).fontWeight, check: !!e.querySelector('[data-page-lead] svg') })))
   /* per-frame: the menu's opacity / scale / y, the glint, the chevron's flip, the site's pages */
   const film = (ms) => p.evaluate(async (ms) => {
     window.__filmArmed = (window.__filmArmed || 0) + 1
@@ -5403,8 +5406,8 @@ await shot('30-plan-review')
 
   /* ── the pill ──────────────────────────────────────────────────────────────────── */
   const pill = await p.$eval('[data-page-switch]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { x: r.x, y: r.y, w: r.width, h: r.height, r: cs.borderTopLeftRadius, border: cs.borderTopColor, expanded: e.getAttribute('aria-expanded'), inHeader: !!e.closest('header') } })
-  check('the toolbar’s centre is the PAGE SWITCHER in the board’s 280 × 40 project-button box (radius 10, NA/200 rim), reading the page the preview stands on — Home — with the menu closed',
-    pill.w === 280 && pill.h === 40 && pill.r === '10px' && pill.border === 'rgba(255, 255, 255, 0.12)' && pill.inHeader && pill.expanded === 'false' && (await label()) === 'Home' && (await pagePath()) === '/',
+  check('the toolbar’s centre is the PAGE SWITCHER in the board’s 280 × 40 project-button box (radius 10, NA/200 rim), reading the ROUTE the preview stands on — «/» — with the menu closed',
+    pill.w === 280 && pill.h === 40 && pill.r === '10px' && pill.border === 'rgba(255, 255, 255, 0.12)' && pill.inHeader && pill.expanded === 'false' && (await label()) === '/' && (await pagePath()) === '/',
     JSON.stringify({ ...pill, label: await label() }))
   check('…and the address chip is gone from the toolbar: no header button prints the staging host (the address lives in the Publish panel)',
     (await p.$$eval('header button', (els) => els.filter((e) => /remixer\.ai/.test(e.innerText)).length)) === 0)
@@ -5416,35 +5419,48 @@ await shot('30-plan-review')
   const monoO = of.every((f, i) => i === 0 || f.menu.o >= of[i - 1].menu.o - 0.001)
   const monoS = of.every((f, i) => i === 0 || f.menu.s >= of[i - 1].menu.s - 0.0005)
   const glintPeak = Math.max(...of.map((f) => f.menu.glint))
-  check('pressing the pill GROWS the menu out of it: from .92 and 8 px up, scale and opacity rising monotonically, solid within 260 ms while still growing, the rim catching light (glint > .3 within the film)',
-    of.length >= 10 && of[0].menu.s <= 0.94 && of[0].menu.y <= -6 && of[0].menu.o < 0.5 && monoO && monoS && solidAt !== undefined && solidAt <= 260 && of.find((f) => f.t === solidAt).menu.s < 1 && of[of.length - 1].menu.s >= 0.999 && glintPeak > 0.3,
-    JSON.stringify({ first: of[0], solidAt, monoO, monoS, glintPeak, last: of[of.length - 1] }))
+  const originAt = await p.$eval('[data-page-menu]', (e) => getComputedStyle(e).transformOrigin)
+  check('pressing the pill GROWS the menu out of the pill it covers: from ≤ .92 at the pill’s centre (origin 140px 20px), no travel, scale and opacity rising monotonically, solid within 260 ms while still growing, the rim catching light (glint > .3 within the film)',
+    of.length >= 10 && of[0].menu.s <= 0.92 && Math.abs(of[0].menu.y) < 0.5 && originAt === '140px 20px' && of[0].menu.o < 0.5 && monoO && monoS && solidAt !== undefined && solidAt <= 260 && of.find((f) => f.t === solidAt).menu.s < 1 && of[of.length - 1].menu.s >= 0.999 && glintPeak > 0.3,
+    JSON.stringify({ first: of[0], originAt, solidAt, monoO, monoS, glintPeak, last: of[of.length - 1] }))
   check('…and the chevron flips (scaleY 1 → −1) on the same beat',
     openFilm[0].chev === 1 && openFilm[openFilm.length - 1].chev === -1 && openFilm.some((f) => f.chev > -0.9 && f.chev < 0.9),
     JSON.stringify(openFilm.map((f) => f.chev).filter((v, i, a) => a.indexOf(v) === i).slice(0, 8)))
   await p.waitForTimeout(200)
-  const menu = await p.$eval('[data-page-menu]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { left: r.left, top: r.top, width: r.width, inBody: e.parentElement === document.body, blur: cs.backdropFilter, bg: cs.backgroundColor, r: cs.borderTopLeftRadius, role: e.getAttribute('role') } })
-  check('the menu hangs UNDER the pill — left edge to left edge, the pill’s 280 wide, 6 px below its bottom — in <body>, as the toolbar’s glass (blur 16, rgba(24,24,27,.8), radius 12), a listbox',
-    near(menu.left, pill.x, 0.5) && near(menu.width, pill.w, 0.5) && near(menu.top, pill.y + pill.h + 6, 0.5) && menu.inBody && /blur\(16px\)/.test(menu.blur) && menu.bg === 'rgba(24, 24, 27, 0.8)' && menu.r === '12px' && menu.role === 'listbox',
-    JSON.stringify({ menu, pill: [pill.x, pill.y + pill.h] }))
-  const field = await p.$eval('[data-page-input]', (e) => ({ value: e.value, focused: document.activeElement === e, sel: [e.selectionStart, e.selectionEnd], placeholder: e.placeholder, clear: !!document.querySelector('[data-page-clear]') }))
-  check('the field is focused, PRE-FILLED with the current route «/» selected whole, with a ✕ to clear — and the list under it is NOT filtered by that pre-fill',
-    field.focused && field.value === '/' && field.sel[0] === 0 && field.sel[1] === 1 && field.placeholder === 'Find page or enter path' && field.clear && (await rows()).length === 4,
+  const menu = await p.$eval('[data-page-menu]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { left: r.left, top: r.top, width: r.width, height: r.height, inBody: e.parentElement === document.body, blur: cs.backdropFilter, bg: cs.backgroundColor, r: cs.borderTopLeftRadius, shadow: cs.boxShadow, pad: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].join(' '), role: e.getAttribute('role') } })
+  check('the menu sits ON the pill, corner on corner — its board lays it at the pill’s own x and y, the pill’s 280 wide — in <body>: SOLID Gray/700 (no glass), radius 10, a 4 % inset rim and the 0 8 32 shadow at 50 %, 2 px of side padding and 4 under the list, a listbox; four pages make it 48 + 4 + 4 × 48 + 3 + 4 = 251 tall',
+    near(menu.left, pill.x, 0.5) && near(menu.width, pill.w, 0.5) && near(menu.top, pill.y, 0.5) && near(menu.height, 251, 0.5) && menu.inBody && menu.blur === 'none' && menu.bg === 'rgb(63, 63, 70)' && menu.r === '10px'
+      && menu.shadow.endsWith('rgba(255, 255, 255, 0.04) 0px 0px 0px 1px inset, rgba(39, 39, 39, 0.5) 0px 8px 32px 0px') && menu.pad === '0px 2px 4px 2px' && menu.role === 'listbox',
+    JSON.stringify({ menu, pill: [pill.x, pill.y] }))
+  const field = await p.evaluate(() => {
+    const m = document.querySelector('[data-page-menu]').getBoundingClientRect(); const f = document.querySelector('[data-page-field]'); const e = document.querySelector('[data-page-input]')
+    const rel = (el) => { const r = el.getBoundingClientRect(); return [+(r.x - m.x).toFixed(2), +(r.y - m.y).toFixed(2), +r.width.toFixed(2), +r.height.toFixed(2)] }
+    const rule = f.nextElementSibling
+    return { value: e.value, focused: document.activeElement === e, sel: [e.selectionStart, e.selectionEnd], placeholder: e.placeholder, clear: !!document.querySelector('[data-page-clear]'), color: getComputedStyle(e).color, font: getComputedStyle(e).fontSize + '/' + getComputedStyle(e).lineHeight,
+      field: rel(f), icon: rel(f.querySelector('svg')), iconInk: getComputedStyle(f.querySelector('svg')).color, input: rel(e), rule: rel(rule), ruleInk: getComputedStyle(rule).backgroundColor }
+  })
+  check('the field is the board’s: 47 tall + a 1 px rule at 8 % white, the search glyph 24 at 12 in 32 % white, the text at 48 in 15/1.7 #c7c7cd, 3 px below the line — focused, PRE-FILLED with the current route «/» selected whole, NO ✕ (the board draws none) — and the list under it is NOT filtered by that pre-fill',
+    field.focused && field.value === '/' && field.sel[0] === 0 && field.sel[1] === 1 && field.placeholder === 'Find page or enter path' && !field.clear && field.color === 'rgb(199, 199, 205)' && field.font === '15px/25.5px'
+      && field.field.join() === '2,0,276,47' && field.icon.join() === '14,11.5,24,24' && field.iconInk === 'rgba(255, 255, 255, 0.32)' && field.input[0] === 50 && near(field.input[1], 12.25, 0.3)
+      && field.rule.join() === '2,47,276,1' && field.ruleInk === 'rgba(255, 255, 255, 0.08)' && (await rows()).length === 4,
     JSON.stringify(field))
   const r0 = await rows()
-  check('the rows are the plan’s pages in the outline’s order — Home · About · Services · Contact — 40 tall, a check on the current page only, the FIRST row highlighted (the house 8 % wash) and carrying the enter glyph',
-    r0.map((r) => r.text).join('·') === 'Home·About·Services·Contact' && r0.map((r) => r.path).join('·') === '/·/about·/services·/contact' && r0.every((r) => r.h === 40)
-      && r0.map((r) => r.current).join() === 'true,false,false,false' && r0.map((r) => r.active).join() === 'true,false,false,false'
-      && r0[0].bg === 'rgba(255, 255, 255, 0.08)' && r0[0].enter && r0.slice(1).every((r) => r.bg === 'rgba(0, 0, 0, 0)' && !r.enter),
-    JSON.stringify(r0.map((r) => [r.text, r.active, r.current, r.bg])))
+  const top0 = r0[0].y - menu.top
+  check('the rows are the kit’s `-2 density` items printing ROUTES in the outline’s order — / · /about · /services · /contact — 48 tall, 1 px apart, 4 under the rule, 276 wide while nothing scrolls; the current page wears the check and Semibold (others Regular), the FIRST row highlighted in the 8 % wash',
+    r0.map((r) => r.text).join('·') === '/·/about·/services·/contact' && r0.map((r) => r.path).join('·') === '/·/about·/services·/contact' && r0.every((r) => r.h === 48 && near(r.w, 276, 0.1))
+      && near(top0, 52, 0.1) && r0.every((r, i) => i === 0 || near(r.y - r0[i - 1].y, 49, 0.1))
+      && r0.map((r) => r.current).join() === 'true,false,false,false' && r0.map((r) => r.check).join() === 'true,false,false,false' && r0.map((r) => r.weight).join() === '600,400,400,400'
+      && r0.map((r) => r.active).join() === 'true,false,false,false' && r0[0].bg === 'rgba(255, 255, 255, 0.08)' && r0.slice(1).every((r) => r.bg === 'rgba(0, 0, 0, 0)')
+      && (await p.$eval('[data-page-menu] .scroll-thumb', (e) => e.hasAttribute('data-off'))),
+    JSON.stringify({ top0, rows: r0.map((r) => [r.text, r.h, r.w, r.active, r.current, r.weight, r.bg]) }))
   /* the highlight follows the pointer, then the keyboard continues from there */
   const r3 = await (await p.$('[data-page-row="/services"]')).boundingBox()
   await p.mouse.move(r3.x + 60, r3.y + 20); await p.waitForTimeout(150)
   const hov = await rows()
   await p.keyboard.press('ArrowDown'); await p.waitForTimeout(100)
   const down = await rows()
-  check('the highlight FOLLOWS THE POINTER (over Services only Services wears the wash and the glyph), and ↓ continues from there to Contact',
-    hov.map((r) => r.active).join() === 'false,false,true,false' && hov[2].bg === 'rgba(255, 255, 255, 0.08)' && hov[2].enter && down.map((r) => r.active).join() === 'false,false,false,true',
+  check('the highlight FOLLOWS THE POINTER (over /services only /services wears the wash), and ↓ continues from there to /contact',
+    hov.map((r) => r.active).join() === 'false,false,true,false' && hov[2].bg === 'rgba(255, 255, 255, 0.08)' && hov.filter((r) => r.bg !== 'rgba(0, 0, 0, 0)').length === 1 && down.map((r) => r.active).join() === 'false,false,false,true',
     JSON.stringify({ hov: hov.map((r) => r.active), down: down.map((r) => r.active) }))
   /* typing filters; emptying the field brings everything back and drops the ✕ */
   await p.keyboard.type('con'); await p.waitForTimeout(150)
@@ -5452,8 +5468,8 @@ await shot('30-plan-review')
   for (let i = 0; i < 3; i++) await p.keyboard.press('Backspace')
   await p.waitForTimeout(150)
   const emptied = { rows: (await rows()).length, value: await p.$eval('[data-page-input]', (e) => e.value), clear: !!(await p.$('[data-page-clear]')) }
-  check('typing filters the list by name (`con` → Contact alone, highlighted), and an emptied field shows every page again with no ✕',
-    filtered.length === 1 && filtered[0].text === 'Contact' && filtered[0].active && emptied.rows === 4 && emptied.value === '' && !emptied.clear,
+  check('typing filters the list — by name or route (`con` → /contact alone, highlighted) — and an emptied field shows every page again',
+    filtered.length === 1 && filtered[0].text === '/contact' && filtered[0].active && emptied.rows === 4 && emptied.value === '' && !emptied.clear,
     JSON.stringify({ filtered: filtered.map((r) => r.text), emptied }))
   /* a path the outline does not know → one «Go to» row → the site's own not-found page */
   await p.keyboard.type('promo'); await p.waitForTimeout(150)
@@ -5474,28 +5490,28 @@ await shot('30-plan-review')
     JSON.stringify({ labelAt, goneAt: gone?.t, label: await label(), page: await pagePath() }))
   /* the site's own link home moves the pill — the pill follows the site */
   await p.click('[data-site-notfound] [data-site-link="/"]'); await p.waitForTimeout(700)
-  check('a link INSIDE the site («Back to home» on the not-found page) moves the preview and the pill follows it — Home, «/»',
-    (await label()) === 'Home' && (await pagePath()) === '/' && !!(await p.$('.site-stage h1')))
+  check('a link INSIDE the site («Back to home» on the not-found page) moves the preview and the pill follows it — «/»',
+    (await label()) === '/' && (await pagePath()) === '/' && !!(await p.$('.site-stage h1')))
   /* picking a page: the preview hands over sequentially, the label first */
   await p.mouse.click(pill.x + 140, pill.y + 20); await p.waitForTimeout(500)
   const swapFilm = await filmed(() => film(900), () => p.click('[data-page-row="/services"]'))
   const oldGone = swapFilm.find((f) => !f.pages.some(([id]) => id === '/'))?.t
   const newStarts = swapFilm.find((f) => f.pages.some(([id, o]) => id === '/services' && o > 0.2))?.t
   const oldMono = swapFilm.map((f) => f.pages.find(([id]) => id === '/')?.[1]).filter((v) => v !== undefined).every((v, i, a) => i === 0 || v <= a[i - 1] + 0.001)
-  const labelSwap = swapFilm.find((f) => f.label === 'Services')?.t
+  const labelSwap = swapFilm.find((f) => f.label === '/services')?.t
   const last = swapFilm[swapFilm.length - 1]
   /* one software-raster frame (~40 ms) of slack on the hand-over: the old page's node leaves on the React commit
      after its 120 ms exit lands, and on a 36–43 ms frame that commit can fall one frame after the new page's
      opacity has passed .2 (measured 24–28 ms late on three runs, 25.09.2026) — a page at ≤ .2 alpha for one frame is
      not the double exposure the rule forbids; a 60 ms overlap (seen once under load) still fails */
-  check('picking Services hands the preview over SEQUENTIALLY: the home page fades out monotonically and is gone before the Services page passes .2, the new page settles at 1 within the film, and the pill read «Services» before either moved',
+  check('picking /services hands the preview over SEQUENTIALLY: the home page fades out monotonically and is gone before the Services page passes .2, the new page settles at 1 within the film, and the pill read «/services» before either moved',
     oldGone !== undefined && newStarts !== undefined && newStarts >= oldGone - 45 && oldMono && labelSwap !== undefined && labelSwap <= oldGone
       && last.pages.length === 1 && last.pages[0][0] === '/services' && last.pages[0][1] === 1 && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'Services',
     JSON.stringify({ oldGone, newStarts, oldMono, labelSwap, last }))
   /* the footer's page links: the second door, and the pill follows again */
   const foot = await p.$('[data-site-page] [data-site-link="/about"]'); await foot.scrollIntoViewIfNeeded(); await p.waitForTimeout(200); await foot.click(); await p.waitForTimeout(700)
-  check('the site’s footer carries its pages as links, and following «About» there moves the pill to About',
-    (await label()) === 'About' && (await pagePath()) === '/about' && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'About')
+  check('the site’s footer carries its pages as links, and following «About» there moves the pill to «/about»',
+    (await label()) === '/about' && (await pagePath()) === '/about' && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'About')
   /* reopen: the check moved, the field holds the new route; Esc and a press outside close */
   await p.mouse.click(pill.x + 140, pill.y + 20); await p.waitForTimeout(500)
   const re = { field: await p.$eval('[data-page-input]', (e) => [e.value, e.selectionStart, e.selectionEnd]), current: (await rows()).filter((r) => r.current).map((r) => r.path) }
@@ -5507,6 +5523,27 @@ await shot('30-plan-review')
   check('reopened, the check sits on About and the field holds «/about» selected whole; Esc closes the menu, and so does a press anywhere outside it',
     re.field[0] === '/about' && re.field[1] === 0 && re.field[2] === 6 && re.current.join() === '/about' && escClosed && outClosed,
     JSON.stringify({ re, escClosed, outClosed }))
+  /* a longer site: five rows show, the list scrolls beside the board's DRAWN bar. The URL wins whole over
+     storage (world.ts initialWorld), so this stores six pages under Home and opens the bare address; the
+     blocks after this one navigate by URL and never read it */
+  await p.evaluate(() => localStorage.setItem('remixer-prototype/world/v6', JSON.stringify({ planEdits: { text: {}, items: {}, outline: { rest: ['About', 'Blog', 'Menu', 'Contacts', 'Careers', 'FAQ'] } } })))
+  await p.goto(BASE, { waitUntil: 'networkidle' })
+  await p.waitForTimeout(700)
+  await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(600)
+  const pl = await p.$eval('[data-page-switch]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y } })
+  await p.mouse.click(pl.x + 140, pl.y + 20); await p.waitForTimeout(700)
+  const long = await p.evaluate(() => {
+    const menu = document.querySelector('[data-page-menu]'); const m = menu.getBoundingClientRect(); const th = menu.querySelector('.scroll-thumb'); const tr = th.getBoundingClientRect(); const tcs = getComputedStyle(th)
+    const rs = [...menu.querySelectorAll('[data-page-row]')].map((e) => e.getBoundingClientRect())
+    const sc = menu.querySelector('.scroll-area > div')
+    return { h: m.height, rows: rs.length, w: rs.map((r) => +r.width.toFixed(2)), window: sc.clientHeight, thumb: { off: th.hasAttribute('data-off'), x: +(tr.x - m.x).toFixed(2), y: +(tr.y - m.y).toFixed(2), w: tr.width, o: tcs.opacity, bg: tcs.backgroundColor } }
+  })
+  check('a site with seven pages: the list window is FIVE rows (5 × 48 + 4 = 244, the menu 300 tall, the board’s own height), the rows give 10 px to the scrollbar’s column (266), and the bar is DRAWN — 4 wide at 2 from the column’s edge, 4 below its top, 24 % white, shown without a scroll',
+    near(long.h, 300, 0.5) && long.rows === 7 && long.window === 244 && long.w.every((w) => near(w, 266, 0.1)) && !long.thumb.off && near(long.thumb.x, 272, 0.1) && near(long.thumb.y, 56, 0.1) && long.thumb.w === 4 && long.thumb.o === '1' && long.thumb.bg === 'rgba(255, 255, 255, 0.24)',
+    JSON.stringify(long))
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════

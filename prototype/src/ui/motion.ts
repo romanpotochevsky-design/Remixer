@@ -1197,12 +1197,15 @@ export const chipInFade = {
  * THE PAGE SWITCHER (designer, 25.09.2026, with a 30 s recording of Lovable's route picker: «вместо
  * этой кнопки мы по классике хотим туда вставить переключатель страниц сайта… саму логику и UX
  * делаем как у lovable на видео один в один, но дизайн, анимации и эффекты используем наши, крутые»).
- * Lovable's menu FADES in under its pill in ~150 ms and fades out in ~100; ours is glass, so it
- * arrives the way this product's glass arrives: it grows out of the pill's bottom edge (`origin-top`,
- * .92 → 1 with one soft overshoot, 8 px of drop), the glass is solid within 160 ms — before it has
- * finished growing — the rows come a beat behind (`popoverContent`), and the rim catches the light
- * (`.glass-glint`). It leaves in 140 ms, flat, back toward the pill (rule 4: exit faster, no bounce).
- * The pill's chevron flips on the same beat (a CSS transform transition, not motion).
+ * Lovable's menu FADES in under its pill in ~150 ms and fades out in ~100. Ours sits where its own
+ * board puts it (Figma 31076:31629, 25.09.2026): ON the pill, corner on corner — the search field
+ * takes the pill's place — so it grows out of the pill it covers, the attach menu's law over the
+ * «+» it covers: from the pill's centre (`transform-origin: 50% 20px`), .9 → 1 with one soft
+ * overshoot, no travel; the box is solid within 160 ms — before it has finished growing — the rows
+ * come a beat behind (`popoverContent`), and the rim catches the light (`.glass-glint`). It leaves
+ * in 140 ms, flat, back into the pill (rule 4: exit faster, no bounce). The pill's chevron flips on
+ * the same beat (a CSS transform transition, not motion) — under the menu now, but it is what the
+ * eye catches at the pill's edges while the box grows and while it shrinks back.
  *
  * THE PAGE HANDOVER IN THE PREVIEW is the dock's sequential rule, not a crossfade: the page that
  * leaves is gone in 120 ms (6 px up), the arriving one starts a beat later and rises 10 px into
@@ -1212,9 +1215,9 @@ export const chipInFade = {
  */
 export const PAGE_MENU_SPRING = { type: 'spring', duration: 0.46, bounce: 0.22 } as const
 export const pageMenuIn = {
-  initial: { opacity: 0, scale: 0.92, y: -8 },
-  animate: { opacity: 1, scale: 1, y: 0, transition: { ...PAGE_MENU_SPRING, opacity: { duration: 0.16, ease: [0.2, 0, 0, 1] } } },
-  exit: { opacity: 0, scale: 0.96, y: -4, transition: EXIT },
+  initial: { opacity: 0, scale: 0.9 },
+  animate: { opacity: 1, scale: 1, transition: { ...PAGE_MENU_SPRING, opacity: { duration: 0.16, ease: [0.2, 0, 0, 1] } } },
+  exit: { opacity: 0, scale: 0.96, transition: EXIT },
 } as const
 export const pageMenuInFade = {
   initial: { opacity: 0 },
