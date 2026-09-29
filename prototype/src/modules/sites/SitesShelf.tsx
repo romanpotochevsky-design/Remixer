@@ -47,7 +47,7 @@ import { Thumb } from '@/modules/home/thumbs'
 import { rectOf } from '@/modules/home/attachment'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiteMini } from './SiteMini'
-import { CARD_RADIUS, SITE_RADIUS, cardClip, closeShelf, flyIn, headO, headY, setParkGeometry, shelfO, shelfS, unparkNow } from './park'
+import { CARD_RADIUS, SITE_RADIUS, cardClip, closeShelf, flyIn, headO, headY, pickAway, setParkGeometry, shelfO, shelfS, unparkNow } from './park'
 
 /** The canvas box the site stands in — measured, so the cards cut to its aspect and the flight lands on it. */
 const canvasBox = (): FlightRect | null => {
@@ -129,6 +129,7 @@ export function SitesShelf() {
     const slot = slotBox(project.id)
     const to = canvasBox()
     if (!slot || !to || !root.current || reduce) { land(project); return }
+    pickAway(false)
     setPick({ project, from: restRect(slot, root.current, rectOf(root.current)) })
   }
 

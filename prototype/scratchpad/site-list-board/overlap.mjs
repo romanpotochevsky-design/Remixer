@@ -1,0 +1,40 @@
+/* Does the flying site ever stand over a visible object behind it? Per-frame rects vs opacities. */
+import { chromium } from 'playwright'
+const BASE = process.env.BASE || 'http://localhost:4173'
+const W = +(process.env.W || 1600), H = +(process.env.H || 900)
+const b = await chromium.launch({ executablePath: process.env.CHROME })
+const p = await b.newPage({ viewport: { width: W, height: H } })
+await p.goto(`${BASE}${BASE.endsWith('.html') ? '' : '/'}?p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640`, { waitUntil: 'networkidle' }); await p.waitForTimeout(700)
+await p.click('.home-card-face'); await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }); await p.waitForTimeout(800)
+const arm = (ms) => p.evaluate((ms) => {
+  window.__tr = []; const t0 = performance.now()
+  const R = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] }
+  const O = (el) => (el ? +(+getComputedStyle(el).opacity).toFixed(3) : null)
+  const tick = () => {
+    const park = document.querySelector('[data-site-park]'), fl = document.querySelector('[data-site-flight]')
+    const hd = document.querySelector('[data-sites-head]'), sh = document.querySelector('[data-sites-shelf]')
+    const h2 = hd?.querySelector('h2'), nb = document.querySelector('[data-sites-new]'), cl = document.querySelector('[data-sites-close]')
+    window.__tr.push({ t: Math.round(performance.now() - t0), park: R(park), parkO: O(park), fl: R(fl), hdO: O(hd), shO: O(sh), h2: R(h2), nb: R(nb), cl: R(cl), tb: O(document.querySelector('[data-canvas-toolbar]')) })
+    if (performance.now() - t0 < ms) requestAnimationFrame(tick)
+  }; requestAnimationFrame(tick)
+}, ms)
+const read = () => p.evaluate(() => window.__tr)
+const hit = (a, b) => a && b && a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
+await arm(1300); await p.click('[data-site-switch]'); await p.waitForTimeout(1400); const open = await read()
+const bad = (tr, mover, vis) => tr.filter((f) => f[mover] && vis(f) && [f.h2, f.nb, f.cl].some((r) => hit(f[mover], r)))
+const openBad = bad(open, 'park', (f) => f.hdO > 0.05 && f.parkO > 0.05)
+const parkTop = open.filter((f) => f.park).map((f) => `${f.t}:${f.park[1]}/${f.hdO}`).filter((_, i) => i % 2 === 0).slice(0, 40).join(' ')
+console.log('OPEN head/obj overlap frames:', openBad.length, openBad.slice(0, 5).map((f) => `${f.t} park=${f.park} hdO=${f.hdO} h2=${f.h2} nb=${f.nb}`))
+console.log('OPEN park.top vs headO:', parkTop)
+console.log('OPEN h2 rect', open.at(-1).h2, 'nb', open.at(-1).nb, 'park end', open.at(-1).park)
+await arm(1300); await p.keyboard.press('Escape'); await p.waitForTimeout(1400); const esc = await read()
+const escBad = bad(esc, 'park', (f) => f.hdO > 0.05 && f.parkO > 0.05)
+console.log('ESC head/obj overlap frames:', escBad.length, escBad.slice(0, 6).map((f) => `${f.t} park=${f.park} hdO=${f.hdO}`))
+console.log('ESC park.top vs headO:', esc.filter((f) => f.park).map((f) => `${f.t}:${f.park[1]}/${f.hdO}`).slice(0, 24).join(' '))
+await p.click('[data-site-switch]'); await p.waitForTimeout(1400)
+await p.click('[data-site-card="synco"] [data-site-open]')
+await arm(1300); await p.waitForTimeout(1400); const pick = await read()
+const pickBad = pick.filter((f) => f.fl && ((f.hdO > 0.05 && [f.h2, f.nb, f.cl].some((r) => hit(f.fl, r))) ))
+console.log('PICK clone/head overlap frames:', pickBad.length, pickBad.slice(0, 5).map((f) => `${f.t} fl=${f.fl} hdO=${f.hdO} shO=${f.shO} parkO=${f.parkO}`))
+console.log('PICK samples:', pick.filter((_, i) => i % 3 === 0).slice(0, 30).map((f) => `${f.t}:fl=${f.fl ? f.fl.join(',') : '-'} sh=${f.shO} hd=${f.hdO} pk=${f.parkO} tb=${f.tb}`).join('\n'))
+await b.close()

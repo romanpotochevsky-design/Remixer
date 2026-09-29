@@ -5596,7 +5596,11 @@ await shot('30-plan-review')
       const hit = pb ? document.elementFromPoint(pb.left + pb.width / 2, pb.bottom - 2) : null
       const tbar = document.querySelector('[data-canvas-toolbar]'); const tbo = tbar ? +(+getComputedStyle(tbar).opacity).toFixed(3) : null
       const head = document.querySelector('[data-sites-head]'); const hdo = head ? +(+getComputedStyle(head).opacity).toFixed(3) : null
+      /* the objects the title row draws — what a flying site must never stand over while they show */
+      const rb = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map((n) => +n.toFixed(1)) }
+      const objs = head ? [head.querySelector('h2'), document.querySelector('[data-sites-new]'), document.querySelector('[data-sites-close]')].map(rb) : null
       s.push({ t: Math.round(now - t0), park: pm ? +pm[0].toFixed(4) : 1, parkBox: pr ? [pr.x, pr.y, pr.width, pr.height].map((n) => +n.toFixed(1)) : null,
+        parkO: park ? +(+getComputedStyle(park).opacity).toFixed(3) : null, objs, flBox: fr ? [fr.left, fr.top, fr.right, fr.bottom].map((n) => +n.toFixed(1)) : null,
         clip: cr ? [cr.x, cr.y, cr.width, cr.height].map(Math.round) : null, publishClear: pub ? (hit === pub || pub.contains(hit)) : null, tb: tbo, hd: hdo,
         shelf: shelf ? { o: +(+getComputedStyle(shelf).opacity).toFixed(3), s: sm ? +sm[0].toFixed(4) : 1, top: +shelf.getBoundingClientRect().y.toFixed(1) } : null,
         flight: fm ? { s: +fm[0].toFixed(4), box: [fr.x, fr.y, fr.width, fr.height].map((n) => +n.toFixed(1)) } : null,
@@ -5615,6 +5619,13 @@ await shot('30-plan-review')
     const f = start(); await p.waitForFunction((n) => (window.__filmArmed || 0) > n, before); await act(); return f
   }
   const mono = (arr, dir) => arr.every((v, i) => i === 0 || (dir === 'down' ? v <= arr[i - 1] + 1e-3 : v >= arr[i - 1] - 1e-3))
+  /* ⚠️ THE FLYING SITE NEVER STANDS OVER A VISIBLE OBJECT BEHIND IT (designer, 29.09.2026, three frames: «сайт может
+     налазить на объекты на фоне»). A frame is a clash when the mover's box (the parked layer as it shrinks or grows —
+     `parkBox` as [x, y, w, h] — or the pick's clone) intersects the title, the New Project button or the close while
+     the title row shows above a faint level. */
+  const meets = (a, b) => !!a && !!b && a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
+  const asLTRB = (bx) => (bx ? [bx[0], bx[1], bx[0] + bx[2], bx[1] + bx[3]] : null)
+  const clashes = (frames, mover) => frames.filter((f) => f.hd != null && f.hd > 0.05 && f.objs && (mover === 'park' ? f.parkO > 0.05 : true) && (f.objs.some((o) => meets(mover === 'park' ? asLTRB(f.parkBox) : f.flBox, o))))
 
   /* ── the header ────────────────────────────────────────────────────────────────── */
   const head = await p.$eval('[data-site-switch]', (e) => ({ name: e.querySelector('[data-site-name]').textContent, expanded: e.getAttribute('aria-expanded'), inChatHeader: !!e.closest('aside header'), arrive: e.querySelector('[data-site-name]').classList.contains('arrive-word'), chev: getComputedStyle(e.querySelector('[data-site-chevron]')).transform }))
@@ -5652,12 +5663,22 @@ await shot('30-plan-review')
   const shared = openFilm.filter((f) => f.tb != null && f.hd != null && f.tb > 0.08 && f.hd > 0.08)
   const headStart = openFilm.find((f) => f.hd != null && f.hd > 0.05)?.t
   const headOn = openFilm.find((f) => f.hd != null && f.hd >= 0.99)?.t
-  check('…and it approaches INSIDE the frame: the clip is the canvas column from its very top (canvas + the toolbar band) on every frame while the scaled shelf reaches beyond it, and the band is HANDED OVER — the toolbar falls monotonically to 0 within ~300 ms and stops taking the pointer, the title row starts only after it is gone (no frame shows both) and is solid by ~600 ms',
+  check('…and it approaches INSIDE the frame: the clip is the canvas column from its very top (canvas + the toolbar band) on every frame while the scaled shelf reaches beyond it, and the band is HANDED OVER — the toolbar falls monotonically to 0 within ~300 ms and stops taking the pointer, the title row starts only after it is gone (no frame shows both) and is solid by ~700 ms',
     clipFrames.length === parkFrames.length && clipFrames.every((f) => f.clip.join() === [canvas.x, 0, canvas.w, canvas.h + band].map(Math.round).join()) && spilled.length > 0
       && tbs.length > 4 && mono(tbs, 'down') && tbs[tbs.length - 1] === 0 && tbGone !== undefined && tbGone <= 320
-      && shared.length === 0 && headStart !== undefined && headStart >= tbGone && headOn !== undefined && headOn <= 640
+      && shared.length === 0 && headStart !== undefined && headStart >= tbGone && headOn !== undefined && headOn <= 760
       && (await p.$eval('[data-canvas-toolbar]', (e) => getComputedStyle(e).pointerEvents)) === 'none',
     JSON.stringify({ clip: clipFrames[0]?.clip, canvas, band, aboveFrames: spilled.length, tb: tbs.filter((_, i) => i % 4 === 0), tbGone, shared: shared.length, headStart, headOn }))
+  {
+    /* the title row waits for the shrinking site to sink BELOW its band (park.ts `HEAD_IN` delay): the site's top edge is
+       under the buttons' bottom before the row shows, and the parked layer never intersects a shown title object */
+    const objBottom = Math.max(...(openFilm.find((f) => f.objs)?.objs.filter(Boolean).map((o) => o[3]) ?? [0]))
+    const parkTopAtHead = openFilm.find((f) => f.hd != null && f.hd > 0.05 && f.parkBox)?.parkBox[1]
+    const openClash = clashes(openFilm, 'park')
+    check('…and the title row arrives only once the shrinking site has sunk below its band: on no frame does the parked layer stand over the shown «Projects», «New Project» or ✕, and the site’s top is already under the buttons when the row begins',
+      openClash.length === 0 && parkTopAtHead !== undefined && objBottom > 0 && parkTopAtHead >= objBottom,
+      JSON.stringify({ openClash: openClash.slice(0, 4).map((f) => ({ t: f.t, hd: f.hd, park: f.parkBox, objs: f.objs })), parkTopAtHead, objBottom }))
+  }
   const shelf = await p.$eval('[data-sites-shelf]', (e) => {
     const bx = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => +n.toFixed(2)) }
     return {
@@ -5688,6 +5709,17 @@ await shot('30-plan-review')
   check('picking synco.com flies THAT card’s picture out to the canvas — its scale rises monotonically from card/canvas to 1 and it lands on the canvas box to the pixel — while the parked site stays in its card; the shelf goes only after the clone has landed',
     fs.length > 8 && fs[0] < 0.5 && mono(fs, 'up') && fs[fs.length - 1] > 0.99 && near(lastFlight.flight.box[0], canvas.x, 1.5) && near(lastFlight.flight.box[1], canvas.y, 1.5) && near(lastFlight.flight.box[2], canvas.w, 3) && stillParked && shelfGone !== undefined && flightGone !== undefined && shelfGone >= flightGone - 40,
     JSON.stringify({ fs: fs.filter((_, i) => i % 5 === 0), last: lastFlight?.flight, canvas, stillParked, shelfGone, flightGone }))
+  {
+    /* the ground empties under the growing clone (park.ts `pickAway`): the title row is gone within ~200 ms, the shelf and
+       the parked old site dissolve while the clone still grows, and the clone never stands over a shown title object */
+    const pickClash = clashes(pickFilm, 'flight')
+    const pickHeadOff = pickFilm.find((f) => f.hd === 0)?.t
+    const pickShelfO = pickFilm.filter((f) => f.shelf && f.flight).map((f) => f.shelf.o)
+    const pickParkO = pickFilm.filter((f) => f.flight && f.parkO != null).map((f) => f.parkO)
+    check('…and the ground empties under the growing card: the title row leaves within ~200 ms, the shelf and the parked old site dissolve monotonically while the clone is still in the air (both under .1 before it lands), and the clone never stands over a shown title object',
+      pickClash.length === 0 && pickHeadOff !== undefined && pickHeadOff <= 220 && pickShelfO.length > 4 && mono(pickShelfO, 'down') && pickShelfO[pickShelfO.length - 1] < 0.1 && mono(pickParkO, 'down') && pickParkO[pickParkO.length - 1] < 0.1,
+      JSON.stringify({ pickClash: pickClash.slice(0, 4).map((f) => ({ t: f.t, hd: f.hd, fl: f.flBox, objs: f.objs })), pickHeadOff, pickShelfO: pickShelfO.filter((_, i) => i % 4 === 0), pickParkO: pickParkO.filter((_, i) => i % 4 === 0) }))
+  }
   await p.waitForTimeout(400)
   const afterPick = { name: await headerName(), shelf: !!(await p.$('[data-sites-shelf]')), drawing: await p.$eval('[data-site-drawing]', (e) => e.dataset.siteDrawing).catch(() => null), world: await world(), park: await p.$eval('[data-site-park]', (e) => getComputedStyle(e).transform), spinning: !!(await p.$('header .animate-spin')), publish: await p.$eval('header button:has-text("Publish")', (e) => e.innerText), chat: await p.$eval('.chat-col', (e) => e.innerText).catch(() => ''), typing: await p.$$eval('.stream-word', (els) => els.length) }
   check('…and on landing the builder IS synco.com: the header names it, the canvas shows its drawing at full width, the world stands in its slice (a live domain, published, two edits queued, its own two-message transcript) with fit-ration put away in the stash, the Publish button reads «Publish changes 2», and the transcript arrives already read — nothing types itself',
@@ -5731,10 +5763,11 @@ await shot('30-plan-review')
     const escShared = escFilm.filter((f) => f.tb != null && f.hd != null && f.tb > 0.08 && f.hd > 0.08)
     const escHeadOff = escFilm.find((f) => f.hd === 0)?.t
     const escTbStart = escFilm.find((f) => f.tb != null && f.tb > 0.05)?.t
+    const escClash = clashes(escFilm, 'park')
     const home = await p.evaluate(() => { const pk = document.querySelector('[data-site-park]'); const tb = document.querySelector('[data-canvas-toolbar]'); return { clip: getComputedStyle(pk).clipPath, h: pk.style.height, tb: getComputedStyle(tb).opacity, tbT: getComputedStyle(tb).transform, pe: getComputedStyle(tb).pointerEvents } })
-    check('…and the canvas toolbar comes back with the site — the title row leaves the band first (gone within ~200 ms), the toolbar rises monotonically to 1 only after it, no frame showing both — standing where it stood, taking the pointer again — and the site layer is home unclipped at the canvas’s own height',
-      escTb.length > 4 && escTb[0] < 0.2 && mono(escTb, 'up') && escShared.length === 0 && escHeadOff !== undefined && escHeadOff <= 220 && escTbStart !== undefined && escTbStart >= escHeadOff && home.tb === '1' && (home.tbT === 'none' || home.tbT === 'matrix(1, 0, 0, 1, 0, 0)') && home.pe === 'auto' && home.clip === 'none' && home.h === '100%',
-      JSON.stringify({ escTb: escTb.filter((_, i) => i % 4 === 0), escShared: escShared.length, escHeadOff, escTbStart, home }))
+    check('…and the canvas toolbar comes back with the site — the title row leaves the band first (gone within ~200 ms), the toolbar rises monotonically to 1 only after it, no frame showing both, the growing site never over a shown title object — standing where it stood, taking the pointer again — and the site layer is home unclipped at the canvas’s own height',
+      escTb.length > 4 && escTb[0] < 0.2 && mono(escTb, 'up') && escShared.length === 0 && escHeadOff !== undefined && escHeadOff <= 220 && escTbStart !== undefined && escTbStart >= escHeadOff && escClash.length === 0 && home.tb === '1' && (home.tbT === 'none' || home.tbT === 'matrix(1, 0, 0, 1, 0, 0)') && home.pe === 'auto' && home.clip === 'none' && home.h === '100%',
+      JSON.stringify({ escTb: escTb.filter((_, i) => i % 4 === 0), escShared: escShared.length, escHeadOff, escTbStart, escClash: escClash.length, home }))
   }
 
   /* ── the console stages the same axis ─────────────────────────────────────────────── */

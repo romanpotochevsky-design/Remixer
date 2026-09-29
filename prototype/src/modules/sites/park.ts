@@ -60,7 +60,10 @@ export const toolbarP = motionValue(1)
 export const headO = motionValue(0)
 export const headY = motionValue(8)
 export const TOOLBAR_AWAY = { duration: 0.18, ease: [0.4, 0, 1, 1] } as const
-export const HEAD_IN = { duration: 0.32, ease: [0.2, 0, 0, 1], delay: 0.2 } as const
+/* ⚠️ the title row arrives only once the parking site has sunk BELOW its band: the site's top edge crosses the
+   band (52 → 100 px) for the first ~350 ms of its 620 ms flight, and a row arriving at 200 ms stood under the
+   shrinking site (designer's frame, 29.09.2026: «сайт может налазить на объекты на фоне») */
+export const HEAD_IN = { duration: 0.3, ease: [0.2, 0, 0, 1], delay: 0.36 } as const
 export const HEAD_OUT = { duration: 0.12, ease: [0.4, 0, 1, 1] } as const
 export const TOOLBAR_BACK = { duration: 0.32, ease: [0.2, 0, 0, 1], delay: 0.14 } as const
 
@@ -222,6 +225,21 @@ export function closeShelf(reduce: boolean) {
   animate(toolbarP, 1, TOOLBAR_BACK)
   animate(shelfS, SHELF_TO, FLIGHT_OPEN)
   animate(parkP, 0, FLIGHT_OPEN).then(done)
+}
+
+/**
+ * A PICK TOOK OFF: the shelf dissolves and recedes under the growing card — the home screen behind an opening
+ * app — the title row leaves its band first, and the old site, parked in its card, fades with the shelf. The
+ * clone grows over a ground that is emptying, so nothing behind it ever shows past its edge (the designer's
+ * frames: the header buttons and «Projects» peeking out from under the arriving site).
+ */
+export function pickAway(reduce: boolean) {
+  animate(headO, 0, HEAD_OUT)
+  animate(headY, 6, HEAD_OUT)
+  if (reduce) { animate(shelfO, 0, { duration: 0.16, ease: [0.4, 0, 1, 1] }); return }
+  animate(shelfO, 0, SHELF_DISSOLVE)
+  animate(shelfS, SHELF_TO, FLIGHT_OPEN)
+  animate(parkO, 0, { duration: 0.28, ease: [0.4, 0, 1, 1] })
 }
 
 /** A pick landed: the site layer is that site now, at full size, at once — no flight back. */
