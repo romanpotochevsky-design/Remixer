@@ -47,7 +47,7 @@ import { Thumb } from '@/modules/home/thumbs'
 import { rectOf } from '@/modules/home/attachment'
 import { SitePreview } from '@/modules/preview/SitePreview'
 import { SiteMini } from './SiteMini'
-import { CARD_RADIUS, SITE_RADIUS, cardClip, closeShelf, flyIn, setParkGeometry, shelfO, shelfS, unparkNow } from './park'
+import { CARD_RADIUS, SITE_RADIUS, cardClip, closeShelf, flyIn, headO, headY, setParkGeometry, shelfO, shelfS, unparkNow } from './park'
 
 /** The canvas box the site stands in — measured, so the cards cut to its aspect and the flight lands on it. */
 const canvasBox = (): FlightRect | null => {
@@ -195,10 +195,10 @@ export function SitesShelf() {
       className="absolute inset-0 flex flex-col overflow-hidden"
       style={{ opacity: shelfO, scale: shelfS, transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
     >
-      {/* THE TITLE ROW (`Title` 31164:77049): 96 tall under 4 px, the title's cap band and the 40 buttons on one
+      {/* THE TITLE ROW (`Title` 31164:77049) — it takes the band the toolbar just left, a beat after (park.ts `headO`).: 96 tall under 4 px, the title's cap band and the 40 buttons on one
           centre line. The clip stands 8 in from the column's edge where the board's list stands at it, so the
           board's 32 is 24 here on the left — the title lands on the board's x. */}
-      <div data-sites-head className="flex h-24 flex-none items-center justify-between pl-6 pr-8" style={{ marginTop: 4 }}>
+      <motion.div data-sites-head className="flex h-24 flex-none items-center justify-between pl-6 pr-8" style={{ marginTop: 4, opacity: headO, y: headY }}>
         <h2 className="font-display text-[32px] font-semibold leading-[1.4] text-white [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{title}</h2>
         <div className="flex items-start gap-4">
           {/* Filled / Blue / Medium, icon right (31164:77085): 40, r10, pl 20 · pr 8, gap 7, 14 semibold + Add 24 */}
@@ -222,7 +222,7 @@ export function SitesShelf() {
             <IconCloseM size={24} />
           </button>
         </div>
-      </div>
+      </motion.div>
       <ScrollArea className="min-h-0 flex-1" thumb="light" innerClassName="pb-8 pl-6 pr-8">
         {/* THE LIST (31164:77087): columns of equal width, 32 between them and between rows. The board sets five
             across 2008 (376 each); the columns here are as many as fit at ≥ 312, which is exactly five at the

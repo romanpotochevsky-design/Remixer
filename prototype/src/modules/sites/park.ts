@@ -49,8 +49,20 @@ export const shelfS = motionValue(1)
  * the way home while the site grows out of its card. 0 — away · 1 — standing.
  */
 export const toolbarP = motionValue(1)
-export const TOOLBAR_AWAY = { duration: 0.22, ease: [0.4, 0, 1, 1] } as const
-export const TOOLBAR_BACK = { duration: 0.36, ease: [0.2, 0, 0, 1], delay: 0.14 } as const
+/**
+ * ⚠️ THE TOOLBAR AND THE SHELF'S TITLE ROW SHARE ONE BAND, SO THEY TAKE TURNS — never both on screen
+ * (designer, 29.09.2026, two frames of «Projects» printed through «Visual Editor» and «New Project» through
+ * «Publish»: «нужно чтобы оно не успевало друг на друга налазить»). The toolbar goes first and completely
+ * (180 ms, rising 10 px into nothing); the title row comes into the emptied band a beat after it is gone
+ * (from 8 px below, 320 ms, `HEAD_IN`). Closing is the mirror: the title row leaves first (120 ms, sinking
+ * 6 px), the toolbar settles back once the band is empty. `headO` / `headY` drive the title row.
+ */
+export const headO = motionValue(0)
+export const headY = motionValue(8)
+export const TOOLBAR_AWAY = { duration: 0.18, ease: [0.4, 0, 1, 1] } as const
+export const HEAD_IN = { duration: 0.32, ease: [0.2, 0, 0, 1], delay: 0.2 } as const
+export const HEAD_OUT = { duration: 0.12, ease: [0.4, 0, 1, 1] } as const
+export const TOOLBAR_BACK = { duration: 0.32, ease: [0.2, 0, 0, 1], delay: 0.14 } as const
 
 /** The stage's own radius (`rounded-shell`) and the card's. */
 export const SITE_RADIUS = 16
@@ -164,7 +176,9 @@ export function flyIn(reduce: boolean) {
    */
   if (reduce) {
     shelfS.jump(1)
+    headO.jump(0); headY.jump(0)
     animate(toolbarP, 0, { duration: 0.16 })
+    animate(headO, 1, { duration: 0.24, delay: 0.16 })
     animate(shelfO, 1, SHELF_SOLID)
     animate(parkO, 0, { duration: 0.16, ease: [0.4, 0, 1, 1] })
     return
@@ -173,7 +187,11 @@ export function flyIn(reduce: boolean) {
   parkP.jump(0)
   shelfO.jump(0)
   shelfS.jump(SHELF_FROM)
+  headO.jump(0)
+  headY.jump(8)
   animate(toolbarP, 0, TOOLBAR_AWAY)
+  animate(headO, 1, HEAD_IN)
+  animate(headY, 0, HEAD_IN)
   animate(shelfO, 1, SHELF_SOLID)
   animate(shelfS, 1, FLIGHT_SEAT)
   animate(parkP, 1, FLIGHT_SEAT)
@@ -192,12 +210,15 @@ export function closeShelf(reduce: boolean) {
     if (useUI.getState().surface === 'sites') useUI.getState().closeSurface()
   }
   if (reduce) {
-    animate(toolbarP, 1, { duration: 0.2 })
+    animate(headO, 0, { duration: 0.12 })
+    animate(toolbarP, 1, { duration: 0.2, delay: 0.12 })
     animate(shelfO, 0, { duration: 0.16, ease: [0.4, 0, 1, 1] })
     animate(parkO, 1, { duration: 0.2, ease: [0.2, 0, 0, 1] }).then(done)
     return
   }
   animate(shelfO, 0, SHELF_DISSOLVE)
+  animate(headO, 0, HEAD_OUT)
+  animate(headY, 6, HEAD_OUT)
   animate(toolbarP, 1, TOOLBAR_BACK)
   animate(shelfS, SHELF_TO, FLIGHT_OPEN)
   animate(parkP, 0, FLIGHT_OPEN).then(done)
@@ -209,7 +230,8 @@ export function unparkNow() {
   parkP.jump(0)
   parkO.jump(1)
   clearPark()
-  /* the picked site is on the canvas: its toolbar comes back for it */
+  /* the picked site is on the canvas: the title row goes with the shelf, its toolbar comes back for it */
+  headO.jump(0)
   animate(toolbarP, 1, TOOLBAR_BACK)
 }
 

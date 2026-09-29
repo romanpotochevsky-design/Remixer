@@ -5595,8 +5595,9 @@ await shot('30-plan-review')
       const pub = [...document.querySelectorAll('header button')].find((b) => /Publish/.test(b.textContent)); const pb = pub ? pub.getBoundingClientRect() : null
       const hit = pb ? document.elementFromPoint(pb.left + pb.width / 2, pb.bottom - 2) : null
       const tbar = document.querySelector('[data-canvas-toolbar]'); const tbo = tbar ? +(+getComputedStyle(tbar).opacity).toFixed(3) : null
+      const head = document.querySelector('[data-sites-head]'); const hdo = head ? +(+getComputedStyle(head).opacity).toFixed(3) : null
       s.push({ t: Math.round(now - t0), park: pm ? +pm[0].toFixed(4) : 1, parkBox: pr ? [pr.x, pr.y, pr.width, pr.height].map((n) => +n.toFixed(1)) : null,
-        clip: cr ? [cr.x, cr.y, cr.width, cr.height].map(Math.round) : null, publishClear: pub ? (hit === pub || pub.contains(hit)) : null, tb: tbo,
+        clip: cr ? [cr.x, cr.y, cr.width, cr.height].map(Math.round) : null, publishClear: pub ? (hit === pub || pub.contains(hit)) : null, tb: tbo, hd: hdo,
         shelf: shelf ? { o: +(+getComputedStyle(shelf).opacity).toFixed(3), s: sm ? +sm[0].toFixed(4) : 1, top: +shelf.getBoundingClientRect().y.toFixed(1) } : null,
         flight: fm ? { s: +fm[0].toFixed(4), box: [fr.x, fr.y, fr.width, fr.height].map((n) => +n.toFixed(1)) } : null,
         z: document.querySelector('[data-canvas-site]') ? getComputedStyle(document.querySelector('[data-canvas-site]')).zIndex : null })
@@ -5646,11 +5647,17 @@ await shot('30-plan-review')
   const band = canvas.y
   const tbs = openFilm.map((f) => f.tb).filter((v) => v != null)
   const tbGone = openFilm.find((f) => f.tb === 0)?.t
-  check('…and it approaches INSIDE the frame: the clip is the canvas column from its very top (canvas + the toolbar band) on every frame while the scaled shelf reaches beyond it, and the canvas toolbar steps aside — its opacity falls monotonically to 0 within ~300 ms and it no longer takes the pointer',
+  /* the band handoff (designer, 29.09.2026, two frames of the title printed through the toolbar): the toolbar is gone
+     BEFORE the title row starts, so no frame shows both above a faint level, and the title row is solid by ~600 ms */
+  const shared = openFilm.filter((f) => f.tb != null && f.hd != null && f.tb > 0.08 && f.hd > 0.08)
+  const headStart = openFilm.find((f) => f.hd != null && f.hd > 0.05)?.t
+  const headOn = openFilm.find((f) => f.hd != null && f.hd >= 0.99)?.t
+  check('…and it approaches INSIDE the frame: the clip is the canvas column from its very top (canvas + the toolbar band) on every frame while the scaled shelf reaches beyond it, and the band is HANDED OVER — the toolbar falls monotonically to 0 within ~300 ms and stops taking the pointer, the title row starts only after it is gone (no frame shows both) and is solid by ~600 ms',
     clipFrames.length === parkFrames.length && clipFrames.every((f) => f.clip.join() === [canvas.x, 0, canvas.w, canvas.h + band].map(Math.round).join()) && spilled.length > 0
       && tbs.length > 4 && mono(tbs, 'down') && tbs[tbs.length - 1] === 0 && tbGone !== undefined && tbGone <= 320
+      && shared.length === 0 && headStart !== undefined && headStart >= tbGone && headOn !== undefined && headOn <= 640
       && (await p.$eval('[data-canvas-toolbar]', (e) => getComputedStyle(e).pointerEvents)) === 'none',
-    JSON.stringify({ clip: clipFrames[0]?.clip, canvas, band, aboveFrames: spilled.length, tb: tbs.filter((_, i) => i % 4 === 0), tbGone }))
+    JSON.stringify({ clip: clipFrames[0]?.clip, canvas, band, aboveFrames: spilled.length, tb: tbs.filter((_, i) => i % 4 === 0), tbGone, shared: shared.length, headStart, headOn }))
   const shelf = await p.$eval('[data-sites-shelf]', (e) => {
     const bx = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => +n.toFixed(2)) }
     return {
@@ -5721,10 +5728,13 @@ await shot('30-plan-review')
   {
     /* the toolbar comes back down while the site grows out of its card, and the layer is home — no clip, canvas height */
     const escTb = escFilm.map((f) => f.tb).filter((v) => v != null)
+    const escShared = escFilm.filter((f) => f.tb != null && f.hd != null && f.tb > 0.08 && f.hd > 0.08)
+    const escHeadOff = escFilm.find((f) => f.hd === 0)?.t
+    const escTbStart = escFilm.find((f) => f.tb != null && f.tb > 0.05)?.t
     const home = await p.evaluate(() => { const pk = document.querySelector('[data-site-park]'); const tb = document.querySelector('[data-canvas-toolbar]'); return { clip: getComputedStyle(pk).clipPath, h: pk.style.height, tb: getComputedStyle(tb).opacity, tbT: getComputedStyle(tb).transform, pe: getComputedStyle(tb).pointerEvents } })
-    check('…and the canvas toolbar comes back with the site — its opacity rising monotonically to 1 on the way home, standing where it stood, taking the pointer again — and the site layer is home unclipped at the canvas’s own height',
-      escTb.length > 4 && escTb[0] < 0.2 && mono(escTb, 'up') && home.tb === '1' && (home.tbT === 'none' || home.tbT === 'matrix(1, 0, 0, 1, 0, 0)') && home.pe === 'auto' && home.clip === 'none' && home.h === '100%',
-      JSON.stringify({ escTb: escTb.filter((_, i) => i % 4 === 0), home }))
+    check('…and the canvas toolbar comes back with the site — the title row leaves the band first (gone within ~200 ms), the toolbar rises monotonically to 1 only after it, no frame showing both — standing where it stood, taking the pointer again — and the site layer is home unclipped at the canvas’s own height',
+      escTb.length > 4 && escTb[0] < 0.2 && mono(escTb, 'up') && escShared.length === 0 && escHeadOff !== undefined && escHeadOff <= 220 && escTbStart !== undefined && escTbStart >= escHeadOff && home.tb === '1' && (home.tbT === 'none' || home.tbT === 'matrix(1, 0, 0, 1, 0, 0)') && home.pe === 'auto' && home.clip === 'none' && home.h === '100%',
+      JSON.stringify({ escTb: escTb.filter((_, i) => i % 4 === 0), escShared: escShared.length, escHeadOff, escTbStart, home }))
   }
 
   /* ── the console stages the same axis ─────────────────────────────────────────────── */
