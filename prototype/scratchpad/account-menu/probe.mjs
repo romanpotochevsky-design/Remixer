@@ -1,4 +1,4 @@
-/* Account menu against board 31243:82905: geometry at 2560 × 1166, then the open / close trace. */
+/* Account menu against board 31243:82905 (re-drawn 29.09 — 288 × 598): geometry at 2560 × 1166, then the open / close trace. */
 import { chromium } from 'playwright'
 const BASE = process.env.BASE || 'http://localhost:4173'
 const W = +(process.env.W || 2560), H = +(process.env.H || 1166)

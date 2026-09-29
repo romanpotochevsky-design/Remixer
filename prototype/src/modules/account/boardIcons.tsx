@@ -4,8 +4,8 @@
  * cuts. Material Symbols 300 on a 24 grid, filled: the kit's own vectors, not redrawings.
  *
  * Every glyph paints `currentColor`, so the row decides the ink: leading icons sit at
- * `Icon/Default/Secondary` (48 % white), the "opens elsewhere" glyph at `Icon/Default/Tertiary`
- * (32 %), the Add Credits plus at white — the values the board's export carries on each path.
+ * `Icon/Default/Secondary` (48 % white), the balance chevron at `Icon/Default/Tertiary`
+ * (32 %) — the values the board's export carries on each path.
  */
 type P = { className?: string }
 const box = (cls?: string) => ({ width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true, className: cls } as const)
@@ -28,11 +28,6 @@ export const IconBug = ({ className }: P) => (
   </svg>
 )
 
-export const IconOpenInNew = ({ className }: P) => (
-  <svg {...box(className)}>
-    <path fill="currentColor" d="M6.7563 18.5837C6.38116 18.5837 6.06407 18.4541 5.80505 18.1951C5.54602 17.9361 5.4165 17.619 5.4165 17.2439V6.75678C5.4165 6.38164 5.54602 6.06456 5.80505 5.80553C6.06407 5.54651 6.38116 5.41699 6.7563 5.41699H11.1375C11.2913 5.41699 11.42 5.46845 11.5238 5.57137C11.6274 5.67414 11.6792 5.80178 11.6792 5.95428C11.6792 6.10678 11.6274 6.23588 11.5238 6.34158C11.42 6.44741 11.2913 6.50033 11.1375 6.50033H6.7563C6.69213 6.50033 6.63338 6.52706 6.58005 6.58053C6.52657 6.63387 6.49984 6.69262 6.49984 6.75678V17.2439C6.49984 17.308 6.52657 17.3668 6.58005 17.4201C6.63338 17.4736 6.69213 17.5003 6.7563 17.5003H17.2434C17.3075 17.5003 17.3663 17.4736 17.4196 17.4201C17.4731 17.3668 17.4998 17.308 17.4998 17.2439V12.8626C17.4998 12.7089 17.5512 12.5801 17.654 12.4764C17.7569 12.3728 17.8846 12.321 18.0371 12.321C18.1896 12.321 18.3187 12.3728 18.4244 12.4764C18.5303 12.5801 18.5832 12.7089 18.5832 12.8626V17.2439C18.5832 17.619 18.4537 17.9361 18.1946 18.1951C17.9356 18.4541 17.6185 18.5837 17.2434 18.5837H6.7563ZM17.4998 7.27428L10.455 14.3193C10.3396 14.4346 10.2154 14.4901 10.0823 14.486C9.94942 14.4816 9.82255 14.4191 9.70171 14.2985C9.58102 14.1776 9.52067 14.0486 9.52067 13.9114C9.52067 13.7741 9.58102 13.6451 9.70171 13.5243L16.7259 6.50033H14.5415C14.3878 6.50033 14.2591 6.44894 14.1555 6.34616C14.0517 6.24324 13.9998 6.11553 13.9998 5.96303C13.9998 5.81053 14.0517 5.68144 14.1555 5.57574C14.2591 5.46991 14.3878 5.41699 14.5415 5.41699H17.9132C18.1044 5.41699 18.2639 5.48088 18.3915 5.60866C18.5193 5.7363 18.5832 5.89574 18.5832 6.08699V9.45866C18.5832 9.61241 18.5317 9.74109 18.4288 9.8447C18.326 9.94845 18.1984 10.0003 18.0459 10.0003C17.8934 10.0003 17.7643 9.94845 17.6586 9.8447C17.5528 9.74109 17.4998 9.61241 17.4998 9.45866V7.27428Z" />
-  </svg>
-)
 
 export const IconLogout = ({ className }: P) => (
   <svg {...box(className)}>
@@ -40,34 +35,36 @@ export const IconLogout = ({ className }: P) => (
   </svg>
 )
 
-export const IconAddWhite = ({ className }: P) => (
-  <svg {...box(className)}>
-    <path fill="currentColor" d="M11.25 12.75H6.25C6.0375 12.75 5.85942 12.6781 5.71575 12.5342C5.57192 12.3904 5.5 12.2122 5.5 11.9997C5.5 11.7871 5.57192 11.609 5.71575 11.4655C5.85942 11.3218 6.0375 11.25 6.25 11.25H11.25V6.25C11.25 6.0375 11.3219 5.85942 11.4658 5.71575C11.6096 5.57192 11.7878 5.5 12.0003 5.5C12.2129 5.5 12.391 5.57192 12.5345 5.71575C12.6782 5.85942 12.75 6.0375 12.75 6.25V11.25H17.75C17.9625 11.25 18.1406 11.3219 18.2843 11.4658C18.4281 11.6096 18.5 11.7878 18.5 12.0003C18.5 12.2129 18.4281 12.391 18.2843 12.5345C18.1406 12.6782 17.9625 12.75 17.75 12.75H12.75V17.75C12.75 17.9625 12.6781 18.1406 12.5342 18.2843C12.3904 18.4281 12.2122 18.5 11.9997 18.5C11.7871 18.5 11.609 18.4281 11.4655 18.2843C11.3218 18.1406 11.25 17.9625 11.25 17.75V12.75Z" />
+
+/** The plan's cycle — an 18 px pie filling clockwise (board 31263:84399), 48 % white on its path. */
+export const IconPlanCycle = ({ className }: P) => (
+  <svg width={18} height={18} viewBox="0 0 18 18" fill="none" aria-hidden className={className}>
+    <path fill="currentColor" d="M9 14C10.3889 14 11.5694 13.5139 12.5417 12.5417C13.5139 11.5694 14 10.3889 14 9C14 7.77778 13.6076 6.71181 12.8229 5.80208C12.0382 4.89236 11.0417 4.31944 9.83333 4.08333C9.61111 4.05556 9.41667 4.11806 9.25 4.27083C9.08333 4.42361 9 4.61111 9 4.83333V9L6.04167 11.9583C5.88889 12.1111 5.81597 12.2986 5.82292 12.5208C5.82986 12.7431 5.92361 12.9236 6.10417 13.0625C6.50694 13.3819 6.95833 13.6181 7.45833 13.7708C7.95833 13.9236 8.47222 14 9 14ZM9 17C7.90278 17 6.86806 16.7917 5.89583 16.375C4.92361 15.9583 4.07292 15.3854 3.34375 14.6562C2.61458 13.9271 2.04167 13.0764 1.625 12.1042C1.20833 11.1319 1 10.0972 1 9C1 7.88889 1.20833 6.85069 1.625 5.88542C2.04167 4.92014 2.61458 4.07292 3.34375 3.34375C4.07292 2.61458 4.92361 2.04167 5.89583 1.625C6.86806 1.20833 7.90278 1 9 1C10.1111 1 11.1493 1.20833 12.1146 1.625C13.0799 2.04167 13.9271 2.61458 14.6562 3.34375C15.3854 4.07292 15.9583 4.92014 16.375 5.88542C16.7917 6.85069 17 7.88889 17 9C17 10.0972 16.7917 11.1319 16.375 12.1042C15.9583 13.0764 15.3854 13.9271 14.6562 14.6562C13.9271 15.3854 13.0799 15.9583 12.1146 16.375C11.1493 16.7917 10.1111 17 9 17Z" />
   </svg>
 )
 
-/**
- * The credit coin, 14 — ONE drawing in two metals: plan credits in the toolbar's gold
- * (#FFE082 → #FA9F6A), one-time credits in the bonus bar's coral → violet (#FF8375 → #C260FF).
- * The gradient ids carry the tone so two coins on one page never share a paint server.
- */
-export const IconCoinSmall = ({ tone }: { tone: 'plan' | 'extra' }) => {
-  const id = `acct-coin-${tone}`
-  const [a, b] = tone === 'plan' ? ['#FFE082', '#FA9F6A'] : ['#FF8375', '#C260FF']
-  const g = tone === 'plan' ? { x1: 8.94445, y1: 0.388889, x2: 1.16667, y2: 19.8333 } : { x1: 13.6111, y1: -2.33333, x2: 11.9398, y2: 19.088 }
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden className="flex-none">
-      <circle cx="7" cy="7" r="7" fill={`url(#${id})`} />
-      <path d="M7.00293 2.05664H11.9492V7.00296C9.21787 7.00296 7.00293 4.78593 7.00293 2.05664Z" fill="#47474E" />
-      <path d="M2.05371 7.00586V2.05954H7C7 4.7909 4.78299 7.00586 2.05371 7.00586Z" fill="#47474E" />
-      <path d="M7.00293 11.9523H2.05664V7.00602C4.78799 7.00602 7.00293 9.22305 7.00293 11.9523Z" fill="#47474E" />
-      <path d="M11.9487 7.00586V11.9522L7.00293 11.9523C7.00293 9.22098 9.21946 7.00586 11.9487 7.00586Z" fill="#47474E" />
-      <defs>
-        <linearGradient id={id} x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} gradientUnits="userSpaceOnUse">
-          <stop stopColor={a} />
-          <stop offset="1" stopColor={b} />
+/** The balance row's trailing chevron (board 31266:84477 — the kit's `chevron_right`), 32 % white. */
+export const IconChevronRightS = ({ className }: P) => (
+  <svg {...box(className)}>
+    <path fill="currentColor" d="M13.4711 12.0003L9.19784 7.72731C9.05951 7.5888 8.98867 7.43556 8.98534 7.26756C8.98217 7.09972 9.05301 6.94331 9.19784 6.79831C9.34284 6.65347 9.49767 6.58106 9.66234 6.58106C9.82701 6.58106 9.98184 6.65347 10.1268 6.79831L14.7711 11.4426C14.9351 11.6067 15.0171 11.7926 15.0171 12.0003C15.0171 12.208 14.9351 12.3939 14.7711 12.5581L10.1268 17.2023C9.98834 17.3406 9.83926 17.4115 9.67959 17.4148C9.52009 17.418 9.36784 17.3471 9.22284 17.2023C9.07801 17.0573 9.00559 16.9025 9.00559 16.7378C9.00559 16.5731 9.07801 16.4183 9.22284 16.2733L13.4711 12.0003Z" />
+  </svg>
+)
+
+/** The 6 px key dot beside each credit figure — the SAME gradient as its segment of the bar
+ *  (board ellipses 31261:84395 plan / 31261:84397 one-time, gradient vectors copied from the export). */
+export const CreditDot = ({ tone }: { tone: 'plan' | 'extra' }) => (
+  <svg width={6} height={6} viewBox="0 0 6 6" fill="none" aria-hidden data-account-dot={tone} className="shrink-0">
+    <defs>
+      {tone === 'plan' ? (
+        <linearGradient id="acct-dot-plan" x1="-0.0731707" y1="3" x2="6.27439" y2="3" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FFE082" /><stop offset="1" stopColor="#FA9F6A" />
         </linearGradient>
-      </defs>
-    </svg>
-  )
-}
+      ) : (
+        <linearGradient id="acct-dot-extra" x1="6.19565" y1="3" x2="0.545218" y2="5.73912" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FF6959" /><stop offset="1" stopColor="#A22CEC" />
+        </linearGradient>
+      )}
+    </defs>
+    <circle cx="3" cy="3" r="3" fill={`url(#acct-dot-${tone})`} />
+  </svg>
+)

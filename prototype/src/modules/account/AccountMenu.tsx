@@ -3,21 +3,26 @@
  * 29.09.2026: «вот макет с меню пользователя, это клик по аватару в правом верхнем углу… как в макете
  * меню перфект пиксель, а так же красивую анимацию открытия и закрытия в нашем стиле Apple liquid glass»).
  *
- * WHERE IT SITS — the board's `User menu` lies at x 2232, y 8 in the 2560 frame, 320 wide: top 8,
+ * WHERE IT SITS — the board's `User menu` lies at x 2264, y 8 in the 2560 frame, 288 wide: top 8,
  * right 8. It COVERS the avatar that opened it, the way the Publish panel covers its button; the glass
  * inflates out of the avatar's centre (20 px in from the menu's top-right corner).
  *
- * THE BOARD'S NUMBERS, 609 tall = header 152 + credits card 256 + list 193 + 8:
+ * THE BOARD'S NUMBERS (re-drawn 29.09.2026 — «я обновил дизайн меню пользователя»), 598 tall =
+ * header 139 + credits card 260 + list 191 + 8 (the first board was 320 × 609 = 152 + 256 + 193 + 8):
  *   · glass — `rgba(31,31,31,.7)` under a 40 px backdrop blur (the board's BACKGROUND_BLUR 80 is
  *     Figma's radius; CSS takes half), rim `Neutral Alpha/100` INSIDE, r20, `0 8 72` at 50 %.
  *     Glass for real here: what is behind it is the site and the rail, so the blur has work to do.
- *   · header — pt 24 / pb 16, avatar 56 (ring 2 px centred on its edge), gap 10, name Gilroy SemiBold
+ *   · header — pt 16 / pb 11, avatar 56 (ring 2 px centred on its edge), gap 10, name Gilroy SemiBold
  *     20/1.4, plan Proxima 13/1.4 on 48 %.
- *   · credits card — px 6, 6 % white under an 8 % rim INSIDE, r24: balance row pt 21 / px 20, the
- *     three-segment bar (pt 12 / pb 16, gap 3, h 8 r8), an inner card (6 % under a 4 % rim, r20,
- *     px 4) of two rows 54 / 53 with an 8 % hairline between, and `Add Credits` 40 r12 in p 16.
- *   · list — pt 12 / px 8: three rows 40 r8 (p 8, gap 12, glyph 24, 14/24) 2 apart, an inset hairline
- *     4 % 8 below, then `Logout` (15/24, pl 8 / pr 12) in a group with pr 4.
+ *   · credits card — px 6, 6 % white under an 8 % rim INSIDE, r24: balance row pt 21 / pl 20 / pr 16
+ *     (Gilroy Medium 16, cap-trimmed, + a 24 chevron on 32 % two apart), the three-segment bar (pt 12 /
+ *     pb 16, gap 3, h 8 r8), an inner card (6 % under a 4 % rim, r16, px 4) of two rows 53 / 52 with an
+ *     8 % hairline between — label 14 medium, figure Gilroy Medium 14 and, 11 to its right, a 6 px dot
+ *     in the figure's bar colour (the dot is the bar's legend) — and `Add Credits` 40 r12 in p 16, word
+ *     only. The plan row carries an 18 px cycle glyph where the first board printed «Resets 27 May»;
+ *     the date lives in its tooltip now (the board hides that text, it does not delete the fact).
+ *   · list — pt 12 / px 8: three rows 40 r8 (p 8, gap 12, glyph 24, 14/24) ONE apart and no trailing
+ *     glyph, an 8 % hairline 8 below, then `Logout` (15/24, pl 8 / pr 12) in a group with pr 4.
  *   ⚠️ Every rim is an INSET SHADOW, never a `border` — Figma's stroke sits inside the geometry and a
  *   CSS border would take a pixel from every child (the fifth time this lesson has paid, design-system §5).
  *
@@ -37,7 +42,8 @@ import { useUI } from '@/state/ui'
 import { useWorld } from '@/state/world'
 import { useT } from '@/i18n'
 import { accountIn, accountInBody, accountInFade, accountRow, accountStill } from '@/ui/motion'
-import { IconAddWhite, IconBug, IconCoinSmall, IconHelp, IconLogout, IconOpenInNew, IconSupport } from './boardIcons'
+import { Tooltip } from '@/ui/Tooltip'
+import { CreditDot, IconBug, IconChevronRightS, IconHelp, IconLogout, IconPlanCycle, IconSupport } from './boardIcons'
 
 /** The demo account's holder — ours (the board's is a film character); `R` matches the rail's disc. */
 export const ACCOUNT_NAME = 'Riley Carter'
@@ -86,7 +92,8 @@ export function AccountMenu() {
   const extra = world.bonus ? Math.min(total, BONUS_LEFT) : 0
   const plan = total - extra
   const cap = Math.max(PLAN_MONTH, total)
-  const fmt = (n: number) => n.toLocaleString('en-US').replace(/,/g, ' ')
+  /* the board prints bare digits — «12000», «9000» — no group separator */
+  const fmt = (n: number) => String(n)
   /* the plan resets at the end of the 30-day cycle the trial day counts through */
   const reset = new Date(Date.now() + Math.max(1, 30 - world.trialDay) * 86_400_000)
   const resetDay = String(reset.getDate())
@@ -109,7 +116,6 @@ export function AccountMenu() {
       >
         <span className="text-[var(--white-480)]">{icon}</span>
         <span className="min-w-0 flex-1 text-[14px] leading-[24px] text-white">{label}</span>
-        <IconOpenInNew className="text-[var(--white-320)]" />
       </a>
     </Row>
   )
@@ -127,7 +133,7 @@ export function AccountMenu() {
           animate="animate"
           exit="exit"
           onUpdate={keepOnMainThread}
-          className="fixed right-2 top-2 z-50 w-[320px] rounded-[20px] backdrop-blur-[40px]"
+          className="fixed right-2 top-2 z-50 w-[288px] rounded-[20px] backdrop-blur-[40px]"
           style={{
             transformOrigin: 'calc(100% - 20px) 20px',
             background: 'rgba(31,31,31,0.7)',
@@ -137,8 +143,8 @@ export function AccountMenu() {
           {/* the rim catching the light as the glass forms (the Panel Arrival's glint) */}
           <span aria-hidden className="glass-glint" />
           <motion.div variants={reduce ? accountStill : accountInBody} onUpdate={keepOnMainThread} className="flex flex-col pb-2" style={{ transformOrigin: 'calc(100% - 20px) 20px' }}>
-            {/* ------------------------------------------------ header 152 */}
-            <div className="flex flex-col items-center px-6 pb-4 pt-6" data-account-header>
+            {/* ------------------------------------------------ header 139 */}
+            <div className="flex flex-col items-center px-6 pb-[11px] pt-4" data-account-header>
               <Row i={0}>
                 <div className="flex flex-col items-center gap-[10px]">
                   {/* avatar 56 — the ring is a 2 px stroke CENTRED on the edge, so it paints 58 and the
@@ -161,13 +167,17 @@ export function AccountMenu() {
               </Row>
             </div>
 
-            {/* ------------------------------------------------ credits card 256 */}
+            {/* ------------------------------------------------ credits card 260 */}
             <div className="px-1.5">
               <Row i={1}>
                 <div className="flex flex-col rounded-[24px]" style={{ background: 'rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 0 1px var(--white-100)' }} data-account-credits>
-                  <div className="flex items-center justify-between px-5 pt-[21px]">
+                  {/* 45 = pt 21 + the chevron's 24 box */}
+                  <div className="flex items-center justify-between pl-5 pr-4 pt-[21px]" data-account-balance-row>
                     <span className="font-display text-[15px] font-semibold leading-[1.2] text-white">{t({ en: 'Credit Balance', uk: 'Баланс кредитів' })}</span>
-                    <span className="font-display text-[15px] font-medium tabular-nums leading-[1.2] text-white [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]" data-account-balance>{fmt(total)}</span>
+                    <span className="flex items-center gap-0.5">
+                      <span className="font-display text-[16px] font-medium tabular-nums leading-[1.2] text-white [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]" data-account-balance>{fmt(total)}</span>
+                      <IconChevronRightS className="text-[var(--white-320)]" />
+                    </span>
                   </div>
                   <div className="px-5 pb-4 pt-3">
                     <div className="flex h-2 w-full gap-[3px]" data-account-bar>
@@ -181,30 +191,28 @@ export function AccountMenu() {
                     </div>
                   </div>
                   <div className="px-1.5">
-                    {/* 296 × 109 with its 4 % stroke INSIDE: the rows start one pixel in on every side (the board's
-                        child sits at x 5, y 1, 286 × 107 — the frame's px 4 plus the stroke's 1) */}
-                    <div className="flex flex-col rounded-[20px] px-[5px] py-px" style={{ background: 'rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 0 1px var(--white-050)' }}>
-                      {/* Plan credits — 54 = 18 + 21 + 15, the 8 % hairline inside the row's bottom */}
-                      <div className="flex items-start justify-between px-[14px] pb-[15px] pt-[18px]" style={{ boxShadow: 'inset 0 -1px 0 0 var(--white-100)' }}>
-                        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-                          <span className="text-[15px] font-medium leading-[1.4] text-white">{t({ en: 'Plan Credits', uk: 'Кредити плану' })}</span>
-                          <span className="flex items-baseline gap-0.5 text-[var(--gray-350)]">
-                            <span className="text-[12px] leading-[1.4]">{t({ en: 'Resets', uk: 'Оновлення' })}</span>
-                            <span className="font-display text-[13px] leading-[1.4]">{resetDay}</span>
-                            <span className="text-[12px] leading-[1.4]">{resetMonth}</span>
-                          </span>
+                    {/* 264 × 107 with its 4 % stroke INSIDE: the rows start one pixel in on every side (the board's
+                        child sits at x 5, y 1, 254 × 105 — the frame's px 4 plus the stroke's 1) */}
+                    <div className="flex flex-col rounded-[16px] px-[5px] py-px" style={{ background: 'rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 0 1px var(--white-050)' }} data-account-inner>
+                      {/* Plan credits — 53 = 18 + 20 + 15, the 8 % hairline inside the row's bottom */}
+                      <div className="flex items-center justify-between px-[14px] pb-[15px] pt-[18px]" style={{ boxShadow: 'inset 0 -1px 0 0 var(--white-100)' }} data-account-plan-row>
+                        <span className="flex items-center gap-1.5 whitespace-nowrap">
+                          <span className="text-[14px] font-medium leading-5 text-white">{t({ en: 'Plan Credits', uk: 'Кредити плану' })}</span>
+                          <Tooltip text={t({ en: `Resets ${resetDay} ${resetMonth}`, uk: `Оновлення ${resetDay} ${resetMonth}` })}>
+                            <IconPlanCycle className="block text-[var(--white-480)]" />
+                          </Tooltip>
                         </span>
-                        <span className="flex items-center gap-1.5 self-stretch">
-                          <span className="font-display text-[15px] font-medium tabular-nums leading-[1.2] text-white" data-account-plan>{fmt(plan)}</span>
-                          <IconCoinSmall tone="plan" />
+                        <span className="flex items-center gap-[11px]">
+                          <span className="font-display text-[14px] font-medium tabular-nums leading-[1.2] text-white" data-account-plan>{fmt(plan)}</span>
+                          <CreditDot tone="plan" />
                         </span>
                       </div>
-                      {/* One-time credits — 53 = 15 + 21 + 17 */}
-                      <div className="flex items-center justify-between gap-6 px-[14px] pb-[17px] pt-[15px]">
-                        <span className="text-[15px] font-medium leading-[1.4] text-white">{t({ en: 'One-Time Credits', uk: 'Разові кредити' })}</span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="font-display text-[15px] font-medium tabular-nums leading-[1.2] text-white" data-account-extra>{fmt(extra)}</span>
-                          <IconCoinSmall tone="extra" />
+                      {/* One-time credits — 52 = 15 + 20 + 17 */}
+                      <div className="flex items-center justify-between gap-6 px-[14px] pb-[17px] pt-[15px]" data-account-extra-row>
+                        <span className="text-[14px] font-medium leading-5 text-white">{t({ en: 'One-Time Credits', uk: 'Разові кредити' })}</span>
+                        <span className="flex items-center gap-[11px]">
+                          <span className="font-display text-[14px] font-medium tabular-nums leading-[1.2] text-white" data-account-extra>{fmt(extra)}</span>
+                          <CreditDot tone="extra" />
                         </span>
                       </div>
                     </div>
@@ -214,24 +222,23 @@ export function AccountMenu() {
                       type="button"
                       onClick={() => toggle(false)}
                       data-account-add
-                      className="press-bloom flex h-10 w-full items-center justify-center gap-[7px] overflow-hidden rounded-[12px] bg-[var(--action)] pl-5 pr-2 text-[14px] font-semibold leading-none text-white transition-colors duration-150 hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
+                      className="press-bloom flex h-10 w-full items-center justify-center overflow-hidden rounded-[12px] bg-[var(--action)] px-5 text-[14px] font-semibold leading-none text-white transition-colors duration-150 hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
                     >
                       {t({ en: 'Add Credits', uk: 'Додати кредити' })}
-                      <IconAddWhite className="text-white" />
                     </button>
                   </div>
                 </div>
               </Row>
             </div>
 
-            {/* ------------------------------------------------ list 193 */}
+            {/* ------------------------------------------------ list 191 */}
             <div className="flex flex-col gap-2 px-2 pt-3" data-account-list>
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-px">
                 {listRow(2, <IconSupport />, t({ en: 'Contact Support', uk: 'Звернутися в підтримку' }), 'https://panel.dreamhost.com/?tree=support.msg')}
                 {listRow(3, <IconHelp />, t({ en: 'Help', uk: 'Довідка' }), 'https://help.dreamhost.com/')}
                 {listRow(4, <IconBug />, t({ en: 'Bug Report', uk: 'Повідомити про помилку' }), 'https://panel.dreamhost.com/?tree=support.msg')}
               </div>
-              <Row i={5}><span aria-hidden className="block h-px w-full bg-[var(--white-050)]" /></Row>
+              <Row i={5}><span aria-hidden className="block h-px w-full bg-[var(--white-100)]" /></Row>
               <div className="pr-1">
                 <Row i={6}>
                   <button

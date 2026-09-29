@@ -5814,29 +5814,37 @@ await shot('30-plan-review')
     const r = (s) => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { x: +b.x.toFixed(2), y: +b.y.toFixed(2), w: +b.width.toFixed(2), h: +b.height.toFixed(2) } }
     const m = document.querySelector('[data-account-menu]'); const cs = getComputedStyle(m)
     const tg = document.querySelector('[data-account-trigger]').getBoundingClientRect()
-    return { vw: innerWidth, menu: r('[data-account-menu]'), header: r('[data-account-header]'), avatar: r('[data-account-avatar]'), credits: r('[data-account-credits]'), bar: r('[data-account-bar]'), add: r('[data-account-add]'), list: r('[data-account-list]'), logout: r('[data-account-logout]'),
+    const q = (sel) => document.querySelector(sel)
+    return { vw: innerWidth, inner: r('[data-account-inner]'), innerR: getComputedStyle(q('[data-account-inner]')).borderRadius, planRow: r('[data-account-plan-row]'), extraRow: r('[data-account-extra-row]'), balRow: r('[data-account-balance-row]'),
+      dots: [...document.querySelectorAll('[data-account-dot]')].map((e) => [e.getAttribute('data-account-dot'), e.getBoundingClientRect().width]), balFont: getComputedStyle(q('[data-account-balance]')).fontSize, planFont: getComputedStyle(q('[data-account-plan]')).fontSize,
+      rowGlyphs: [...document.querySelectorAll('[data-account-row]')].map((e) => e.querySelectorAll('svg').length), addGlyphs: q('[data-account-add]').querySelectorAll('svg').length, addText: q('[data-account-add]').innerText.trim(),
+      menu: r('[data-account-menu]'), header: r('[data-account-header]'), avatar: r('[data-account-avatar]'), credits: r('[data-account-credits]'), bar: r('[data-account-bar]'), add: r('[data-account-add]'), list: r('[data-account-list]'), logout: r('[data-account-logout]'),
       rows: [...document.querySelectorAll('[data-account-row]')].map((e) => { const b = e.getBoundingClientRect(); return [+b.x.toFixed(1), +b.y.toFixed(1), +b.width.toFixed(1), +b.height.toFixed(1)] }),
       blur: cs.backdropFilter, bg: cs.backgroundColor, shadow: cs.boxShadow, radius: cs.borderRadius, origin: cs.transformOrigin, trigger: [tg.x + tg.width / 2, tg.y + tg.height / 2], expanded: document.querySelector('[data-account-trigger]').getAttribute('aria-expanded'),
       balance: document.querySelector('[data-account-balance]').textContent, plan: document.querySelector('[data-account-plan]').textContent, extra: document.querySelector('[data-account-extra]').textContent, toolbar: [...document.querySelectorAll('header span')].map((e) => e.textContent).find((x) => /^\d[\d ]*$/.test(x || '')) }
   })
   const m = geo.menu
-  check('the account menu lies where the board draws it — 320 wide, 8 from the top and right edges, 609 tall = header 152 + credits card 256 + list 193 + 8 — covering the avatar that opened it',
-    m.w === 320 && m.x === geo.vw - 328 && m.y === 8 && m.h === 609 && geo.header.h === 152 && geo.credits.h === 256 && geo.credits.w === 308 && geo.credits.x === m.x + 6 && geo.list.h === 193 && geo.trigger[0] > m.x && geo.trigger[1] < m.y + 40 && geo.expanded === 'true',
+  check('the account menu lies where the re-drawn board draws it — 288 wide, 8 from the top and right edges, 598 tall = header 139 + credits card 260 + list 191 + 8 — covering the avatar that opened it',
+    m.w === 288 && m.x === geo.vw - 296 && m.y === 8 && m.h === 598 && geo.header.h === 139 && geo.credits.h === 260 && geo.credits.w === 276 && geo.credits.x === m.x + 6 && geo.list.h === 191 && geo.trigger[0] > m.x && geo.trigger[1] < m.y + 40 && geo.expanded === 'true',
     JSON.stringify(geo))
-  check('…inside, the board’s numbers: avatar 56 at (132, 24), the bar 268 at 20 in, Add Credits 276 × 40, three rows 304 × 40 two apart from 12 below the card, Logout 300 × 40 at the foot',
-    geo.avatar.w === 56 && geo.avatar.x === m.x + 132 && geo.avatar.y === m.y + 24 && geo.bar.w === 268 && geo.bar.x === m.x + 26 && geo.bar.h === 8 && geo.add.w === 276 && geo.add.h === 40
-      && geo.rows.length === 3 && geo.rows.every((r, i) => r[2] === 304 && r[3] === 40 && r[0] === m.x + 8 && Math.abs(r[1] - (m.y + 420 + i * 42)) < 0.5) && geo.logout.w === 300 && geo.logout.h === 40 && Math.abs(geo.logout.y - (m.y + 561)) < 0.5,
-    JSON.stringify({ avatar: geo.avatar, bar: geo.bar, add: geo.add, rows: geo.rows, logout: geo.logout }))
+  check('…inside, the board’s numbers: avatar 56 at (116, 16), balance row 45, the bar 236 at 20 in, the inner card 264 × 107 r16 with rows 53 / 52, Add Credits 244 × 40, three rows 272 × 40 ONE apart from 12 below the card, Logout 268 × 40 at the foot',
+    geo.avatar.w === 56 && geo.avatar.x === m.x + 116 && geo.avatar.y === m.y + 16 && geo.balRow.h === 45 && geo.bar.w === 236 && geo.bar.x === m.x + 26 && geo.bar.h === 8
+      && geo.inner.w === 264 && geo.inner.h === 107 && geo.inner.x === m.x + 12 && geo.innerR === '16px' && geo.planRow.h === 53 && geo.extraRow.h === 52 && geo.add.w === 244 && geo.add.h === 40
+      && geo.rows.length === 3 && geo.rows.every((r, i) => r[2] === 272 && r[3] === 40 && r[0] === m.x + 8 && Math.abs(r[1] - (m.y + 411 + i * 41)) < 0.5) && geo.logout.w === 268 && geo.logout.h === 40 && Math.abs(geo.logout.y - (m.y + 550)) < 0.5,
+    JSON.stringify({ avatar: geo.avatar, balRow: geo.balRow, bar: geo.bar, inner: geo.inner, planRow: geo.planRow, extraRow: geo.extraRow, add: geo.add, rows: geo.rows, logout: geo.logout }))
+  check('…and what the re-draw changed in kind: balance figure 16 with a chevron, credit figures 14 with a 6 px key dot each (plan · one-time), no trailing glyph on the list rows, Add Credits is its word alone',
+    geo.balFont === '16px' && geo.planFont === '14px' && JSON.stringify(geo.dots) === JSON.stringify([['plan', 6], ['extra', 6]]) && geo.rowGlyphs.every((n) => n === 1) && geo.addGlyphs === 0 && geo.addText === 'Add Credits',
+    JSON.stringify({ balFont: geo.balFont, planFont: geo.planFont, dots: geo.dots, rowGlyphs: geo.rowGlyphs, addGlyphs: geo.addGlyphs }))
   check('…the glass is the board’s: rgba(31,31,31,.7) under a 40 px backdrop blur, the 8 % rim INSIDE (an inset shadow, not a border), r20, 0 8 72 at 50 %',
     geo.bg === 'rgba(31, 31, 31, 0.7)' && geo.blur === 'blur(40px)' && /rgba\(255, 255, 255, 0\.08\) 0px 0px 0px 1px inset/.test(geo.shadow) && /rgba\(0, 0, 0, 0\.5\) 0px 8px 72px/.test(geo.shadow) && geo.radius === '20px',
     JSON.stringify({ bg: geo.bg, blur: geo.blur, shadow: geo.shadow, radius: geo.radius }))
   check('…and the balance is the toolbar’s own: plan and one-time credits add up to it',
-    geo.balance === geo.toolbar && +geo.plan.replace(/ /g, '') + +geo.extra.replace(/ /g, '') === +geo.balance.replace(/ /g, ''),
+    geo.balance === geo.toolbar.replace(/ /g, '') && +geo.plan.replace(/ /g, '') + +geo.extra.replace(/ /g, '') === +geo.balance.replace(/ /g, ''),
     JSON.stringify({ balance: geo.balance, plan: geo.plan, extra: geo.extra, toolbar: geo.toolbar }))
   const os = open.map((f) => f.o), ss = open.map((f) => f.s), gs = open.map((f) => f.g)
   const peak = Math.max(...ss), gPeak = Math.max(...gs)
   check('the menu opens as glass out of the avatar: transform origin on the avatar’s centre, scale .92 → one soft overshoot (≤ 1.01) → 1, opacity rising monotonically to 1 without a blink, the rim catching the light and letting it go',
-    geo.origin === '300px 20px' && ss[0] < 0.95 && peak > 1.0003 && peak < 1.01 && Math.abs(ss[ss.length - 1] - 1) < 0.001 && mono(os, 'up') && os[os.length - 1] === 1 && gPeak > 0.8 && gs[gs.length - 1] < 0.1,
+    geo.origin === '268px 20px' && ss[0] < 0.95 && peak > 1.0003 && peak < 1.01 && Math.abs(ss[ss.length - 1] - 1) < 0.001 && mono(os, 'up') && os[os.length - 1] === 1 && gPeak > 0.8 && gs[gs.length - 1] < 0.1,
     JSON.stringify({ origin: geo.origin, ss: ss.filter((_, i) => i % 5 === 0).map((v) => +v.toFixed(4)), os: os.filter((_, i) => i % 5 === 0).map((v) => +v.toFixed(3)), gPeak }))
   await p.screenshot({ path: `${OUT}/N-account-menu.png` })
   const closeP = film(500); await p.keyboard.press('Escape'); const close = await closeP
