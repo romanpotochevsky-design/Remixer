@@ -1255,15 +1255,16 @@ export default function App() {
                   style={{ ...park, transformOrigin: '0 0', overflow: surface === 'sites' ? 'hidden' : 'visible', willChange: surface === 'sites' ? 'transform' : undefined }}
                 >
                 <motion.div
-                  /* THE PREVIEW WEARS A HAIRLINE — 1 px of white at 4 %, INSIDE its edge (designer, 29.09.2026,
+                  /* THE PREVIEW WEARS A HAIRLINE — 1 px of white at 6 %, INSIDE its edge (designer, 29.09.2026,
                      with the Figma stroke panel: «у превью сайта должен быть лёгкий прозрачный бордер, чтобы
                      чёрный сайт не сливался с фоном»). A dark site on the shell's near-black ground had no
                      edge at all. Drawn by a `::after` overlay, not `box-shadow` on the stage itself: an inset
                      shadow paints UNDER the children, and the page fills the box. It rides the stage through
                      the shelf's flight (it is the card's picture too) and over the glow (z 30). Until now
                      only the phone frame had a hairline (8 %, from Lovable's measured #41413D); one rim for
-                     both devices now, the board's 4 %. */
-                  className="site-stage relative overflow-hidden rounded-shell after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] after:content-['']"
+                     both devices now. The board's 4 % was built first and raised the same day by the designer on
+                     the live build («бордер слишком слабый, сделай 6% вместо 4%»). */
+                  className="site-stage relative overflow-hidden rounded-shell after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] after:content-['']"
                   data-site-stage
                   initial={false}
                   animate={{
