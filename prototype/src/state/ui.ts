@@ -314,6 +314,11 @@ interface UIStore {
   domainModal: DomainModal | null
   publishOpen: boolean
   /**
+   * The ACCOUNT MENU under the rail's avatar (board 31243:82905, designer 29.09.2026) — a
+   * session state, like `publishOpen`: navigation of the shell, not a fact about the world.
+   */
+  accountOpen: boolean
+  /**
    * Whether the Publish panel's "Ready to put your site live?" nudge is still up
    * (Figma 29697:36970). It only ever shows for a site that has never gone live
    * (`world.published`), and its ✕ takes it down — this is that ✕.
@@ -429,6 +434,7 @@ interface UIStore {
   openPanel: (page: PanelPage) => void
   closePanel: () => void
   togglePublish: (open?: boolean) => void
+  toggleAccount: (open?: boolean) => void
   dismissPublishHint: () => void
   triggerReload: (ms?: number) => void
 }
@@ -459,6 +465,7 @@ export const useUI = create<UIStore>((set, get) => ({
   activeDomain: null,
   domainModal: null,
   publishOpen: false,
+  accountOpen: false,
   publishHintOpen: true,
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
@@ -475,7 +482,7 @@ export const useUI = create<UIStore>((set, get) => ({
      attachment via `openBuilder`, which is exactly when it should die. */
   goHome: () => {
     clearBootTimers()
-    set({ page: 'home', boot: null, publishOpen: false, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false })
+    set({ page: 'home', boot: null, publishOpen: false, accountOpen: false, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false })
   },
   /*
    * The transition, phase by phase. The curtain is raised FIRST and the page switches
@@ -581,7 +588,9 @@ export const useUI = create<UIStore>((set, get) => ({
   // handoff closes the publish popover on the way out.
   openPanel: (panel) => set({ panel, publishOpen: false, domainModal: null }),
   closePanel: () => set({ panel: null }),
-  togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen }),
+  togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen, accountOpen: false }),
+  /* one floating panel at a time in the top-right corner: opening the account menu takes Publish down */
+  toggleAccount: (open) => { const next = open ?? !get().accountOpen; set(next ? { accountOpen: true, publishOpen: false } : { accountOpen: false }) },
   dismissPublishHint: () => set({ publishHintOpen: false }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)

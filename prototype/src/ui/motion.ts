@@ -1239,3 +1239,49 @@ export const pageSwapFade = {
   exit: { opacity: 0, transition: { duration: 0.1 } },
 } as const
 
+
+/**
+ * THE ACCOUNT MENU (modules/account/AccountMenu.tsx, board 31243:82905, designer 29.09.2026: «красивую
+ * анимацию открытия и закрытия в нашем стиле Apple liquid glass») — the Panel Arrival's language,
+ * because it is the same kind of object: a floating glass sheet in the top-right corner that COVERS the
+ * control that opened it. The glass inflates out of the avatar (the host sets `transform-origin` on the
+ * avatar's centre), .92 → 1 with one soft overshoot on the cards' spring (.68 / bounce .2), opaque on
+ * its own quick curve; the contents focus onto it a beat later; the rows arrive top to bottom, 30 ms
+ * apart, rising 6 px — the menu reads downward from the face that was pressed. Leaving is the house
+ * dismissal: 140 ms flat, back toward the avatar, no bounce (rule 4).
+ */
+export const accountIn = {
+  initial: { opacity: 0, scale: 0.92, y: -6 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: 'spring', duration: 0.68, bounce: 0.2, opacity: { duration: 0.22, ease: [0.2, 0, 0, 1] } },
+  },
+  exit: { opacity: 0, scale: 0.95, y: -4, transition: EXIT },
+} as const
+export const accountInBody = {
+  initial: { opacity: 0, scale: 1.03 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: 'spring', duration: 0.6, bounce: 0.1, delay: 0.1, opacity: { duration: 0.2, delay: 0.1 } },
+  },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
+} as const
+export const accountRow = {
+  initial: { opacity: 0, y: 6 },
+  animate: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', duration: 0.5, bounce: 0.14, delay: 0.14 + i * 0.03, opacity: { duration: 0.2, delay: 0.14 + i * 0.03 } },
+  }),
+  exit: { opacity: 0, transition: { duration: 0.08 } },
+} as const
+/* Reduced motion: offsets and scales DROPPED, not jumped into. */
+export const accountInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+export const accountStill = { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 1 } } as const

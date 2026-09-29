@@ -5790,6 +5790,72 @@ await shot('30-plan-review')
     JSON.stringify({ fresh, freshHeader }))
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════
+ * N · THE ACCOUNT MENU — board 31243:82905, under the rail's avatar
+ *
+ * Designer, 29.09.2026: «вот макет с меню пользователя, это клик по аватару в правом верхнем углу…
+ * как в макете меню перфект пиксель, а так же красивую анимацию открытия и закрытия в нашем стиле
+ * Apple liquid glass». modules/account/AccountMenu.tsx; motion.ts `accountIn`.
+ * ═══════════════════════════════════════════════════════════════════════════════════ */
+{
+  const mono = (arr, dir) => arr.every((v, i) => i === 0 || (dir === 'down' ? v <= arr[i - 1] + 1e-3 : v >= arr[i - 1] - 1e-3))
+  await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })
+  await p.waitForTimeout(700)
+  await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(700)
+  const film = (ms) => p.evaluate(async (ms) => {
+    const s = []; const t0 = performance.now()
+    await new Promise((res) => { const tick = () => { const m = document.querySelector('[data-account-menu]'); if (m) { const cs = getComputedStyle(m); const tr = cs.transform; const g = m.querySelector('.glass-glint'); s.push({ t: performance.now() - t0, o: +cs.opacity, s: tr === 'none' ? 1 : new DOMMatrix(tr).a, g: g ? +getComputedStyle(g).opacity : 0 }) } else s.push({ t: performance.now() - t0, gone: true }); if (performance.now() - t0 < ms) requestAnimationFrame(tick); else res() }; requestAnimationFrame(tick) })
+    return s
+  }, ms)
+  const openP = film(1300); await p.click('[data-account-trigger]'); const open = (await openP).filter((f) => !f.gone)
+  const geo = await p.evaluate(() => {
+    const r = (s) => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { x: +b.x.toFixed(2), y: +b.y.toFixed(2), w: +b.width.toFixed(2), h: +b.height.toFixed(2) } }
+    const m = document.querySelector('[data-account-menu]'); const cs = getComputedStyle(m)
+    const tg = document.querySelector('[data-account-trigger]').getBoundingClientRect()
+    return { vw: innerWidth, menu: r('[data-account-menu]'), header: r('[data-account-header]'), avatar: r('[data-account-avatar]'), credits: r('[data-account-credits]'), bar: r('[data-account-bar]'), add: r('[data-account-add]'), list: r('[data-account-list]'), logout: r('[data-account-logout]'),
+      rows: [...document.querySelectorAll('[data-account-row]')].map((e) => { const b = e.getBoundingClientRect(); return [+b.x.toFixed(1), +b.y.toFixed(1), +b.width.toFixed(1), +b.height.toFixed(1)] }),
+      blur: cs.backdropFilter, bg: cs.backgroundColor, shadow: cs.boxShadow, radius: cs.borderRadius, origin: cs.transformOrigin, trigger: [tg.x + tg.width / 2, tg.y + tg.height / 2], expanded: document.querySelector('[data-account-trigger]').getAttribute('aria-expanded'),
+      balance: document.querySelector('[data-account-balance]').textContent, plan: document.querySelector('[data-account-plan]').textContent, extra: document.querySelector('[data-account-extra]').textContent, toolbar: [...document.querySelectorAll('header span')].map((e) => e.textContent).find((x) => /^\d[\d ]*$/.test(x || '')) }
+  })
+  const m = geo.menu
+  check('the account menu lies where the board draws it — 320 wide, 8 from the top and right edges, 609 tall = header 152 + credits card 256 + list 193 + 8 — covering the avatar that opened it',
+    m.w === 320 && m.x === geo.vw - 328 && m.y === 8 && m.h === 609 && geo.header.h === 152 && geo.credits.h === 256 && geo.credits.w === 308 && geo.credits.x === m.x + 6 && geo.list.h === 193 && geo.trigger[0] > m.x && geo.trigger[1] < m.y + 40 && geo.expanded === 'true',
+    JSON.stringify(geo))
+  check('…inside, the board’s numbers: avatar 56 at (132, 24), the bar 268 at 20 in, Add Credits 276 × 40, three rows 304 × 40 two apart from 12 below the card, Logout 300 × 40 at the foot',
+    geo.avatar.w === 56 && geo.avatar.x === m.x + 132 && geo.avatar.y === m.y + 24 && geo.bar.w === 268 && geo.bar.x === m.x + 26 && geo.bar.h === 8 && geo.add.w === 276 && geo.add.h === 40
+      && geo.rows.length === 3 && geo.rows.every((r, i) => r[2] === 304 && r[3] === 40 && r[0] === m.x + 8 && Math.abs(r[1] - (m.y + 420 + i * 42)) < 0.5) && geo.logout.w === 300 && geo.logout.h === 40 && Math.abs(geo.logout.y - (m.y + 561)) < 0.5,
+    JSON.stringify({ avatar: geo.avatar, bar: geo.bar, add: geo.add, rows: geo.rows, logout: geo.logout }))
+  check('…the glass is the board’s: rgba(31,31,31,.7) under a 40 px backdrop blur, the 8 % rim INSIDE (an inset shadow, not a border), r20, 0 8 72 at 50 %',
+    geo.bg === 'rgba(31, 31, 31, 0.7)' && geo.blur === 'blur(40px)' && /rgba\(255, 255, 255, 0\.08\) 0px 0px 0px 1px inset/.test(geo.shadow) && /rgba\(0, 0, 0, 0\.5\) 0px 8px 72px/.test(geo.shadow) && geo.radius === '20px',
+    JSON.stringify({ bg: geo.bg, blur: geo.blur, shadow: geo.shadow, radius: geo.radius }))
+  check('…and the balance is the toolbar’s own: plan and one-time credits add up to it',
+    geo.balance === geo.toolbar && +geo.plan.replace(/ /g, '') + +geo.extra.replace(/ /g, '') === +geo.balance.replace(/ /g, ''),
+    JSON.stringify({ balance: geo.balance, plan: geo.plan, extra: geo.extra, toolbar: geo.toolbar }))
+  const os = open.map((f) => f.o), ss = open.map((f) => f.s), gs = open.map((f) => f.g)
+  const peak = Math.max(...ss), gPeak = Math.max(...gs)
+  check('the menu opens as glass out of the avatar: transform origin on the avatar’s centre, scale .92 → one soft overshoot (≤ 1.01) → 1, opacity rising monotonically to 1 without a blink, the rim catching the light and letting it go',
+    geo.origin === '300px 20px' && ss[0] < 0.95 && peak > 1.0003 && peak < 1.01 && Math.abs(ss[ss.length - 1] - 1) < 0.001 && mono(os, 'up') && os[os.length - 1] === 1 && gPeak > 0.8 && gs[gs.length - 1] < 0.1,
+    JSON.stringify({ origin: geo.origin, ss: ss.filter((_, i) => i % 5 === 0).map((v) => +v.toFixed(4)), os: os.filter((_, i) => i % 5 === 0).map((v) => +v.toFixed(3)), gPeak }))
+  await p.screenshot({ path: `${OUT}/N-account-menu.png` })
+  const closeP = film(500); await p.keyboard.press('Escape'); const close = await closeP
+  const cl = close.filter((f) => !f.gone).map((f) => f.o), goneAt = close.find((f) => f.gone)?.t
+  check('Esc closes it the house way — opacity falls monotonically, gone within ~220 ms, no bounce, the avatar collapsed',
+    mono(cl, 'down') && goneAt !== undefined && goneAt < 260 && close.filter((f) => !f.gone).every((f) => f.s <= 1.0005) && (await p.$eval('[data-account-trigger]', (e) => e.getAttribute('aria-expanded'))) === 'false',
+    JSON.stringify({ cl: cl.map((v) => +v.toFixed(3)), goneAt }))
+  await p.click('[data-account-trigger]'); await p.waitForTimeout(700)
+  await p.mouse.click(700, 500); await p.waitForTimeout(400)
+  const afterOutside = !!(await p.$('[data-account-menu]'))
+  await p.click('[data-account-trigger]'); await p.waitForTimeout(700)
+  await p.click('[data-account-trigger]'); await p.waitForTimeout(400)
+  const afterToggle = !!(await p.$('[data-account-menu]'))
+  check('a click anywhere else closes it, and the avatar toggles it', !afterOutside && !afterToggle, JSON.stringify({ afterOutside, afterToggle }))
+  await p.click('[data-account-trigger]'); await p.waitForTimeout(700)
+  await p.click('[data-account-logout]'); await p.waitForTimeout(700)
+  check('Logout leaves the builder for the Home page (the prototype has no signed-out screen)', !!(await p.$('.home-card-face')) && !(await p.$('[data-account-menu]')))
+}
+
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
 await b.close()
 

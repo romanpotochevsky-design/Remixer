@@ -36,6 +36,7 @@ import { SiteStage } from '@/modules/preview/SiteStage'
 import { PageSwitcher } from '@/modules/preview/PageSwitcher'
 import { SiteSwitch } from '@/modules/sites/SiteSwitch'
 import { SitesShelf } from '@/modules/sites/SitesShelf'
+import { AccountMenu } from '@/modules/account/AccountMenu'
 import { useSitePark, toolbarP, toolbarHome } from '@/modules/sites/park'
 import { SiriGlow } from '@/ui/SiriGlow'
 import {
@@ -734,6 +735,8 @@ const RAIL_HOLD_MS = 160
 type RailFill = { id: string; x: number; y: number; dir: 'in' | 'out'; phase: 'run' | 'hold'; key: number }
 export default function App() {
   const { world } = useWorld()
+  const accountOpen = useUI((s) => s.accountOpen)
+  const toggleAccount = useUI((s) => s.toggleAccount)
   const { surface, openSurface, closeSurface, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
 
   /*
@@ -1363,6 +1366,7 @@ export default function App() {
           </AnimatePresence>
 
           <PublishPanel hold={holdPanel} />
+          <AccountMenu />
       {/* The design system's "are you sure?" — mounted ONCE, here, because its scrim covers
           the whole shell (board 30282:51628). Anything that needs it calls
           `useConfirm.getState().ask({…})`; see ui/ConfirmDialog.tsx. */}
@@ -1378,9 +1382,14 @@ export default function App() {
             the proxy will not hand over; drawn here as the gradient it reads as. */}
         <div className="grid h-14 place-items-center">
           <span className="arrive-rail-item grid h-9 w-9 place-items-center rounded-full" style={{ background: 'linear-gradient(200deg,#9575cd,#1587ff)' }}>
+            {/* the door to the ACCOUNT MENU (board 31243:82905) — the menu inflates out of this disc */}
             <button
               aria-label={t({ en: 'Account', uk: 'Акаунт' })}
-              className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white"
+              aria-haspopup="dialog"
+              aria-expanded={accountOpen}
+              data-account-trigger
+              onClick={() => toggleAccount()}
+              className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#e0a94a] to-[#a3651f] text-[12px] font-semibold text-white transition-transform duration-150 active:scale-[.92]"
             >
               R
             </button>
