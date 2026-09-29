@@ -36,7 +36,7 @@ import { SiteStage } from '@/modules/preview/SiteStage'
 import { PageSwitcher } from '@/modules/preview/PageSwitcher'
 import { SiteSwitch } from '@/modules/sites/SiteSwitch'
 import { SitesShelf } from '@/modules/sites/SitesShelf'
-import { useSitePark } from '@/modules/sites/park'
+import { useSitePark, toolbarP, toolbarHome } from '@/modules/sites/park'
 import { SiriGlow } from '@/ui/SiriGlow'
 import {
   SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, canvasSiteSheet,
@@ -795,6 +795,9 @@ export default function App() {
   const holdPanel = canvasSettling || surfaceJustLeft
   /* the site layer's parking transform — identity unless the sites shelf has it in its card (modules/sites/park.ts) */
   const park = useSitePark()
+  /* the canvas toolbar steps aside while the sites shelf is up (park.ts `toolbarP`) */
+  const toolbarY = useTransform(toolbarP, [0, 1], [-10, 0])
+  useEffect(() => { if (surface !== 'sites') toolbarHome() }, [surface])
   /*
    * THE WINDOWS' MOTION, AND WHETHER THIS IS A SWITCH. Both go to the panes as refs written in RENDER,
    * for the same reason `leavingTile` is computed here: the pane that is leaving reads them in the
@@ -1061,7 +1064,14 @@ export default function App() {
           * that greys out Publish, taken to its end. It arrives when the site does.
           */}
         {world.project === 'built' && (
-        <header className="flex flex-none items-center justify-between pr-2" style={{ height: 'var(--topbar-h)' }}>
+        <motion.header
+          data-canvas-toolbar
+          aria-hidden={surface === 'sites' || undefined}
+          className={`flex flex-none items-center justify-between pr-2 ${surface === 'sites' ? 'pointer-events-none' : ''}`}
+          /* ⚠️ the band keeps its 52 px: the shelf is drawn OVER it (SitesShelf's clip starts at the column's
+             top), so nothing below moves — the site the shelf measures stays exactly where it stood */
+          style={{ height: 'var(--topbar-h)', opacity: toolbarP, y: toolbarY }}
+        >
           {/* left: Visual Editor + device preview */}
           <div className="flex items-center gap-2 pl-2">
             <Glass className="h-9 justify-center pr-5">
@@ -1189,7 +1199,7 @@ export default function App() {
               )}
             </button>
           </div>
-        </header>
+        </motion.header>
         )}
 
         {/* canvas — 8px gutter, the preview floats on the ground.

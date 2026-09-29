@@ -5594,8 +5594,9 @@ await shot('30-plan-review')
       const clip = document.querySelector('[data-sites-clip]'); const cr = clip ? clip.getBoundingClientRect() : null
       const pub = [...document.querySelectorAll('header button')].find((b) => /Publish/.test(b.textContent)); const pb = pub ? pub.getBoundingClientRect() : null
       const hit = pb ? document.elementFromPoint(pb.left + pb.width / 2, pb.bottom - 2) : null
+      const tbar = document.querySelector('[data-canvas-toolbar]'); const tbo = tbar ? +(+getComputedStyle(tbar).opacity).toFixed(3) : null
       s.push({ t: Math.round(now - t0), park: pm ? +pm[0].toFixed(4) : 1, parkBox: pr ? [pr.x, pr.y, pr.width, pr.height].map((n) => +n.toFixed(1)) : null,
-        clip: cr ? [cr.x, cr.y, cr.width, cr.height].map(Math.round) : null, publishClear: pub ? (hit === pub || pub.contains(hit)) : null,
+        clip: cr ? [cr.x, cr.y, cr.width, cr.height].map(Math.round) : null, publishClear: pub ? (hit === pub || pub.contains(hit)) : null, tb: tbo,
         shelf: shelf ? { o: +(+getComputedStyle(shelf).opacity).toFixed(3), s: sm ? +sm[0].toFixed(4) : 1, top: +shelf.getBoundingClientRect().y.toFixed(1) } : null,
         flight: fm ? { s: +fm[0].toFixed(4), box: [fr.x, fr.y, fr.width, fr.height].map((n) => +n.toFixed(1)) } : null,
         z: document.querySelector('[data-canvas-site]') ? getComputedStyle(document.querySelector('[data-canvas-site]')).zIndex : null })
@@ -5637,21 +5638,37 @@ await shot('30-plan-review')
   check('…while the shelf comes into place behind it like the home screen behind a closing app: from slightly larger (≥ 1.03) down to 1 with the flight’s own spring, solid within ~300 ms, and it never launches larger than it started',
     shelfS[0] >= 1.03 && Math.max(...shelfS) <= 1.051 && near(shelfS[shelfS.length - 1], 1, 0.002) && shelfO[0] < 0.6 && (parkFrames.find((f) => f.shelf.o >= 0.99)?.t ?? 9999) <= 400 && shelfO[shelfO.length - 1] === 1,
     JSON.stringify({ shelfS: shelfS.filter((_, i) => i % 5 === 0), shelfO: shelfO.filter((_, i) => i % 5 === 0) }))
-  /* the designer's screenshot (25.09.2026): the enlarged shelf rode up over the toolbar and covered the bottom of
-     Publish and the credits pill for the approach — it now scales INSIDE a clip cut to the canvas box */
+  /* the designer's screenshot (25.09.2026): the enlarged shelf rode up over the toolbar — it scales INSIDE a clip.
+     Since the board 31164:75936 (29.09.2026) that clip is the canvas PLUS the toolbar band, and the toolbar steps
+     aside (the designer: «верхнюю панель… при открытии списка сайтов… красиво и плавно с анимацией спрятать») */
   const clipFrames = parkFrames.filter((f) => f.clip)
-  const spilled = parkFrames.filter((f) => f.shelf.top < canvas.y - 0.5)
-  check('…and it approaches INSIDE the frame: the clip stays on the canvas box on every frame while the scaled shelf inside it reaches above the box, and the toolbar’s Publish button is the thing under its own bottom edge throughout — nothing of the shelf ever covers the toolbar',
-    clipFrames.length === parkFrames.length && clipFrames.every((f) => f.clip.join() === [canvas.x, canvas.y, canvas.w, canvas.h].map(Math.round).join()) && spilled.length > 0 && parkFrames.every((f) => f.publishClear === true),
-    JSON.stringify({ clip: clipFrames[0]?.clip, canvas, aboveBoxFrames: spilled.length, minTop: Math.min(...parkFrames.map((f) => f.shelf.top)), allClear: parkFrames.every((f) => f.publishClear === true) }))
-  const shelf = await p.$eval('[data-sites-shelf]', (e) => ({
-    title: e.querySelector('h2')?.textContent, newBtn: !!e.querySelector('[data-sites-new]'),
-    cards: [...e.querySelectorAll('[data-site-card]')].map((c) => ({ id: c.dataset.siteCard, current: c.hasAttribute('data-site-current'), pic: getComputedStyle(c.querySelector('[data-site-picture]')).visibility, ratio: (() => { const r = c.querySelector('[data-site-thumb]').getBoundingClientRect(); return +(r.width / r.height).toFixed(3) })() })),
-  }))
-  check('the shelf is «My projects»: a card per site cut to the CANVAS’s aspect (the card is the canvas, smaller), the open site’s card marked and its own picture dark under the parked site, a «New project» door, the chevron turned over, the button expanded',
-    shelf.title === 'My projects' && shelf.newBtn && shelf.cards.length === 4 && shelf.cards[0].id === 'fit-ration' && shelf.cards[0].current && shelf.cards[0].pic === 'hidden' && shelf.cards.slice(1).every((c) => !c.current && c.pic === 'visible')
-      && shelf.cards.every((c) => near(c.ratio, canvas.w / canvas.h, 0.02)) && (await p.$eval('[data-site-chevron]', (e) => getComputedStyle(e).transform)) === 'matrix(1, 0, 0, -1, 0, 0)' && (await p.$eval('[data-site-switch]', (e) => e.getAttribute('aria-expanded'))) === 'true',
-    JSON.stringify({ shelf, canvasRatio: canvas.w / canvas.h }))
+  const spilled = parkFrames.filter((f) => f.shelf.top < 0 - 0.5)
+  const band = canvas.y
+  const tbs = openFilm.map((f) => f.tb).filter((v) => v != null)
+  const tbGone = openFilm.find((f) => f.tb === 0)?.t
+  check('…and it approaches INSIDE the frame: the clip is the canvas column from its very top (canvas + the toolbar band) on every frame while the scaled shelf reaches beyond it, and the canvas toolbar steps aside — its opacity falls monotonically to 0 within ~300 ms and it no longer takes the pointer',
+    clipFrames.length === parkFrames.length && clipFrames.every((f) => f.clip.join() === [canvas.x, 0, canvas.w, canvas.h + band].map(Math.round).join()) && spilled.length > 0
+      && tbs.length > 4 && mono(tbs, 'down') && tbs[tbs.length - 1] === 0 && tbGone !== undefined && tbGone <= 320
+      && (await p.$eval('[data-canvas-toolbar]', (e) => getComputedStyle(e).pointerEvents)) === 'none',
+    JSON.stringify({ clip: clipFrames[0]?.clip, canvas, band, aboveFrames: spilled.length, tb: tbs.filter((_, i) => i % 4 === 0), tbGone }))
+  const shelf = await p.$eval('[data-sites-shelf]', (e) => {
+    const bx = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => +n.toFixed(2)) }
+    return {
+      title: e.querySelector('h2')?.textContent, titleFont: getComputedStyle(e.querySelector('h2')).fontSize, newBtn: bx(e.querySelector('[data-sites-new]')), newBg: getComputedStyle(e.querySelector('[data-sites-new]')).backgroundColor,
+      close: bx(e.querySelector('[data-sites-close]')), grid: bx(e.querySelector('[data-sites-grid]')), gap: getComputedStyle(e.querySelector('[data-sites-grid]')).columnGap,
+      newSlot: bx(e.querySelector('[data-sites-new-slot]')), empties: e.querySelectorAll('[data-sites-empty]').length,
+      cards: [...e.querySelectorAll('[data-site-card]')].map((c) => ({ id: c.dataset.siteCard, current: c.hasAttribute('data-site-current'), pic: getComputedStyle(c.querySelector('[data-site-picture]')).visibility, box: bx(c), thumb: bx(c.querySelector('[data-site-thumb]')), meta: bx(c.querySelector('[data-site-meta]')), more: bx(c.querySelector('[data-site-more]')) })),
+    }
+  })
+  const c0 = shelf.cards[0]
+  const cols = Math.round((shelf.grid[2] + 32) / (c0.box[2] + 32))
+  check('the shelf is the board’s «Projects» (31164:75936): Gilroy 32 at the column’s top-left 24 in, the blue «New Project» 40 and a 40 ✕ 16 apart at the right; cards 320 tall 32 apart — the picture 268 over a 43 meta row, the kebab 40 on its right — the open site’s card marked and its picture dark under the parked site; then the round-+ slot and dashed empty slots filling whole rows; the chevron turned over, the button expanded',
+    shelf.title === 'Projects' && shelf.titleFont === '32px' && shelf.newBtn[3] === 40 && shelf.newBg === 'rgb(21, 135, 255)' && near(shelf.close[0] - (shelf.newBtn[0] + shelf.newBtn[2]), 16, 0.5) && near(shelf.close[1], 32, 0.5)
+      && shelf.gap === '32px' && near(shelf.grid[1], 100, 0.5) && shelf.cards.length === 4 && c0.id === 'fit-ration' && c0.current && c0.pic === 'hidden' && shelf.cards.slice(1).every((c) => !c.current && c.pic === 'visible')
+      && shelf.cards.every((c) => c.box[3] === 320 && near(c.thumb[3], 268, 0.5) && near(c.meta[1] - c.box[1], 277, 0.5) && near(c.more[0] + 40, c.box[0] + c.box[2], 0.5))
+      && shelf.newSlot && shelf.newSlot[3] === 320 && (4 + 1 + shelf.empties) % cols === 0 && (4 + 1 + shelf.empties) >= cols * 4
+      && (await p.$eval('[data-site-chevron]', (e) => getComputedStyle(e).transform)) === 'matrix(1, 0, 0, -1, 0, 0)' && (await p.$eval('[data-site-switch]', (e) => e.getAttribute('aria-expanded'))) === 'true',
+    JSON.stringify({ ...shelf, cols }))
 
   /* ── pick another site: its card grows out to the canvas, the builder becomes it ── */
   const pickFilm = await filmed(() => film(1300), () => p.click('[data-site-card="synco"] [data-site-open]'))
@@ -5701,6 +5718,14 @@ await shot('30-plan-review')
     escParks.length > 6 && escParks[0] < 0.5 && mono(escParks, 'up') && escShelfO[escShelfO.length - 1] < 0.15 && escShelfS[escShelfS.length - 1] > 1.02 && mono(escShelfO, 'down')
       && !afterEsc.shelf && afterEsc.park === 'none' && afterEsc.expanded === 'false' && afterEsc.z === '0' && afterEsc.h1 === 'Chef-made meals with exact macros',
     JSON.stringify({ escParks: escParks.filter((_, i) => i % 5 === 0), escShelfO: escShelfO.filter((_, i) => i % 5 === 0), escShelfS: escShelfS.filter((_, i) => i % 5 === 0), afterEsc }))
+  {
+    /* the toolbar comes back down while the site grows out of its card, and the layer is home — no clip, canvas height */
+    const escTb = escFilm.map((f) => f.tb).filter((v) => v != null)
+    const home = await p.evaluate(() => { const pk = document.querySelector('[data-site-park]'); const tb = document.querySelector('[data-canvas-toolbar]'); return { clip: getComputedStyle(pk).clipPath, h: pk.style.height, tb: getComputedStyle(tb).opacity, tbT: getComputedStyle(tb).transform, pe: getComputedStyle(tb).pointerEvents } })
+    check('…and the canvas toolbar comes back with the site — its opacity rising monotonically to 1 on the way home, standing where it stood, taking the pointer again — and the site layer is home unclipped at the canvas’s own height',
+      escTb.length > 4 && escTb[0] < 0.2 && mono(escTb, 'up') && home.tb === '1' && (home.tbT === 'none' || home.tbT === 'matrix(1, 0, 0, 1, 0, 0)') && home.pe === 'auto' && home.clip === 'none' && home.h === '100%',
+      JSON.stringify({ escTb: escTb.filter((_, i) => i % 4 === 0), home }))
+  }
 
   /* ── the console stages the same axis ─────────────────────────────────────────────── */
   await p.keyboard.press('Control+.'); await p.waitForTimeout(400)
