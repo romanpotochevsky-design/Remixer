@@ -1255,12 +1255,16 @@ export default function App() {
                   style={{ ...park, transformOrigin: '0 0', overflow: surface === 'sites' ? 'hidden' : 'visible', willChange: surface === 'sites' ? 'transform' : undefined }}
                 >
                 <motion.div
-                  /* the phone frame gets a hairline: floating on the ground, the site's
-                     own dark sections would otherwise bleed into the shell. Lovable
-                     outlines its preview the same way (measured border #41413D). */
-                  className={`site-stage relative overflow-hidden rounded-shell ${
-                    device === 'mobile' ? 'ring-1 ring-[#ffffff14]' : ''
-                  }`}
+                  /* THE PREVIEW WEARS A HAIRLINE — 1 px of white at 4 %, INSIDE its edge (designer, 29.09.2026,
+                     with the Figma stroke panel: «у превью сайта должен быть лёгкий прозрачный бордер, чтобы
+                     чёрный сайт не сливался с фоном»). A dark site on the shell's near-black ground had no
+                     edge at all. Drawn by a `::after` overlay, not `box-shadow` on the stage itself: an inset
+                     shadow paints UNDER the children, and the page fills the box. It rides the stage through
+                     the shelf's flight (it is the card's picture too) and over the glow (z 30). Until now
+                     only the phone frame had a hairline (8 %, from Lovable's measured #41413D); one rim for
+                     both devices now, the board's 4 %. */
+                  className="site-stage relative overflow-hidden rounded-shell after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] after:content-['']"
+                  data-site-stage
                   initial={false}
                   animate={{
                     width: device === 'mobile' ? MOBILE_WIDTH : '100%',

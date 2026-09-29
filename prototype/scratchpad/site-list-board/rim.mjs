@@ -1,0 +1,13 @@
+import { chromium } from 'playwright'
+const b = await chromium.launch({ executablePath: process.env.CHROME })
+const p = await b.newPage({ viewport: { width: 1600, height: 900 } })
+await p.goto(`http://localhost:4173/?p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640`, { waitUntil: 'networkidle' }); await p.waitForTimeout(700)
+await p.click('.home-card-face'); await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }); await p.waitForTimeout(3500)
+const r = await p.$eval('[data-site-stage]', (e) => { const b = e.getBoundingClientRect(); const a = getComputedStyle(e, '::after'); return { box: [b.x, b.y, b.width, b.height].map(Math.round), shadow: a.boxShadow, z: a.zIndex, radius: a.borderRadius } })
+console.log(JSON.stringify(r))
+const shot = await p.screenshot({ clip: { x: r.box[0] - 4, y: r.box[1] - 4, width: 60, height: 60 } })
+await import('node:fs').then((fs) => fs.writeFileSync('scratchpad/site-list-board/rim-corner.png', shot))
+// pixel read across the left edge at mid-height (dark section of the site is lower; use y near bottom where site is dark)
+const px = await p.evaluate(async ([x, y]) => { const c = document.createElement('canvas'); return [x, y] }, [r.box[0], r.box[1] + r.box[3] - 40])
+await p.screenshot({ path: 'scratchpad/site-list-board/rim-full.png' })
+await b.close()

@@ -407,7 +407,8 @@ function PickFlight({ project, from, to, main, onLand }: {
   return (
     <motion.div
       data-site-flight={project.id}
-      className="pointer-events-none absolute z-30 overflow-hidden bg-[var(--gray-900)]"
+      /* the same 4 % hairline the stage wears (App.tsx), so the clone lands as the site without a seam */
+      className="pointer-events-none absolute z-30 overflow-hidden bg-[var(--gray-900)] after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] after:content-['']"
       style={{
         left: to.left - mainBox.left, top: to.top - mainBox.top, width: to.width, height: cloneH,
         x, y, scale, clipPath, transformOrigin: '0 0', willChange: 'transform',
