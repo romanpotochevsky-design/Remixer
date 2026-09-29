@@ -19,7 +19,8 @@
  *     pb 16, gap 3, h 8 r8), an inner card (6 % under a 4 % rim, r16, px 4) of two rows 53 / 52 with an
  *     8 % hairline between — label 14 medium, figure Gilroy Medium 14 and, 11 to its right, a 6 px dot
  *     in the figure's bar colour (the dot is the bar's legend) — and `Add Credits` 40 r12 in p 16, word
- *     only. The plan row carries an 18 px cycle glyph where the first board printed «Resets 27 May»;
+ *     only — WHITE (`Background/Neutral/950` = #fafafa in the dark theme, ink `Text/Default/On Default`
+ *     #09090b; the kit's Filled / Color=Dark button), hover #e4e4e7 as the domain search's white submit. The plan row carries an 18 px cycle glyph where the first board printed «Resets 27 May»;
  *     the date lives in its tooltip now (the board hides that text, it does not delete the fact).
  *   · list — pt 12 / px 8: three rows 40 r8 (p 8, gap 12, glyph 24, 14/24) ONE apart and no trailing
  *     glyph, an 8 % hairline 8 below, then `Logout` (15/24, pl 8 / pr 12) in a group with pr 4.
@@ -222,7 +223,7 @@ export function AccountMenu() {
                       type="button"
                       onClick={() => toggle(false)}
                       data-account-add
-                      className="press-bloom flex h-10 w-full items-center justify-center overflow-hidden rounded-[12px] bg-[var(--action)] px-5 text-[14px] font-semibold leading-none text-white transition-colors duration-150 hover:bg-[var(--action-hover)] active:bg-[var(--action-pressed)]"
+                      className="press-bloom flex h-10 w-full items-center justify-center overflow-hidden rounded-[12px] bg-[var(--gray-50)] px-5 text-[14px] font-semibold leading-none text-[var(--gray-950)] transition-colors duration-150 hover:bg-[#e4e4e7] active:bg-[#d4d4d8]"
                     >
                       {t({ en: 'Add Credits', uk: 'Додати кредити' })}
                     </button>
