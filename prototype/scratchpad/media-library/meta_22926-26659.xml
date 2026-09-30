@@ -1,0 +1,634 @@
+<frame id="22926:26659" name="Website Builder / Image Library / Docs" x="8791" y="563" width="2560" height="1200">
+  <instance id="22926:26660" name="Website Styles" x="-352" y="56" width="352" height="1322" />
+  <frame id="22926:26661" name="Image Library" x="56" y="56" width="480" height="1136">
+    <frame id="22926:26662" name="Header 2" x="0" y="0" width="352" height="96" hidden="true">
+      <instance id="22926:26663" name="Button" x="16" y="8" width="96" height="40" />
+      <frame id="22926:26664" name="Frame 1" x="16" y="48" width="109" height="48">
+        <text id="22926:26665" name="Style" x="8" y="0" width="93" height="48" />
+      </frame>
+    </frame>
+    <frame id="22926:26666" name="Header" x="0" y="0" width="480" height="71">
+      <frame id="23623:17132" name="Title" x="24" y="0" width="193" height="71">
+        <frame id="23623:17133" name="Title button" x="0" y="26" width="193" height="29">
+          <text id="23623:17134" name="Website media" x="0" y="0" width="167" height="29" />
+          <frame id="23623:17135" name="Arrow" x="169" y="0" width="24" height="29">
+            <instance id="23623:17136" name="Arrow Down Normal M" x="0" y="2.5" width="24" height="24" hidden="true" />
+            <frame id="23623:17137" name="Arrow S" x="34" y="5.5" width="20" height="20" hidden="true" />
+            <instance id="23623:17139" name="Arrow Down Thin M" x="0" y="4.5" width="24" height="24" />
+          </frame>
+        </frame>
+      </frame>
+      <frame id="22926:26669" name="Close button" x="396" y="0" width="72" height="71">
+        <instance id="23102:129151" name="Icon button" x="0" y="12" width="32" height="32" />
+        <instance id="22926:26670" name="Icon button" x="40" y="12" width="32" height="32" />
+      </frame>
+    </frame>
+    <frame id="22926:26671" name="Filters + Aditional button" x="0" y="71" width="480" height="60">
+      <frame id="22926:26672" name="Filters" x="16" y="8" width="374" height="36">
+        <instance id="22926:26673" name="Images Button" x="0" y="0" width="88" height="36" />
+        <instance id="22926:26674" name="Video Button" x="96" y="0" width="86" height="36" />
+        <instance id="22926:26675" name="Audio Button" x="190" y="0" width="86" height="36" />
+        <instance id="22926:26676" name="Document Button" x="284" y="0" width="82" height="36" />
+      </frame>
+      <instance id="22926:26677" name="Icon button" x="400" y="0" width="40" height="40" hidden="true" />
+      <instance id="22926:26678" name="Filter Button" x="428" y="8" width="36" height="36" hidden="true" />
+    </frame>
+    <frame id="22926:26679" name="Tabs" x="0" y="134" width="456" height="48" hidden="true">
+      <frame id="22926:26680" name="Tab group" x="8" y="0" width="432" height="48">
+        <instance id="22926:26681" name="Tab" x="0" y="0" width="111" height="48" />
+        <instance id="22926:26682" name="Tab" x="111" y="0" width="97" height="48" />
+        <instance id="22926:26683" name="Tab" x="208" y="0" width="71" height="48" />
+      </frame>
+      <instance id="22926:26684" name="Icon button" x="400" y="0" width="40" height="40" />
+    </frame>
+    <frame id="22926:26692" name="Search + sorting" x="0" y="126" width="456" height="56" hidden="true">
+      <frame id="22926:26693" name="Conteiner" x="16" y="16" width="424" height="40">
+        <frame id="22926:26694" name="Search field" x="0" y="0" width="334" height="40">
+          <frame id="22926:26695" name="content" x="11" y="8" width="319" height="24">
+            <frame id="22926:26696" name="Search / imput text" x="0" y="0" width="79" height="24">
+              <frame id="22926:26697" name="search_icon" x="0" y="0" width="20" height="24">
+                <vector id="22926:26698" name="Vector" x="0" y="3.2124996185302734" width="17.575000762939453" height="17.575000762939453" hidden="true" />
+                <frame id="22926:26699" name="Frame" x="0" y="0" width="24" height="24" hidden="true" />
+                <vector id="22926:26701" name="Vector" x="0" y="3.2124996185302734" width="17.575000762939453" height="17.575000762939453" hidden="true" />
+                <frame id="22926:26702" name="Frame" x="0" y="2" width="20" height="20" />
+              </frame>
+              <text id="22926:26704" name="Search" x="32" y="7" width="47" height="10" />
+            </frame>
+            <frame id="22926:26705" name="Frame 981878158" x="291" y="0" width="60" height="40" hidden="true">
+              <instance id="22926:26706" name="ChatGPT icon" x="4" y="0" width="56" height="40" />
+            </frame>
+          </frame>
+        </frame>
+        <instance id="22926:26707" name="Button" x="342" y="4" width="82" height="32" />
+      </frame>
+    </frame>
+    <frame id="22926:26708" name="Image list" x="0" y="182" width="456" height="1336.5001220703125" hidden="true">
+      <instance id="22926:26709" name="Image" x="16" y="1182.6668701171875" width="136" height="137.8333282470703" />
+      <frame id="22926:26710" name="Image" x="16" y="16" width="136" height="137.8333282470703" />
+      <frame id="22926:26711" name="Image" x="160" y="16" width="136" height="137.8333282470703" />
+      <frame id="22926:26712" name="Image" x="304" y="16" width="136" height="137.8333282470703" />
+      <frame id="22926:26713" name="Image" x="16" y="161.8333282470703" width="136" height="137.8333282470703" />
+      <frame id="22926:26714" name="Image" x="160" y="161.8333282470703" width="136" height="137.8333282470703" />
+      <frame id="22926:26715" name="Image" x="304" y="161.8333282470703" width="136" height="137.8333282470703" />
+      <frame id="22926:26716" name="Image" x="16" y="307.6666564941406" width="136" height="137.8333282470703" />
+      <frame id="22926:26717" name="Image" x="160" y="307.6666564941406" width="136" height="137.8333282470703" />
+      <frame id="22926:26718" name="Image" x="304" y="307.6666564941406" width="136" height="137.8333282470703" />
+      <frame id="22926:26719" name="Image" x="16" y="453.5" width="136" height="137.8333282470703" />
+      <frame id="22926:26720" name="Image" x="160" y="453.5" width="136" height="137.8333282470703" />
+      <frame id="22926:26721" name="Image" x="304" y="453.5" width="136" height="137.8333282470703" />
+      <frame id="22926:26722" name="Image" x="16" y="599.3333740234375" width="136" height="137.8333282470703" />
+      <frame id="22926:26723" name="Image" x="160" y="599.3333740234375" width="136" height="137.8333282470703" />
+      <frame id="22926:26724" name="Image" x="304" y="599.3333740234375" width="136" height="137.8333282470703" />
+      <frame id="22926:26725" name="Image" x="16" y="745.166748046875" width="136" height="137.8333282470703" />
+      <frame id="22926:26726" name="Image" x="160" y="745.166748046875" width="136" height="137.8333282470703" />
+      <frame id="22926:26727" name="Image" x="304" y="745.166748046875" width="136" height="137.8333282470703" />
+      <frame id="22926:26728" name="Image" x="16" y="891.0001220703125" width="136" height="137.8333282470703" />
+      <frame id="22926:26729" name="Image" x="160" y="891.0001220703125" width="136" height="137.8333282470703" />
+      <frame id="22926:26730" name="Image" x="304" y="891.0001220703125" width="136" height="137.8333282470703" />
+      <frame id="22926:26731" name="Image" x="16" y="1036.83349609375" width="136" height="137.8333282470703" />
+      <frame id="22926:26732" name="Image" x="160" y="1036.83349609375" width="136" height="137.8333282470703" />
+      <frame id="22926:26733" name="Image" x="304" y="1036.83349609375" width="136" height="137.8333282470703" />
+    </frame>
+    <frame id="22926:28553" name="Frame 1228852209" x="0" y="131" width="480" height="941">
+      <frame id="22926:28554" name="Conteiner" x="4" y="0" width="472" height="941">
+        <frame id="22926:28555" name="Column" x="8" y="4" width="464" height="40" hidden="true">
+          <text id="22926:28556" name="Name" x="16" y="12.5" width="34" height="15" />
+        </frame>
+        <frame id="22926:28557" name="List" x="4" y="4" width="464" height="113.00006866455078">
+          <instance id="22943:28721" name="Audio" x="0" y="0" width="464" height="56" />
+          <instance id="22926:28559" name="Horizontal/Full-width" x="4.3712617525670794e-8" y="56" width="464.0000000874279" height="1.0000685783506924" />
+          <instance id="22943:28756" name="Audio" x="0" y="57.00006866455078" width="464" height="56" />
+        </frame>
+      </frame>
+    </frame>
+    <instance id="22926:28561" name="Upload Media bar" x="0" y="1072" width="480" height="64" />
+  </frame>
+  <instance id="22926:26735" name="Image management bar" x="76" y="1240" width="416" height="80" />
+  <rounded-rectangle id="22926:26736" name="Gradient shadow" x="56" y="1258" width="456" height="56" />
+  <frame id="22926:26782" name="Projects list" x="544" y="56" width="1496" height="1136">
+    <frame id="22926:26783" name="Website" x="0" y="0" width="1496" height="1134">
+      <instance id="22926:26784" name="Browser Dark Theme" x="0" y="0" width="1983" height="52" hidden="true" />
+      <frame id="22926:26785" name="Content" x="0" y="0" width="1496" height="1490">
+        <frame id="22926:26786" name="Menu" x="0" y="0" width="1067" height="56" hidden="true">
+          <text id="22926:26787" name="Rewards | Join Now" x="24" y="16" width="132" height="26" />
+          <frame id="22926:26788" name="Buttons" x="735" y="16" width="308" height="26">
+            <frame id="22926:26789" name="Frame 1" x="0" y="0" width="148" height="26">
+              <text id="22926:26790" name="FIND A DISPENSARY" x="0" y="0" width="120" height="26" />
+              <frame id="22926:26791" name="Frame" x="130" y="1" width="24" height="24" hidden="true" />
+              <frame id="22926:26793" name="Frame" x="128" y="3" width="20" height="20" />
+            </frame>
+            <text id="22926:26795" name="Button" x="104" y="0" width="48" height="26" hidden="true" />
+            <text id="22926:26796" name="Button" x="104" y="0" width="48" height="26" hidden="true" />
+            <text id="22926:26797" name="Button" x="104" y="0" width="48" height="26" hidden="true" />
+            <frame id="22926:26798" name="Frame 1" x="196" y="0" width="112" height="26">
+              <text id="22926:26799" name="SET DELIVERY" x="0" y="0" width="84" height="26" />
+              <frame id="22926:26800" name="Frame" x="92" y="3" width="20" height="20" />
+            </frame>
+          </frame>
+        </frame>
+        <frame id="22926:26802" name="Hero" x="0" y="0" width="1496" height="720" />
+        <frame id="22926:26823" name="Info" x="0" y="720" width="1496" height="258">
+          <frame id="22926:26824" name="Frame 1" x="0" y="0" width="280" height="258" />
+          <frame id="22926:26825" name="Frame 1" x="296" y="-64" width="1168" height="322">
+            <frame id="22926:26826" name="Frame 1" x="0" y="0" width="579" height="322">
+              <frame id="22926:26827" name="Frame 1" x="0" y="0" width="579" height="160">
+                <rounded-rectangle id="22926:26828" name="image 5" x="209.5" y="31.5" width="160" height="97" />
+              </frame>
+              <frame id="22926:26829" name="Frame 1" x="0" y="160" width="579" height="162">
+                <frame id="22926:26830" name="Frame 1" x="20" y="24" width="535" height="114">
+                  <text id="22926:26831" name="With Trulieve locations across the country, wellness is always within reach. Whether you’re seeking relaxation, relief, or a fresh experience, there’s a Trulieve ready to welcome you. " x="0" y="0" width="535" height="42" />
+                  <frame id="22926:26832" name="Frame 1" x="0" y="88" width="535" height="26">
+                    <text id="22926:26833" name="Expires 12/31" x="0" y="0" width="73" height="26" />
+                    <frame id="22926:26834" name="Frame 1" x="378" y="1" width="157" height="24">
+                      <text id="22926:26835" name="Find a Dispensary" x="0" y="7" width="125" height="10" />
+                      <frame id="22926:26836" name="Frame" x="133" y="0" width="24" height="24" />
+                    </frame>
+                  </frame>
+                </frame>
+              </frame>
+            </frame>
+            <frame id="22926:26838" name="Frame 4" x="589" y="0" width="579" height="322">
+              <frame id="22926:26839" name="Frame 1" x="0" y="0" width="579" height="160">
+                <rounded-rectangle id="22926:26840" name="image 7" x="209.5" y="31.5" width="160" height="97" />
+              </frame>
+              <frame id="22926:26841" name="Frame 1" x="0" y="160" width="579" height="162">
+                <frame id="22926:26842" name="Frame 1" x="20" y="24" width="535" height="114">
+                  <text id="22926:26843" name="Joining our Rewards Program is quick, free, and totally worth it. You’ll gain access to exclusive promotions, bonus point opportunities, and special offers." x="0" y="0" width="535" height="42" />
+                  <frame id="22926:26844" name="Frame 1" x="0" y="88" width="535" height="26">
+                    <text id="22926:26845" name="Expires 12/31" x="0" y="0" width="73" height="26" />
+                    <frame id="22926:26846" name="Frame 1" x="418" y="1" width="117" height="24">
+                      <text id="22926:26847" name="Sign up now" x="0" y="7" width="85" height="10" />
+                      <frame id="22926:26848" name="Frame" x="93" y="0" width="24" height="24" />
+                    </frame>
+                  </frame>
+                </frame>
+              </frame>
+            </frame>
+            <frame id="22926:26850" name="Frame 5" x="0" y="566" width="559" height="446" hidden="true">
+              <frame id="22926:26851" name="Frame 1" x="0" y="0" width="559" height="240">
+                <rounded-rectangle id="22926:26852" name="image 5" x="159.5" y="47.5" width="240" height="145" />
+              </frame>
+              <frame id="22926:26853" name="Frame 1" x="0" y="240" width="559" height="206">
+                <frame id="22926:26854" name="Frame 1" x="32" y="32" width="495" height="150">
+                  <text id="22926:26855" name="With Trulieve locations across the country, wellness is always within reach. Whether you’re seeking relaxation, relief, or a fresh experience, there’s a Trulieve ready to welcome you. " x="0" y="0" width="495" height="78" />
+                  <frame id="22926:26856" name="Frame 1" x="0" y="124" width="495" height="26">
+                    <text id="22926:26857" name="Expires 12/31" x="0" y="0" width="73" height="26" />
+                    <frame id="22926:26858" name="Frame 1" x="343" y="1" width="152" height="24">
+                      <text id="22926:26859" name="Find a Dispensary" x="0" y="7" width="120" height="10" />
+                      <frame id="22926:26860" name="Frame" x="128" y="0" width="24" height="24" />
+                    </frame>
+                  </frame>
+                </frame>
+              </frame>
+            </frame>
+          </frame>
+        </frame>
+      </frame>
+    </frame>
+  </frame>
+  <frame id="23284:117120" name="AI Chat" x="2040" y="0" width="520" height="960">
+    <frame id="23284:117121" name="Content" x="0" y="46" width="520" height="914">
+      <frame id="23284:117122" name="messages" x="0" y="0" width="520" height="914">
+        <instance id="23284:117123" name="AI message (Website Builder)" x="24" y="0" width="480" height="108" />
+        <instance id="23284:117124" name="AI message" x="16" y="106" width="488" height="90" hidden="true" />
+        <instance id="23284:117125" name="Sender message (Website Builder)" x="184" y="124" width="320" height="78" />
+        <instance id="23284:117126" name="AI message (Website Builder)" x="24" y="218" width="480" height="183" />
+        <frame id="23284:117127" name="Frame 12" x="24" y="417" width="480" height="142">
+          <instance id="23284:117128" name="Modern Website" x="0" y="16" width="480" height="56" />
+          <instance id="23284:117129" name="Version control (Light theme)" x="0" y="78" width="480" height="56" />
+        </frame>
+        <instance id="23284:117130" name="Sender message (Website Builder)" x="278" y="575" width="226" height="52" />
+        <instance id="23284:117131" name="AI message (Website Builder)" x="24" y="651" width="480" height="194" hidden="true" />
+        <frame id="23284:117132" name="Frame 13" x="24" y="643" width="480" height="226">
+          <frame id="23284:117133" name="AI message (Website Builder)" x="0" y="0" width="480" height="125">
+            <vector id="23284:117134" name="AI" x="0" y="0" width="28" height="28" hidden="true" />
+            <frame id="23284:117135" name="Frame 9" x="0" y="0" width="480" height="40">
+              <frame id="23284:117136" name="Icon + Text" x="0" y="10" width="65" height="20">
+                <frame id="23284:117137" name="AI" x="0" y="0" width="28" height="28" hidden="true" />
+                <frame id="23284:117142" name="Frame 9" x="0" y="0" width="65" height="20">
+                  <frame id="23284:117143" name="Text" x="0" y="5.5" width="43" height="9">
+                    <text id="23284:117144" name="Details" x="0" y="0" width="43" height="9" />
+                    <text id="23284:117145" name="35762" x="50" y="0" width="37" height="10" hidden="true" />
+                  </frame>
+                  <frame id="23284:117146" name="Arrow/Kebab" x="45" y="0" width="20" height="20">
+                    <frame id="23284:117147" name="Kebab" x="-4" y="2" width="20" height="20" hidden="true" />
+                    <frame id="23284:117148" name="Kebab" x="10" y="10" width="24" height="24" hidden="true" />
+                    <frame id="23284:117149" name="Arrow S" x="4.37113897078234e-7" y="20" width="20.000000874228135" height="20.000000874228135" />
+                    <frame id="23284:117151" name="Arrow M" x="0" y="1" width="24" height="24" hidden="true" />
+                    <frame id="23284:117152" name="Arrow Alt S" x="10" y="10" width="20" height="20" hidden="true" />
+                    <frame id="23284:117153" name="Arrow Alt M" x="0" y="1" width="24" height="24" hidden="true" />
+                  </frame>
+                </frame>
+              </frame>
+              <frame id="23284:117154" name="Button list" x="440" y="0" width="40" height="40">
+                <instance id="23284:117155" name="Icon button" x="40" y="0" width="40" height="40" />
+                <instance id="23284:117156" name="Icon button" x="42" y="0" width="40" height="40" hidden="true" />
+              </frame>
+            </frame>
+            <frame id="23284:117157" name="Frame 12" x="0" y="42" width="480" height="75">
+              <instance id="23284:117158" name="Details/Default" x="0" y="0" width="334" height="238" hidden="true" />
+              <frame id="23284:117159" name="Frame 9" x="0" y="0" width="480" height="75">
+                <frame id="23284:117160" name="Message" x="0" y="0" width="448" height="75">
+                  <text id="23284:117161" name="I will reproduce the page exactly as in the design, using the provided Figma import. I will preserve every element, style, and structure from the original code without any changes." x="0" y="0" width="448" height="75" />
+                  <frame id="23284:117162" name="Buttons" x="0" y="42" width="302" height="40" hidden="true">
+                    <instance id="23284:117163" name="AI Chat Button" x="0" y="0" width="74" height="40" />
+                    <instance id="23284:117164" name="AI Chat Button" x="82" y="0" width="74" height="40" />
+                  </frame>
+                </frame>
+              </frame>
+            </frame>
+          </frame>
+          <frame id="23284:117165" name="Modern Website" x="0" y="138" width="480" height="88">
+            <frame id="23284:117166" name="Header" x="0" y="0" width="480" height="56">
+              <frame id="23284:117167" name="Conteiner" x="20" y="20" width="444" height="19">
+                <frame id="23284:117168" name="Loader + Title" x="0" y="0" width="119" height="19">
+                  <frame id="23284:117169" name="Frame" x="0" y="0" width="24" height="24" hidden="true" />
+                  <frame id="23284:117171" name="Frame 981877387" x="0" y="0" width="24" height="24" hidden="true">
+                    <frame id="23284:117172" name="AI" x="2" y="2" width="20" height="20">
+                      <vector id="23284:117173" name="Vector" x="0" y="0" width="20" height="20" />
+                    </frame>
+                    <text id="23284:117174" name="Let’s choose a domain for your new website" x="44" y="1.5" width="692" height="25" hidden="true" />
+                  </frame>
+                  <text id="23284:117175" name="Writing/App.tsx..." x="0" y="0" width="119" height="19" />
+                  <text id="23284:117176" name="Modern Website" x="165" y="6.5" width="117" height="11" hidden="true" />
+                </frame>
+                <frame id="23284:117177" name="Loader + Title" x="177" y="0.5" width="119" height="19" hidden="true">
+                  <frame id="23284:117178" name="Frame" x="0" y="0" width="24" height="24" hidden="true" />
+                  <frame id="23284:117180" name="Frame 981877387" x="0" y="0" width="24" height="24" hidden="true">
+                    <frame id="23284:117181" name="AI" x="2" y="2" width="20" height="20">
+                      <vector id="23284:117182" name="Vector" x="0" y="0" width="20" height="20" />
+                    </frame>
+                    <text id="23284:117183" name="Let’s choose a domain for your new website" x="44" y="1.5" width="692" height="25" hidden="true" />
+                  </frame>
+                  <text id="23284:117184" name="Writing/App.tsx..." x="0" y="0" width="119" height="19" />
+                  <text id="23284:117185" name="Modern Website" x="165" y="6.5" width="117" height="11" hidden="true" />
+                </frame>
+                <frame id="23284:117186" name="Actions: " x="374" y="4.5" width="70" height="10">
+                  <frame id="23284:117187" name="Text" x="0" y="0" width="70" height="10">
+                    <text id="23284:117188" name="Changes:" x="0" y="6" width="54" height="4" />
+                    <text id="23284:117189" name="91" x="57" y="0" width="13" height="10" />
+                  </frame>
+                  <frame id="23284:117190" name="Arrow/Kebab" x="70" y="0" width="20" height="20" hidden="true">
+                    <frame id="23284:117191" name="Kebab" x="-4" y="2" width="20" height="20" hidden="true" />
+                    <frame id="23284:117192" name="Kebab" x="10" y="10" width="24" height="24" hidden="true" />
+                    <frame id="23284:117193" name="Arrow S" x="0" y="20" width="20" height="20" />
+                    <frame id="23284:117195" name="Arrow M" x="0" y="1" width="24" height="24" hidden="true" />
+                    <frame id="23284:117196" name="Arrow Alt S" x="10" y="10" width="20" height="20" hidden="true" />
+                    <frame id="23284:117197" name="Arrow Alt M" x="0" y="1" width="24" height="24" hidden="true" />
+                  </frame>
+                </frame>
+              </frame>
+            </frame>
+            <frame id="23284:117198" name="Conteiner" x="0" y="56" width="480" height="32">
+              <frame id="23284:117199" name="Details" x="8" y="0" width="464" height="24">
+                <frame id="23284:117200" name="Group 11" x="16" y="7" width="432" height="10.69921875">
+                  <boolean-operation id="23284:117201" name="Union" x="16" y="7" width="432" height="10.69921875">
+                    <ellipse id="23284:117202" name="Ellipse 20" x="16" y="7.00018310546875" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117203" name="Ellipse 28" x="437.3010559082031" y="7.00024487945484" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117204" name="Ellipse 21" x="96.24209594726562" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117205" name="Ellipse 25" x="285.60247802734375" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117206" name="Ellipse 22" x="89.55525970458984" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117207" name="Ellipse 24" x="263.9890899658203" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117208" name="Ellipse 26" x="326.62860107421875" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117209" name="Ellipse 27" x="400.5704345703125" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117210" name="Ellipse 29" x="436.95233154296875" y="10.494511127471924" width="3.7104134559631348" height="3.7104132175445557" />
+                    <ellipse id="23284:117211" name="Ellipse 23" x="33.38578796386719" y="11.012349605560303" width="2.674736499786377" height="2.674736499786377" />
+                  </boolean-operation>
+                  <boolean-operation id="23284:117212" name="Union" x="16" y="7" width="432" height="10.69921875">
+                    <ellipse id="23284:117213" name="Ellipse 20" x="16" y="7.00018310546875" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117214" name="Ellipse 28" x="437.3010559082031" y="7.00024487945484" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117215" name="Ellipse 21" x="96.24209594726562" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117216" name="Ellipse 25" x="285.60247802734375" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117217" name="Ellipse 22" x="89.55525970458984" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117218" name="Ellipse 24" x="263.9890899658203" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117219" name="Ellipse 26" x="326.62860107421875" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117220" name="Ellipse 27" x="400.5704345703125" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117221" name="Ellipse 29" x="436.95233154296875" y="10.494511127471924" width="3.7104134559631348" height="3.7104132175445557" />
+                    <ellipse id="23284:117222" name="Ellipse 23" x="33.38578796386719" y="11.012349605560303" width="2.674736499786377" height="2.674736499786377" />
+                  </boolean-operation>
+                  <boolean-operation id="23284:117223" name="Union" x="16" y="7" width="432" height="10.69921875">
+                    <ellipse id="23284:117224" name="Ellipse 20" x="16" y="7.00018310546875" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117225" name="Ellipse 28" x="437.3010559082031" y="7.00024487945484" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117226" name="Ellipse 21" x="96.24209594726562" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117227" name="Ellipse 25" x="285.60247802734375" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117228" name="Ellipse 22" x="89.55525970458984" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117229" name="Ellipse 24" x="263.9890899658203" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117230" name="Ellipse 26" x="326.62860107421875" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117231" name="Ellipse 27" x="400.5704345703125" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117232" name="Ellipse 29" x="436.95233154296875" y="10.494511127471924" width="3.7104134559631348" height="3.7104132175445557" />
+                    <ellipse id="23284:117233" name="Ellipse 23" x="33.38578796386719" y="11.012349605560303" width="2.674736499786377" height="2.674736499786377" />
+                  </boolean-operation>
+                  <boolean-operation id="23284:117234" name="Union" x="16" y="7" width="432" height="10.69921875">
+                    <ellipse id="23284:117235" name="Ellipse 20" x="16" y="7.00018310546875" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117236" name="Ellipse 28" x="437.3010559082031" y="7.00024487945484" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117237" name="Ellipse 21" x="96.24209594726562" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117238" name="Ellipse 25" x="285.60247802734375" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117239" name="Ellipse 22" x="89.55525970458984" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117240" name="Ellipse 24" x="263.9890899658203" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117241" name="Ellipse 26" x="326.62860107421875" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117242" name="Ellipse 27" x="400.5704345703125" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117243" name="Ellipse 29" x="436.95233154296875" y="10.494511127471924" width="3.7104134559631348" height="3.7104132175445557" />
+                    <ellipse id="23284:117244" name="Ellipse 23" x="33.38578796386719" y="11.012349605560303" width="2.674736499786377" height="2.674736499786377" />
+                  </boolean-operation>
+                  <boolean-operation id="23284:117245" name="Union" x="16" y="7" width="432" height="10.69921875">
+                    <ellipse id="23284:117246" name="Ellipse 20" x="16" y="7.00018310546875" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117247" name="Ellipse 28" x="437.3010559082031" y="7.00024487945484" width="10.698945999145508" height="10.698945999145508" />
+                    <ellipse id="23284:117248" name="Ellipse 21" x="96.24209594726562" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117249" name="Ellipse 25" x="285.60247802734375" y="9.674981355667114" width="5.349472999572754" height="5.349472999572754" />
+                    <ellipse id="23284:117250" name="Ellipse 22" x="89.55525970458984" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117251" name="Ellipse 24" x="263.9890899658203" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117252" name="Ellipse 26" x="326.62860107421875" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117253" name="Ellipse 27" x="400.5704345703125" y="10.343665599822998" width="4.0121049880981445" height="4.0121049880981445" />
+                    <ellipse id="23284:117254" name="Ellipse 29" x="436.95233154296875" y="10.494511127471924" width="3.7104134559631348" height="3.7104132175445557" />
+                    <ellipse id="23284:117255" name="Ellipse 23" x="33.38578796386719" y="11.012349605560303" width="2.674736499786377" height="2.674736499786377" />
+                  </boolean-operation>
+                </frame>
+              </frame>
+            </frame>
+          </frame>
+        </frame>
+        <instance id="23284:117256" name="AI message" x="16" y="338" width="488" height="140" hidden="true" />
+      </frame>
+      <frame id="23284:117257" name="Input field" x="0" y="827" width="560" height="72" hidden="true">
+        <text id="23284:117258" name="Hello" x="24" y="17" width="37" height="26" />
+      </frame>
+    </frame>
+    <rounded-rectangle id="23284:117259" name="Rectangle 3" x="0" y="55" width="520" height="1" hidden="true" />
+  </frame>
+  <instance id="22926:27166" name="AI Chat button" x="3094" y="64" width="48" height="48" />
+  <frame id="23096:128728" name="Right Toolbar" x="0" y="56" width="56" height="1144">
+    <frame id="23096:128729" name="Content" x="4" y="0" width="48" height="1128">
+      <frame id="23096:128730" name="Top" x="0" y="8" width="48" height="216">
+        <frame id="23096:128731" name="List" x="0" y="0" width="48" height="216">
+          <instance id="23096:128732" name="Style - Left manu button (Dark theme)" x="0" y="0" width="48" height="48" />
+          <instance id="23096:128733" name="Extension - Left manu button (Dark theme)" x="0" y="56" width="48" height="48" />
+          <instance id="23096:128734" name="Analytics - Left manu button (Dark theme)" x="0" y="112" width="48" height="48" />
+          <instance id="23096:128735" name="Cloud - Left manu button (Dark theme)" x="0" y="168" width="48" height="48" />
+        </frame>
+      </frame>
+      <frame id="23096:128736" name="Bottom" x="4" y="1040" width="40" height="88">
+        <instance id="23096:128737" name="Icon button + Tooltips" x="0" y="0" width="40" height="40" hidden="true" />
+        <frame id="23096:128738" name="freshchat button" x="0" y="0" width="40" height="40">
+          <rounded-rectangle id="23096:128739" name="Rectangle 1162905208" x="11" y="15" width="18" height="9" />
+          <boolean-operation id="23096:128740" name="Exclude" x="9" y="10.93310546875" width="22" height="16.1337890625" />
+        </frame>
+        <instance id="23096:128743" name="Icon button + Tooltips" x="0" y="0" width="40" height="40" hidden="true" />
+        <instance id="23096:128744" name="Avatar" x="4" y="56" width="32" height="32" />
+        <instance id="23096:128745" name="Avatar" x="0" y="34" width="32" height="32" hidden="true" />
+        <instance id="23096:128746" name="Avatar" x="0" y="34" width="32" height="32" hidden="true" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="23096:128977" name="Top Toolbar" x="0" y="0" width="2040" height="56">
+    <frame id="23096:128978" name="Content" x="0" y="0" width="2032" height="56">
+      <instance id="23096:128979" name="Project button" x="1120" y="8" width="320" height="40" hidden="true" />
+      <frame id="23096:128980" name="Frame 12" x="0" y="0" width="2032" height="56">
+        <frame id="23096:128981" name="Left buttons" x="0" y="0" width="320" height="56">
+          <frame id="23096:128982" name="Logo" x="0" y="12" width="56" height="32">
+            <frame id="23096:128983" name="Logo" x="11.999259948730469" y="0" width="32.00148010253906" height="32" />
+          </frame>
+          <frame id="23096:128994" name="Title" x="166.00308227539062" y="0" width="169" height="56" hidden="true">
+            <frame id="23096:128995" name="Frame 3" x="0" y="8" width="169" height="40">
+              <frame id="23096:128996" name="Icon button" x="4" y="4" width="32" height="32">
+                <frame id="23096:128997" name="container" x="0" y="0" width="32" height="32">
+                  <frame id="23096:128998" name="state-layer" x="0" y="0" width="32" height="32">
+                    <instance id="23096:128999" name="Icon" x="4" y="4" width="24" height="24" />
+                  </frame>
+                </frame>
+              </frame>
+              <frame id="23096:129000" name="Frame 8" x="48" y="9" width="109" height="22">
+                <frame id="23096:129001" name="Group 7" x="0" y="0" width="24" height="24" hidden="true" />
+                <frame id="23096:129004" name="Text+Amount" x="0" y="0" width="109" height="22">
+                  <text id="23096:129005" name="Balance" x="0" y="1" width="53" height="21" />
+                  <text id="23096:129006" name="$18.57" x="59" y="0" width="50" height="22" />
+                </frame>
+              </frame>
+              <instance id="23096:129007" name="Icon button" x="185" y="0" width="36" height="36" hidden="true" />
+              <instance id="23096:129008" name="Icon button" x="159" y="0" width="32" height="32" hidden="true" />
+            </frame>
+          </frame>
+          <instance id="23096:129009" name="Project button" x="64" y="8" width="250" height="40" hidden="true" />
+          <frame id="23096:129010" name="Project name + Buttons" x="56" y="8" width="154" height="40">
+            <frame id="23096:129011" name="Visual Editor" x="0" y="0" width="154" height="40">
+              <frame id="23096:129012" name="Visual Editor button" x="8" y="0" width="146" height="40">
+                <frame id="23096:129013" name="State-layer" x="0" y="0" width="146" height="40">
+                  <frame id="23096:129014" name="Icon" x="0" y="0" width="40" height="40">
+                    <frame id="23096:129015" name="Frame" x="10" y="10" width="20" height="20" />
+                  </frame>
+                  <frame id="23096:129017" name="Frame" x="29" y="3" width="24" height="24" hidden="true" />
+                  <text id="23096:129019" name="Visual Editor" x="41" y="9.5" width="85" height="21" />
+                </frame>
+              </frame>
+            </frame>
+            <vector id="23096:129020" name="Divider" x="162" y="11" width="2" height="18" hidden="true" />
+            <frame id="23096:129021" name="Preview buttons" x="162" y="0" width="81" height="40">
+              <instance id="23096:129022" name="Preview icon button (Dark theme)" x="2" y="2" width="36" height="36" />
+              <rounded-rectangle id="23096:129023" name="Divider" x="40" y="2" width="1" height="36" />
+              <instance id="23096:129024" name="Preview icon button (Dark theme)" x="43" y="2" width="36" height="36" />
+            </frame>
+          </frame>
+        </frame>
+        <instance id="23096:129025" name="Project button" x="993" y="8" width="280" height="40" />
+        <frame id="23096:129026" name="Right" x="1946.0001220703125" y="8" width="86" height="40">
+          <frame id="23096:129027" name="Frame 9" x="0" y="0" width="86" height="40">
+            <frame id="23096:129028" name="Frame 12" x="0" y="1" width="74" height="38" hidden="true">
+              <frame id="23096:129029" name="Button list" x="0" y="0" width="40" height="40" hidden="true">
+                <instance id="23096:129030" name="Icon button" x="0" y="0" width="40" height="40" hidden="true" />
+                <instance id="23096:129031" name="Icon button" x="0" y="0" width="40" height="40" />
+              </frame>
+              <frame id="23096:129032" name="Devices" x="0" y="0" width="74" height="38">
+                <frame id="23096:129033" name="Icon button" x="3" y="3" width="32" height="32">
+                  <frame id="23096:129034" name="state-layer" x="0" y="0" width="32" height="32">
+                    <instance id="23096:129035" name="Icon" x="4" y="4" width="24" height="24" />
+                  </frame>
+                </frame>
+                <frame id="23096:129036" name="Icon button" x="36" y="3" width="28" height="28" hidden="true">
+                  <frame id="23096:129037" name="container" x="0" y="0" width="28" height="28">
+                    <frame id="23096:129038" name="state-layer" x="0" y="0" width="28" height="28">
+                      <instance id="23096:129039" name="Tablet Small" x="2" y="2" width="24" height="24" />
+                      <instance id="23096:129040" name="Tablet Small Alt" x="36" y="2" width="24" height="24" hidden="true" />
+                    </frame>
+                  </frame>
+                </frame>
+                <frame id="23096:129041" name="Icon button" x="39" y="3" width="32" height="32">
+                  <frame id="23096:129042" name="container" x="2" y="2" width="28" height="28">
+                    <frame id="23096:129043" name="state-layer" x="0" y="0" width="28" height="28">
+                      <instance id="23096:129044" name="Icon" x="2" y="2" width="24" height="24" />
+                    </frame>
+                  </frame>
+                </frame>
+              </frame>
+            </frame>
+            <frame id="23096:129045" name="Frame 3" x="0" y="0" width="86" height="40">
+              <instance id="23096:129046" name="Button" x="0" y="0" width="138" height="40" hidden="true" />
+              <frame id="23096:129047" name="Buttons" x="0" y="0" width="86" height="40">
+                <frame id="23096:129048" name="Undo/Redo" x="0" y="0" width="80" height="40" hidden="true">
+                  <instance id="23096:129049" name="Icon button" x="0" y="0" width="40" height="40" />
+                  <instance id="23096:129050" name="Icon button" x="40" y="0" width="40" height="40" />
+                </frame>
+                <frame id="23096:129051" name="Devices" x="0" y="0" width="82" height="40" hidden="true">
+                  <frame id="23096:129052" name="Icon button" x="0" y="0" width="40" height="40">
+                    <frame id="23096:129053" name="container" x="0" y="0" width="40" height="40">
+                      <frame id="23096:129054" name="state-layer" x="0" y="0" width="40" height="40">
+                        <instance id="23096:129055" name="Icon" x="8" y="8" width="24" height="24" />
+                      </frame>
+                    </frame>
+                  </frame>
+                  <instance id="23096:129056" name="Icon button" x="40" y="0" width="40" height="40" hidden="true" />
+                  <instance id="23096:129057" name="Icon button" x="42" y="0" width="40" height="40" />
+                </frame>
+                <instance id="23096:129058" name="Button" x="0" y="0" width="86" height="40" />
+              </frame>
+            </frame>
+          </frame>
+        </frame>
+      </frame>
+    </frame>
+  </frame>
+  <frame id="23284:115914" name="Input field" x="2040" y="1049" width="520" height="151">
+    <frame id="23284:115915" name="Conteiner" x="16" y="0" width="488" height="148">
+      <frame id="23284:115916" name="Input field" x="0" y="0" width="488" height="118">
+        <frame id="23284:115917" name="pills bar" x="0" y="0" width="480" height="36" hidden="true">
+          <instance id="23284:115918" name="pill - div" x="107" y="2" width="79" height="28" hidden="true" />
+          <instance id="23284:115919" name="pill - div" x="8" y="8" width="79" height="28" />
+        </frame>
+        <frame id="23284:115920" name="Text" x="0" y="0" width="480" height="69">
+          <instance id="23284:115921" name="Caret" x="24" y="22" width="0" height="16" />
+          <text id="23284:115922" name="Hello" x="25" y="17" width="37" height="26" />
+        </frame>
+        <frame id="23284:115923" name="Buttons" x="0" y="78" width="480" height="32">
+          <frame id="23284:115924" name="Edition buttons" x="8" y="0" width="70" height="32">
+            <instance id="23284:115925" name="AI Chat Button" x="0" y="0" width="65" height="32" hidden="true" />
+            <instance id="23284:115926" name="Icon button" x="0" y="0" width="32" height="32" />
+            <instance id="23284:115927" name="Icon button" x="38" y="0" width="32" height="32" />
+          </frame>
+          <instance id="23284:115928" name="Icon button" x="265.5" y="0" width="40" height="40" hidden="true" />
+          <instance id="23284:115929" name="Icon button" x="448" y="0" width="32" height="32" />
+        </frame>
+      </frame>
+      <text id="23284:115930" name="Conversations with AI are recorded and may contain inaccuracies" x="0" y="122" width="488" height="26" />
+    </frame>
+  </frame>
+  <frame id="23284:115931" name="Frame 3" x="2040" y="0" width="520" height="72">
+    <rounded-rectangle id="23284:115932" name="BG" x="0" y="48" width="520" height="48" />
+    <rounded-rectangle id="23284:115933" name="BG Gradient" x="0" y="48" width="520" height="72" />
+    <frame id="23284:115934" name="Content" x="0" y="0" width="520" height="72">
+      <frame id="23284:115935" name="Frame 1228852198" x="24" y="0" width="199" height="72">
+        <frame id="23284:115936" name="Gold" x="0" y="8" width="87" height="40" hidden="true">
+          <frame id="23284:115937" name="Frame 1228852203" x="4" y="4" width="49" height="32">
+            <frame id="23284:115938" name="Frame 1228852203" x="0" y="0" width="32" height="32">
+              <frame id="23284:115939" name="Frame" x="6" y="6" width="20" height="20" />
+            </frame>
+            <frame id="23284:115941" name="Frame" x="34" y="2" width="24" height="24" hidden="true" />
+            <frame id="23284:115943" name="Frame" x="30" y="0" width="24" height="24" hidden="true" />
+            <frame id="23284:115945" name="Remixer coin" x="30" y="0" width="24" height="24" hidden="true" />
+            <frame id="23284:115952" name="Amount" x="38" y="5.5" width="11" height="21">
+              <frame id="23284:115953" name="Frame 1228852203" x="0" y="0" width="11" height="21">
+                <text id="23284:115954" name="5" x="0" y="0" width="11" height="21" />
+              </frame>
+              <text id="23284:115955" name="Credits" x="16" y="12" width="47" height="5" hidden="true" />
+            </frame>
+          </frame>
+          <frame id="23284:115956" name="Arrow/Kebab" x="59" y="9" width="20" height="22">
+            <frame id="23284:115957" name="Kebab" x="-4" y="2" width="20" height="20" hidden="true" />
+            <frame id="23284:115959" name="Kebab" x="10" y="10" width="24" height="24" hidden="true" />
+            <frame id="23284:115961" name="Arrow S" x="0" y="2" width="20" height="20" />
+            <frame id="23284:115963" name="Arrow M" x="0" y="1" width="24" height="24" hidden="true" />
+            <frame id="23284:115965" name="Arrow Alt S" x="10" y="10" width="20" height="20" hidden="true" />
+            <frame id="23284:115967" name="Arrow Alt M" x="0" y="1" width="24" height="24" hidden="true" />
+          </frame>
+        </frame>
+        <frame id="23284:115969" name="White" x="0" y="10" width="87" height="40" hidden="true">
+          <frame id="23284:115970" name="Frame 1228852203" x="4" y="4" width="49" height="32">
+            <frame id="23284:115971" name="Frame 1228852203" x="0" y="0" width="32" height="32">
+              <frame id="23284:115972" name="Frame" x="6" y="6" width="20" height="20" />
+            </frame>
+            <frame id="23284:115974" name="Frame" x="34" y="2" width="24" height="24" hidden="true" />
+            <frame id="23284:115976" name="Frame" x="30" y="0" width="24" height="24" hidden="true" />
+            <frame id="23284:115978" name="Remixer coin" x="30" y="0" width="24" height="24" hidden="true" />
+            <frame id="23284:115985" name="Amount" x="38" y="5.5" width="11" height="21">
+              <frame id="23284:115986" name="Frame 1228852203" x="0" y="0" width="11" height="21">
+                <text id="23284:115987" name="5" x="0" y="0" width="11" height="21" />
+              </frame>
+              <text id="23284:115988" name="Credits" x="16" y="12" width="47" height="5" hidden="true" />
+            </frame>
+          </frame>
+          <frame id="23284:115989" name="Arrow/Kebab" x="59" y="9" width="20" height="22">
+            <frame id="23284:115990" name="Kebab" x="-4" y="2" width="20" height="20" hidden="true" />
+            <frame id="23284:115992" name="Kebab" x="10" y="10" width="24" height="24" hidden="true" />
+            <frame id="23284:115994" name="Arrow S" x="0" y="2" width="20" height="20" />
+            <frame id="23284:115996" name="Arrow M" x="0" y="1" width="24" height="24" hidden="true" />
+            <frame id="23284:115998" name="Arrow Alt S" x="10" y="10" width="20" height="20" hidden="true" />
+            <frame id="23284:116000" name="Arrow Alt M" x="0" y="1" width="24" height="24" hidden="true" />
+          </frame>
+        </frame>
+        <frame id="23284:116002" name="Frame 1228852197" x="0" y="8" width="122" height="40" hidden="true">
+          <frame id="23284:116003" name="Frame 1228852203" x="8" y="8" width="96" height="24">
+            <frame id="23284:116004" name="Group 1228852202" x="0" y="0" width="24" height="24" />
+            <frame id="23284:116011" name="Frame 1228852197" x="34" y="0.5" width="62" height="23">
+              <frame id="23284:116012" name="Frame 1228852203" x="0" y="0" width="62" height="23">
+                <text id="23284:116013" name="Upgrade" x="0" y="0" width="62" height="23" />
+              </frame>
+              <text id="23284:116014" name="Credits" x="16" y="12" width="47" height="5" hidden="true" />
+            </frame>
+          </frame>
+        </frame>
+        <frame id="23284:116015" name="V1" x="0" y="8" width="93" height="40" hidden="true">
+          <frame id="23284:116016" name="Frame 1228852203" x="8" y="8" width="51" height="24">
+            <frame id="23284:116017" name="Group 1228852202" x="0" y="0" width="24" height="24" />
+            <frame id="23284:116024" name="Frame 1228852197" x="30" y="1.5" width="21" height="21">
+              <frame id="23284:116025" name="Frame 1228852203" x="0" y="0" width="21" height="21">
+                <text id="23284:116026" name="10" x="0" y="0" width="21" height="21" />
+              </frame>
+              <text id="23284:116027" name="Credits" x="16" y="12" width="47" height="5" hidden="true" />
+            </frame>
+          </frame>
+          <frame id="23284:116028" name="Arrow/Kebab" x="65" y="9" width="20" height="22">
+            <frame id="23284:116029" name="Kebab" x="-4" y="2" width="20" height="20" hidden="true" />
+            <frame id="23284:116031" name="Kebab" x="10" y="10" width="24" height="24" hidden="true" />
+            <frame id="23284:116033" name="Arrow S" x="0" y="2" width="20" height="20" />
+            <frame id="23284:116035" name="Arrow M" x="0" y="1" width="24" height="24" hidden="true" />
+            <frame id="23284:116037" name="Arrow Alt S" x="10" y="10" width="20" height="20" hidden="true" />
+            <frame id="23284:116039" name="Arrow Alt M" x="0" y="1" width="24" height="24" hidden="true" />
+          </frame>
+        </frame>
+        <frame id="23284:116041" name="V2" x="0" y="8" width="64" height="40">
+          <frame id="23284:116042" name="Frame 1228852203" x="0" y="11.5" width="56" height="17">
+            <frame id="23284:116043" name="Frame 1228852203" x="0" y="0" width="56" height="17">
+              <text id="23284:116044" name="Chat" x="0" y="0" width="56" height="17" />
+              <frame id="23284:116045" name="Arrow/Kebab" x="82" y="0" width="20" height="24" hidden="true">
+                <frame id="23284:116046" name="Kebab" x="-4" y="2" width="20" height="20" hidden="true" />
+                <frame id="23284:116048" name="Kebab" x="10" y="10" width="24" height="24" hidden="true" />
+                <frame id="23284:116050" name="Arrow S" x="0" y="4" width="20" height="20" />
+                <frame id="23284:116052" name="Arrow M" x="0" y="1" width="24" height="24" hidden="true" />
+                <frame id="23284:116054" name="Arrow Alt S" x="10" y="10" width="20" height="20" hidden="true" />
+                <frame id="23284:116056" name="Arrow Alt M" x="0" y="1" width="24" height="24" hidden="true" />
+              </frame>
+            </frame>
+          </frame>
+        </frame>
+      </frame>
+      <frame id="23284:116058" name="Title" x="281" y="0" width="56" height="72" hidden="true">
+        <text id="23284:116059" name="Chat" x="0" y="14" width="56" height="29" />
+      </frame>
+      <frame id="23284:116060" name="Frame 1228852197" x="304" y="0" width="208" height="72">
+        <frame id="23284:116061" name="Buttons" x="0" y="0" width="208" height="72">
+          <instance id="23284:116062" name="AI Chat button" x="0" y="8" width="48" height="48" hidden="true" />
+          <frame id="23284:116063" name="Frame 1228852203" x="0" y="8" width="208" height="40">
+            <frame id="23284:116064" name="Credits + History" x="0" y="2" width="119" height="36">
+              <instance id="23284:116065" name="Credit button" x="0" y="0" width="119" height="36" />
+              <instance id="23284:116066" name="Icon button" x="135" y="0" width="40" height="40" hidden="true" />
+            </frame>
+            <instance id="23284:116067" name="Icon button" x="183" y="0" width="40" height="40" hidden="true" />
+            <frame id="23284:116068" name="Frame 1228852209" x="127" y="0" width="81" height="40">
+              <instance id="23284:116069" name="Icon button" x="0" y="0" width="40" height="40" hidden="true" />
+              <instance id="23284:116070" name="Preview icon button (Dark theme)" x="2" y="2" width="36" height="36" />
+              <rounded-rectangle id="23284:116071" name="Divider" x="40" y="2" width="1" height="36" />
+              <instance id="23284:116072" name="Preview icon button (Dark theme)" x="43" y="2" width="36" height="36" />
+            </frame>
+          </frame>
+        </frame>
+      </frame>
+    </frame>
+  </frame>
+</frame>IMPORTANT: After you call this tool, you MUST call get_design_context if trying to implement the design, since this tool only returns metadata. If you do not call get_design_context, the agent will not be able to implement the design.
