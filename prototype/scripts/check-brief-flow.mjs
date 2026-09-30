@@ -6171,15 +6171,17 @@ await shot('30-plan-review')
   }))
   check('Fit stages `contain` on the photo — on the site AND in the panel’s preview — and the bar counts «2 changes»',
     fitted.site === 'contain' && fitted.preview === 'contain' && fitted.tabs === 'true,false' && fitted.count === '2 changes', JSON.stringify(fitted))
-  await p.click('[data-ve-row="library"]'); await p.waitForTimeout(300)
+  /* since 30.09.2026 (evening) «From Library» opens the WEBSITE MEDIA panel in pick mode (block P) — the grid is
+     the panel's, each tile a `[data-media-open]` button; the panel takes its Panel Arrival, so wait for it */
+  await p.click('[data-ve-row="library"]'); await p.waitForTimeout(800)
   const lib = await p.evaluate(() => {
     const g = document.querySelector('[data-ve-library]'); if (!g) return { up: false }
-    const tiles = [...g.querySelectorAll('button')]
+    const tiles = [...g.querySelectorAll('button[data-media-open]')]
     return { up: true, n: tiles.length, on: tiles.map((t) => t.getAttribute('aria-pressed')), third: tiles[2]?.querySelector('img')?.getAttribute('src') ?? null, pressedRow: document.querySelector('[data-ve-row="library"]')?.getAttribute('aria-pressed') }
   })
-  await p.click('[data-ve-library] button:nth-child(3)'); await p.waitForTimeout(250)
-  const picked = await p.evaluate(() => ({ src: document.querySelector('[data-edit="meal.power-bowl.photo"] img')?.getAttribute('src'), count: document.querySelector('[data-ve-count]')?.textContent, on: [...document.querySelectorAll('[data-ve-library] button')].map((t) => t.getAttribute('aria-pressed')), preview: document.querySelector('[data-ve-preview] img')?.getAttribute('src') }))
-  check('From Library opens the site’s own pictures INSIDE the window with the current one marked; picking the third swaps the photo on the site and in the preview to that tile, marks it, and the bar counts «3 changes»',
+  await p.click('[data-ve-library] [data-media-tile]:nth-child(3) [data-media-open]'); await p.waitForTimeout(400)
+  const picked = await p.evaluate(() => ({ src: document.querySelector('[data-edit="meal.power-bowl.photo"] img')?.getAttribute('src'), count: document.querySelector('[data-ve-count]')?.textContent, on: [...document.querySelectorAll('[data-ve-library] button[data-media-open]')].map((t) => t.getAttribute('aria-pressed')), preview: document.querySelector('[data-ve-preview] img')?.getAttribute('src') }))
+  check('From Library opens the Website media panel in pick mode with the current picture marked; picking the third swaps the photo on the site and in the preview to that tile, marks it, and the bar counts «3 changes»',
     lib.up && lib.n >= 6 && lib.on.filter((x) => x === 'true').length === 1 && lib.pressedRow === 'true' && !!lib.third && lib.third !== srcBefore && picked.src === lib.third && picked.preview === lib.third && picked.on[2] === 'true' && picked.on.filter((x) => x === 'true').length === 1 && picked.count === '3 changes',
     JSON.stringify({ n: lib.n, on: lib.on, pressedRow: lib.pressedRow, changed: lib.third !== srcBefore, picked: picked.src === lib.third, count: picked.count }))
   await shot('O5-library')
