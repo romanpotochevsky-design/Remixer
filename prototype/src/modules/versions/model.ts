@@ -56,7 +56,7 @@ export function baselineVersions(chat: Chat, project: World['project'], ai: Site
 const FIRST_TITLE: Text = { en: 'First Version', uk: 'Перша версія' }
 const FIRST_CHANGES: VersionChange[] = [
   { kind: 'add', text: { en: 'Home — hero, this week’s menu and the footer', uk: 'Головна — хіро, меню тижня і футер' } },
-  { kind: 'add', text: { en: 'About, Services and Contact pages', uk: 'Сторінки About, Services і Contact' } },
+  { kind: 'add', text: { en: 'Named for later: About, Services, Contact', uk: 'Названо на потім: About, Services, Contact' } },
   { kind: 'style', text: { en: 'Palette', uk: 'Палітра' }, after: 'Garden green on warm white', swatch: ['#2e7d4f', '#fbfaf7'] },
 ]
 
@@ -132,9 +132,8 @@ export function landChange(w: World): { patch: Pick<World, 'versions' | 'siteAi'
   const list = versionsOf(w)
   const last = list[list.length - 1]
   if (!last?.pending) return null
-  const prev = list[list.length - 2]
-  const base = { ai: prev?.ai ?? w.siteAi, edits: prev?.edits ?? w.siteEdits }
-  const r = applyChange(last.pending.key, base.ai, base.edits, last.pending.prompt)
+  /* on the site AS IT IS — the live layers are the current version's snapshot by construction */
+  const r = applyChange(last.pending.key, w.siteAi, w.siteEdits, last.pending.prompt)
   const reply = r.reply ?? last.pending.reply
   const done: Version = { n: last.n, kind: 'ai', title: r.title, at: Date.now(), cost: last.cost, changes: r.changes, ai: r.ai, edits: r.edits }
   return { patch: { versions: [...list.slice(0, -1), done], siteAi: r.ai, siteEdits: r.edits }, reply }
@@ -147,10 +146,11 @@ export function landChange(w: World): { patch: Pick<World, 'versions' | 'siteAi'
  * details list what was actually built: the home page's sections by the names the plan gave them,
  * and the pages still waiting (they are named, not built — the outline card says the same).
  */
-export function firstVersion(w: World, home: string[], rest: string[]): Pick<World, 'sent' | 'versions'> {
+export function firstVersion(w: World, home: Text[], rest: Text[]): Pick<World, 'sent' | 'versions'> {
+  const list = (xs: Text[], l: 'en' | 'uk') => xs.map((x) => x[l]).join(', ')
   const changes: VersionChange[] = [
-    { kind: 'add', text: { en: `Home — ${home.join(', ')}`, uk: `Головна — ${home.join(', ')}` } },
-    ...(rest.length ? [{ kind: 'add' as const, text: { en: `Named for later: ${rest.join(', ')}`, uk: `Названо на потім: ${rest.join(', ')}` } }] : []),
+    { kind: 'add', text: { en: `Home — ${list(home, 'en')}`, uk: `Головна — ${list(home, 'uk')}` } },
+    ...(rest.length ? [{ kind: 'add' as const, text: { en: `Named for later: ${list(rest, 'en')}`, uk: `Названо на потім: ${list(rest, 'uk')}` } }] : []),
   ]
   const v: Version = { n: 1, kind: 'build', title: FIRST_TITLE, at: Date.now(), cost: 10, changes, ai: w.siteAi, edits: w.siteEdits }
   const card: Message = { id: nextMessageId(w.sent), who: 'ai', kind: 'version', version: 1, text: '' }
@@ -235,7 +235,7 @@ export function recordEdit(w: World, next: SiteEdits): Pick<World, 'sent' | 'ver
  */
 export function restoreVersion(n: number) {
   const { world: w, set, preset } = useWorld.getState()
-  if (w.chat === 'working') return
+  if (versionBlock(w)) return
   const list = versionsOf(w)
   const target = list.find((v) => v.n === n)
   const cur = list[list.length - 1]
@@ -253,8 +253,19 @@ export function restoreVersion(n: number) {
   }
   const sent = transcript(w)
   const card: Message = { id: nextMessageId(sent), who: 'ai', kind: 'version', version: v.n, text: '' }
+  /* …and one line under it, saying what happened and that it can be undone — the confirmation the
+     category's users say they miss after a restore (Lovable), the one Replit and Bolt post. Free,
+     like the restore: posted directly, never through `sendMessage`. */
+  const said: Message = {
+    id: card.id + 1,
+    who: 'ai',
+    text: {
+      en: `Your site is back to how it looked right after “${target.title.en}”. Everything after it is still in the chat — one press brings any of it back.`,
+      uk: `Сайт повернувся до вигляду одразу після «${target.title.uk}». Усе, що було після, лишається в чаті — будь-що можна повернути одним натиском.`,
+    },
+  }
   useUI.getState().setVersionPreview(null)
-  set({ sent: [...sent, card], versions: [...list, v], siteAi: target.ai, siteEdits: target.edits, unpublished: w.unpublished + 1 }, preset)
+  set({ sent: [...sent, card, said], versions: [...list, v], siteAi: target.ai, siteEdits: target.edits, unpublished: w.unpublished + 1 }, preset)
   useUI.getState().triggerReload(1600)
   followThread()
 }
@@ -275,12 +286,15 @@ export function followThread() {
  * the site is in someone else's hands: Remixer is working on it, or the customer has an unsaved
  * batch in the Visual Editor (leaving it is Save or Clear, the editor's own rule).
  */
-export function versionBlock(w: Pick<World, 'chat'>): Text | null {
+export function versionBlock(w: Pick<World, 'chat'>, dirty = editorDirty()): Text | null {
   if (w.chat === 'working') return { en: 'Wait until Remixer finishes', uk: 'Зачекайте, поки Remixer закінчить' }
-  const ed = useEditor.getState()
-  if (ed.tool && ed.past.length > 0) return { en: 'Save or clear your edits first', uk: 'Спершу збережіть або скасуйте правки' }
+  if (dirty) return { en: 'Save or clear your edits first', uk: 'Спершу збережіть або скасуйте правки' }
   return null
 }
+
+/** Is there an unsaved batch in the Visual Editor? (Components subscribe with `useEditor(isEditorDirty)`.) */
+export const isEditorDirty = (s: { tool: unknown; past: unknown[] }) => !!s.tool && s.past.length > 0
+const editorDirty = () => isEditorDirty(useEditor.getState())
 
 /** Before previewing or restoring, a clean editor session steps aside (a dirty one blocks, above). */
 export function closeCleanEditor() {

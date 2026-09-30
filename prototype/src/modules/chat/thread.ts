@@ -58,7 +58,7 @@ export function baselineThread(chat: Chat): Message[] {
  */
 const MATCHED: { on: RegExp; key: string | null; text: Copy }[] = [
   {
-    on: /\bnav|navigation|header/i,
+    on: /\bnav(igation)?\b|\bheader\b/i,
     key: 'nav',
     text: {
       en: 'Updated the navigation — the links now read Menu, Plans, Reviews and FAQ, and the header button says “Start my plan”, so the one action that matters is the one that stands out.',
@@ -66,7 +66,7 @@ const MATCHED: { on: RegExp; key: string | null; text: Copy }[] = [
     },
   },
   {
-    on: /testimonial|review|quote|social proof/i,
+    on: /testimonial|\breviews?\b|\bquotes?\b|social proof/i,
     key: 'testimonials',
     text: {
       en: 'Added a testimonials section under the menu — three customers, their plan and how long they have been ordering. The names are placeholders until you send me real quotes.',

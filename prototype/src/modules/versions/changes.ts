@@ -280,8 +280,10 @@ const modName = (m: string): Text => MOD_NAME[m] ?? (m.startsWith('page:') ? { e
  */
 export function restoreChanges(from: { ai: SiteAi; edits: SiteEdits }, to: { ai: SiteAi; edits: SiteEdits }): VersionChange[] {
   const out: VersionChange[] = []
-  for (const m of to.ai.mods) if (!from.ai.mods.includes(m)) { const n = modName(m); out.push({ kind: 'add', text: { en: `${n.en} is back`, uk: `${n.uk} — повернено` } }) }
-  for (const m of from.ai.mods) if (!to.ai.mods.includes(m)) { const n = modName(m); out.push({ kind: 'edit', text: { en: `${n.en} is taken off`, uk: `${n.uk} — прибрано` } }) }
+  /* a built page stays in the outline and the switcher whatever the version — not a thing a restore moves */
+  const blocks = (xs: string[]) => xs.filter((m) => !m.startsWith('page:'))
+  for (const m of blocks(to.ai.mods)) if (!from.ai.mods.includes(m)) { const n = modName(m); out.push({ kind: 'add', text: { en: `${n.en} — restored`, uk: `${n.uk} — повернено` } }) }
+  for (const m of blocks(from.ai.mods)) if (!to.ai.mods.includes(m)) { const n = modName(m); out.push({ kind: 'edit', text: { en: `${n.en} — removed`, uk: `${n.uk} — прибрано` } }) }
   if (from.ai.palette !== to.ai.palette) {
     const a = PALETTES[from.ai.palette] ?? PALETTES[0], b = PALETTES[to.ai.palette] ?? PALETTES[0]
     out.push({ kind: 'style', text: { en: 'Palette', uk: 'Палітра' }, before: a.name, after: b.name, swatch: [a.accent, b.accent] })
@@ -296,6 +298,6 @@ export function restoreChanges(from: { ai: SiteAi; edits: SiteEdits }, to: { ai:
   let swapped = 0
   for (const k of photos) if (JSON.stringify(from.edits.photo[k]) !== JSON.stringify(to.edits.photo[k])) swapped++
   if (swapped) out.push({ kind: 'photo', text: swapped === 1 ? { en: 'One photo goes back', uk: 'Одне фото повертається' } : { en: `${swapped} photos go back`, uk: `${swapped} фото повертаються` } })
-  if (!out.length) out.push({ kind: 'edit', text: { en: 'Nothing on the page differs — only the history moved', uk: 'На сторінці нічого не відрізняється — змінилася лише історія' } })
+  if (!out.length) out.push({ kind: 'edit', text: { en: 'Your site already looks like this', uk: 'Сайт уже виглядає саме так' } })
   return out
 }

@@ -290,6 +290,7 @@ export function EditBar() {
   const { t } = useT()
   const reduce = useReducedMotion()
   const project = useWorld((s) => s.world.project)
+  const busy = useWorld((s) => s.world.chat === 'working')
   const live = useWorld((s) => currentSite(s.world)?.thumb === 'live')
   const surface = useUI((s) => s.surface)
   const docked = useUI((s) => s.editBarDocked)
@@ -428,7 +429,10 @@ export function EditBar() {
               type="button"
               className="press-bloom h-8 whitespace-nowrap rounded-[8px] bg-[var(--action)] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] disabled:cursor-default disabled:opacity-40"
               onClick={save}
-              disabled={!dirty}
+              /* not while Remixer is making a change: its version is posted and lands on the site
+                 as it stood — a Save in between would be built over (modules/versions) */
+              disabled={!dirty || busy}
+              title={busy ? t({ en: 'Wait until Remixer finishes', uk: 'Зачекайте, поки Remixer закінчить' }) : undefined}
               data-ve-save
             >
               {t({ en: 'Save', uk: 'Зберегти' })}

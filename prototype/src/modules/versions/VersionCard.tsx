@@ -42,7 +42,8 @@ import { GlyphEditText } from '@/modules/editor/icons'
 import { getUpload } from '@/modules/editor/media'
 import { SITE_PHOTOS } from '@/modules/preview/photos'
 import { GlyphCurrent, GlyphDetails, GlyphPreview, GlyphRevert } from './icons'
-import { closeCleanEditor, restoreVersion, timeOf, versionBlock } from './model'
+import { closeCleanEditor, isEditorDirty, restoreVersion, timeOf, versionBlock } from './model'
+import { useEditor } from '@/modules/editor/session'
 
 const keepOnMainThread = () => {}
 
@@ -72,28 +73,22 @@ export function VersionCard({
   useEffect(() => { if (working) setOpen(false) }, [working])
   const slot: 'spin' | 'current' | 'edit' | null = working ? 'spin' : current ? 'current' : v.kind === 'edit' ? 'edit' : null
   const phase = useShimmerPhase(working)
-  const block = versionBlock({ chat })
+  /* subscribed, not read once: the card re-renders when the editor's batch turns dirty or clean */
+  const dirty = useEditor(isEditorDirty)
+  const block = versionBlock({ chat }, dirty)
   const title = t(working && v.doing ? v.doing : v.title)
 
   const preview = () => {
     const ui = useUI.getState()
     if (ui.versionPreview === v.n) { ui.setVersionPreview(null); return }
+    if (versionBlock(useWorld.getState().world)) return
     closeCleanEditor()
     ui.setVersionPreview(v.n)
   }
   const revert = () => {
+    if (versionBlock(useWorld.getState().world)) return
     closeCleanEditor()
-    const when = timeOf(v.at, lang)
-    useConfirm.getState().ask({
-      title: t({ en: 'Restore this version?', uk: 'Відновити цю версію?' }),
-      body: t({
-        en: `Your site goes back to “${v.title.en}” — Version ${v.n}, ${when}. Nothing is deleted: every version after it stays in the chat, and you can switch back anytime. Restoring is free.${published ? ' Visitors keep seeing your live site until you publish.' : ''}`,
-        uk: `Сайт повернеться до «${v.title.uk}» — версія ${v.n}, ${when}. Нічого не видаляється: усі наступні версії лишаються в чаті, і повернутися можна будь-коли. Відновлення безкоштовне.${published ? ' Відвідувачі бачитимуть опублікований сайт, доки ви не опублікуєте.' : ''}`,
-      }),
-      confirmLabel: t({ en: 'Restore', uk: 'Відновити' }),
-      cancelLabel: t({ en: 'Cancel', uk: 'Скасувати' }),
-      onConfirm: () => restoreVersion(v.n),
-    })
+    useConfirm.getState().ask(restoreAsk(v, lang, published, t))
   }
 
   const showActs = !working && !current
@@ -176,8 +171,7 @@ export function VersionCard({
                  `overflow: hidden` would shear every descender off (g, p, y — «Navigation Update»
                  lost its tails). `overflow: clip` with a 4 px clip margin keeps the ellipsis and
                  lets the tails hang below the box, inside the row's own 4 px of padding. */
-              className={`block min-w-0 overflow-clip text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.2] [overflow-clip-margin:4px] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both] ${working ? 'shimmer-ink' : 'text-white'}`}
-              style={working ? phase : undefined}
+              className={`block min-w-0 overflow-clip text-ellipsis whitespace-nowrap text-[15px] font-semibold leading-[1.2] [overflow-clip-margin:4px] [text-box-edge:cap_alphabetic] [text-box-trim:trim-both] ${working ? '' : 'text-white'}`}
               variants={reduce ? verbRollFade : verbRoll}
               initial="initial"
               animate="animate"
@@ -185,7 +179,10 @@ export function VersionCard({
               transition={HOST_GLIDE}
               onUpdate={keepOnMainThread}
             >
-              {title}
+              {/* the shimmer paints on an INNER span with room above and below: `background-clip: text`
+                 never paints past its own box, and the trimmed box is only as tall as the capitals —
+                 on a GPU the tails and the tops of the tall letters would be cut (the mode pill's lesson) */}
+              {working ? <span className="shimmer-ink py-1" style={phase}>{title}</span> : title}
             </motion.span>
           </AnimatePresence>
         </motion.span>
@@ -195,11 +192,11 @@ export function VersionCard({
             {showActs && (
               <motion.div key="acts" className="flex items-center gap-1" exit={{ opacity: 0, transition: { duration: 0.12 } }}>
                 <motion.span custom={0} variants={reduce ? vcButtonInFade : vcButtonIn} initial="initial" animate="animate" onUpdate={keepOnMainThread}>
-                  <Tooltip text={block ?? { en: 'Restore this version', uk: 'Відновити цю версію' }} interactive>
+                  <Tooltip text={block ?? { en: 'Go back to this version', uk: 'Повернутися до цієї версії' }} interactive>
                     <button
                       type="button"
                       data-version-revert
-                      aria-label={t({ en: `Restore “${v.title.en}”`, uk: `Відновити «${v.title.uk}»` })}
+                      aria-label={t({ en: `Go back to “${v.title.en}”`, uk: `Повернутися до «${v.title.uk}»` })}
                       disabled={!!block}
                       onClick={revert}
                       className="vc-icon press-bloom grid h-9 w-9 place-items-center"
@@ -209,7 +206,7 @@ export function VersionCard({
                   </Tooltip>
                 </motion.span>
                 <motion.span custom={1} variants={reduce ? vcButtonInFade : vcButtonIn} initial="initial" animate="animate" onUpdate={keepOnMainThread}>
-                  <Tooltip text={block ?? (previewing ? { en: 'Back to your site as it is', uk: 'Назад до поточного сайту' } : { en: 'Preview this version', uk: 'Переглянути цю версію' })} interactive>
+                  <Tooltip text={block ?? (previewing ? { en: 'Back to the current version', uk: 'Назад до поточної версії' } : { en: 'Preview this version', uk: 'Переглянути цю версію' })} interactive>
                     <button
                       type="button"
                       data-version-preview
@@ -268,6 +265,27 @@ export function VersionCard({
   )
 }
 
+/**
+ * THE QUESTION BEFORE GOING BACK — shared by the card's arrow and the preview bar. Worded for what a
+ * beginner gets wrong about this button: it does NOT undo the change on the card, it takes the site
+ * to how it looked RIGHT AFTER it (the UX review of 30.09.2026; Lovable's own complaint list). So
+ * the title says «go back to», the body says «exactly as it looked right after this change» first
+ * and the reassurance second, and the button names the act.
+ */
+export function restoreAsk(v: Version, lang: 'en' | 'uk', published: boolean, t: (x: { en: string; uk: string }) => string) {
+  const when = timeOf(v.at, lang)
+  return {
+    title: t({ en: `Go back to “${v.title.en}”?`, uk: `Повернутися до «${v.title.uk}»?` }),
+    body: t({
+      en: `Your site will look exactly as it did right after this change — Version ${v.n}, ${when}. Nothing is deleted: the versions after it stay in the chat, and you can switch back anytime. Free.${published ? ' Your live site won’t change until you publish.' : ''}`,
+      uk: `Сайт виглядатиме точно так, як одразу після цієї зміни — версія ${v.n}, ${when}. Нічого не видаляється: наступні версії лишаються в чаті, повернутися можна будь-коли. Безкоштовно.${published ? ' Опублікований сайт не зміниться, доки ви не опублікуєте.' : ''}`,
+    }),
+    confirmLabel: t({ en: 'Restore version', uk: 'Відновити версію' }),
+    cancelLabel: t({ en: 'Cancel', uk: 'Скасувати' }),
+    onConfirm: () => restoreVersion(v.n),
+  }
+}
+
 /** The house spinner, in the slot while Remixer works — the arc on the scope's saturated hue. */
 function Spinner() {
   return (
@@ -287,7 +305,7 @@ function Details({ v, current }: { v: Version; current: boolean }) {
     timeOf(v.at, lang),
     v.cost ? t({ en: `${v.cost} credits`, uk: `${v.cost} кредитів` }) : t({ en: 'Free', uk: 'Безкоштовно' }),
     ...(v.from ? [t({ en: `Back to Version ${v.from}`, uk: `Повернення до версії ${v.from}` })] : []),
-    ...(current ? [t({ en: 'On your site now', uk: 'Зараз на сайті' })] : []),
+    ...(current ? [t({ en: 'Current version', uk: 'Поточна версія' })] : []),
   ]
   return (
     <div className="mx-5 border-t border-[var(--white-100)] pb-[18px] pt-3" data-version-body>
@@ -380,11 +398,14 @@ function KindIcon({ kind }: { kind: VersionChange['kind'] }) {
 interface CardMV { y: MotionValue<number>; sx: MotionValue<number>; op: MotionValue<number>; mid: MotionValue<number>; back: MotionValue<number>; flow: number; h: number; seen: boolean }
 
 /** Where card k-from-the-front sits on a folded stack (31422:42821): front at 16, then 8, then 0. */
-function folded(k: number, flow: number) {
+/* `lift` — the pointer is over a folded stack: the peeks rise 3 px more each, the way a stack of
+   cards gives under a finger. Not iOS (a phone has no hover) — the desktop's cue that it can be opened. */
+function folded(k: number, flow: number, lift = false) {
+  const d = lift ? 3 : 0
   if (k === 0) return { y: 16 - flow, sx: 1, op: 1, mid: 0, back: 0 }
-  if (k === 1) return { y: 8 - flow, sx: 408 / 416, op: 1, mid: 1, back: 0 }
-  if (k === 2) return { y: 0 - flow, sx: 400 / 416, op: 0.33, mid: 0, back: 1 }
-  return { y: 0 - flow, sx: 400 / 416, op: 0, mid: 0, back: 1 }
+  if (k === 1) return { y: 8 - d - flow, sx: 408 / 416, op: 1, mid: 1, back: 0 }
+  if (k === 2) return { y: 0 - 2 * d - flow, sx: 400 / 416, op: 0.33, mid: 0, back: 1 }
+  return { y: 0 - 2 * d - flow, sx: 400 / 416, op: 0, mid: 0, back: 1 }
 }
 const FANNED = { y: 0, sx: 1, op: 1, mid: 0, back: 0 }
 
@@ -425,6 +446,8 @@ export function VersionRun({
   const stackable = n >= 3
   const [open, setOpen] = useState(false)
   const stacked = stackable && !open
+  const [lift, setLift] = useState(false)
+  const lifted = stacked && lift
   const col = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLDivElement>(null)
   const mvs = useRef(new Map<number, CardMV>())
@@ -460,7 +483,7 @@ export function VersionRun({
       const flow = el.offsetTop
       const h = el.offsetHeight
       const k = els.length - 1 - i
-      const to = stacked ? folded(k, flow) : FANNED
+      const to = stacked ? folded(k, flow, lifted) : FANNED
       if (!x.seen) {
         /* a card that has never been laid out lands where it belongs — its own entry is the Card Arrival */
         x.y.jump(to.y); x.sx.jump(to.sx); x.op.jump(to.op); x.mid.jump(to.mid); x.back.jump(to.back)
@@ -491,7 +514,7 @@ export function VersionRun({
     recompute.current()
   }
 
-  useLayoutEffect(() => { arrange('flip') }, [n, stacked]) // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { arrange('flip') }, [n, stacked, lifted]) // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const c = col.current
     if (!c) return
@@ -506,7 +529,9 @@ export function VersionRun({
       className={`relative${stacked ? ' cursor-pointer' : ''}`}
       data-version-run={n}
       data-version-stacked={stacked ? '' : undefined}
-      onClick={(e) => { if (stacked && !(e.target as Element).closest('button')) setOpen(true) }}
+      onClick={(e) => { if (stacked && !(e.target as Element).closest('button')) { setLift(false); setOpen(true) } }}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setLift(true) }}
+      onPointerLeave={() => setLift(false)}
     >
       <div ref={col} className="flex flex-col" style={{ gap: stackable ? GAP_STACK : GAP_APART }}>
         {stackable && (
@@ -519,7 +544,7 @@ export function VersionRun({
             style={{ pointerEvents: open ? 'auto' : 'none' }}
           >
             <span className="text-[13px] text-[var(--white-480)]">
-              {t({ en: `${n} edits · free`, uk: `${n} правки · безкоштовно` })}
+              {t({ en: `${n} edits · free`, uk: `${n} ${ukEdits(n)} · безкоштовно` })}
             </span>
             <button
               type="button"
@@ -553,11 +578,19 @@ export function VersionRun({
       {/* keyboard and screen readers: the folded stack's tap, as a real control */}
       {stacked && (
         <button type="button" className="sr-only" onClick={() => setOpen(true)} data-version-expand>
-          {t({ en: `Show all ${n} edits`, uk: `Показати всі ${n} правки` })}
+          {t({ en: `Show all ${n} edits`, uk: `Показати всі ${n} ${ukEdits(n)}` })}
         </button>
       )}
     </div>
   )
+}
+
+/** «3 правки», «5 правок», «21 правка» — Ukrainian counts. */
+function ukEdits(n: number) {
+  const d = n % 10, h = n % 100
+  if (d === 1 && h !== 11) return 'правка'
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return 'правки'
+  return 'правок'
 }
 
 function Layered({ id, x, children }: { id: number; x: CardMV; children: ReactNode }) {

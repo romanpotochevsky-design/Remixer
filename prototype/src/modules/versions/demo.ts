@@ -31,7 +31,7 @@ export function boardHistory(now = Date.now()) {
     title: { en: 'First Version', uk: 'Перша версія' },
     changes: [
       { kind: 'add', text: { en: 'Home — hero, this week’s menu and the footer', uk: 'Головна — хіро, меню тижня і футер' } },
-      { kind: 'add', text: { en: 'About, Services and Contact pages', uk: 'Сторінки About, Services і Contact' } },
+      { kind: 'add', text: { en: 'Named for later: About, Services, Contact', uk: 'Названо на потім: About, Services, Contact' } },
       { kind: 'style', text: { en: 'Palette', uk: 'Палітра' }, after: 'Garden green on warm white', swatch: ['#2e7d4f', '#fbfaf7'] },
     ],
   })

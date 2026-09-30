@@ -152,6 +152,8 @@ export const useEditor = create<EditorStore>((set, get) => ({
   save: () => {
     const { draft } = get()
     const { world, set: setWorld, preset } = useWorld.getState()
+    /* a chat change in flight lands on the site as it stood when it was posted — no Save under it */
+    if (world.chat === 'working') return
     const next = mergeEdits(world.siteEdits, draft)
     if (!sameEdits(next, world.siteEdits)) {
       /* the one free write: the saved layer, the publish counter — and, since the version cards

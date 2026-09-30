@@ -6198,8 +6198,8 @@ await shot('30-plan-review')
   await p.waitForTimeout(200)
   const w7 = await world()
   const savedPhoto = w7.siteEdits.photo['meal.power-bowl.photo']
-  check('Save applies the batch as ONE change to the world: `unpublished` + 1, credits UNTOUCHED (640 — «manual edits… never use credits»), no transcript line, the chat idle; the saved layer carries the words, the Fit and the picked picture under their keys',
-    w7.unpublished === w7a.unpublished + 1 && w7.unpublished === 1 && w7.credits === 640 && w7a.credits === 640 && w7.sent.length === w7a.sent.length && w7.chat !== 'working'
+  check('Save applies the batch as ONE change to the world: `unpublished` + 1, credits UNTOUCHED (640 — «manual edits… never use credits»), ONE free version card in the transcript (block R), the chat idle; the saved layer carries the words, the Fit and the picked picture under their keys',
+    w7.unpublished === w7a.unpublished + 1 && w7.unpublished === 1 && w7.credits === 640 && w7a.credits === 640 && w7.sent.at(-1)?.kind === 'version' && w7.versions.at(-1)?.kind === 'edit' && w7.versions.at(-1)?.cost === 0 && w7.chat !== 'working'
       && w7.siteEdits.text['home.hero.title'] === ORIGINAL + TYPED && w7.siteEdits.fit['meal.power-bowl.photo'] === 'fit' && savedPhoto?.kind === 'site' && savedPhoto?.id !== 'power-bowl' && Object.keys(w7.siteEdits.text).length === 1,
     JSON.stringify({ unpublished: [w7a.unpublished, w7.unpublished], credits: [w7a.credits, w7.credits], sent: [w7a.sent.length, w7.sent.length], chat: w7.chat, text: w7.siteEdits.text, fit: w7.siteEdits.fit, photo: savedPhoto }))
   const afterSave = await p.evaluate(() => {
@@ -6512,6 +6512,132 @@ await shot('30-plan-review')
   check('«‹» flies the glass back — from 48 wide to the pill\'s width, the pill hidden until it lands', bf.length >= 8 && bf[0].w <= 84 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), JSON.stringify({ first: bf[0], last: bf.at(-1) }))
   check('home again: the pill is 86 wide, centred, 29 up and visible; the slot and the rail button are gone', !!home && home.w === 86 && home.off === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, JSON.stringify(home))
   await shot('Q4-home')
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+ * R · THE VERSION CARDS — every change to the site leaves a card in the chat (board 31422:42642;
+ *     designer 30.09.2026: «как выглядит сообщение в чате с этим изменением и версией, ну и кнопку
+ *     вернуться на версию или посмотреть старую какую-то версию… стек как у iPhone iOS в шторке»).
+ *
+ * WHAT THIS BLOCK GUARDS (modules/versions, docs/features/versions/README.md):
+ *  · the demo thread carries version 1, current (green mark, chevron only), 8 px left of the text
+ *    column, 416 × 56 at the board's width, #171719, r16;
+ *  · a chat edit posts a WORKING card first (-ing line, no buttons), the green mark STAYS on the old
+ *    version until the change lands, then moves in the same frame the site changes; the old card
+ *    pops in revert + eye; the page really changes (nav, a testimonials block);
+ *  · the eye shows the old version on the canvas — the bar and the blue ring say so, the edit bar
+ *    steps aside — and Esc brings the site back;
+ *  · revert asks first (names the version, «nothing is deleted», free), then APPENDS a restore
+ *    version: nothing deleted, credits untouched, the page back as it was;
+ *  · Visual Editor saves post FREE cards; two stand apart, the third folds the run into a stack of
+ *    72 with the count «3», peeks at 0 / 8 / 16; a tap fans it out (224), «Show less» folds it back;
+ *    the fold travels through frames;
+ *  · the chevron unfolds the details: version, time, price, the words before → after.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════ */
+{
+  const KEY = 'remixer-prototype/world/v6'
+  const LIVE = 'p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'
+  await p.goto(at(LIVE), { waitUntil: 'networkidle' })
+  await p.evaluate((k) => localStorage.removeItem(k), KEY)
+  await p.waitForTimeout(600); await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+  await p.waitForTimeout(900)
+  const cards = () => p.evaluate(() => [...document.querySelectorAll('[data-version-card]')].map((c) => ({
+    n: +c.dataset.versionCard, kind: c.dataset.versionKind, cur: c.hasAttribute('data-version-current'), working: c.hasAttribute('data-version-working'),
+    title: c.querySelector('[data-version-title]')?.textContent, revert: !!c.querySelector('[data-version-revert]'), eye: !!c.querySelector('[data-version-preview]'), chev: !!c.querySelector('[data-version-details]'),
+  })))
+  const film = (fn, ms) => p.evaluate(([src, ms]) => new Promise((res) => {
+    const f = new Function('return (' + src + ')()'); const out = []; const t0 = performance.now()
+    const tick = () => { const t = performance.now() - t0; out.push({ t: Math.round(t), ...f() }); if (t < ms) requestAnimationFrame(tick); else res(out) }
+    requestAnimationFrame(tick)
+  }), [fn.toString(), ms])
+
+  /* ── 1 · the demo thread's version 1 ───────────────────────────────────────────── */
+  let cs = await cards()
+  const geo = await p.evaluate(() => { const c = document.querySelector('[data-version-card]'); const col = document.querySelector('.chat-col'); const r = c.getBoundingClientRect(), q = col.getBoundingClientRect(); return { dx: Math.round(r.x - q.x), w: Math.round(r.width), colW: Math.round(q.width), h: Math.round(r.height), bg: getComputedStyle(c).backgroundColor, radius: getComputedStyle(c).borderRadius, title: getComputedStyle(c.querySelector('[data-version-title]')).fontSize } })
+  check('the demo thread carries version 1: «First Version», current (green mark), the chevron only', cs.length === 1 && cs[0].title === 'First Version' && cs[0].cur && !cs[0].revert && !cs[0].eye && cs[0].chev, JSON.stringify(cs))
+  check('…at the board’s metrics: 8 px left of the text column (x 8 in 432), as wide as the column minus 16 (416 at 432), 56 tall, #171719, r16, title 15', geo.dx === 8 && geo.w === geo.colW - 16 && geo.h === 56 && geo.bg === 'rgb(23, 23, 25)' && geo.radius === '16px' && geo.title === '15px', JSON.stringify(geo))
+
+  /* ── 2 · a chat edit: working card → lands with the site ───────────────────────── */
+  await p.fill('textarea', 'Can you update the main navigation menu?'); await p.keyboard.press('Enter')
+  await p.waitForTimeout(1500)
+  cs = await cards()
+  const w2 = cs.find((c) => c.n === 2), was1 = cs.find((c) => c.n === 1)
+  check('1.5 s after the send: card 2 is posted WORKING with its -ing line and no buttons; version 1 keeps the green mark (the site has not moved yet)', !!w2 && w2.working && /Updating/.test(w2.title) && !w2.chev && was1?.cur, JSON.stringify(cs))
+  await p.waitForTimeout(3300)
+  cs = await cards()
+  const c1 = cs.find((c) => c.n === 1), c2 = cs.find((c) => c.n === 2)
+  const nav = await p.evaluate(() => document.querySelector('[data-canvas-site] .site-nav-links')?.textContent)
+  check('landed: «Navigation Update» takes the green mark (chevron only), version 1 grew revert + eye — and the page changed (Menu · Plans · Reviews · FAQ)', c2?.title === 'Navigation Update' && c2.cur && !c2.working && c1 && !c1.cur && c1.revert && c1.eye && nav === 'MenuPlansReviewsFAQ', JSON.stringify({ cs, nav }))
+  await p.fill('textarea', 'Please add a testimonials section'); await p.keyboard.press('Enter')
+  await p.waitForTimeout(5300)
+  check('a second edit: a testimonials block appears on the page, version 3 current', !!(await p.$('[data-canvas-site] [data-site-block="testimonials"]')) && (await cards())[2]?.cur, JSON.stringify(await cards()))
+  await shot('R1-landed')
+
+  /* ── 3 · the eye ───────────────────────────────────────────────────────────────── */
+  await p.click('[data-version-card="1"] [data-version-preview]')
+  const dip = await film(() => ({ o: +getComputedStyle(document.querySelector('[data-canvas-site] [data-prototype-note]')).opacity, v: document.querySelector('[data-site-version]')?.getAttribute('data-site-version') ?? null }), 650)
+  const pv = await p.evaluate(() => ({
+    bar: document.querySelector('[data-version-bar]')?.getAttribute('data-version-bar'), ring: getComputedStyle(document.querySelector('[data-version-ring]')).opacity,
+    ve: !!document.querySelector('[data-ve-bar]'), testi: !!document.querySelector('[data-canvas-site] [data-site-block="testimonials"]'),
+    nav: document.querySelector('[data-canvas-site] .site-nav-links')?.textContent, prev: document.querySelector('[data-version-card="1"]')?.hasAttribute('data-previewing'),
+  }))
+  check('the eye puts version 1 on the canvas — old nav, no testimonials — the bar names it, the blue ring is on, the edit bar stepped aside, the card is marked', pv.bar === '1' && pv.ring === '1' && !pv.ve && !pv.testi && pv.nav === 'MenuHow it worksPricingFAQ' && pv.prev, JSON.stringify(pv))
+  const minO = Math.min(...dip.map((f) => f.o)); const swap = dip.find((f) => f.v === '1')
+  check('…and it turns at the bottom of a dip (opacity ≤ .35), not in a blink', minO <= 0.35 && !!swap && swap.o <= 0.5, JSON.stringify({ minO, swap }))
+  await shot('R2-preview')
+  await p.keyboard.press('Escape'); await p.waitForTimeout(600)
+  check('Esc: the site as it is again, the bar gone', !(await p.$('[data-version-bar]')) && !!(await p.$('[data-canvas-site] [data-site-block="testimonials"]')))
+
+  /* ── 4 · restore ───────────────────────────────────────────────────────────────── */
+  const creditsBefore = await p.evaluate((k) => JSON.parse(localStorage.getItem(k)).credits, KEY)
+  await p.click('[data-version-card="2"] [data-version-revert]')
+  await p.waitForSelector('[role="alertdialog"]')
+  const dlg = await p.evaluate(() => document.querySelector('[role="alertdialog"]').innerText)
+  check('revert asks first: «Go back to “Navigation Update”?», «exactly as it did right after this change», «Nothing is deleted», Free, the verb «Restore version»', /Go back to “Navigation Update”\?/.test(dlg) && /right after this change/.test(dlg) && /Nothing is deleted/.test(dlg) && /Free/.test(dlg) && /Restore version/.test(dlg), dlg)
+  await p.click('[role="alertdialog"] button:has-text("Restore")'); await p.waitForTimeout(900)
+  cs = await cards()
+  const wr = await p.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY)
+  check('…then a NEW version on top, «Restored “Navigation Update”», current; the three before it stay; credits untouched; the page back as it was (no testimonials, the new nav)',
+    cs.length === 4 && cs[3].cur && cs[3].title === 'Restored “Navigation Update”' && wr.credits === creditsBefore && wr.versions.length === 4 && !(await p.$('[data-canvas-site] [data-site-block="testimonials"]')) && (await p.evaluate(() => document.querySelector('[data-canvas-site] .site-nav-links')?.textContent)) === 'MenuPlansReviewsFAQ',
+    JSON.stringify({ cs, credits: [creditsBefore, wr.credits] }))
+
+  /* ── 5 · free edits and the stack ──────────────────────────────────────────────── */
+  const freeEdit = async (suffix) => {
+    await p.click('[data-ve-tool="edit"]'); await p.waitForTimeout(250)
+    await p.click('[data-edit="home.hero.title"]'); await p.waitForTimeout(80)
+    await p.keyboard.press('Control+End'); await p.keyboard.type(suffix)
+    await p.click('[data-edit="home.hero.lead"]'); await p.waitForTimeout(120)
+    await p.click('[data-ve-save]')
+  }
+  const off = async () => { await p.waitForTimeout(500); await p.click('[data-ve-tool="edit"]').catch(() => {}); await p.waitForTimeout(250) }
+  const credits0 = await p.evaluate((k) => JSON.parse(localStorage.getItem(k)).credits, KEY)
+  await freeEdit(' now'); await off()
+  cs = await cards()
+  const wf = await p.evaluate((k) => JSON.parse(localStorage.getItem(k)), KEY)
+  check('a Save posts a FREE card: «Text Edit», the edit kind, current; no credits spent, no reply under it', cs.length === 5 && cs[4].kind === 'edit' && cs[4].title === 'Text Edit' && cs[4].cur && wf.credits === credits0 && wf.sent.at(-1).kind === 'version' && wf.versions.at(-1).cost === 0, JSON.stringify({ last: cs[4], credits: [credits0, wf.credits], lastMsg: wf.sent.at(-1) }))
+  await freeEdit('!'); await off()
+  check('two free edits in a row stand apart — no stack yet', !(await p.$('[data-version-stacked]')))
+  await freeEdit('!')
+  const fold = await film(() => { const run = document.querySelector('[data-version-run]'); return { h: run ? Math.round(run.getBoundingClientRect().height) : null, ys: run ? [...run.querySelectorAll('[data-run-card]')].map((c) => Math.round(c.getBoundingClientRect().top - run.getBoundingClientRect().top)) : [] } }, 900)
+  const st = await p.evaluate(() => { const run = document.querySelector('[data-version-run]'); return { run: run?.getAttribute('data-version-run'), stacked: run?.hasAttribute('data-version-stacked'), badge: document.querySelector('[data-version-badge]')?.textContent, h: run ? Math.round(run.getBoundingClientRect().height) : null } })
+  const hs = fold.map((f) => f.h)
+  check('the third folds the run into a stack: 3 cards, the count «3» on the slot, 72 tall (16 + 56), peeks at 0 / 8 / 16', st.run === '3' && st.stacked && st.badge === '3' && st.h === 72 && JSON.stringify(fold.at(-1)?.ys) === '[0,8,16]', JSON.stringify({ st, ys: fold.at(-1)?.ys }))
+  check('…and the fold TRAVELS: ≥ 4 distinct heights on the way, no frame jumping more than 40 px', new Set(hs).size >= 4 && Math.max(...hs.slice(1).map((h, i) => Math.abs(h - hs[i]))) <= 40, hs.join(' '))
+  await off()
+  await shot('R3-stack')
+  await p.click('[data-version-run] [data-run-card]:last-child [data-version-title]')
+  const fan = await film(() => { const run = document.querySelector('[data-version-run]'); return { h: Math.round(run.getBoundingClientRect().height) } }, 900)
+  const fanEnd = await p.evaluate(() => { const run = document.querySelector('[data-version-run]'); return { stacked: run.hasAttribute('data-version-stacked'), badge: !!document.querySelector('[data-version-badge]'), ys: [...run.querySelectorAll('[data-run-card]')].map((c) => Math.round(c.getBoundingClientRect().top - run.getBoundingClientRect().top)) } })
+  check('a tap fans it out through frames to 224 (header 32 + 8 + 3 × 56 + 2 × 8) — the front card travels DOWN, the badge goes', fan.at(-1).h === 224 && new Set(fan.map((f) => f.h)).size >= 5 && !fanEnd.stacked && !fanEnd.badge && JSON.stringify(fanEnd.ys) === '[40,104,168]', JSON.stringify({ hs: fan.map((f) => f.h).join(' '), fanEnd }))
+  await p.click('[data-version-collapse]'); await p.waitForTimeout(900)
+  check('«Show less» folds it back to 72', await p.evaluate(() => { const run = document.querySelector('[data-version-run]'); return run.hasAttribute('data-version-stacked') && Math.round(run.getBoundingClientRect().height) === 72 }))
+
+  /* ── 6 · details ───────────────────────────────────────────────────────────────── */
+  await p.click('[data-version-card="2"] [data-version-details]'); await p.waitForTimeout(900)
+  const det = await p.evaluate(() => { const c = document.querySelector('[data-version-card="2"]'); return { h: Math.round(c.getBoundingClientRect().height), body: c.querySelector('[data-version-body]')?.innerText, exp: c.querySelector('[data-version-details]').getAttribute('aria-expanded') } })
+  check('the chevron unfolds what changed: «Version 2 · time · 10 credits», the links before → after', det.exp === 'true' && det.h > 120 && /Version 2/.test(det.body) && /10 credits/.test(det.body) && /Menu · How it works · Pricing · FAQ/.test(det.body) && /Menu · Plans · Reviews · FAQ/.test(det.body), JSON.stringify(det))
+  await shot('R4-details')
 }
 
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))

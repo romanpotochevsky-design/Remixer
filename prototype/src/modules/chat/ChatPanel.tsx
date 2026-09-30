@@ -621,7 +621,7 @@ export function ChatPanel() {
   const versions = versionsOf(world)
   const currentN = currentOf(world)?.n
   const previewN = useUI((s) => s.versionPreview)
-  /* the thread, with every run of two or more free-edit cards gathered into one element */
+  /* the thread, with every run of free-edit cards gathered into one element */
   const runs: ({ i: number; m: Message; run?: undefined } | { i: number; run: { id: number; v: Version }[]; m?: undefined })[] = []
   for (let i = 0; i < thread.length; i++) {
     const m = thread[i]
@@ -635,7 +635,9 @@ export function ChatPanel() {
         if (!nv || nv.kind !== 'edit') break
         run.push({ id: nm.id, v: nv })
       }
-      if (run.length >= 2) { runs.push({ i, run }); i = j - 1; continue }
+      /* even ONE: the run keeps its node as it grows, so the first card never remounts (and never
+         replays its arrival) when the second joins it */
+      runs.push({ i, run }); i = j - 1; continue
     }
     runs.push({ i, m })
   }
@@ -681,6 +683,13 @@ export function ChatPanel() {
     // a reload mid-send restores chat:'working' with no timer behind it
     resumeInterrupted()
   }, [])
+  /* …and so does entering a site that was left mid-change (the site switcher): its job's timer fired
+     against the other site and found nothing to do — pick it up again here */
+  const firstSite = useRef(true)
+  useEffect(() => {
+    if (firstSite.current) { firstSite.current = false; return }
+    resumeInterrupted()
+  }, [world.site])
 
   // Everything rendered this pass has now been seen.
   useEffect(() => {

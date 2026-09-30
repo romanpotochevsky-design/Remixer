@@ -25,7 +25,9 @@ import { Tooltip } from '@/ui/Tooltip'
 import { previewBarIn, previewBarInFade, swapText } from '@/ui/motion'
 import { IconCloseM } from '@/ui/icons'
 import { GlyphPreview } from './icons'
-import { currentOf, restoreVersion, timeOf, versionAt, versionBlock } from './model'
+import { currentOf, isEditorDirty, timeOf, versionAt, versionBlock } from './model'
+import { useEditor } from '@/modules/editor/session'
+import { restoreAsk } from './VersionCard'
 
 const keepOnMainThread = () => {}
 
@@ -38,7 +40,8 @@ export function PreviewBar() {
   const world = useWorld((s) => s.world)
   const v = n !== null ? versionAt(world, n) : undefined
   const cur = currentOf(world)
-  const block = versionBlock(world)
+  const dirty = useEditor(isEditorDirty)
+  const block = versionBlock(world, dirty)
 
   /* a preview of a version that no longer exists, or that has become the current one (a restore,
      a staged world), is no preview: step back to the site */
@@ -59,20 +62,7 @@ export function PreviewBar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [n, setPreview])
 
-  const restore = () => {
-    if (!v) return
-    const when = timeOf(v.at, lang)
-    useConfirm.getState().ask({
-      title: t({ en: 'Restore this version?', uk: 'Відновити цю версію?' }),
-      body: t({
-        en: `Your site goes back to “${v.title.en}” — Version ${v.n}, ${when}. Nothing is deleted: every version after it stays in the chat, and you can switch back anytime. Restoring is free.${world.published ? ' Visitors keep seeing your live site until you publish.' : ''}`,
-        uk: `Сайт повернеться до «${v.title.uk}» — версія ${v.n}, ${when}. Нічого не видаляється: усі наступні версії лишаються в чаті, і повернутися можна будь-коли. Відновлення безкоштовне.${world.published ? ' Відвідувачі бачитимуть опублікований сайт, доки ви не опублікуєте.' : ''}`,
-      }),
-      confirmLabel: t({ en: 'Restore', uk: 'Відновити' }),
-      cancelLabel: t({ en: 'Cancel', uk: 'Скасувати' }),
-      onConfirm: () => restoreVersion(v.n),
-    })
-  }
+  const restore = () => { if (v) useConfirm.getState().ask(restoreAsk(v, lang, world.published, t)) }
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-[29px] z-30 flex justify-center" data-version-bar-host>
@@ -96,7 +86,7 @@ export function PreviewBar() {
                   {t({ en: 'Viewing an earlier version', uk: 'Ви дивитеся попередню версію' })}
                 </span>
                 <span className="truncate text-[12.5px] leading-[16px] text-[var(--white-560)]">
-                  {t(v.title)} · {t({ en: `Version ${v.n}`, uk: `Версія ${v.n}` })} · {timeOf(v.at, lang)}
+                  “{t(v.title)}” · {t({ en: `Version ${v.n}`, uk: `Версія ${v.n}` })} · {timeOf(v.at, lang)}
                 </span>
               </motion.div>
             </AnimatePresence>
@@ -111,11 +101,11 @@ export function PreviewBar() {
                 {t({ en: 'Restore this version', uk: 'Відновити цю версію' })}
               </button>
             </Tooltip>
-            <Tooltip text={{ en: 'Back to your site as it is · Esc', uk: 'Назад до поточного сайту · Esc' }} interactive>
+            <Tooltip text={{ en: 'Back to the current version · Esc', uk: 'Назад до поточної версії · Esc' }} interactive>
               <button
                 type="button"
                 data-version-bar-close
-                aria-label={t({ en: 'Back to your site as it is', uk: 'Назад до поточного сайту' })}
+                aria-label={t({ en: 'Back to the current version', uk: 'Назад до поточної версії' })}
                 onClick={() => setPreview(null)}
                 className="vc-tonal press-bloom grid h-10 w-10 flex-none place-items-center"
               >

@@ -1206,7 +1206,7 @@ function initialWorld(): World {
       fromUrl.chat === 'working' &&
       Array.isArray(saved.sent) &&
       saved.sent.length > 0 &&
-      (saved.sent[saved.sent.length - 1].who === 'user' || saved.sent[saved.sent.length - 1].kind === 'version')
+      (saved.sent[saved.sent.length - 1].who === 'user' || (saved.sent[saved.sent.length - 1].kind === 'version' && !!saved.versions?.[saved.versions.length - 1]?.pending))
     /* a chat edit caught mid-work has already posted its «working» version card: the versions it
        points into travel with the transcript, or the card would point at nothing */
     return normalize({ ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent, versions: saved.versions ?? [], siteAi: saved.siteAi ?? EMPTY_SITE_AI } : null) })

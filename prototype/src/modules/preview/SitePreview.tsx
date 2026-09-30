@@ -343,7 +343,8 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
   const [shown, setShown] = useState<number | null>(wanted)
   const dim = useMotionValue(1)
   useEffect(() => {
-    if (shown === wanted) return
+    /* back to where it already stands before the dip reached bottom (eye, then Esc at once): rise again */
+    if (shown === wanted) { if (dim.get() < 1) animate(dim, 1, { duration: 0.2, ease: [0, 0, 0.2, 1] }); return }
     if (reduce) { setShown(wanted); return }
     let alive = true
     const out = animate(dim, 0.25, { duration: 0.12, ease: [0.4, 0, 1, 1] })

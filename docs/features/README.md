@@ -3,7 +3,7 @@
 > **Назначение:** по одной папке на фича-область. В каждой — `README.md`, который и есть
 > база знаний этой фичи: что это, какие состояния, какие решения приняты, где код,
 > что осталось открытым, куда идти за спекой/QA/хендоффом.
-> **Обновлено:** 24.09.2026
+> **Обновлено:** 30.09.2026
 
 ---
 
@@ -15,6 +15,7 @@
 | **Builder shell** | шелл билдера: колонка чата, композер, хореография отправки, Remixer glow, резайзер, превью, панель Publish, правый рейл | [`builder-shell/README.md`](builder-shell/README.md) |
 | **Cloud** | окно бэкенда сайта: меню баз данных и комнат (Emails · Secrets · Users · Storage), таблица объектов (Figma 30816:49569); кнопки правого рейла и их состояния (17471:40596); переход сайт ⇄ окно — Pane Unfold, окно разворачивается из своей кнопки (§8) | [`cloud/README.md`](cloud/README.md) |
 | **Domains** | доменный модуль: дашборд, поиск, результаты, чек-аут-шит, подключение домена | [`domains/README.md`](domains/README.md) |
+| **Versions** | версии сайта в чате: карточка каждого изменения (revert · глаз · детали), текущая с зелёной меткой, изменение из чата приходит «в работе», бесплатные правки Visual Editor складываются в стек как iOS, просмотр старой версии на канвасе, откат — новая версия сверху (Figma 31422:42642) | [`versions/README.md`](versions/README.md) |
 | **Visual Editor** | бесплатные правки текста и фото на сайте без чата: панель инструментов внизу превью (Edit · Select), каретка одним кликом, окно Image у фото, пачка правок с Undo/Redo/Clear/Save; медиатека Website media (борды 31280:85401, 31384:21963, 23383:32801…) | [`visual-editor/README.md`](visual-editor/README.md), [`visual-editor/media-library-spec.md`](visual-editor/media-library-spec.md) |
 | **Home page** | входная страница приложения: герой с композером, промпт-чипы, док с проектами и шаблонами (Figma 28364:40053 / 28375:43006); «Add template» — пикер шаблонов (28616:59168) и детальный просмотр (28637:42088); продакшен-вход страницы | [`home-page/README.md`](home-page/README.md) · [`figma-spec.md`](home-page/figma-spec.md) · [`figma-spec-add-template.md`](home-page/figma-spec-add-template.md) · [`qa-report.md`](home-page/qa-report.md) · [`qa-report-add-template.md`](home-page/qa-report-add-template.md) |
 

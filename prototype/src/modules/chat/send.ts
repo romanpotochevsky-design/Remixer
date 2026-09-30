@@ -217,7 +217,9 @@ export function sendMessage(raw: string, reply?: Text, about?: string, page?: st
 function startChange(prompt: string, reply?: Text, page?: string) {
   const now = useWorld.getState()
   if (now.world.chat !== 'working') return
-  const hit = page ? { key: `page:${page}`, text: reply } : matchPrompt(prompt)
+  /* an accepted proposal brings its reply: with a page it BUILDS that page; without one («Keep
+     working on this page» — «nothing new gets generated») it changes nothing and leaves no card */
+  const hit = page ? { key: `page:${page}`, text: reply } : reply ? { key: null, text: reply } : matchPrompt(prompt)
   const say = reply ?? hit.text
   if (!hit.key) { schedule(() => deliverAnswer(prompt, say, false), WORK_MS); return }
   const p = beginChange(now.world, hit.key, prompt, say)
@@ -298,7 +300,7 @@ function deliverAnswer(prompt: string, reply?: Text, changed = true, extra?: Par
   )
   /* THE SITE MOVED, SO AUTOPILOT HAS SOMETHING TO LEAD ON FROM. Only here and at the end
      of the first build — never after a question that changed nothing. */
-  schedule(offerSuggestion, SUGGEST_MS)
+  if (changed) schedule(offerSuggestion, SUGGEST_MS)
 }
 
 /* ------------------------------------------------------------- the brief */
@@ -529,8 +531,7 @@ function finishBuild(answers: BriefAnswers) {
   const text = now.world.mode === 'autopilot' ? leadingDone(answers, now.world.planEdits.outline) : briefDone(answers)
   /* version 1 — the first page is a state of the site you can come back to (modules/versions) */
   const outline = buildOutline(answers, now.world.planEdits.outline)
-  const lang = now.world.lang
-  const v1 = firstVersion(now.world, (outline[0].sections ?? []).map((x) => x.name[lang]), outline.slice(1).map((p) => p.name[lang]))
+  const v1 = firstVersion(now.world, (outline[0].sections ?? []).map((x) => x.name), outline.slice(1).map((p) => p.name))
   const done: Message = { id: nextId(v1.sent), who: 'ai', text }
   now.set(
     {
@@ -917,5 +918,10 @@ export function resumeInterrupted() {
   const text = typeof last.text === 'string' ? last.text : ''
   if (world.project === 'empty' && isWeakPrompt(text)) schedule(askForDirection, 1400)
   else if (world.project === 'generating') schedule(startFirstBuild, 1400)
-  else schedule(() => startChange(text), 1400)
+  else {
+    /* an accepted page proposal posts «Start the About page.» — its page is recovered from the words,
+       or a reload would match «about» to the FAQ rule and build the wrong thing */
+    const page = /^Start the (.+) page\.?$/.exec(text)?.[1]
+    schedule(() => startChange(text, undefined, page), 1400)
+  }
 }
