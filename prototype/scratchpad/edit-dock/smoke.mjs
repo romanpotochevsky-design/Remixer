@@ -93,7 +93,7 @@ log('return frames', bf.length, JSON.stringify(bf.slice(0, 2)), '…', JSON.stri
 await page.waitForTimeout(600)
 const home = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar]'); const m = document.querySelector('main').getBoundingClientRect(); if (!b) return null; const r = b.getBoundingClientRect(); return { w: r.width, centreOff: Math.round((r.x + r.width / 2) - (m.x + m.width / 2)), lift: Math.round(m.bottom - r.bottom), vis: getComputedStyle(b).visibility, opacity: getComputedStyle(b).opacity, slot: !!document.querySelector('[data-rail-dock]'), dock: !!document.querySelector('[data-ve-dock]'), flight: !!document.querySelector('[data-ve-flight]') } })
 log(home)
-check('the return flight starts at the slot and lands on the pill (hidden until it lands)', bf.length >= 8 && bf[0].w <= 52 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), { first: bf[0], last: bf.at(-1) })
+check('the return flight starts at the slot and lands on the pill (hidden until it lands)', bf.length >= 8 && bf[0].w <= 62 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), { first: bf[0], last: bf.at(-1) })
 check('back home: 76 wide, centred, 29 up, visible; slot and rail button gone', home && home.w === 76 && home.centreOff === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, home)
 await page.screenshot({ path: OUT + 'd4-home.png' })
 

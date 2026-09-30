@@ -6464,7 +6464,7 @@ await shot('30-plan-review')
     return { w: r.width, h: r.height, radius: getComputedStyle(d).borderRadius, gap: Math.round(q.top - r.bottom), off: Math.round((r.x + r.width / 2) - (nav.x + nav.width / 2)), bar: !!document.querySelector('[data-ve-bar]'), flight: !!document.querySelector('[data-ve-flight]'), slot: !!document.querySelector('[data-rail-dock]') }
   })
   check('«›» flies ONE glass box from the STRETCHED glass (117) to the slot — it starts at that size and lands 48 tall, through at least 8 sampled frames',
-    fr.length >= 8 && Math.abs(fr[0].x - from.x) < 120 && fr[0].w > 90 && fr[0].w <= 121 && fr.at(-1).w <= 52 && fr.at(-1).h >= 44, JSON.stringify({ first: fr[0], last: fr.at(-1), from }))
+    fr.length >= 8 && Math.abs(fr[0].x - from.x) < 120 && fr[0].w > 90 && fr[0].w <= 132 && fr.at(-1).w <= 52 && fr.at(-1).h >= 44, JSON.stringify({ first: fr[0], last: fr.at(-1), from }))
   check('while it flies neither home is drawn — the pill is hidden and the rail button is hidden', fr.length > 0 && fr.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden')), JSON.stringify(fr.slice(0, 3)))
   check('docked: a 48 × 48 r16 rail button centred on the rail, 8 above the support button; the floating pill is gone',
     docked.w === 48 && docked.h === 48 && docked.radius === '16px' && docked.gap === 8 && docked.off === 0 && !docked.bar && !docked.flight && docked.slot, JSON.stringify(docked))
@@ -6487,12 +6487,29 @@ await shot('30-plan-review')
   /* ── 4 · «‹» flies it back ─────────────────────────────────────────────────────── */
   await p.mouse.move(db.x + 24, db.y + 24); await p.waitForTimeout(600)
   await p.click('[data-ve-undock]')
-  const back = []
-  for (let i = 0; i < 40; i++) { await p.waitForTimeout(25); back.push(await p.evaluate(() => { const f = document.querySelector('[data-ve-flight]'); if (!f) return null; const r = f.getBoundingClientRect(); const bar = document.querySelector('[data-ve-bar]'); return { w: Math.round(r.width), barVis: bar ? getComputedStyle(bar).visibility : 'none' } })) }
-  const bf = back.filter(Boolean)
+  const back = []; const hand = []
+  for (let i = 0; i < 60; i++) {
+    await p.waitForTimeout(16)
+    const g = await p.evaluate(() => {
+      const r = (e) => { if (!e) return null; const q = e.getBoundingClientRect(); return [Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10, Math.round(q.width * 10) / 10, Math.round(q.height * 10) / 10] }
+      const f = document.querySelector('[data-ve-flight]'); const bar = document.querySelector('[data-ve-bar]')
+      if (f) { const svgs = f.querySelectorAll('svg'); return { who: 'flight', w: Math.round(f.getBoundingClientRect().width), barVis: bar ? getComputedStyle(bar).visibility : 'none', box: r(f), t: r(svgs[0]), sel: r(svgs[1]) } }
+      if (bar && getComputedStyle(bar).visibility === 'visible') { const svgs = bar.querySelectorAll('[data-ve-tool] svg'); return { who: 'pill', box: r(bar.querySelector('[data-ve-glass]')), t: r(svgs[0]), sel: r(svgs[1]) } }
+      return null
+    })
+    if (g && g.who === 'flight') back.push(g)
+    if (g) hand.push(g)
+    if (g && g.who === 'pill') break
+  }
+  const bf = back
+  /* THE HAND-OVER IS INVISIBLE: the clone carries the pill's own tools, so its last frame and the pill's first are the same picture */
+  const lastF = hand.filter((f) => f.who === 'flight').at(-1); const firstP = hand.find((f) => f.who === 'pill')
+  const dev = (a, b) => (a && b ? Math.max(...a.map((v, i) => Math.abs(v - b[i]))) : 99)
+  check('the clone lands as the pill\'s own picture: on the hand-over frame its glass box, «T» and Select sit within 1.5 px of the pill\'s (no glyph jumps, no button unfolding)',
+    !!lastF && !!firstP && dev(lastF.box, firstP.box) <= 1.5 && dev(lastF.t, firstP.t) <= 1.5 && dev(lastF.sel, firstP.sel) <= 1.5, JSON.stringify({ lastF, firstP }))
   await p.waitForTimeout(600)
   const home = await p.evaluate(() => { const el = document.querySelector('[data-ve-bar]'); const m = document.querySelector('main').getBoundingClientRect(); if (!el) return null; const r = el.getBoundingClientRect(); return { w: r.width, off: Math.round((r.x + r.width / 2) - (m.x + m.width / 2)), lift: Math.round(m.bottom - r.bottom), vis: getComputedStyle(el).visibility, opacity: getComputedStyle(el).opacity, slot: !!document.querySelector('[data-rail-dock]'), dock: !!document.querySelector('[data-ve-dock]'), flight: !!document.querySelector('[data-ve-flight]') } })
-  check('«‹» flies the glass back — from 48 wide to the pill\'s width, the pill hidden until it lands', bf.length >= 8 && bf[0].w <= 52 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), JSON.stringify({ first: bf[0], last: bf.at(-1) }))
+  check('«‹» flies the glass back — from 48 wide to the pill\'s width, the pill hidden until it lands', bf.length >= 8 && bf[0].w <= 62 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), JSON.stringify({ first: bf[0], last: bf.at(-1) }))
   check('home again: the pill is 76 wide, centred, 29 up and visible; the slot and the rail button are gone', !!home && home.w === 76 && home.off === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, JSON.stringify(home))
   await shot('Q4-home')
 }

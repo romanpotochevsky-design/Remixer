@@ -41,7 +41,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
 import { useT } from '@/i18n'
 import { useWorld, currentSite } from '@/state/world'
 import { useUI } from '@/state/ui'
@@ -187,6 +187,62 @@ function GlassBar({ side, reveal, tail, pillRef, pillProps, children }: {
       {/* THE TOOLS — in flow, on top, never moved and never scaled */}
       <div className="relative z-[1] flex h-10 items-center gap-1 p-1">{children}</div>
     </div>
+  )
+}
+
+/**
+ * THE FLIGHT — one glass box between the two homes, carrying THE SAME CONTENT AS THE HOMES.
+ *
+ * The first cut flew a box with a single centred «T». It landed on the pill's spot ~300 ms before
+ * the spring settled, sat there as a lone glyph, and then the real pill snapped in under it — «T»
+ * jumping left, Select appearing in one frame (designer 30.09.2026, by recording: «1 или 2 кадра
+ * разворачивает кнопки»). The swap was visible because the clone and the home were different
+ * pictures. Now the clone IS the pill's picture: the two tools laid out as the pill lays them out
+ * (4 + 32 + 4 + 32 + 4), Select fading with the width it needs, «T» sliding the 4 px between its
+ * seat in the pill (left 4) and its seat in the 48 rail tile (left 8). At either end the clone's
+ * pixels equal the home's, so the hand-over is invisible whenever it happens.
+ */
+const FLIGHT_STRETCH = 0.12
+const FLIGHT_THIN = 0.05
+function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () => void }) {
+  const p = useMotionValue(0)
+  const lerp = (a: number, b: number) => (v: number) => a + (b - a) * v
+  const { from, to } = flight
+  /* THE DROP: mid-flight the glass stretches along its path and thins across it (up to +12 % / −5 %,
+     a sine bell on the progress — zero at both ends, so the box is exactly the home's at either
+     landing), the way liquid elongates while it moves and gathers itself when it stops. The glyphs
+     are placed from the box's edge and do not scale — only the glass stretches. */
+  const bell = (v: number) => Math.sin(Math.PI * Math.max(0, Math.min(1, v)))
+  const width = useTransform(p, (v) => lerp(from.width, to.width)(v) * (1 + FLIGHT_STRETCH * bell(v)))
+  const height = useTransform(p, (v) => lerp(from.height, to.height)(v) * (1 - FLIGHT_THIN * bell(v)))
+  const left = useTransform(p, (v) => lerp(from.x, to.x)(v) - (lerp(from.width, to.width)(v) * FLIGHT_STRETCH * bell(v)) / 2)
+  const top = useTransform(p, (v) => lerp(from.y, to.y)(v) + (lerp(from.height, to.height)(v) * FLIGHT_THIN * bell(v)) / 2)
+  /* the tools follow the WIDTH, not the clock: Select is opaque once the box has room for it,
+     the handle once it has room for that too; «T» sits at 4 in a pill and centred (8) in a 48 tile */
+  const selO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - 56) / 20)))
+  const tailO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - 96) / 20)))
+  const tLeft = useTransform(width, (w) => Math.max(4, Math.min(8, 8 - (w - 48) / 7)))
+  const tTop = useTransform(height, (h) => (h - 32) / 2)
+  useEffect(() => {
+    const ctrl = animate(p, 1, { ...EDIT_DOCK_FLIGHT, onComplete: onDone })
+    return () => ctrl.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const btn = 'absolute grid h-8 w-8 place-items-center rounded-[12px] text-white'
+  return (
+    <motion.div
+      data-ve-flight={flight.dir}
+      className="liquid-glass pointer-events-none fixed z-50 overflow-hidden rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
+      style={{ left, top, width, height }}
+      aria-hidden
+    >
+      <motion.span className={btn} style={{ left: tLeft, top: tTop }}><GlyphEditText size={24} /></motion.span>
+      <motion.span className={btn} style={{ left: 40, top: tTop, opacity: selO }}><GlyphSelect size={24} /></motion.span>
+      <motion.span className="absolute flex items-center gap-1" style={{ left: 76, top: tTop, opacity: tailO }}>
+        <span className="h-8 w-px bg-[var(--glass-divider)]" />
+        <span className="grid h-8 w-8 place-items-center rounded-[12px] text-white"><GlyphDockRight size={22} /></span>
+      </motion.span>
+    </motion.div>
   )
 }
 
@@ -449,20 +505,7 @@ export function EditBar() {
       )}
 
       {/* THE FLIGHT — the glass itself, between the two homes, above both the canvas and the rail */}
-      {flight?.to && createPortal(
-        <motion.div
-          data-ve-flight={flight.dir}
-          className="liquid-glass pointer-events-none fixed z-50 grid place-items-center rounded-[16px] text-white shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
-          initial={{ left: flight.from.x, top: flight.from.y, width: flight.from.width, height: flight.from.height }}
-          animate={{ left: flight.to.x, top: flight.to.y, width: flight.to.width, height: flight.to.height }}
-          transition={EDIT_DOCK_FLIGHT}
-          onAnimationComplete={() => setFlight(null)}
-          aria-hidden
-        >
-          <GlyphEditText size={24} />
-        </motion.div>,
-        document.body,
-      )}
+      {flight?.to && createPortal(<Flight flight={flight as Flight & { to: Rect }} onDone={() => setFlight(null)} />, document.body)}
     </>
   )
 }
