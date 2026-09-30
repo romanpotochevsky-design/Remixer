@@ -33,10 +33,10 @@ const widths = []; const toolTrace = []
 for (let i = 0; i < 12; i++) { await page.waitForTimeout(50); widths.push(await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect().width))); toolTrace.push(await toolsAt()) }
 const still = toolTrace.every((f) => f.every((t, i) => Math.abs(t[0] - restTools[i][0]) < 0.6 && Math.abs(t[1] - restTools[i][1]) < 0.6 && t[2] === 'none'))
 check('while the glass stretches the tools neither move nor scale', still, { restTools, moved: toolTrace.filter((f) => !f.every((t, i) => Math.abs(t[0] - restTools[i][0]) < 0.6 && t[2] === 'none')).slice(0, 2) })
-check('the stretch overshoots — a liquid edge, not a slide', Math.max(...widths) > 139, widths)
+check('the stretch overshoots — a liquid edge, not a slide', Math.max(...widths) > 135, widths)
 const hov = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar] [data-ve-glass]'); return { w: Math.round(b.getBoundingClientRect().width), handle: !!document.querySelector('[data-ve-dock-to-rail]'), divider: !!document.querySelector('[data-ve-dock-segment] span[aria-hidden]') } })
 log('widths on hover', widths.join(' '))
-check('hover: the GLASS stretches to 139 (131 + 4 px of swell each side) through intermediate widths while the tools stay', hov.handle && hov.divider && hov.w === 139 && new Set(widths).size >= 3, { hov, widths })
+check('hover: the GLASS stretches to 135 (131 + 2 px of swell each side) through intermediate widths while the tools stay', hov.handle && hov.divider && hov.w === 135 && new Set(widths).size >= 3, { hov, widths })
 await page.screenshot({ path: OUT + 'd1-hover.png' })
 await page.mouse.move(bb.x + 20, bb.y - 200); await page.waitForTimeout(400)
 check('leave: handle folds, 86 again', (await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect().width))) === 86)

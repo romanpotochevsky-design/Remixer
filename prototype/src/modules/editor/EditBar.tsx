@@ -113,10 +113,11 @@ function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: stri
  * A width animation on one small fixed-size element (the Reveal's measured exception); nothing
  * outside the pill lays out again.
  */
-/* THE SWELL — on hover the glass grows 4 px outward on every side while the tools stay put (designer
-   01.10.2026: «подкладка под кнопками становится больше, увеличиваясь во все стороны… как жидкий объект»);
-   same spring as the stretch, so the two edges breathe together. Only the glass moves. */
-const GLASS_SWELL = 4
+/* THE SWELL — on hover the glass grows 2 px outward on every side while the tools stay put (designer
+   01.10.2026: «подкладка под кнопками становится больше, увеличиваясь во все стороны… как жидкий объект»;
+   then, on the built 4 px: «на ховере должно быть 135 x 50… по 2 px»); same spring as the stretch, so the two
+   edges breathe together. Only the glass moves. Hover glass: 135 × 50, radius 16 → 18. */
+const GLASS_SWELL = 2
 /* board 31442:44737 (01.10.2026, designer: «размер самих кнопок… с 32 на 36»): frame 86 × 46 — 1 px rim inside +
    4 padding around 36 tools (r12, glyph 24 in a 6 pad) with a 4 gap */
 const BAR_PAD = 5
