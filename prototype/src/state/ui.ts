@@ -342,6 +342,15 @@ interface UIStore {
    */
   mediaOpen: 'manage' | 'pick' | null
   /**
+   * THE EDIT BAR'S HOME (designer 30.09.2026, from a Lovable recording: «при ховере… появляется
+   * кнопка со стрелкой (прибить этот бар в панель справа)… этот бар… перелетает и прикрепляется
+   * справа… по клику вернуть бар снова по центру превью»; then, with a screenshot of the rail:
+   * «вот сюда оно должно перелетать и прикрепляться справа» — the slot above the support button).
+   * `false` — the glass pill at the canvas's foot; `true` — a 48 rail button whose tools pop out
+   * on hover. Session state like `publishOpen`: where a control sits, not a fact about the site.
+   */
+  editBarDocked: boolean
+  /**
    * Whether the Publish panel's "Ready to put your site live?" nudge is still up
    * (Figma 29697:36970). It only ever shows for a site that has never gone live
    * (`world.published`), and its ✕ takes it down — this is that ✕.
@@ -460,6 +469,7 @@ interface UIStore {
   toggleAccount: (open?: boolean) => void
   openMedia: (mode: 'manage' | 'pick') => void
   closeMedia: () => void
+  setEditBarDocked: (docked: boolean) => void
   dismissPublishHint: () => void
   triggerReload: (ms?: number) => void
 }
@@ -492,6 +502,7 @@ export const useUI = create<UIStore>((set, get) => ({
   publishOpen: false,
   accountOpen: false,
   mediaOpen: null,
+  editBarDocked: false,
   publishHintOpen: true,
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
@@ -620,6 +631,7 @@ export const useUI = create<UIStore>((set, get) => ({
   toggleAccount: (open) => { const next = open ?? !get().accountOpen; set(next ? { accountOpen: true, publishOpen: false, mediaOpen: null } : { accountOpen: false }) },
   openMedia: (mode) => set({ mediaOpen: mode, publishOpen: false, accountOpen: false }),
   closeMedia: () => set({ mediaOpen: null }),
+  setEditBarDocked: (docked) => set({ editBarDocked: docked }),
   dismissPublishHint: () => set({ publishHintOpen: false }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)

@@ -1320,3 +1320,28 @@ export const editBarSegment = {
   animate: { opacity: 1, transition: { duration: 0.16, delay: 0.06 } },
   exit: { opacity: 0, transition: EXIT },
 } as const
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE EDIT BAR DOCKS (EditBar.tsx, designer 30.09.2026 from a Lovable recording:
+   «при ховере… появляется кнопка со стрелкой… этот бар перелетает и прикрепляется
+   справа… при ховере на иконку… выскакивают кнопки… по клику вернуть бар снова по
+   центру»). Lovable FADES its bar and grows a tab at the canvas edge (~100 ms each,
+   scratchpad/lov-dock); ours is ONE object in both directions — the glass flies.
+   · the flight is a fixed overlay whose box springs from the pill's rect to the
+     rail slot's (48 × 48 r16) and back: a box animation on ONE small fixed element
+     for ~.6 s, nothing outside it moves — the same measured exception the Publish
+     panel's Reveal takes (design-system.md §9 p. 9), not a precedent for layout;
+   · the pop-out grows from the rail button it belongs to (origin right-centre),
+     solid early, its buttons a beat later — the house popover at pill size.
+   ═══════════════════════════════════════════════════════════════════════════ */
+export const EDIT_DOCK_FLIGHT = { type: 'spring', duration: 0.62, bounce: 0.16 } as const
+export const editBarPop = {
+  initial: { opacity: 0, scale: 0.9, x: 10 },
+  animate: { opacity: 1, scale: 1, x: 0, transition: { ...EDIT_BAR_SPRING, opacity: { duration: 0.14, ease: [0.2, 0, 0, 1] } } },
+  exit: { opacity: 0, scale: 0.96, x: 6, transition: EXIT },
+} as const
+export const editBarPopFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.16 } },
+  exit: { opacity: 0, transition: EXIT },
+} as const

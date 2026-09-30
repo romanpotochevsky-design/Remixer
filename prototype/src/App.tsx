@@ -744,6 +744,7 @@ export default function App() {
   const accountOpen = useUI((s) => s.accountOpen)
   const toggleAccount = useUI((s) => s.toggleAccount)
   const mediaOpen = useUI((s) => s.mediaOpen)
+  const editBarDocked = useUI((s) => s.editBarDocked)
   const openMedia = useUI((s) => s.openMedia)
   const closeMedia = useUI((s) => s.closeMedia)
   /* the reload and the device switch moved INTO the page pill (PageSwitcher.tsx, board 31379:2968) — the
@@ -1449,6 +1450,12 @@ export default function App() {
           )}
         </AnimatePresence>
         <div className="flex-1" />
+        {/* THE EDIT BAR'S DOCK — the slot above the support button the designer pointed at
+            (30.09.2026: «вот сюда оно должно перелетать и прикрепляться справа»). An empty
+            48-box: EditBar.tsx portals its docked button into it, so the bar's logic has one
+            home. It exists only while the bar is docked; the spacer above absorbs it, so nothing
+            else on the rail moves when the bar lands. */}
+        {editBarDocked && <div className="mb-2 h-12 w-12" data-rail-dock aria-hidden />}
         <button
           aria-label={t({ en: 'Support chat', uk: 'Чат підтримки' })}
           className="arrive-rail-item grid h-9 w-9 place-items-center rounded-full bg-[#48ba79] text-white transition-transform duration-[var(--dur-fast)] ease-std hover:scale-105"

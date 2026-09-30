@@ -67,3 +67,18 @@ export const GlyphLibrary = ({ size = 20, className }: Props) => (
     <path d="M3.75 7.25v6.5A2.5 2.5 0 0 0 6.25 16.25h7.5M7.5 10.5l1.9-2 1.6 1.6 1.6-1.4 2.15 2.15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
+
+/** › with a wall — "pin this bar to the rail on the right" (designer 30.09.2026; Lovable shows a
+ *  bare › on hover — scratchpad/lov-dock). Same box and stroke as Select. */
+export const GlyphDockRight = ({ size = 24, className }: Props) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+    <path d="M9 8l4 4-4 4M17 7v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** ‹ with a wall — "send the bar back to the middle of the preview". */
+export const GlyphUndock = ({ size = 24, className }: Props) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+    <path d="M15 8l-4 4 4 4M7 7v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
