@@ -6288,6 +6288,116 @@ await shot('30-plan-review')
   await shot('O8-select-sent')
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════
+ * P · WEBSITE MEDIA — the site's library over the canvas at the rail (boards 23383:32801,
+ *     23618:19852, the Image management bar 23623:17060; the designer's recording of 30.09.2026)
+ *
+ * Designer, 30.09.2026: «вот как работает панель для Website media, ее нужно добавить»; «дизайн и
+ * анимация 1 в 1 как на photos.google.com». Spec: docs/features/visual-editor/media-library-spec.md;
+ * code: modules/media/MediaPanel.tsx; the library is `world.media` (per site, SITE_AXES).
+ *
+ * WHAT THIS BLOCK GUARDS — the model and the geometry, no frame counts (block O's rule):
+ *  · WHERE IT STANDS: 480 wide over the canvas at the right rail, 8 from rail, top bar and bottom,
+ *    the board's Gray/850 r16; the rail's fifth button pressed and lit while it is up.
+ *  · THE GOOGLE PHOTOS IDIOM: hover shows the check-circle; selecting turns the tile Gray/750 and
+ *    shrinks the photo (transform only), the bar rises with «N selected»; while selecting a click on a
+ *    photo toggles, shift-click ranges, Esc clears; delete goes through the design system's confirm
+ *    and the WORLD loses the ref (the bytes never lived there).
+ *  · TWO MODES, ONE PANEL: «From Library» in the Image window opens the same panel in pick mode —
+ *    «Choose a photo», the current picture pressed, no check-circles — a pick stages the photo
+ *    («1 change») without closing the panel or the Image window, and the Image window keeps clear
+ *    of the panel; closing the Image window takes the pick panel with it.
+ * ═══════════════════════════════════════════════════════════════════════════════════ */
+{
+  const KEY = 'remixer-prototype/world/v6'
+  const LIVE = 'p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'
+  const media = () => p.evaluate((k) => (JSON.parse(localStorage.getItem(k) || '{}').media || []).length, KEY)
+  const panel = () => p.$('[data-media-panel]').then(Boolean)
+  const countText = () => p.$eval('[data-media-count]', (e) => e.textContent).catch(() => null)
+  await p.goto(at(LIVE), { waitUntil: 'networkidle' })
+  await p.evaluate((k) => localStorage.removeItem(k), KEY)
+  await p.waitForTimeout(600); await p.click('.home-card-face')
+  await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }); await p.waitForTimeout(600)
+
+  /* ── 1 · the rail button and the panel ─────────────────────────────────────────── */
+  check('the rail has a fifth button, Website media, and it opens the panel', !!(await p.$('[data-rail-media]')) && !(await panel()))
+  await p.click('[data-rail-media]'); await p.waitForTimeout(900)
+  const geo = await p.evaluate(() => {
+    const el = document.querySelector('[data-media-panel]'); if (!el) return null
+    const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); const rail = document.querySelector('[data-rail-media]')
+    return { w: r.width, right: innerWidth - r.right, top: r.top, bottom: innerHeight - r.bottom, bg: cs.backgroundColor, radius: cs.borderRadius, mode: el.dataset.mediaPanel,
+      title: document.querySelector('[data-media-title]')?.textContent, tab: document.querySelector('[data-media-tab="image"]')?.getAttribute('aria-selected'),
+      tiles: document.querySelectorAll('[data-media-tile]').length, railOn: rail?.getAttribute('aria-pressed'), railBg: getComputedStyle(rail).backgroundColor }
+  })
+  check('the panel stands 480 wide over the canvas — 8 from the rail, 8 under the top bar, 8 from the bottom — Gray/850 r16, «Website media», Image tab, the site’s ten pictures',
+    geo && geo.w === 480 && geo.right === 64 && geo.top === 60 && geo.bottom === 8 && geo.bg === 'rgb(31, 31, 34)' && geo.radius === '16px' && geo.mode === 'manage' && geo.title === 'Website media' && geo.tab === 'true' && geo.tiles === 10, JSON.stringify(geo))
+  check('the rail button is pressed and wears its tile while the panel is up', geo && geo.railOn === 'true' && geo.railBg !== 'rgba(0, 0, 0, 0)', JSON.stringify({ on: geo?.railOn, bg: geo?.railBg }))
+  await shot('P1-media-open')
+
+  /* ── 2 · the Google Photos idiom ───────────────────────────────────────────────── */
+  const fb = await p.$('[data-media-tile]:nth-child(1)').then((e) => e.boundingBox())
+  await p.mouse.move(fb.x + 60, fb.y + 60); await p.waitForTimeout(250)
+  check('hover shows the check-circle', (await p.$eval('[data-media-tile]:nth-child(1) [data-media-check]', (e) => getComputedStyle(e).opacity)) === '1')
+  await p.click('[data-media-tile]:nth-child(1) [data-media-check]'); await p.waitForTimeout(500)
+  const sel = await p.evaluate(() => {
+    const t = document.querySelector('[data-media-tile]:nth-child(1)'); const img = t.querySelector('img')
+    return { selected: t.dataset.selected, bg: getComputedStyle(t).backgroundColor, tf: getComputedStyle(img).transform, r: getComputedStyle(img).borderRadius, ink: getComputedStyle(t.querySelector('[data-media-check]')).color, bar: !!document.querySelector('[data-media-bar]'), count: document.querySelector('[data-media-count]')?.textContent }
+  })
+  check('a click on the circle selects: Gray/750 tile, the photo shrunk to .81 with r10 (transform, not padding), blue check, the bar up with «1 selected»',
+    sel.selected === 'true' && sel.bg === 'rgb(51, 51, 58)' && sel.tf.includes('0.81') && sel.r === '10px' && sel.ink === 'rgb(21, 135, 255)' && sel.bar && sel.count === '1 selected', JSON.stringify(sel))
+  await shot('P2-media-selected')
+  await p.click('[data-media-tile]:nth-child(3) [data-media-open]'); await p.waitForTimeout(300)
+  const two = await countText()
+  await p.keyboard.down('Shift'); await p.click('[data-media-tile]:nth-child(6) [data-media-open]'); await p.keyboard.up('Shift'); await p.waitForTimeout(300)
+  const five = await countText()
+  check('while selecting a click on a photo toggles it, and shift-click takes the range from the last click', two === '2 selected' && five === '5 selected', JSON.stringify({ two, five }))
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+  check('Esc clears the selection and keeps the panel', !(await p.$('[data-media-bar]')) && (await panel()))
+
+  /* ── 3 · delete through the confirm; the world loses the ref ───────────────────── */
+  await p.click('[data-media-tile]:nth-child(4) [data-media-check]'); await p.waitForTimeout(300)
+  await p.click('[data-media-delete]'); await p.waitForTimeout(400)
+  const dlg = await p.evaluate(() => { const d = document.querySelector('[role="alertdialog"]'); return { up: !!d, text: d?.innerText || '' } })
+  check('Delete asks first, with the recording’s words — «Delete this image?» / «This action cannot be undone.»', dlg.up && /Delete this image\?/.test(dlg.text) && /cannot be undone/.test(dlg.text), JSON.stringify(dlg))
+  await p.click('[role="alertdialog"] button:has-text("Delete")'); await p.waitForTimeout(700)
+  const left = { tiles: await p.$$eval('[data-media-tile]', (els) => els.length), bar: !!(await p.$('[data-media-bar]')), media: await media() }
+  check('after the confirm one tile is gone from the grid AND from world.media, the bar folded', left.tiles === 9 && !left.bar && left.media === 9, JSON.stringify(left))
+
+  /* ── 4 · tabs, lightbox, the Esc ladder ────────────────────────────────────────── */
+  await p.click('[data-media-tab="audio"]'); await p.waitForTimeout(300)
+  check('an empty tab says so in the recording’s words', (await p.$eval('[data-media-empty]', (e) => e.textContent).catch(() => null)) === 'No audio files found')
+  await p.click('[data-media-tab="image"]'); await p.waitForTimeout(300)
+  await p.click('[data-media-tile]:nth-child(1) [data-media-open]'); await p.waitForTimeout(600)
+  const lb = await p.evaluate(() => { const l = document.querySelector('[data-media-lightbox]'); const img = l?.querySelector('img'); return { up: !!l, bg: l && getComputedStyle(l).backgroundColor, h: img?.getBoundingClientRect().height ?? 0 } })
+  check('a click on a photo (nothing selected) opens the lightbox over an 85 % scrim, the picture within 100vh − 160', lb.up && lb.bg === 'rgba(0, 0, 0, 0.85)' && lb.h > 0 && lb.h <= 740, JSON.stringify(lb))
+  await p.keyboard.press('ArrowRight'); await p.waitForTimeout(200)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(500)
+  check('Esc closes the lightbox, the next Esc closes the panel, and the rail button lets go', !(await p.$('[data-media-lightbox]')) && !(await panel()) && (await p.$eval('[data-rail-media]', (e) => e.getAttribute('aria-pressed'))) === 'false')
+
+  /* ── 5 · pick mode from the Image window ───────────────────────────────────────── */
+  await p.click('[data-ve-tool="edit"]'); await p.waitForTimeout(600)
+  const pb = await p.$('[data-edit="meal.power-bowl.photo"]').then((e) => e.boundingBox())
+  await p.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2); await p.waitForTimeout(200)
+  await p.click('[data-edit="meal.power-bowl.photo"] .ve-replace'); await p.waitForTimeout(500)
+  await p.click('[data-ve-row="library"]'); await p.waitForTimeout(800)
+  const pk = await p.evaluate(() => {
+    const el = document.querySelector('[data-media-panel]'); const tiles = [...document.querySelectorAll('[data-ve-library] button[data-media-open]')]
+    const ip = document.querySelector('[data-ve-image-panel]')?.getBoundingClientRect(); const mp = el?.getBoundingClientRect()
+    return { mode: el?.dataset.mediaPanel, title: document.querySelector('[data-media-title]')?.textContent, n: tiles.length, pressed: tiles.filter((t) => t.getAttribute('aria-pressed') === 'true').length, checks: document.querySelectorAll('[data-media-check]').length, row: document.querySelector('[data-ve-row="library"]')?.getAttribute('aria-pressed'), clear: !!ip && !!mp && ip.right <= mp.left }
+  })
+  check('«From Library» opens the same panel in pick mode — «Choose a photo», the current picture pressed, no check-circles — and the Image window stands clear of it',
+    pk.mode === 'pick' && pk.title === 'Choose a photo' && pk.n === 9 && pk.pressed === 1 && pk.checks === 0 && pk.row === 'true' && pk.clear, JSON.stringify(pk))
+  const before = await p.$eval('[data-edit="meal.power-bowl.photo"] img', (e) => e.getAttribute('src').slice(0, 64))
+  await p.click('[data-ve-library] [data-media-tile]:nth-child(3) [data-media-open]'); await p.waitForTimeout(400)
+  const picked = { src: await p.$eval('[data-edit="meal.power-bowl.photo"] img', (e) => e.getAttribute('src').slice(0, 64)), count: await p.$eval('[data-ve-count]', (e) => e.textContent).catch(() => null), panel: await panel(), image: !!(await p.$('[data-ve-image-panel]')), media: await media() }
+  check('a pick stages the photo («1 change»), the panel and the Image window stay, the library itself is untouched', picked.src !== before && picked.count === '1 change' && picked.panel && picked.image && picked.media === 9, JSON.stringify(picked))
+  await shot('P3-media-pick')
+  await p.click('[data-ve-panel-close]'); await p.waitForTimeout(500)
+  check('closing the Image window takes the pick panel with it', !(await panel()))
+  await p.click('[data-ve-clear]').catch(() => {}); await p.waitForTimeout(300)
+}
+
 check('no page errors anywhere in the run', errors.length === 0, errors.join(' | ').slice(0, 300))
 await b.close()
 
