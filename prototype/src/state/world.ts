@@ -1039,6 +1039,22 @@ function initialWorld(): World {
 
   if (Object.keys(fromUrl).length) {
     /*
+     * ⚠️ A RELOAD OF OUR OWN PAGE IS NOT A SHARED LINK (30.09.2026, the Visual Editor's review).
+     * `syncUrl` rewrites the address bar with the world's short keys on every write, so after the
+     * first click EVERY reload arrives with a query — and the URL-wins rule below would rebuild
+     * the world from those few scalars alone, dropping everything that never travels in a link:
+     * the customer's site edits, the plan's edits, the stash of the other sites, the cart, the
+     * transcript. Measured: a Save in the editor put `u=1` in the bar, F5 kept the counter and
+     * lost the edit it counted. When the query is EXACTLY what we would write for the stored
+     * snapshot, the bar is ours and the snapshot is the truth — restore it whole. A link somebody
+     * else sent differs from our snapshot in at least one key (or we have no snapshot) and takes
+     * the shared-link path as before.
+     */
+    if (Object.keys(saved).length) {
+      const snapshot = normalize({ ...DEFAULT_WORLD, ...saved })
+      if (worldToParams(snapshot) === new URLSearchParams(window.location.search).toString()) return snapshot
+    }
+    /*
      * The URL wins — it is the shareable state — but the transcript never
      * travels in it. A reload mid-send therefore used to restore chat:'working'
      * with an empty transcript: a working flag with no answer ever coming, the

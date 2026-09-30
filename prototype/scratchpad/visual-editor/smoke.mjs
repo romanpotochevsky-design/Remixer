@@ -15,14 +15,17 @@ const KEY = 'remixer-prototype/world/v6'
 
 const browser = await chromium.launch({ executablePath: process.env.CHROME, args: ['--no-sandbox'] })
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } })
+page.on('console', (m) => { if (m.text().startsWith('VE-DEBUG')) console.log(m.text()) })
 const log = (...a) => console.log(...a)
 const world = () => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || '{}'), KEY)
 
-await page.goto(BASE + '?p=built')
+// the harness's idiom: a world in the URL, then the first project card in the Home dock
+await page.goto(BASE + '?p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640', { waitUntil: 'networkidle' })
+await page.waitForTimeout(700)
+await page.click('.home-card-face')
+await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
 await page.waitForSelector('[data-canvas-toolbar]', { timeout: 15000 })
-// the boot cover finishes before anything is clickable
-await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 15000 }).catch(() => {})
-await page.waitForTimeout(400)
+await page.waitForTimeout(500)
 
 const bar = await page.$('[data-ve-bar]')
 log('edit bar present:', !!bar)
@@ -58,21 +61,9 @@ await page.screenshot({ path: OUT + '05-dirty.png' })
 await page.click('[data-ve-undo]')
 await page.waitForTimeout(200)
 log('after undo:', await page.$eval('[data-edit="home.hero.title"]', (e) => e.textContent), 'batch present:', !!(await page.$('[data-ve-batch]')))
-await page.click('[data-ve-tool="edit"]').catch(() => {})
-await page.waitForTimeout(100)
-// re-enter and redo path: type again, undo, redo
-if (!(await page.$('[data-ve-batch]'))) {
-  log('tool still on after clean toggle?', await page.$eval('[data-ve-tool="edit"]', (e) => e.getAttribute('aria-pressed')))
-  if ((await page.$eval('[data-ve-tool="edit"]', (e) => e.getAttribute('aria-pressed'))) !== 'true') await page.click('[data-ve-tool="edit"]')
-  await page.waitForTimeout(300)
-  const t2 = await page.$('[data-edit="home.hero.title"]')
-  await t2.click(); await page.keyboard.press('End'); await page.keyboard.type(' — fresh daily'); await page.keyboard.press('Escape')
-  await page.waitForTimeout(300)
-  await page.click('[data-ve-undo]'); await page.waitForTimeout(150)
-  await page.click('[data-ve-redo]').catch(() => log('redo not clickable'))
-  await page.waitForTimeout(150)
-  log('after undo+redo:', await page.$eval('[data-edit="home.hero.title"]', (e) => e.textContent))
-}
+await page.click('[data-ve-redo]')
+await page.waitForTimeout(200)
+log('after redo:', await page.$eval('[data-edit="home.hero.title"]', (e) => e.textContent), 'count:', await page.$eval('[data-ve-count]', (e) => e.textContent))
 
 // a photo: open the Image panel, switch to Fit, set opacity
 const photo = await page.$('[data-edit="meal.power-bowl.photo"]')
@@ -84,15 +75,19 @@ await page.waitForSelector('[data-ve-image-panel]', { timeout: 3000 })
 await page.waitForTimeout(500)
 log('panel box', await (await page.$('[data-ve-image-panel]')).boundingBox())
 await page.screenshot({ path: OUT + '07-panel.png' })
-await page.click('[data-ve-fit] button:nth-child(2)')
+await page.click('[data-ve-fit] button:has-text("Fit")')
 await page.waitForTimeout(200)
 log('img object-fit:', await page.$eval('[data-edit="meal.power-bowl.photo"] img', (e) => getComputedStyle(e).objectFit))
 await page.click('[data-ve-row="library"]'); await page.waitForTimeout(300)
 await page.screenshot({ path: OUT + '08-library.png' })
 await page.click('[data-ve-library] button:nth-child(3)'); await page.waitForTimeout(200)
 log('count now:', await page.$eval('[data-ve-count]', (e) => e.textContent))
-await page.keyboard.press('Escape'); await page.waitForTimeout(200)
-log('panel closed by Esc:', !(await page.$('[data-ve-image-panel]')))
+log('active before Esc:', await page.evaluate(() => { const e = document.activeElement; return e ? e.tagName + ' ' + (e.className || '').toString().slice(0, 50) : null }))
+await page.keyboard.press('Escape'); await page.waitForTimeout(600)
+log('panel closed by Esc @600:', !(await page.$('[data-ve-image-panel]')), 'host data-panel-open:', await page.$eval('[data-edit="meal.power-bowl.photo"]', (e) => e.hasAttribute('data-panel-open')))
+await page.waitForTimeout(1500)
+log('panel closed by Esc @2100:', !(await page.$('[data-ve-image-panel]')), 'opacity:', await page.$eval('[data-ve-image-panel]', (e) => getComputedStyle(e).opacity).catch(() => 'gone'))
+if (await page.$('[data-ve-image-panel]')) { await page.click('[data-ve-panel-close]').catch(() => log('close btn not clickable')); await page.waitForTimeout(600); log('after ✕:', !(await page.$('[data-ve-image-panel]'))) }
 
 const mid = await world()
 log('credits mid (must equal before):', mid.credits, 'unpublished mid (must equal before):', mid.unpublished)
@@ -104,7 +99,9 @@ log('batch gone after save:', !(await page.$('[data-ve-batch]')), 'tool still on
 await page.screenshot({ path: OUT + '09-saved.png' })
 
 // reload keeps the saved edits (URL has ?p=built → world from URL + storage rule)
-await page.reload()
+await page.reload({ waitUntil: 'networkidle' })
+await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }).catch(() => {})
+if (!(await page.$('[data-canvas-toolbar]'))) { await page.click('.home-card-face').catch(() => {}); await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }).catch(() => {}) }
 await page.waitForSelector('[data-canvas-toolbar]', { timeout: 15000 })
 await page.waitForTimeout(800)
 log('after reload title:', await page.$eval('[data-site-page="/"] h1', (e) => e.textContent))

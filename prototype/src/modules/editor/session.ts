@@ -94,8 +94,11 @@ function withValue(draft: SiteEdits, field: Field, key: string, v: Value): SiteE
   return next
 }
 
-/** Is there anything Save would apply — the bar's "dirty" and the count it prints. */
+/** Is there unsaved work — what keeps the mode from being left (Save or Clear first). */
 export const isDirty = (s: Pick<EditorStore, 'past'>) => s.past.length > 0
+/** Is there a history at all — what keeps the bar's batch segment (Undo · Redo · Clear · Save) up:
+ *  after undoing the only change the work is clean, but Redo must still be there to take it back. */
+export const hasHistory = (s: Pick<EditorStore, 'past' | 'future'>) => s.past.length > 0 || s.future.length > 0
 export const draftCount = (s: Pick<EditorStore, 'draft'>) => countEdits(s.draft)
 
 export const useEditor = create<EditorStore>((set, get) => ({

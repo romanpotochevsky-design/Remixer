@@ -52,3 +52,18 @@ export const GlyphReplacePhoto = ({ size = 20, className }: Props) => (
     <circle cx="15.5" cy="9.5" r="1.25" fill="currentColor" />
   </svg>
 )
+
+/** ⤒ over a tray — the sketch's «Upload S» (31384:22013), redrawn in its 20 box, stroke 1.5. */
+export const GlyphUpload = ({ size = 20, className }: Props) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <path d="M10 12.5V3.75M6.75 7 10 3.75 13.25 7M3.75 12.75v1.75a1.75 1.75 0 0 0 1.75 1.75h9a1.75 1.75 0 0 0 1.75-1.75v-1.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** Two pictures, one behind the other — the sketch's «Photo Library S» (31384:22014). */
+export const GlyphLibrary = ({ size = 20, className }: Props) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+    <rect x="5.75" y="3.75" width="10.5" height="8.5" rx="1.75" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M3.75 7.25v6.5A2.5 2.5 0 0 0 6.25 16.25h7.5M7.5 10.5l1.9-2 1.6 1.6 1.6-1.4 2.15 2.15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)

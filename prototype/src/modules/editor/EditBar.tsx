@@ -33,7 +33,7 @@ import { useT } from '@/i18n'
 import { useWorld, currentSite } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { EDIT_BAR_SPRING, editBarIn, editBarInFade, editBarSegment, editToolOn } from '@/ui/motion'
-import { draftCount, isDirty, useEditor, type Tool } from './session'
+import { draftCount, hasHistory, isDirty, useEditor, type Tool } from './session'
 import { GlyphEditText, GlyphRedo, GlyphSelect, GlyphUndo } from './icons'
 
 const keepOnMainThread = () => {}
@@ -83,6 +83,7 @@ export function EditBar() {
   const surface = useUI((s) => s.surface)
   const tool = useEditor((s) => s.tool)
   const dirty = useEditor(isDirty)
+  const history = useEditor(hasHistory)
   const count = useEditor(draftCount)
   const canUndo = useEditor((s) => s.past.length > 0)
   const canRedo = useEditor((s) => s.future.length > 0)
@@ -146,11 +147,11 @@ export function EditBar() {
               <GlyphEditText size={24} />
             </ToolButton>
             {/* once a batch is pending only its own tool stays: Lovable hides the others too */}
-            <ToolButton tool="select" label={t({ en: 'Select an element to ask Remixer about', uk: 'Виділити елемент, щоб спитати Remixer про нього' })} hidden={dirty}>
+            <ToolButton tool="select" label={t({ en: 'Select an element to ask Remixer about', uk: 'Виділити елемент, щоб спитати Remixer про нього' })} hidden={history}>
               <GlyphSelect size={24} />
             </ToolButton>
             <AnimatePresence initial={false}>
-              {dirty && (
+              {history && (
                 <motion.div
                   key="batch"
                   className="flex items-center gap-1"
@@ -163,7 +164,7 @@ export function EditBar() {
                 >
                   <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
                   <span className="whitespace-nowrap pl-2 pr-1 text-[13px] font-medium tabular-nums text-white" data-ve-count>
-                    {count === 1 ? t({ en: '1 change', uk: '1 зміна' }) : t({ en: `${count} changes`, uk: `${count} змін` })}
+                    {count === 0 ? t({ en: 'No changes', uk: 'Без змін' }) : count === 1 ? t({ en: '1 change', uk: '1 зміна' }) : t({ en: `${count} changes`, uk: `${count} змін` })}
                   </span>
                   <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Undo', uk: 'Скасувати' })} disabled={!canUndo} onClick={undo} data-ve-undo>
                     <GlyphUndo size={22} />
@@ -182,8 +183,9 @@ export function EditBar() {
                   </button>
                   <button
                     type="button"
-                    className="press-bloom h-8 whitespace-nowrap rounded-[8px] bg-[var(--action)] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)]"
+                    className="press-bloom h-8 whitespace-nowrap rounded-[8px] bg-[var(--action)] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] disabled:cursor-default disabled:opacity-40"
                     onClick={save}
+                    disabled={!dirty}
                     data-ve-save
                   >
                     {t({ en: 'Save', uk: 'Зберегти' })}
