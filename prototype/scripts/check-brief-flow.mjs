@@ -6465,7 +6465,7 @@ await shot('30-plan-review')
   })
   check('«›» flies ONE glass box from the STRETCHED glass (131, swollen to 139) to the slot — it starts at that size and lands 48 tall, through at least 8 sampled frames',
     fr.length >= 8 && Math.abs(fr[0].x - from.x) < 160 && fr[0].w > 90 && fr[0].w <= 160 && fr.at(-1).w <= 52 && fr.at(-1).h >= 44, JSON.stringify({ first: fr[0], last: fr.at(-1), from }))
-  check('while it flies neither home is drawn — the pill is hidden and the rail button is hidden', fr.length > 0 && fr.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden')), JSON.stringify(fr.slice(0, 3)))
+  check('while it flies neither home is drawn — the pill is hidden and the rail button is hidden until the clone has LANDED (≤ 50 wide); then the tile is revealed under the still-present clone, which dissolves over it (the glass never vanishes in one frame)', fr.length > 0 && fr.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden' || f.w <= 50)) && fr.some((f) => f.dockVis === 'visible' && f.w <= 50), JSON.stringify(fr.slice(0, 3)))
   check('docked: a 48 × 48 r16 rail button centred on the rail, 8 above the support button; the floating pill is gone',
     docked.w === 48 && docked.h === 48 && docked.radius === '16px' && docked.gap === 8 && docked.off === 0 && !docked.bar && !docked.flight && docked.slot, JSON.stringify(docked))
   await shot('Q2-docked')

@@ -1338,6 +1338,10 @@ export const editBarSegment = {
  *  как капля воды; сейчас… немного медленная и обычная»): .62 / .16 → .42 / .26 — the glass leaves fast and
  *  lands with one visible wobble; the drop's stretch (EditBar.tsx `Flight`) rose with it. */
 export const EDIT_DOCK_FLIGHT = { type: 'spring', duration: 0.42, bounce: 0.26 } as const
+/* the docked landing: the rail tile has no glass, so the flying glass cannot just vanish under the glyph —
+   it dissolves over the tile after touching down (designer 01.10.2026, by recording: «стеклянный фон за кнопкой
+   исчезает просто резко… в один кадр»). The home is shown UNDER the clone first; glyph over identical glyph fades invisibly */
+export const EDIT_DOCK_DISSOLVE = { duration: 0.26, ease: [0.4, 0, 0.2, 1] } as const
 /** The glass STRETCHES over the tools (EditBar.tsx `GlassBar`): a width spring with a visible
  *  overshoot — the edge reaches past its mark and settles back, the liquid the designer asked
  *  for. Never `layout`: that scales the buttons for the length of the spring (30.09.2026). */

@@ -45,12 +45,12 @@ import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, use
 import { useT } from '@/i18n'
 import { useWorld, currentSite } from '@/state/world'
 import { useUI } from '@/state/ui'
-import { EDIT_BAR_SPRING, EDIT_BAR_STRETCH, EDIT_DOCK_FLIGHT, editBarIn, editBarInFade, editBarPop, editBarPopFade, editBarSegment, editBarTail, editToolOn } from '@/ui/motion'
+import { EDIT_BAR_SPRING, EDIT_BAR_STRETCH, EDIT_DOCK_DISSOLVE, EDIT_DOCK_FLIGHT, editBarIn, editBarInFade, editBarPop, editBarPopFade, editBarSegment, editBarTail, editToolOn } from '@/ui/motion'
 import { draftCount, hasHistory, isDirty, useEditor, type Tool } from './session'
 import { GlyphDockRight, GlyphEditText, GlyphRedo, GlyphSelect, GlyphUndo, GlyphUndock } from './icons'
 
 type Rect = { x: number; y: number; width: number; height: number }
-type Flight = { dir: 'dock' | 'undock'; from: Rect; to?: Rect }
+type Flight = { dir: 'dock' | 'undock'; from: Rect; to?: Rect; landed?: boolean }
 const rectOf = (el: Element): Rect => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height } }
 /** the pop-out closes this long after the pointer leaves the rail button and its pop-out — the 8 px gap between them is crossed, not left */
 const POP_LINGER_MS = 160
@@ -230,8 +230,11 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
 const FLIGHT_STRETCH = 0.3
 const FLIGHT_THIN = 0.12
 const FLIGHT_BELL_SKEW = 0.72
-function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () => void }) {
+function Flight({ flight, onLand, onDone }: { flight: Flight & { to: Rect }; onLand: () => void; onDone: () => void }) {
   const p = useMotionValue(0)
+  /* THE DISSOLVE: into the rail the glass lands on a tile that has none — so the clone stays one beat after
+     touchdown, the home is revealed under it, and the clone fades (glyph over identical glyph — nothing moves) */
+  const fade = useMotionValue(1)
   const lerp = (a: number, b: number) => (v: number) => a + (b - a) * v
   const { from, to } = flight
   /* THE DROP: mid-flight the glass stretches along its path and thins across it (up to +30 % / −12 %,
@@ -253,8 +256,16 @@ function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () 
   const tLeft = useTransform(width, (w) => Math.max(BAR_PAD, Math.min(tileSeat, tileSeat - (w - 48) / 38)))
   const tTop = useTransform(height, (h) => (h - BAR_TOOL) / 2)
   useEffect(() => {
-    const ctrl = animate(p, 1, { ...EDIT_DOCK_FLIGHT, onComplete: onDone })
-    return () => ctrl.stop()
+    let fading: ReturnType<typeof animate> | null = null
+    const ctrl = animate(p, 1, {
+      ...EDIT_DOCK_FLIGHT,
+      onComplete: () => {
+        if (flight.dir !== 'dock') { onDone(); return }
+        onLand()
+        fading = animate(fade, 0, { ...EDIT_DOCK_DISSOLVE, onComplete: onDone })
+      },
+    })
+    return () => { ctrl.stop(); fading?.stop() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const btn = 'absolute grid h-9 w-9 place-items-center rounded-[12px] text-white'
@@ -262,7 +273,7 @@ function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () 
     <motion.div
       data-ve-flight={flight.dir}
       className="liquid-glass liquid-glass--editbar pointer-events-none fixed z-50 overflow-hidden rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
-      style={{ left, top, width, height }}
+      style={{ left, top, width, height, opacity: fade }}
       aria-hidden
     >
       <motion.span className={btn} style={{ left: tLeft, top: tTop }}><GlyphEditText size={24} /></motion.span>
@@ -485,7 +496,7 @@ export function EditBar() {
         <div
           className="relative h-12 w-12"
           data-ve-dock-host
-          style={flight?.dir === 'dock' ? hidden : undefined}
+          style={flight?.dir === 'dock' && !flight.landed ? hidden : undefined}
           onPointerEnter={popIn}
           onPointerLeave={popOut}
           onFocus={popIn}
@@ -535,7 +546,7 @@ export function EditBar() {
       )}
 
       {/* THE FLIGHT — the glass itself, between the two homes, above both the canvas and the rail */}
-      {flight?.to && createPortal(<Flight flight={flight as Flight & { to: Rect }} onDone={() => setFlight(null)} />, document.body)}
+      {flight?.to && createPortal(<Flight flight={flight as Flight & { to: Rect }} onLand={() => setFlight((f) => (f ? { ...f, landed: true } : f))} onDone={() => setFlight(null)} />, document.body)}
     </>
   )
 }

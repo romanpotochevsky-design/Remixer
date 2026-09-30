@@ -61,7 +61,7 @@ const docked = await page.evaluate(() => {
 })
 log(docked)
 check('the flight starts at the pill and ends at the slot (box springs)', frames.length >= 8 && Math.abs(frames[0].x - from.x) < 160 && frames[0].w > 90 && frames.at(-1).w <= 52 && frames.at(-1).h >= 44, { first: frames[0], last: frames.at(-1), from })
-check('during the flight neither home is drawn', frames.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden')), frames.slice(0, 4))
+check('during the flight neither home is drawn; the rail tile is revealed only once the clone has landed (≤ 50 wide), and the landed clone then dissolves over it', frames.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden' || f.w <= 50)) && frames.some((f) => f.dockVis === 'visible' && f.w <= 50), frames.slice(0, 4))
 check('docked: 48 × 48 r16 centred on the rail, 8 above the support button, floating bar gone', docked.w === 48 && docked.h === 48 && docked.radius === '16px' && docked.gapToSupport === 8 && docked.centreOff === 0 && !docked.bar && !docked.flight, docked)
 await page.screenshot({ path: OUT + 'd2-docked.png' })
 
