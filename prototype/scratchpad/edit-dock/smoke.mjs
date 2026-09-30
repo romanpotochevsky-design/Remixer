@@ -60,7 +60,7 @@ const docked = await page.evaluate(() => {
   return { w: r.width, h: r.height, radius: getComputedStyle(d).borderRadius, gapToSupport: Math.round(q.top - r.bottom), centreOff: Math.round((r.x + r.width / 2) - (nav.x + nav.width / 2)), bar: !!document.querySelector('[data-ve-bar]'), flight: !!document.querySelector('[data-ve-flight]')}
 })
 log(docked)
-check('the flight starts at the pill and ends at the slot (box springs)', frames.length >= 8 && Math.abs(frames[0].x - from.x) < 120 && frames[0].w > 90 && frames.at(-1).w <= 52 && frames.at(-1).h >= 44, { first: frames[0], last: frames.at(-1), from })
+check('the flight starts at the pill and ends at the slot (box springs)', frames.length >= 8 && Math.abs(frames[0].x - from.x) < 160 && frames[0].w > 90 && frames.at(-1).w <= 52 && frames.at(-1).h >= 44, { first: frames[0], last: frames.at(-1), from })
 check('during the flight neither home is drawn', frames.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden')), frames.slice(0, 4))
 check('docked: 48 × 48 r16 centred on the rail, 8 above the support button, floating bar gone', docked.w === 48 && docked.h === 48 && docked.radius === '16px' && docked.gapToSupport === 8 && docked.centreOff === 0 && !docked.bar && !docked.flight, docked)
 await page.screenshot({ path: OUT + 'd2-docked.png' })
@@ -93,7 +93,7 @@ log('return frames', bf.length, JSON.stringify(bf.slice(0, 2)), '…', JSON.stri
 await page.waitForTimeout(600)
 const home = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar]'); const m = document.querySelector('main').getBoundingClientRect(); if (!b) return null; const r = b.getBoundingClientRect(); return { w: r.width, centreOff: Math.round((r.x + r.width / 2) - (m.x + m.width / 2)), lift: Math.round(m.bottom - r.bottom), vis: getComputedStyle(b).visibility, opacity: getComputedStyle(b).opacity, slot: !!document.querySelector('[data-rail-dock]'), dock: !!document.querySelector('[data-ve-dock]'), flight: !!document.querySelector('[data-ve-flight]') } })
 log(home)
-check('the return flight starts at the slot and lands on the pill (hidden until it lands)', bf.length >= 8 && bf[0].w <= 62 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), { first: bf[0], last: bf.at(-1) })
+check('the return flight starts at the slot and lands on the pill (hidden until it lands)', bf.length >= 8 && bf[0].w <= 72 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), { first: bf[0], last: bf.at(-1) })
 check('back home: 76 wide, centred, 29 up, visible; slot and rail button gone', home && home.w === 76 && home.centreOff === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, home)
 await page.screenshot({ path: OUT + 'd4-home.png' })
 

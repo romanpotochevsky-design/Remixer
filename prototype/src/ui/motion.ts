@@ -1334,7 +1334,10 @@ export const editBarSegment = {
    · the pop-out grows from the rail button it belongs to (origin right-centre),
      solid early, its buttons a beat later — the house popover at pill size.
    ═══════════════════════════════════════════════════════════════════════════ */
-export const EDIT_DOCK_FLIGHT = { type: 'spring', duration: 0.62, bounce: 0.16 } as const
+/** Snappier since the designer's fifth recording («саму анимацию перелёта я бы сделал резче и быстрее…
+ *  как капля воды; сейчас… немного медленная и обычная»): .62 / .16 → .42 / .26 — the glass leaves fast and
+ *  lands with one visible wobble; the drop's stretch (EditBar.tsx `Flight`) rose with it. */
+export const EDIT_DOCK_FLIGHT = { type: 'spring', duration: 0.42, bounce: 0.26 } as const
 /** The glass STRETCHES over the tools (EditBar.tsx `GlassBar`): a width spring with a visible
  *  overshoot — the edge reaches past its mark and settles back, the liquid the designer asked
  *  for. Never `layout`: that scales the buttons for the length of the spring (30.09.2026). */

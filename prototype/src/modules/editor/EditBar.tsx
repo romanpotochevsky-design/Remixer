@@ -202,17 +202,20 @@ function GlassBar({ side, reveal, tail, pillRef, pillProps, children }: {
  * seat in the pill (left 4) and its seat in the 48 rail tile (left 8). At either end the clone's
  * pixels equal the home's, so the hand-over is invisible whenever it happens.
  */
-const FLIGHT_STRETCH = 0.12
-const FLIGHT_THIN = 0.05
+/* the drop: +30 % along the path, −12 % across it, peaking EARLY (p ≈ .4 — a drop stretches as it leaves,
+   not as it lands) — raised from +12 / −5 on the designer's fifth recording («резче и быстрее… как капля воды») */
+const FLIGHT_STRETCH = 0.3
+const FLIGHT_THIN = 0.12
+const FLIGHT_BELL_SKEW = 0.72
 function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () => void }) {
   const p = useMotionValue(0)
   const lerp = (a: number, b: number) => (v: number) => a + (b - a) * v
   const { from, to } = flight
-  /* THE DROP: mid-flight the glass stretches along its path and thins across it (up to +12 % / −5 %,
-     a sine bell on the progress — zero at both ends, so the box is exactly the home's at either
-     landing), the way liquid elongates while it moves and gathers itself when it stops. The glyphs
+  /* THE DROP: mid-flight the glass stretches along its path and thins across it (up to +30 % / −12 %,
+     a sine bell skewed early on the progress — zero at both ends, so the box is exactly the home's at
+     either landing), the way liquid elongates while it moves and gathers itself when it stops. The glyphs
      are placed from the box's edge and do not scale — only the glass stretches. */
-  const bell = (v: number) => Math.sin(Math.PI * Math.max(0, Math.min(1, v)))
+  const bell = (v: number) => Math.sin(Math.PI * Math.pow(Math.max(0, Math.min(1, v)), FLIGHT_BELL_SKEW))
   const width = useTransform(p, (v) => lerp(from.width, to.width)(v) * (1 + FLIGHT_STRETCH * bell(v)))
   const height = useTransform(p, (v) => lerp(from.height, to.height)(v) * (1 - FLIGHT_THIN * bell(v)))
   const left = useTransform(p, (v) => lerp(from.x, to.x)(v) - (lerp(from.width, to.width)(v) * FLIGHT_STRETCH * bell(v)) / 2)
