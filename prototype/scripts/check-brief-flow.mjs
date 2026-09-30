@@ -6440,7 +6440,7 @@ await shot('30-plan-review')
   const widths = []
   for (let i = 0; i < 12; i++) { await p.waitForTimeout(50); widths.push(await widthOf('[data-ve-bar] [data-ve-glass]')) }
   const hov = { w: widths.at(-1), handle: !!(await p.$('[data-ve-dock-to-rail]')), steps: new Set(widths).size, tools: await p.evaluate(() => [...document.querySelectorAll('[data-ve-bar] [data-ve-tool]')].map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10, getComputedStyle(t).transform] })), bar: await widthOf('[data-ve-bar]') }
-  check('hovering STRETCHES THE GLASS over the tools to uncover the «›|» handle — through intermediate widths, past 117 and back (a liquid edge), the tools\' box still 76', hov.handle && hov.w === 117 && hov.steps >= 3 && Math.max(...widths) > 117 && hov.bar === 76, JSON.stringify({ hov, widths }))
+  check('hovering STRETCHES THE GLASS over the tools to uncover the «›|» handle — through intermediate widths, past 125 (117 + 4 px swell each side) and back (a liquid edge), the tools\' box still 76', hov.handle && hov.w === 125 && hov.steps >= 3 && Math.max(...widths) > 125 && hov.bar === 76, JSON.stringify({ hov, widths }))
   check('…and the tools themselves neither move nor scale while it stretches', hov.tools.length === 2 && hov.tools.every((t, i) => Math.abs(t[0] - rest.tools[i][0]) < 0.6 && Math.abs(t[1] - rest.tools[i][1]) < 0.6 && t[2] === 'none'), JSON.stringify({ hov: hov.tools, rest: rest.tools }))
   await shot('Q1-dock-handle')
   await p.mouse.move(bb.x + 20, bb.y - 200); await p.waitForTimeout(450)

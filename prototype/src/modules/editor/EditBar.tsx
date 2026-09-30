@@ -113,9 +113,14 @@ function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: stri
  * A width animation on one small fixed-size element (the Reveal's measured exception); nothing
  * outside the pill lays out again.
  */
-function GlassBar({ side, reveal, tail, pillRef, pillProps, children }: {
+/* THE SWELL — on hover the glass grows 4 px outward on every side while the tools stay put (designer
+   01.10.2026: «подкладка под кнопками становится больше, увеличиваясь во все стороны… как жидкий объект»);
+   same spring as the stretch, so the two edges breathe together. Only the glass moves. */
+const GLASS_SWELL = 4
+function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, children }: {
   side: 'left' | 'right'
   reveal: boolean
+  swell?: boolean
   tail?: React.ReactNode
   pillRef?: React.Ref<HTMLDivElement>
   pillProps?: Record<string, unknown>
@@ -125,6 +130,11 @@ function GlassBar({ side, reveal, tail, pillRef, pillProps, children }: {
   const root = useRef<HTMLDivElement | null>(null)
   const tailRef = useRef<HTMLDivElement>(null)
   const glassW = useMotionValue(0)
+  const swellV = useMotionValue(0)
+  const glassOuterW = useTransform(() => glassW.get() + 2 * swellV.get())
+  const glassInset = useTransform(swellV, (v) => -v)
+  const glassH = useTransform(swellV, (v) => 40 + 2 * v)
+  const glassR = useTransform(swellV, (v) => 16 + v)
   const [w, setW] = useState<{ base: number; tail: number } | null>(null)
   /* the box is the CONTENT's own, in flow — measured, never typed; the glass layer behind it takes
      that width at once (jump), and springs to it or past it afterwards */
@@ -151,18 +161,26 @@ function GlassBar({ side, reveal, tail, pillRef, pillProps, children }: {
     const ctrl = animate(glassW, target, EDIT_BAR_STRETCH)
     return () => ctrl.stop()
   }, [w, reveal, reduce, glassW])
-  const anchor = side === 'left' ? 'left-0' : 'right-0'
+  useEffect(() => {
+    const target = swell ? GLASS_SWELL : 0
+    if (reduce) { swellV.jump(target); return }
+    const ctrl = animate(swellV, target, EDIT_BAR_STRETCH)
+    return () => ctrl.stop()
+  }, [swell, reduce, swellV])
+  /* the handle sits at the content's edge in SCREEN space: the glass moved out by the swell, so the seat moves back in */
+  const tailSeat = useTransform(swellV, (v) => (w ? w.base - 4 + v : 0))
   return (
     <div
       ref={(el) => { root.current = el; if (typeof pillRef === 'function') pillRef(el); else if (pillRef) (pillRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}
       {...pillProps}
       className="pointer-events-auto relative h-10"
       data-ve-stretched={reveal ? '' : undefined}
+      data-ve-swollen={swell ? '' : undefined}
     >
       {/* THE GLASS — a layer behind the tools that is free to be wider than they are */}
       <motion.div
-        className={`liquid-glass absolute top-0 ${anchor} z-0 h-10 overflow-hidden rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.33)]`}
-        style={{ width: w ? glassW : '100%' }}
+        className="liquid-glass absolute z-0 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
+        style={{ width: w ? glassOuterW : '100%', top: glassInset, [side]: glassInset, height: glassH, borderRadius: glassR }}
         data-ve-glass
         aria-hidden={!tail}
       >
@@ -171,8 +189,8 @@ function GlassBar({ side, reveal, tail, pillRef, pillProps, children }: {
         {tail && (
           <motion.div
             ref={tailRef}
-            className="absolute top-0 flex h-10 items-center gap-1 pl-1 pr-1"
-            style={side === 'left' ? { left: w ? w.base - 4 : undefined } : { right: w ? w.base - 4 : undefined }}
+            className="absolute flex h-10 items-center gap-1 pl-1 pr-1"
+            style={{ top: swellV, ...(side === 'left' ? { left: tailSeat } : { right: tailSeat }) }}
             variants={editBarTail}
             initial="initial"
             animate={reveal ? 'animate' : 'initial'}
@@ -431,6 +449,7 @@ export function EditBar() {
               <GlassBar
                 side="left"
                 reveal={hover && !history}
+                swell={hover}
                 pillRef={barRef}
                 pillProps={{ 'data-ve-bar': '', 'data-ve-dirty': dirty ? '' : undefined }}
                 /* the dock handle: the glass stretches to the right to uncover it — the tools do not
