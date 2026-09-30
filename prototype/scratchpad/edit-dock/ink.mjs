@@ -1,0 +1,11 @@
+import { chromium } from 'playwright'
+const b = await chromium.launch({ executablePath: process.env.CHROME, args: ['--no-sandbox'] })
+const page = await b.newPage({ viewport: { width: 1600, height: 900 } })
+await page.goto('http://localhost:4173/?p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640', { waitUntil: 'networkidle' })
+await page.evaluate(() => localStorage.removeItem('remixer-prototype/world/v6'))
+await page.waitForTimeout(400); await page.click('.home-card-face')
+await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }); await page.waitForTimeout(600)
+await page.click('button[aria-label="Publish"], [data-topbar-publish], button:has-text("Publish")').catch(() => {})
+await page.waitForTimeout(600)
+console.log(await page.evaluate(() => { const g = document.querySelector('[role="dialog"] .glass-glint'); return g ? getComputedStyle(g).backgroundImage.slice(0, 220) : 'no glint' }))
+await b.close()
