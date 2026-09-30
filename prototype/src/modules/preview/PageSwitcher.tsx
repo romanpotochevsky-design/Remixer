@@ -141,7 +141,7 @@ export function PageSwitcher() {
         /* the board's project button: 360 × 40, radius 10, the NA/200 rim INSIDE (an inset shadow, so
            the children sit at the board's coordinates), 4 of padding at the left and 2 at the right;
            `shrink` so a narrow canvas (down to 480) squeezes the pill rather than the toolbar */
-        className="relative flex h-10 w-[360px] min-w-0 shrink items-center rounded-[10px] pl-1 pr-0.5 shadow-[inset_0_0_0_1px_var(--white-200)]"
+        className="relative flex h-10 w-[360px] min-w-0 shrink items-center rounded-[10px] pl-1 pr-0.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]"
       >
         {/* the trigger — the pill's whole box, under the tools: its wash and bloom reach the corners */}
         <button

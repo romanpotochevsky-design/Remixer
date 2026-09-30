@@ -5426,8 +5426,8 @@ await shot('30-plan-review')
 
   /* ── the pill ──────────────────────────────────────────────────────────────────── */
   const pill = await p.$eval('[data-page-pill]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { x: r.x, y: r.y, w: r.width, h: r.height, r: cs.borderTopLeftRadius, shadow: cs.boxShadow, border: cs.borderTopWidth, expanded: e.querySelector('[data-page-switch]').getAttribute('aria-expanded'), inHeader: !!e.closest('header') } })
-  check('the toolbar’s centre is the PAGE PILL in the board’s 360 × 40 project-button box (V2 31379:2968: radius 10, the NA/200 rim as an INSET shadow, no border), reading the NAME of the page the preview stands on — «Home» — with the menu closed',
-    pill.w === 360 && pill.h === 40 && pill.r === '10px' && pill.border === '0px' && /rgba\(255, 255, 255, 0\.12\) 0px 0px 0px 1px inset/.test(pill.shadow) && pill.inHeader && pill.expanded === 'false' && (await label()) === 'Home' && (await pagePath()) === '/',
+  check('the toolbar’s centre is the PAGE PILL in the board’s 360 × 40 project-button box (V2 31379:2968: radius 10, the rim as an INSET shadow, no border — white 16 % since board 31422:43583, 30.09.2026), reading the NAME of the page the preview stands on — «Home» — with the menu closed',
+    pill.w === 360 && pill.h === 40 && pill.r === '10px' && pill.border === '0px' && /rgba\(255, 255, 255, 0\.16\) 0px 0px 0px 1px inset/.test(pill.shadow) && pill.inHeader && pill.expanded === 'false' && (await label()) === 'Home' && (await pagePath()) === '/',
     JSON.stringify({ ...pill, label: await label() }))
   /* the board's coordinates, read off the pill's own box: Icon + Text at 4 / 8 (the 32 reload at 4 / 4, the name at 44
      in a 24 box, pt 2), `Preview buttons` 73 × 36 at 285 / 2 (device 32 at 2, the 1 × 32 divider at 36, open at 39),
