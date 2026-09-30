@@ -165,7 +165,7 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
     }
   })
   check('pressing the T turns the mode on: aria-pressed, a blue (`--action`) r8 disc under the glyph, `data-site-editing="edit"` on the canvas, and every text run of the home page a `plaintext-only` host — the h1 among them — every photo a photo host',
-    on.pressed === 'true' && on.disc === ACTION && on.discRadius === '8px' && on.editing === 'edit' && on.texts >= 20 && on.photos >= 6 && on.picks === 0
+    on.pressed === 'true' && on.disc === ACTION && on.discRadius === '12px' && on.editing === 'edit' && on.texts >= 20 && on.photos >= 6 && on.picks === 0
       && on.ce === 'plaintext-only' && on.role === 'textbox' && on.tag === 'H1' && on.text === ORIGINAL && on.overlay && on.selectUp && !on.batch,
     JSON.stringify(on))
   check('…and the REVEAL rings every target once on entry (≥ 20 `.ve-ring--reveal` right after the press)', reveal >= 20, `${reveal} rings`)

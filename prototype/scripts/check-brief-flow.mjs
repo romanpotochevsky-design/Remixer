@@ -4217,8 +4217,9 @@ await shot('30-plan-review')
       return { label: e.getAttribute('aria-label'), w: r.width, h: r.height, x: r.x, y: r.y, radius: g.borderTopLeftRadius, bg: g.backgroundColor, color: g.color,
                glyph: (() => { const s = e.querySelector('svg'); return [s.getAttribute('width'), s.getAttribute('fill')] })() } })
   })
-  check('the rail carries the board’s four buttons, 48 at radius 16 with a 24 glyph',
-    rail.length === 4 && rail.every((b) => b.w === 48 && b.h === 48 && b.radius === '16px' && b.glyph[0] === '24'),
+  /* five since 30.09.2026 — the Website media button joined the sheet's four */
+  check('the rail carries the board’s four buttons plus Website media, 48 at radius 16 with a 24 glyph',
+    rail.length === 5 && rail.every((b) => b.w === 48 && b.h === 48 && b.radius === '16px' && b.glyph[0] === '24'),
     JSON.stringify(rail.map((b) => [b.label, b.w, b.radius, b.glyph[0]])))
   check('…and the glyphs are FILLED, as the kit draws them — not our old outlines',
     rail.every((b) => b.glyph[1] === 'currentColor'), JSON.stringify(rail.map((b) => b.glyph[1])))
@@ -6074,7 +6075,7 @@ await shot('30-plan-review')
     }
   })
   check('pressing the T turns the mode on: aria-pressed, a blue (`--action`) r8 disc under the glyph, `data-site-editing="edit"` on the canvas, and every text run of the home page a `plaintext-only` host — the h1 among them — every photo a photo host',
-    on.pressed === 'true' && on.disc === ACTION && on.discRadius === '8px' && on.editing === 'edit' && on.texts >= 20 && on.photos >= 6 && on.picks === 0
+    on.pressed === 'true' && on.disc === ACTION && on.discRadius === '12px' && on.editing === 'edit' && on.texts >= 20 && on.photos >= 6 && on.picks === 0
       && on.ce === 'plaintext-only' && on.role === 'textbox' && on.tag === 'H1' && on.text === ORIGINAL && on.overlay && on.selectUp && !on.batch,
     JSON.stringify(on))
   check('…and the REVEAL rings every target once on entry (≥ 20 `.ve-ring--reveal` right after the press)', reveal >= 20, `${reveal} rings`)

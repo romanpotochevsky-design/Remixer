@@ -5146,7 +5146,7 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 12px; /* board 31422:43616 (30.09.2026): hover, press and the selected disc all sit on r12 — «чтобы выглядело симметрично и ровно» */
   color: #fff;
   transition: background-color var(--dur-fast) var(--ease-std), opacity var(--dur-fast) var(--ease-std);
 }

@@ -60,7 +60,7 @@ function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: stri
         {active && (
           <motion.span
             key="on"
-            className="absolute inset-0 rounded-[8px] bg-[var(--action)]"
+            className="absolute inset-0 rounded-[12px] bg-[var(--action)]"
             variants={reduce ? editBarInFade : editToolOn}
             initial="initial"
             animate="animate"
