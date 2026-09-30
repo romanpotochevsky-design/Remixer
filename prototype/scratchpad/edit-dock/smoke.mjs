@@ -24,7 +24,7 @@ await page.waitForTimeout(800)
 
 /* 1 · at rest: no dock handle; hover grows it */
 const rest = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar]'); const r = b.getBoundingClientRect(); return { w: r.width, seg: !!document.querySelector('[data-ve-dock-segment]'), slot: !!document.querySelector('[data-rail-dock]') } })
-check('at rest: 76 wide, no handle, no rail slot', rest.w === 76 && !rest.seg && !rest.slot, rest)
+check('at rest: 78 wide (board 31442:44737), no handle, no rail slot', rest.w === 78 && !rest.seg && !rest.slot, rest)
 const bb = await (await page.$('[data-ve-bar]')).boundingBox()
 const toolsAt = () => page.evaluate(() => [...document.querySelectorAll('[data-ve-bar] [data-ve-tool]')].map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10, getComputedStyle(t).transform] }))
 const restTools = await toolsAt()
@@ -33,13 +33,13 @@ const widths = []; const toolTrace = []
 for (let i = 0; i < 12; i++) { await page.waitForTimeout(50); widths.push(await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect().width))); toolTrace.push(await toolsAt()) }
 const still = toolTrace.every((f) => f.every((t, i) => Math.abs(t[0] - restTools[i][0]) < 0.6 && Math.abs(t[1] - restTools[i][1]) < 0.6 && t[2] === 'none'))
 check('while the glass stretches the tools neither move nor scale', still, { restTools, moved: toolTrace.filter((f) => !f.every((t, i) => Math.abs(t[0] - restTools[i][0]) < 0.6 && t[2] === 'none')).slice(0, 2) })
-check('the stretch overshoots — a liquid edge, not a slide', Math.max(...widths) > 125, widths)
+check('the stretch overshoots — a liquid edge, not a slide', Math.max(...widths) > 127, widths)
 const hov = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar] [data-ve-glass]'); return { w: Math.round(b.getBoundingClientRect().width), handle: !!document.querySelector('[data-ve-dock-to-rail]'), divider: !!document.querySelector('[data-ve-dock-segment] span[aria-hidden]') } })
 log('widths on hover', widths.join(' '))
-check('hover: the GLASS stretches to 125 (117 + 4 px of swell each side) through intermediate widths while the tools stay', hov.handle && hov.divider && hov.w === 125 && new Set(widths).size >= 3, { hov, widths })
+check('hover: the GLASS stretches to 127 (119 + 4 px of swell each side) through intermediate widths while the tools stay', hov.handle && hov.divider && hov.w === 127 && new Set(widths).size >= 3, { hov, widths })
 await page.screenshot({ path: OUT + 'd1-hover.png' })
 await page.mouse.move(bb.x + 20, bb.y - 200); await page.waitForTimeout(400)
-check('leave: handle folds, 76 again', (await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect().width))) === 76)
+check('leave: handle folds, 78 again', (await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect().width))) === 78)
 
 /* 2 · click › → the glass flies into the rail slot above the support button */
 await page.mouse.move(bb.x + 20, bb.y + 20); await page.waitForTimeout(500)
@@ -94,7 +94,7 @@ await page.waitForTimeout(600)
 const home = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar]'); const m = document.querySelector('main').getBoundingClientRect(); if (!b) return null; const r = b.getBoundingClientRect(); return { w: r.width, centreOff: Math.round((r.x + r.width / 2) - (m.x + m.width / 2)), lift: Math.round(m.bottom - r.bottom), vis: getComputedStyle(b).visibility, opacity: getComputedStyle(b).opacity, slot: !!document.querySelector('[data-rail-dock]'), dock: !!document.querySelector('[data-ve-dock]'), flight: !!document.querySelector('[data-ve-flight]') } })
 log(home)
 check('the return flight starts at the slot and lands on the pill (hidden until it lands)', bf.length >= 8 && bf[0].w <= 72 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), { first: bf[0], last: bf.at(-1) })
-check('back home: 76 wide, centred, 29 up, visible; slot and rail button gone', home && home.w === 76 && home.centreOff === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, home)
+check('back home: 78 wide, centred, 29 up, visible; slot and rail button gone', home && home.w === 78 && home.centreOff === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, home)
 await page.screenshot({ path: OUT + 'd4-home.png' })
 
 log(fails.length ? `\n${fails.length} FAIL` : '\nall green')

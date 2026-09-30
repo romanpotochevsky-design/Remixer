@@ -6419,7 +6419,7 @@ await shot('30-plan-review')
  *    and «|‹»; Edit from there switches the mode on and lights the rail button in the action blue;
  *    leaving folds the pop-out; the Esc ladder still works while docked;
  *  · «‹» flies the glass back: the pill mounts hidden at its resting place and shows only when the
- *    flight lands — 76 wide, centred, 29 up; slot and rail button gone.
+ *    flight lands — 78 wide, centred, 29 up; slot and rail button gone.
  * ═══════════════════════════════════════════════════════════════════════════════════════════ */
 {
   const KEY = 'remixer-prototype/world/v6'
@@ -6434,17 +6434,17 @@ await shot('30-plan-review')
 
   /* ── 1 · the handle grows on hover ─────────────────────────────────────────────── */
   const rest = { w: await widthOf('[data-ve-bar]'), seg: !!(await p.$('[data-ve-dock-segment]')), slot: !!(await p.$('[data-rail-dock]')), tools: await p.evaluate(() => [...document.querySelectorAll('[data-ve-bar] [data-ve-tool]')].map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10, getComputedStyle(t).transform] })) }
-  check('at rest the pill is 76 wide with no dock handle, and the rail has no dock slot', rest.w === 76 && !rest.seg && !rest.slot, JSON.stringify({ w: rest.w, seg: rest.seg, slot: rest.slot }))
+  check('at rest the pill is 78 wide (board 31442:44737: 1 px rim + 4 pad) with no dock handle, and the rail has no dock slot', rest.w === 78 && !rest.seg && !rest.slot, JSON.stringify({ w: rest.w, seg: rest.seg, slot: rest.slot }))
   const bb = await (await p.$('[data-ve-bar]')).boundingBox()
   await p.mouse.move(bb.x + 20, bb.y + 20)
   const widths = []
   for (let i = 0; i < 12; i++) { await p.waitForTimeout(50); widths.push(await widthOf('[data-ve-bar] [data-ve-glass]')) }
   const hov = { w: widths.at(-1), handle: !!(await p.$('[data-ve-dock-to-rail]')), steps: new Set(widths).size, tools: await p.evaluate(() => [...document.querySelectorAll('[data-ve-bar] [data-ve-tool]')].map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10, getComputedStyle(t).transform] })), bar: await widthOf('[data-ve-bar]') }
-  check('hovering STRETCHES THE GLASS over the tools to uncover the «›|» handle — through intermediate widths, past 125 (117 + 4 px swell each side) and back (a liquid edge), the tools\' box still 76', hov.handle && hov.w === 125 && hov.steps >= 3 && Math.max(...widths) > 125 && hov.bar === 76, JSON.stringify({ hov, widths }))
+  check('hovering STRETCHES THE GLASS over the tools to uncover the «›|» handle — through intermediate widths, past 127 (119 + 4 px swell each side) and back (a liquid edge), the tools\' box still 78', hov.handle && hov.w === 127 && hov.steps >= 3 && Math.max(...widths) > 127 && hov.bar === 78, JSON.stringify({ hov, widths }))
   check('…and the tools themselves neither move nor scale while it stretches', hov.tools.length === 2 && hov.tools.every((t, i) => Math.abs(t[0] - rest.tools[i][0]) < 0.6 && Math.abs(t[1] - rest.tools[i][1]) < 0.6 && t[2] === 'none'), JSON.stringify({ hov: hov.tools, rest: rest.tools }))
   await shot('Q1-dock-handle')
   await p.mouse.move(bb.x + 20, bb.y - 200); await p.waitForTimeout(450)
-  check('leaving folds the handle — 76 again', (await widthOf('[data-ve-bar] [data-ve-glass]')) === 76)
+  check('leaving folds the handle — 78 again', (await widthOf('[data-ve-bar] [data-ve-glass]')) === 78)
 
   /* ── 2 · «›» flies the glass into the rail ─────────────────────────────────────── */
   await p.mouse.move(bb.x + 20, bb.y + 20); await p.waitForTimeout(500)
@@ -6463,7 +6463,7 @@ await shot('30-plan-review')
     const r = d.getBoundingClientRect(), q = sup.getBoundingClientRect(), nav = d.closest('nav').getBoundingClientRect()
     return { w: r.width, h: r.height, radius: getComputedStyle(d).borderRadius, gap: Math.round(q.top - r.bottom), off: Math.round((r.x + r.width / 2) - (nav.x + nav.width / 2)), bar: !!document.querySelector('[data-ve-bar]'), flight: !!document.querySelector('[data-ve-flight]'), slot: !!document.querySelector('[data-rail-dock]') }
   })
-  check('«›» flies ONE glass box from the STRETCHED glass (117) to the slot — it starts at that size and lands 48 tall, through at least 8 sampled frames',
+  check('«›» flies ONE glass box from the STRETCHED glass (119, swollen to 127) to the slot — it starts at that size and lands 48 tall, through at least 8 sampled frames',
     fr.length >= 8 && Math.abs(fr[0].x - from.x) < 160 && fr[0].w > 90 && fr[0].w <= 160 && fr.at(-1).w <= 52 && fr.at(-1).h >= 44, JSON.stringify({ first: fr[0], last: fr.at(-1), from }))
   check('while it flies neither home is drawn — the pill is hidden and the rail button is hidden', fr.length > 0 && fr.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden')), JSON.stringify(fr.slice(0, 3)))
   check('docked: a 48 × 48 r16 rail button centred on the rail, 8 above the support button; the floating pill is gone',
@@ -6510,7 +6510,7 @@ await shot('30-plan-review')
   await p.waitForTimeout(600)
   const home = await p.evaluate(() => { const el = document.querySelector('[data-ve-bar]'); const m = document.querySelector('main').getBoundingClientRect(); if (!el) return null; const r = el.getBoundingClientRect(); return { w: r.width, off: Math.round((r.x + r.width / 2) - (m.x + m.width / 2)), lift: Math.round(m.bottom - r.bottom), vis: getComputedStyle(el).visibility, opacity: getComputedStyle(el).opacity, slot: !!document.querySelector('[data-rail-dock]'), dock: !!document.querySelector('[data-ve-dock]'), flight: !!document.querySelector('[data-ve-flight]') } })
   check('«‹» flies the glass back — from 48 wide to the pill\'s width, the pill hidden until it lands', bf.length >= 8 && bf[0].w <= 72 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), JSON.stringify({ first: bf[0], last: bf.at(-1) }))
-  check('home again: the pill is 76 wide, centred, 29 up and visible; the slot and the rail button are gone', !!home && home.w === 76 && home.off === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, JSON.stringify(home))
+  check('home again: the pill is 78 wide, centred, 29 up and visible; the slot and the rail button are gone', !!home && home.w === 78 && home.off === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, JSON.stringify(home))
   await shot('Q4-home')
 }
 

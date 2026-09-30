@@ -117,6 +117,9 @@ function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: stri
    01.10.2026: «подкладка под кнопками становится больше, увеличиваясь во все стороны… как жидкий объект»);
    same spring as the stretch, so the two edges breathe together. Only the glass moves. */
 const GLASS_SWELL = 4
+/* board 31442:44737: frame 78 × 42 — 1 px rim inside + 4 padding around 32 tools with a 4 gap */
+const BAR_PAD = 5
+const BAR_H = 42
 function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, children }: {
   side: 'left' | 'right'
   reveal: boolean
@@ -133,7 +136,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
   const swellV = useMotionValue(0)
   const glassOuterW = useTransform(() => glassW.get() + 2 * swellV.get())
   const glassInset = useTransform(swellV, (v) => -v)
-  const glassH = useTransform(swellV, (v) => 40 + 2 * v)
+  const glassH = useTransform(swellV, (v) => BAR_H + 2 * v)
   const glassR = useTransform(swellV, (v) => 16 + v)
   const [w, setW] = useState<{ base: number; tail: number } | null>(null)
   /* the box is the CONTENT's own, in flow — measured, never typed; the glass layer behind it takes
@@ -155,7 +158,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
   const first = useRef(true)
   useEffect(() => {
     if (!w) return
-    const target = reveal ? w.base + w.tail - 4 : w.base
+    const target = reveal ? w.base + w.tail - BAR_PAD : w.base
     if (first.current) { first.current = false; glassW.jump(target); return }
     if (reduce) { glassW.jump(target); return }
     const ctrl = animate(glassW, target, EDIT_BAR_STRETCH)
@@ -168,18 +171,18 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
     return () => ctrl.stop()
   }, [swell, reduce, swellV])
   /* the handle sits at the content's edge in SCREEN space: the glass moved out by the swell, so the seat moves back in */
-  const tailSeat = useTransform(swellV, (v) => (w ? w.base - 4 + v : 0))
+  const tailSeat = useTransform(swellV, (v) => (w ? w.base - BAR_PAD + v : 0))
   return (
     <div
       ref={(el) => { root.current = el; if (typeof pillRef === 'function') pillRef(el); else if (pillRef) (pillRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}
       {...pillProps}
-      className="pointer-events-auto relative h-10"
+      className="pointer-events-auto relative h-[42px]"
       data-ve-stretched={reveal ? '' : undefined}
       data-ve-swollen={swell ? '' : undefined}
     >
       {/* THE GLASS — a layer behind the tools that is free to be wider than they are */}
       <motion.div
-        className="liquid-glass absolute z-0 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
+        className="liquid-glass liquid-glass--editbar absolute z-0 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
         style={{ width: w ? glassOuterW : '100%', top: glassInset, [side]: glassInset, height: glassH, borderRadius: glassR }}
         data-ve-glass
         aria-hidden={!tail}
@@ -189,7 +192,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
         {tail && (
           <motion.div
             ref={tailRef}
-            className="absolute flex h-10 items-center gap-1 pl-1 pr-1"
+            className="absolute flex h-[42px] items-center gap-1 pl-1 pr-[5px]"
             style={{ top: swellV, ...(side === 'left' ? { left: tailSeat } : { right: tailSeat }) }}
             variants={editBarTail}
             initial="initial"
@@ -203,7 +206,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
         )}
       </motion.div>
       {/* THE TOOLS — in flow, on top, never moved and never scaled */}
-      <div className="relative z-[1] flex h-10 items-center gap-1 p-1">{children}</div>
+      <div className="relative z-[1] flex h-[42px] items-center gap-1 p-[5px]">{children}</div>
     </div>
   )
 }
@@ -216,8 +219,8 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
  * jumping left, Select appearing in one frame (designer 30.09.2026, by recording: «1 или 2 кадра
  * разворачивает кнопки»). The swap was visible because the clone and the home were different
  * pictures. Now the clone IS the pill's picture: the two tools laid out as the pill lays them out
- * (4 + 32 + 4 + 32 + 4), Select fading with the width it needs, «T» sliding the 4 px between its
- * seat in the pill (left 4) and its seat in the 48 rail tile (left 8). At either end the clone's
+ * (5 + 32 + 4 + 32 + 5 — board 31442:44737), Select fading with the width it needs, «T» sliding the 4 px between its
+ * seat in the pill (left 5) and its seat in the 48 rail tile (left 8). At either end the clone's
  * pixels equal the home's, so the hand-over is invisible whenever it happens.
  */
 /* the drop: +30 % along the path, −12 % across it, peaking EARLY (p ≈ .4 — a drop stretches as it leaves,
@@ -242,7 +245,8 @@ function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () 
      the handle once it has room for that too; «T» sits at 4 in a pill and centred (8) in a 48 tile */
   const selO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - 56) / 20)))
   const tailO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - 96) / 20)))
-  const tLeft = useTransform(width, (w) => Math.max(4, Math.min(8, 8 - (w - 48) / 7)))
+  /* «T» sits at 5 in the pill (BAR_PAD) and centred (8) in the 48 tile */
+  const tLeft = useTransform(width, (w) => Math.max(BAR_PAD, Math.min(8, 8 - (w - 48) / 7)))
   const tTop = useTransform(height, (h) => (h - 32) / 2)
   useEffect(() => {
     const ctrl = animate(p, 1, { ...EDIT_DOCK_FLIGHT, onComplete: onDone })
@@ -253,13 +257,13 @@ function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () 
   return (
     <motion.div
       data-ve-flight={flight.dir}
-      className="liquid-glass pointer-events-none fixed z-50 overflow-hidden rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
+      className="liquid-glass liquid-glass--editbar pointer-events-none fixed z-50 overflow-hidden rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
       style={{ left, top, width, height }}
       aria-hidden
     >
       <motion.span className={btn} style={{ left: tLeft, top: tTop }}><GlyphEditText size={24} /></motion.span>
-      <motion.span className={btn} style={{ left: 40, top: tTop, opacity: selO }}><GlyphSelect size={24} /></motion.span>
-      <motion.span className="absolute flex items-center gap-1" style={{ left: 76, top: tTop, opacity: tailO }}>
+      <motion.span className={btn} style={{ left: BAR_PAD + 36, top: tTop, opacity: selO }}><GlyphSelect size={24} /></motion.span>
+      <motion.span className="absolute flex items-center gap-1" style={{ left: BAR_PAD + 72, top: tTop, opacity: tailO }}>
         <span className="h-8 w-px bg-[var(--glass-divider)]" />
         <span className="grid h-8 w-8 place-items-center rounded-[12px] text-white"><GlyphDockRight size={22} /></span>
       </motion.span>

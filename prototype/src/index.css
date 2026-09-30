@@ -1399,6 +1399,17 @@
  * If the design system really has ONE rim for glass circles, these two classes collapse
  * into one — his call, not a silent edit.
  */
+/* THE EDIT BAR'S OWN GLASS — a second kind, exclusive to the tools bar and the box that flies it (board
+   31442:44737, designer 01.10.2026: «я именно для этого бара только эксклюзивно изменил параметры стекла»).
+   Body: rgba(31,31,31,.67) under a VERTICAL light — 5 % white at the top and bottom edges, nothing between
+   (0 → 20 % / 80 → 100 %). Rim: 1 px inside, vertical — Neutral Alpha/300 (24 %) at both edges, /50 (4 %) across
+   the middle (0 · 25 · 75 · 100 %). Shadow 0 8 32 at 33 %, blur 16, r16. Nothing else wears it. */
+.liquid-glass--editbar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, 0) 80%, rgba(255, 255, 255, 0.05) 100%), rgba(31, 31, 31, 0.67);
+}
+.liquid-glass--editbar::before {
+  background: linear-gradient(180deg, #ffffff3d 0%, #ffffff0a 25%, #ffffff0a 75%, #ffffff3d 100%);
+}
 .liquid-glass--composer::before {
   background: linear-gradient(to bottom right, #ffffff3d, #ffffff0a 50%, #ffffff33);
 }
