@@ -371,9 +371,14 @@
   .site-nav-links { display: flex; align-items: center; }
   .site-cta { display: flex; align-items: center; }
   .site-stats { display: flex; align-items: center; gap: 40px; }
+  /* the blocks a chat edit can add (modules/preview/site-ai.tsx) and «bigger menu cards» */
+  .site-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .site-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .site-grid.site-grid--big { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 
   @container (max-width: 900px) {
     .site-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .site-plans { grid-template-columns: minmax(0, 1fr); }
   }
   @container (max-width: 640px) {
     .site-pad { padding-left: 22px; padding-right: 22px; }
@@ -383,6 +388,8 @@
     .site-cta { flex-direction: column; align-items: stretch; }
     .site-stats { flex-wrap: wrap; gap: 20px 28px; }
     .site-grid { grid-template-columns: minmax(0, 1fr); }
+    .site-grid.site-grid--big { grid-template-columns: minmax(0, 1fr); }
+    .site-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   /*
@@ -5206,3 +5213,86 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
   height: 20px;
   cursor: pointer;
 }
+
+/* ------------------------------------------------------------------------
+ * THE VERSION CARD — a change to the site, as the chat records it (board 31422:42642, read
+ * 30.09.2026 through the Plugin API and `get_variable_defs` in the DARK theme; modules/versions).
+ *
+ * The card is OPAQUE (#171719), so the board's `background blur 32` would blur nothing: omitted on
+ * the standing rule — look at what is behind you before you blur. Its rim is the board's gradient
+ * stroke, 1 px INSIDE the geometry (the mask ring every glass rim in the house uses, never a
+ * `border`): TL → BR, 15 % → 3 % at 50.48 % → 15 % white.
+ * Only PAINT lives here — sizes and paddings are Tailwind on the element, because this block is
+ * unlayered and would otherwise out-rank the utilities.
+ * ------------------------------------------------------------------------ */
+.vcard { position: relative; background: #171719; border-radius: 16px; }
+.vcard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.03) 50.48%, rgba(255, 255, 255, 0.15));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+/* the card whose version is on the canvas (the eye is on): its rim takes the action blue, so the
+   thread and the canvas point at each other. A ring of its own (`.vc-ring`, a child) — NOT `::after`,
+   which an arriving card lends to the Rim Sweep (`.card-arrive::after`); two rules on one pseudo
+   would merge and break the sweep. Opacity only. */
+.vc-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(81, 166, 255, 0.62);
+  opacity: 0;
+  transition: opacity 0.22s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+.vcard[data-previewing] > .vc-ring { opacity: 1; }
+
+/* «Icon button 36px (Dark hover)» — revert and eye: no plate at rest; the board's three plates */
+.vc-icon { border-radius: 10px; color: #fff; transition: background-color 0.16s cubic-bezier(0.2, 0, 0, 1), color 0.16s, opacity 0.16s; }
+.vc-icon:hover:not(:disabled) { background: rgba(9, 9, 11, 0.56); }        /* Black/600 */
+.vc-icon:focus-visible { background: rgba(9, 9, 11, 0.8); outline: none; } /* Black/900 */
+.vc-icon:active:not(:disabled) { background: rgba(255, 255, 255, 0.24); }  /* White/300 */
+.vc-icon:disabled { opacity: 0.32; cursor: default; }
+/* the eye while its version is on the canvas */
+.vc-icon[data-on] { background: rgba(21, 135, 255, 0.16); color: var(--action-ink); }
+.vc-icon[data-on]:hover { background: rgba(21, 135, 255, 0.24); }
+
+/* the chevron — the Tonal override: Gray/950 under the 24 → 4 → 12 % rim */
+.vc-tonal { position: relative; background: #09090b; border-radius: 10px; color: #fff; transition: background-color 0.16s cubic-bezier(0.2, 0, 0, 1); }
+.vc-tonal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.12));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.vc-tonal:hover { background: #29292b; }  /* the tonal hovered fill: NA/200 (12 % white) over the card */
+.vc-tonal:focus-visible { outline: 2px solid var(--action); outline-offset: 1px; }
+
+/* the stack's count — «Badges/Counter/Small/White/Rounded/Semibold»: white pill, 2 px OUTSIDE stroke
+   in the card's own colour (a cut-out, the way an iOS badge sits on its icon) */
+.vc-badge { background: #fff; color: #09090b; box-shadow: 0 0 0 2px #171719; }
+
+/* the depth of a folded stack (31422:42821): the card right behind the front goes dark on a solid
+   #212123 rim; the one behind that is the plain card at a third of its strength */
+.vc-veil { position: absolute; inset: 0; border-radius: 16px; pointer-events: none; z-index: 2; }
+.vc-veil--mid { background: #101012; box-shadow: inset 0 0 0 1px #212123; }
+.vc-veil--back { background: #171719; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
+
+/* the working card's title: the house Process Shimmer on white-ish ink */
+.vc-doing { color: var(--white-560, rgba(255, 255, 255, 0.56)); }

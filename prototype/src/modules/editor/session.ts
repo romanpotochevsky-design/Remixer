@@ -34,6 +34,7 @@
 import { create } from 'zustand'
 import { useWorld, EMPTY_SITE_EDITS, type PhotoRef, type SiteEdits } from '@/state/world'
 import { countEdits, mergeEdits, sameEdits } from '@/modules/preview/content'
+import { followThread, recordEdit } from '@/modules/versions/model'
 
 /** The bar's two tools (board 31280:115372): `edit` changes text and photos, `select` gives the
  *  chat an element to talk about (designer, 30.09.2026: «это инструмент select — нажать на что-то
@@ -153,9 +154,12 @@ export const useEditor = create<EditorStore>((set, get) => ({
     const { world, set: setWorld, preset } = useWorld.getState()
     const next = mergeEdits(world.siteEdits, draft)
     if (!sameEdits(next, world.siteEdits)) {
-      /* the one free write: the saved layer and the publish counter, nothing else — no credits,
-         no glow, no transcript (manual edits never use credits; designer 13.09 / 30.09.2026) */
-      setWorld({ siteEdits: next, unpublished: world.unpublished + 1 }, preset)
+      /* the one free write: the saved layer, the publish counter — and, since the version cards
+         (30.09.2026, board 31422:42642), a FREE version with its card in the chat, so the edit can
+         be gone back through. Still no credits, no glow, no reply (manual edits never use credits;
+         designer 13.09 / 30.09.2026) */
+      setWorld({ ...recordEdit(world, next), siteEdits: next, unpublished: world.unpublished + 1 }, preset)
+      followThread()
     }
     set({ ...fresh })
   },

@@ -14,6 +14,7 @@ import type { Text } from '../i18n'
 import { leadingDone } from '../modules/chat/autopilot'
 import { BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS } from '../modules/chat/brief'
 import { CUSTOM_DOMAIN } from '../data/domains'
+import { boardHistory } from '../modules/versions/demo'
 
 export interface Preset {
   id: string
@@ -251,6 +252,30 @@ export const PRESETS: Preset[] = [
         },
       ],
     },
+  },
+  {
+    id: 'versions',
+    group: PG.project,
+    label: { en: 'Versions — the board’s thread', uk: 'Версії — тред з борду' },
+    note: {
+      en: 'Board 31422:42642 staged: a text edit, Navigation Update, three image replacements folded into a stack, Testimonials Section Added as current — every card previews and restores for real',
+      uk: 'Борд 31422:42642: правка тексту, Navigation Update, три заміни фото в стеку, Testimonials Section Added поточна — кожна картка справді показує й відновлює',
+    },
+    /*
+     * The version system's demo (modules/versions). Built by `boardHistory`, which runs the live
+     * flow's own functions, so each card's snapshot is the real site at that point. Build mode,
+     * not Autopilot: a docked proposal would take the thread down to half and hide the cards this
+     * tile exists to show. On the fit·ration site — the one whose page the AI's layer draws on.
+     */
+    patch: (() => {
+      const h = boardHistory()
+      return {
+        site: 'fit-ration', account: 'paid', credits: 900, project: 'built', chat: 'long', mode: 'build',
+        domain: 'staging', unpublished: 5, published: false,
+        brief: { status: 'none', step: 0, answers: {} }, suggest: { show: 'none', pick: '', started: [], taken: 1, rated: true, score: null },
+        sent: h.sent, versions: h.versions, siteAi: h.siteAi, siteEdits: h.siteEdits,
+      } as Partial<World>
+    })(),
   },
   {
     id: 'live-stale',

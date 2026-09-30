@@ -15,7 +15,7 @@
  * they read the context, so a mini and the canvas resolve the same key the same way.
  */
 import { createContext, useContext, type CSSProperties, type ElementType } from 'react'
-import { EMPTY_SITE_EDITS, type SiteEdits } from '@/state/world'
+import { EMPTY_SITE_AI, EMPTY_SITE_EDITS, type SiteAi, type SiteEdits } from '@/state/world'
 import { EditableText } from '@/modules/editor/EditableText'
 import { useEditor } from '@/modules/editor/session'
 import { getUpload } from '@/modules/editor/media'
@@ -24,14 +24,17 @@ import { SITE_PHOTOS } from './photos'
 import { fitOf, heightOf, opacityOf, photoOf, textOf } from './content'
 
 export interface SiteCtx {
+  /** The text and photo layer — the customer's, over Remixer's rewrites (already merged). */
   edits: SiteEdits
+  /** Remixer's own layer: which added blocks are in, which palette (modules/versions/changes.ts). */
+  ai: SiteAi
   /** The Edit tool is on, and this is the canvas instance. */
   editing: boolean
   /** The Select tool is on, and this is the canvas instance. */
   selecting: boolean
 }
 
-export const SiteContext = createContext<SiteCtx>({ edits: EMPTY_SITE_EDITS, editing: false, selecting: false })
+export const SiteContext = createContext<SiteCtx>({ edits: EMPTY_SITE_EDITS, ai: EMPTY_SITE_AI, editing: false, selecting: false })
 
 /** One text run of the site, by its content key. `compiled` overrides the table's default (a
  *  dish name comes from the Cloud row, a page title from the plan). */

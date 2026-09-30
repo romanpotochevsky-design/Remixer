@@ -143,9 +143,16 @@ export interface Message {
    *                page is done, as the record of what was built and of which pages are
    *                still waiting, and it scrolls away like any other turn.
    */
-  kind?: 'text' | 'clarify' | 'brief' | 'ack' | 'build'
+  kind?: 'text' | 'clarify' | 'brief' | 'ack' | 'build' | 'version'
   /** Seconds the agent "thought" before this turn — Lovable prints "Thought for 21s". */
   thought?: number
+  /**
+   * `kind: 'version'` only — WHICH version this card is (`Version.n`, world.versions). The card
+   * renders from the version, not from the message, for the reason the outline card renders from
+   * `world.build`: a version changes after it is posted (it is born «working», it stops being the
+   * current one), and the transcript must not hold a second copy of it.
+   */
+  version?: number
 }
 
 /**
@@ -413,6 +420,73 @@ export const DEFAULT_MEDIA: PhotoRef[] = [
   'protein-pancakes', 'svc-weekly-plan', 'svc-custom-macros', 'svc-office-delivery',
 ].map((id) => ({ kind: 'site', id }))
 
+/**
+ * WHAT REMIXER'S OWN WORK HAS DONE TO THE SITE — the AI's layer, the way `siteEdits` is the
+ * customer's (the version system, designer 30.09.2026: «если ты попросил что-то изменить, как
+ * выглядит сообщение в чате с этим изменением и версией… кнопку вернуться на версию или посмотреть
+ * старую»). A version you can go back to has to be a site that LOOKS different, so a chat edit
+ * now changes the demo page for real: a section appears, the palette turns, the headline is
+ * rewritten (modules/versions/changes.ts is the catalogue, SitePreview.tsx draws it).
+ *
+ * A LAYER, for the same reason `siteEdits` is one: the compiled site stays the source, this only
+ * says which of the catalogue's changes are in (`mods`, in the order they were made), which of the
+ * palettes is on (0 = the site's own), and which text runs Remixer rewrote (`text`, keyed like
+ * `siteEdits.text`; the customer's own word on the same key wins, and Remixer rewriting a key
+ * takes the customer's word off it — the later hand wins, whoever it was).
+ */
+export interface SiteAi {
+  mods: string[]
+  palette: number
+  text: Record<string, string>
+}
+export const EMPTY_SITE_AI: SiteAi = { mods: [], palette: 0, text: {} }
+
+/** One line of a version's details — what changed, in words a customer reads (no code, no files). */
+export interface VersionChange {
+  /** `add` a new block · `edit` a text · `style` colours and sizes · `photo` a picture swapped. */
+  kind: 'add' | 'edit' | 'style' | 'photo'
+  text: string | { en: string; uk: string }
+  before?: string
+  after?: string
+  /** `style` with colours: the swatches, before → after. */
+  swatch?: [string, string]
+  /** `photo`: the two pictures. */
+  photo?: [PhotoRef, PhotoRef]
+}
+
+/**
+ * ONE VERSION OF THE SITE — what a version card in the chat stands for (Figma 31422:42642).
+ *
+ * `n` is its number, 1-based, and doubles as its id: versions are only ever APPENDED — going back
+ * to an old one is a new version on top that copies it (Lovable's Versioning 2.0, v0's restore;
+ * docs/features/versions/README.md), so nothing after it is lost and no number is ever reused.
+ * The CURRENT version is the last one, and its snapshot is by construction what the site shows.
+ *
+ * `ai` + `edits` are the site AFTER this version — the snapshot a restore copies back and the eye
+ * previews. Two small layers, never pixels (a version costs a few hundred bytes in the world).
+ */
+export interface Version {
+  n: number
+  /** `build` the first generation · `ai` a chat edit · `edit` the customer's own, in the Visual
+   *  Editor (free) · `restore` a going-back. */
+  kind: 'build' | 'ai' | 'edit' | 'restore'
+  title: { en: string; uk: string }
+  /** While Remixer is still making it: the card's «-ing» line («Adding a testimonials section»). */
+  doing?: { en: string; uk: string }
+  /** Epoch ms — the time the card prints («2:14 PM»). */
+  at: number
+  /** Credits it cost: 0 for the customer's own edits and for a restore. */
+  cost: number
+  changes: VersionChange[]
+  ai: SiteAi
+  edits: SiteEdits
+  /** `restore`: which version it went back to. */
+  from?: number
+  /** `ai` while still working: the catalogue key to apply on landing (changes.ts), and a reply an
+   *  Autopilot proposal brought with it. Kept on the version so a reload mid-work can finish it. */
+  pending?: { key: string; prompt: string; reply?: { en: string; uk: string } }
+}
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -608,6 +682,14 @@ export interface World {
    * newest first.
    */
   media: PhotoRef[]
+  /**
+   * THE SITE'S VERSIONS, oldest first — see `Version`. Empty means «the scenario's own history»,
+   * the rule `sent` follows: `versionsOf` (modules/versions/model.ts) derives it from `chat`, and
+   * the first version made live freezes that into the array. Lives with the transcript, dies with it.
+   */
+  versions: Version[]
+  /** What Remixer's own work has done to the site — see `SiteAi`. */
+  siteAi: SiteAi
 }
 
 /** The composer's mode switcher (Figma 29697:54553). See `World.mode`. */
@@ -624,7 +706,7 @@ export type ChatMode = 'autopilot' | 'build'
  */
 export const SITE_AXES = [
   'project', 'unpublished', 'published', 'mode', 'domain', 'customDomain', 'icann',
-  'chat', 'sent', 'brief', 'build', 'suggest', 'planEdits', 'siteEdits', 'media',
+  'chat', 'sent', 'brief', 'build', 'suggest', 'planEdits', 'siteEdits', 'media', 'versions', 'siteAi',
 ] as const
 export type SiteAxis = (typeof SITE_AXES)[number]
 export type SiteSlice = Pick<World, SiteAxis>
@@ -638,7 +720,7 @@ export type SiteSlice = Pick<World, SiteAxis>
  * this session and never stashed — the compiled copy. Three fields, referentially stable, so a
  * selector on each does not re-render the picture on unrelated world moves.
  */
-export type SiteContent = Pick<World, 'brief' | 'planEdits' | 'siteEdits'>
+export type SiteContent = Pick<World, 'brief' | 'planEdits' | 'siteEdits' | 'siteAi'>
 export function siteSliceOf(w: World, id?: string): SiteContent {
   if (!id || id === w.site) return w
   return completeSlice(w.stash[id] ?? SITE_SLICES[id] ?? {})
@@ -653,13 +735,15 @@ export function siteSliceOf(w: World, id?: string): SiteContent {
  * a slice has to go through this instead. Missing axes take their empty values; a stored key is
  * never overwritten. Same cure as `set()`'s, in one place, for every axis a slice can lack.
  */
-export function completeSlice<T extends Partial<SiteSlice>>(s: T): T & Pick<SiteSlice, 'brief' | 'planEdits' | 'siteEdits' | 'media'> {
+export function completeSlice<T extends Partial<SiteSlice>>(s: T): T & Pick<SiteSlice, 'brief' | 'planEdits' | 'siteEdits' | 'media' | 'versions' | 'siteAi'> {
   return {
     ...s,
     brief: s.brief ?? EMPTY_BRIEF,
     planEdits: s.planEdits ?? EMPTY_PLAN_EDITS,
     siteEdits: s.siteEdits ?? EMPTY_SITE_EDITS,
     media: s.media ?? DEFAULT_MEDIA,
+    versions: s.versions ?? [],
+    siteAi: s.siteAi ?? EMPTY_SITE_AI,
   }
 }
 
@@ -679,7 +763,7 @@ export function sliceOf(w: World): SiteSlice {
 const SITE_BASE: Omit<SiteSlice, 'sent' | 'domain' | 'customDomain' | 'published' | 'unpublished'> = {
   project: 'built', mode: 'autopilot', icann: false, chat: 'long',
   brief: EMPTY_BRIEF, build: EMPTY_BUILD, suggest: EMPTY_SUGGEST, planEdits: EMPTY_PLAN_EDITS,
-  siteEdits: EMPTY_SITE_EDITS, media: DEFAULT_MEDIA,
+  siteEdits: EMPTY_SITE_EDITS, media: DEFAULT_MEDIA, versions: [], siteAi: EMPTY_SITE_AI,
 }
 export const SITE_SLICES: Record<string, SiteSlice> = {
   synco: {
@@ -743,6 +827,8 @@ export const DEFAULT_WORLD: World = {
   planEdits: EMPTY_PLAN_EDITS,
   siteEdits: EMPTY_SITE_EDITS,
   media: DEFAULT_MEDIA,
+  versions: [],
+  siteAi: EMPTY_SITE_AI,
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -1120,8 +1206,10 @@ function initialWorld(): World {
       fromUrl.chat === 'working' &&
       Array.isArray(saved.sent) &&
       saved.sent.length > 0 &&
-      saved.sent[saved.sent.length - 1].who === 'user'
-    return normalize({ ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent } : null) })
+      (saved.sent[saved.sent.length - 1].who === 'user' || saved.sent[saved.sent.length - 1].kind === 'version')
+    /* a chat edit caught mid-work has already posted its «working» version card: the versions it
+       points into travel with the transcript, or the card would point at nothing */
+    return normalize({ ...DEFAULT_WORLD, ...fromUrl, ...(resumable ? { sent: saved.sent, versions: saved.versions ?? [], siteAi: saved.siteAi ?? EMPTY_SITE_AI } : null) })
   }
   if (Object.keys(saved).length) return normalize({ ...DEFAULT_WORLD, ...saved })
   return DEFAULT_WORLD
@@ -1197,6 +1285,15 @@ export const useWorld = create<Store>((set, get) => ({
     // `chat`, so it is untouched by this rule.
     if (patch.chat !== undefined && patch.siteEdits === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
       patch = { ...patch, siteEdits: EMPTY_SITE_EDITS }
+    }
+    // …and the site's versions, with the AI's layer they snapshot. A version history is the record
+    // of THIS transcript's edits; a staged situation derives its own from `chat` (versionsOf), and
+    // Remixer's changes to the page belong to the conversation that asked for them.
+    if (patch.chat !== undefined && patch.versions === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
+      patch = { ...patch, versions: [] }
+    }
+    if (patch.chat !== undefined && patch.siteAi === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
+      patch = { ...patch, siteAi: EMPTY_SITE_AI }
     }
     // The registrant-email clock is owed by a REGISTRATION, so it cannot outlive the
     // domain it was started for: move the domain axis to a state where the project is back

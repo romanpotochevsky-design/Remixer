@@ -64,7 +64,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { REVEAL_CLOSE, REVEAL_OPEN, revealBody, revealBodyFade } from '@/ui/motion'
 
 export function Reveal({
-  show, pad, radius = 12, className, follow = 'spring', children,
+  show, pad, radius = 12, className, follow = 'spring', glint = true, children,
 }: {
   /** Is the block up? Flipping it unfolds or folds the block; the panel's height follows. */
   show: boolean
@@ -83,6 +83,10 @@ export function Reveal({
    * hiding the block itself always springs.
    */
   follow?: 'spring' | 'instant'
+  /** Does the arriving block catch the light (the Rim Sweep)? Off for a block that unfolds INSIDE
+   *  a card whose rim is already drawn — a version card's details: a second rim round the lower
+   *  half of one card would read as a card inside a card. */
+  glint?: boolean
   children: ReactNode
 }) {
   /* Has this block ever been down while the Reveal was mounted? Only then is an appearance an
@@ -92,7 +96,7 @@ export function Reveal({
   return (
     <AnimatePresence initial={false}>
       {show && (
-        <RevealBox key="box" pad={pad} radius={radius} className={className} follow={follow} arriving={wasDown.current}>
+        <RevealBox key="box" pad={pad} radius={radius} className={className} follow={follow} arriving={wasDown.current} glint={glint}>
           {children}
         </RevealBox>
       )}
@@ -101,8 +105,8 @@ export function Reveal({
 }
 
 function RevealBox({
-  pad, radius, className, follow, arriving, children,
-}: { pad?: string; radius: number; className?: string; follow: 'spring' | 'instant'; arriving: boolean; children: ReactNode }) {
+  pad, radius, className, follow, arriving, glint, children,
+}: { pad?: string; radius: number; className?: string; follow: 'spring' | 'instant'; arriving: boolean; glint: boolean; children: ReactNode }) {
   const reduce = useReducedMotion()
   const [present, safeToRemove] = usePresence()
   const clip = useRef<HTMLDivElement>(null)
@@ -198,7 +202,7 @@ function RevealBox({
       {/* flow-root: a child's top margin must stay INSIDE the measured box, not collapse through it */}
       <div ref={sizer} className={`flow-root${pad ? ` ${pad}` : ''}`}>
         <motion.div
-          className={`relative origin-top${arriving ? ' card-arrive' : ''}`}
+          className={`relative origin-top${arriving && glint ? ' card-arrive' : ''}`}
           style={{ borderRadius: radius }}
           variants={reduce ? revealBodyFade : revealBody}
           initial="initial"

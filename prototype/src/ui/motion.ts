@@ -1363,3 +1363,62 @@ export const editBarPopFade = {
   animate: { opacity: 1, transition: { duration: 0.16 } },
   exit: { opacity: 0, transition: EXIT },
 } as const
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE VERSION CARDS (modules/versions; board 31422:42642, designer 30.09.2026: «кнопку
+   вернуться на версию или посмотреть старую версию… стек как у iPhone iOS в шторке»)
+   ═══════════════════════════════════════════════════════════════════════════ */
+/**
+ * A card's buttons arriving — when a working card lands, and when the card that WAS current hands
+ * the green mark on and grows its revert and eye. They pop out of their own centres (.6 → 1, one
+ * soft overshoot), one after another (`custom` = index), the chip badge's curve; they leave flat and
+ * quick. The title glides to its new x on `SPRING` (a `layout="position"` on the title).
+ */
+export const vcButtonIn = {
+  initial: { opacity: 0, scale: 0.6 },
+  animate: (i: number) => ({
+    opacity: 1,
+    scale: 1,
+    transition: { type: 'spring', duration: 0.42, bounce: 0.32, delay: 0.04 + i * 0.05, opacity: { duration: 0.14, delay: 0.04 + i * 0.05 } },
+  }),
+  exit: { opacity: 0, scale: 0.7, transition: EXIT },
+} as const
+export const vcButtonInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.16 } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+/** The left slot's content handing over (spinner → green mark, T → green mark and back). */
+export const vcSlotSwap = {
+  initial: { opacity: 0, scale: 0.5 },
+  animate: { opacity: 1, scale: 1, transition: { type: 'spring', duration: 0.46, bounce: 0.34, opacity: { duration: 0.16 } } },
+  exit: { opacity: 0, scale: 0.6, transition: EXIT },
+} as const
+/**
+ * THE STACK — iOS's notification stack, copied in behaviour (designer: «можно полностью скопировать
+ * анимации и поведение стека с iPhone iOS в шторке»). Three or more of the customer's own edits in
+ * a row fold into one card with the older ones peeking above it; a tap fans them out; «Show less»
+ * folds them back. One spring for every card's travel and for the stack's height — a linear system
+ * on identical parameters moves as one piece, so the stack's bottom edge and its front card never
+ * part (the Menu Fold's lesson, design-system.md §7). Softer than the house `SPRING`: the fan travels
+ * a few hundred pixels, and at `SPRING`'s stiffness it would read as a snap.
+ */
+export const STACK_SPRING = { type: 'spring', duration: 0.54, bounce: 0.2 } as const
+/** The depth veils on the cards behind: they lift as the stack fans out, a beat after it starts. */
+export const STACK_VEIL_OUT = { duration: 0.24, delay: 0.06, ease: [0.2, 0, 0, 1] } as const
+export const STACK_VEIL_IN = { duration: 0.18, ease: [0.4, 0, 1, 1] } as const
+/**
+ * THE PREVIEW BAR — «Viewing an earlier version», standing in the edit bar's slot at the canvas's
+ * foot while the eye is on. It rises out of the canvas edge like the edit bar pops out of its rail
+ * tile: glass up from slightly small, contents a beat later. Leaves flat, 140 ms.
+ */
+export const previewBarIn = {
+  initial: { opacity: 0, scale: 0.94, y: 14 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', duration: 0.5, bounce: 0.22, opacity: { duration: 0.18, ease: [0.2, 0, 0, 1] } } },
+  exit: { opacity: 0, scale: 0.97, y: 6, transition: EXIT },
+} as const
+export const previewBarInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18 } },
+  exit: { opacity: 0, transition: EXIT },
+} as const

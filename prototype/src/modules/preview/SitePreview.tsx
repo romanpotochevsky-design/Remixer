@@ -35,13 +35,16 @@ const keepOnMainThread = () => {}
 
 /** The nav: the logo is the way home, the anchors are the one-pager's sections, not pages. */
 function SiteNav({ go }: { go: (path: string) => void }) {
+  /* «update the navigation» swaps the one-pager's anchors (modules/versions/changes.ts) */
+  const { ai } = useContext(SiteContext)
+  const links = ai.mods.includes('nav') ? NAV_AFTER : NAV_BEFORE
   return (
-      <div className="site-pad sticky top-0 z-10 flex items-center justify-between border-b border-[#1d1f1a14] bg-[#fbfaf7f2] py-4 backdrop-blur-sm">
-        <button type="button" data-site-link="/" onClick={() => go('/')} className="text-[20px] font-bold tracking-[-0.02em]">fit<span className="text-[#2e7d4f]">.</span></button>
+      <div className="site-pad sticky top-0 z-10 flex items-center justify-between border-b border-[#1d1f1a14] bg-[color-mix(in_srgb,var(--sp)_95%,transparent)] py-4 backdrop-blur-sm">
+        <button type="button" data-site-link="/" onClick={() => go('/')} className="text-[20px] font-bold tracking-[-0.02em]">fit<span className="text-[var(--sa)]">.</span></button>
         <nav className="site-nav-links gap-7 text-[13.5px] text-[#1d1f1aa6]" aria-hidden>
-          <span>Menu</span><span>How it works</span><span>Pricing</span><span>FAQ</span>
+          {links.map((l) => <span key={l}>{l}</span>)}
         </nav>
-        <T as="span" k="nav.cta" className="rounded-full bg-[#2e7d4f] px-4 py-2 text-[13px] font-semibold text-white" />
+        <T as="span" k="nav.cta" className="rounded-full bg-[var(--sa)] px-4 py-2 text-[13px] font-semibold text-white" />
       </div>
 
   )
@@ -59,14 +62,17 @@ function Stat({ k, big = 16, block = false }: { k: string; big?: number; block?:
 }
 
 function HomeBody() {
+  const { ai } = useContext(SiteContext)
+  const has = (m: string) => ai.mods.includes(m)
+  const big = has('menuBig')
   return (
     <>
       <div className="site-pad site-hero mx-auto max-w-[880px] text-center">
-        <T k="home.eyebrow" className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]" />
+        <T k="home.eyebrow" className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sa)]" />
         <T as="h1" k="home.hero.title" className="site-hero-title mx-auto max-w-[16ch] font-bold leading-[1.08] tracking-[-0.03em]" style={{ textWrap: 'balance' }} />
         <T k="home.hero.lead" className="mx-auto mt-4 max-w-[46ch] text-[16px] leading-[1.6] text-[#1d1f1a99]" />
         <div className="site-cta mt-7 justify-center gap-3">
-          <T as="span" k="home.cta.primary" className="rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white" />
+          <T as="span" k="home.cta.primary" className="rounded-full bg-[var(--sa)] px-6 py-3 text-[14.5px] font-semibold text-white" />
           <T as="span" k="home.cta.secondary" className="rounded-full border border-[#1d1f1a26] px-6 py-3 text-[14.5px] font-medium text-[#1d1f1a]" />
         </div>
         <div className="site-stats mt-10 justify-center text-[13px] text-[#1d1f1a80]">
@@ -76,18 +82,20 @@ function HomeBody() {
         </div>
       </div>
 
+      {has('photos') && <PhotoStrip />}
+
       {/* menu grid — the DARK half of the page, so the glow can be judged on both
           grounds at once (narrow rim over the white hero, full bloom over this) */}
-      <div className="bg-[#101210] pb-16 pt-12 text-[#f4f4f0]">
+      <div className="bg-[var(--sd)] pb-16 pt-12 text-[#f4f4f0]">
         <div className="site-pad mx-auto max-w-[980px]">
           <div className="mb-5 flex items-end justify-between">
             <T as="h2" k="home.menu.title" className="text-[24px] font-bold tracking-[-0.02em]" />
-            <T as="span" k="home.menu.more" className="text-[13px] font-medium text-[#7ac996]" />
+            <T as="span" k="home.menu.more" className="text-[13px] font-medium text-[var(--sa-soft)]" />
           </div>
-          <div className="site-grid grid gap-4">
+          <div className={`site-grid grid gap-4${big ? ' site-grid--big' : ''}`}>
             {MEALS.map((m) => (
-              <div key={m.id} className="overflow-hidden rounded-[14px] border border-[#ffffff14] bg-[#191b17]">
-                <Photo k={m.photoKey} className="h-28" tint={m.tint} emoji={m.emoji} />
+              <div key={m.id} className="overflow-hidden rounded-[14px] border border-[#ffffff14] bg-[var(--sd-card)]">
+                <Photo k={m.photoKey} className={big ? 'h-44' : 'h-28'} tint={m.tint} emoji={m.emoji} />
                 <div className="p-4">
                   <T k={m.nameKey} compiled={m.name} className="text-[15px] font-semibold" />
                   <T k={m.macrosKey} compiled={mealMacros(m)} className="mt-1 text-[12.5px] tabular-nums text-[#f4f4f080]" />
@@ -98,6 +106,10 @@ function HomeBody() {
         </div>
       </div>
 
+      {has('pricing') && <Pricing />}
+      {has('testimonials') && <Testimonials />}
+      {has('faq') && <Faq />}
+      {has('order') && <OrderForm />}
     </>
   )
 }
@@ -142,7 +154,7 @@ const TILE = 'rounded-[16px] border border-[#1d1f1a14] bg-white p-5'
 function PageHead({ page, title, leadKey, leadCompiled }: { page: SitePage; title: string; leadKey: string; leadCompiled?: string }) {
   return (
     <div className="site-pad mx-auto max-w-[880px] pb-10 pt-14 text-center">
-      <T k="page.eyebrow" className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]" />
+      <T k="page.eyebrow" className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sa)]" />
       <T as="h1" k={`page.${page.id}.title`} compiled={title} className="mx-auto max-w-[18ch] text-[40px] font-bold leading-[1.1] tracking-[-0.03em]" style={{ textWrap: 'balance' }} />
       <T k={leadKey} compiled={leadCompiled} className="mx-auto mt-4 max-w-[48ch] text-[16px] leading-[1.6] text-[#1d1f1a99]" />
     </div>
@@ -192,7 +204,7 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
             <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]" aria-hidden>Your name</div>
             <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]" aria-hidden>Email</div>
             <div className="h-24 rounded-[10px] border border-[#1d1f1a1f] px-4 py-3 text-[14px] text-[#1d1f1a66]" aria-hidden>How can we help?</div>
-            <T as="span" k="contact.form.cta" className="mt-1 self-start rounded-full bg-[#2e7d4f] px-5 py-2.5 text-[14px] font-semibold text-white" />
+            <T as="span" k="contact.form.cta" className="mt-1 self-start rounded-full bg-[var(--sa)] px-5 py-2.5 text-[14px] font-semibold text-white" />
           </div>
         </div>
       </>
@@ -205,11 +217,11 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
         <div className="site-pad mx-auto grid max-w-[980px] gap-8 pb-16 pt-14 md:grid-cols-2">
           <Photo k={m.photoKey} className="min-h-[320px] rounded-[20px]" tint={m.tint} emoji={m.emoji} emojiSize={96} />
           <div className="flex flex-col justify-center">
-            <T k={`page.${page.id}.title`} compiled={name} className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]" />
+            <T k={`page.${page.id}.title`} compiled={name} className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sa)]" />
             <T as="h1" k={m.nameKey} compiled={m.name} className="text-[36px] font-bold leading-[1.1] tracking-[-0.03em]" />
             <T k="item.desc" className="mt-3 text-[15.5px] leading-[1.6] text-[#1d1f1a99]" />
             <T k="item.macros" className="mt-5 text-[14px] tabular-nums text-[#1d1f1a80]" />
-            <T as="span" k="item.cta" className="mt-6 self-start rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white" />
+            <T as="span" k="item.cta" className="mt-6 self-start rounded-full bg-[var(--sa)] px-6 py-3 text-[14.5px] font-semibold text-white" />
           </div>
         </div>
       </>
@@ -251,7 +263,7 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
 function NotFound({ path, go, t }: { path: string; go: (path: string) => void; t: (x: Text) => string }) {
   return (
     <div className="site-pad mx-auto flex min-h-[420px] max-w-[880px] flex-col items-center justify-center py-16 text-center" data-site-notfound>
-      <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]">404</p>
+      <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sa)]">404</p>
       <h1 className="text-[36px] font-bold leading-[1.1] tracking-[-0.03em]">{t({ en: 'Page not found', uk: 'Сторінку не знайдено' })}</h1>
       <p className="mt-4 max-w-[46ch] text-[16px] leading-[1.6] text-[#1d1f1a99]">
         {t({ en: `There’s nothing at ${path} on this site.`, uk: `На цьому сайті за адресою ${path} нічого немає.` })}
@@ -260,7 +272,7 @@ function NotFound({ path, go, t }: { path: string; go: (path: string) => void; t
         type="button"
         data-site-link="/"
         onClick={() => go('/')}
-        className="mt-7 rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white"
+        className="mt-7 rounded-full bg-[var(--sa)] px-6 py-3 text-[14.5px] font-semibold text-white"
       >
         {t({ en: 'Back to home', uk: 'На головну' })}
       </button>
@@ -269,10 +281,12 @@ function NotFound({ path, go, t }: { path: string; go: (path: string) => void; t
 }
 
 
-import { useMemo, useRef } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
 import { useT, type Text } from '@/i18n'
-import { useWorld, siteSliceOf, type SiteEdits } from '@/state/world'
+import { useWorld, siteSliceOf, type SiteAi, type SiteEdits } from '@/state/world'
+import { NAV_AFTER, NAV_BEFORE, PALETTES } from '@/modules/versions/changes'
+import { Faq, OrderForm, PhotoStrip, Pricing, Testimonials } from './site-ai'
 import { useUI } from '@/state/ui'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { pageSwap, pageSwapFade } from '@/ui/motion'
@@ -282,6 +296,16 @@ import { ImagePanel } from '@/modules/editor/ImagePanel'
 import { findPage, normalizePath, sitePages, type SitePage } from './pages'
 import { MEALS, SERVICES, SITE_TEXT, mealMacros } from './content'
 import { Photo, SiteContext, T, type SiteCtx } from './site-parts'
+
+/** Remixer's rewrites under the customer's own words — the text layer the page reads (SiteAi). */
+const withAi = (edits: SiteEdits, ai: SiteAi): SiteEdits =>
+  Object.keys(ai.text).length ? { ...edits, text: { ...ai.text, ...edits.text } } : edits
+
+/** The palette as the page's colour variables — every accent and band reads these. */
+function paletteVars(ai: SiteAi): CSSProperties {
+  const p = PALETTES[ai.palette] ?? PALETTES[0]
+  return { '--sa': p.accent, '--sa-soft': p.soft, '--sd': p.dark, '--sd-card': p.card, '--sp': p.paper } as CSSProperties
+}
 
 /** The staged draft laid over the saved layer — what the canvas shows while a tool is on. */
 const overlay = (saved: SiteEdits, draft: SiteEdits): SiteEdits => ({
@@ -303,24 +327,60 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
   const reduce = useReducedMotion()
   const answers = useWorld((s) => siteSliceOf(s.world, site).brief.answers)
   const outline = useWorld((s) => siteSliceOf(s.world, site).planEdits.outline)
-  const saved = useWorld((s) => siteSliceOf(s.world, site).siteEdits)
+  const liveSaved = useWorld((s) => siteSliceOf(s.world, site).siteEdits)
+  const liveAi = useWorld((s) => siteSliceOf(s.world, site).siteAi)
   const previewPath = useUI((s) => s.previewPath)
   const setPath = useUI((s) => s.setPreviewPath)
   const canvas = pinned === undefined && site === undefined
-  const tool = useEditor((s) => (canvas ? s.tool : null))
-  const draft = useEditor((s) => (canvas && s.tool ? s.draft : null))
+  /*
+   * AN OLD VERSION ON THE CANVAS (the version card's eye, modules/versions). The canvas shows that
+   * version's two layers instead of the live ones, and nothing else changes — same page, same
+   * scroll, same route — so the difference is the only thing that moves. The swap happens at the
+   * bottom of a short dip (`dim`: .25 in 120 ms, back in 280), so it reads as the site turning to
+   * another state, not as a flicker. `shown` lags the request by that dip.
+   */
+  const wanted = useUI((s) => (canvas ? s.versionPreview : null))
+  const [shown, setShown] = useState<number | null>(wanted)
+  const dim = useMotionValue(1)
+  useEffect(() => {
+    if (shown === wanted) return
+    if (reduce) { setShown(wanted); return }
+    let alive = true
+    const out = animate(dim, 0.25, { duration: 0.12, ease: [0.4, 0, 1, 1] })
+    out.then(() => {
+      if (!alive) return
+      setShown(wanted)
+      animate(dim, 1, { duration: 0.28, ease: [0, 0, 0.2, 1] })
+    })
+    return () => { alive = false; out.stop() }
+  }, [wanted]) // eslint-disable-line react-hooks/exhaustive-deps
+  /* the stored list, not `versionsOf`: only a version that is NOT the current one can be looked at,
+     and the moment there are two the list is stored — a derived list is a fresh array per read */
+  const stored = useWorld((s) => (canvas ? s.world.versions : null))
+  const old = shown !== null ? stored?.find((v) => v.n === shown) : undefined
+  const saved = old ? old.edits : liveSaved
+  const ai = old ? old.ai : liveAi
+  /* an old version is looked at, never edited (the tool steps aside when the eye is pressed) */
+  const tool = useEditor((s) => (canvas && !old ? s.tool : null))
+  const draft = useEditor((s) => (canvas && !old && s.tool ? s.draft : null))
   const go = pinned !== undefined ? () => {} : setPath
   const pages = useMemo(() => sitePages(answers, outline), [answers, outline])
   const path = normalizePath(pinned ?? previewPath)
   const page = findPage(pages, path)
   const ctx = useMemo<SiteCtx>(
-    () => ({ edits: draft ? overlay(saved, draft) : saved, editing: tool === 'edit', selecting: tool === 'select' }),
-    [saved, draft, tool],
+    () => ({ edits: withAi(draft ? overlay(saved, draft) : saved, ai), ai, editing: tool === 'edit', selecting: tool === 'select' }),
+    [saved, draft, tool, ai],
   )
   const wrap = useRef<HTMLDivElement | null>(null)
   return (
     <SiteContext.Provider value={ctx}>
-    <div className="relative h-full" data-prototype-note="generated site, not builder chrome" data-site-editing={tool ?? undefined}>
+    <motion.div
+      className="relative h-full"
+      style={{ ...paletteVars(ai), opacity: dim }}
+      data-prototype-note="generated site, not builder chrome"
+      data-site-editing={tool ?? undefined}
+      data-site-version={old ? old.n : undefined}
+    >
       <AnimatePresence initial={false}>
         <motion.div
           key={path}
@@ -333,7 +393,7 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
           className="absolute inset-0"
         >
           {/* each page owns its scroller, so a new page opens at its top */}
-          <ScrollArea className="h-full" innerClassName="bg-[#fbfaf7] font-sans text-[#1d1f1a]" thumb="auto">
+          <ScrollArea className="h-full" innerClassName="bg-[var(--sp)] font-sans text-[#1d1f1a]" thumb="auto">
             {/* a page shorter than the canvas still ends in its footer, not in bare ground; `relative`
                 so the editor's overlay (rings) rides inside the scroll content with the page */}
             <div ref={wrap} className="relative flex min-h-full flex-col">
@@ -349,7 +409,7 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
       </AnimatePresence>
       {/* the Image panel beside the photo whose «Replace photo» was pressed — canvas only */}
       {tool === 'edit' && <ImagePanel />}
-    </div>
+    </motion.div>
     </SiteContext.Provider>
   )
 }

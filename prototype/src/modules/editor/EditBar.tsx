@@ -301,7 +301,9 @@ export function EditBar() {
   const canUndo = useEditor((s) => s.past.length > 0)
   const canRedo = useEditor((s) => s.future.length > 0)
   const { undo, redo, clear, save, close, select, openPanel, setContext } = useEditor.getState()
-  const show = project === 'built' && live && surface === 'preview'
+  /* an old version on the canvas is looked at, never edited — the preview bar takes the slot */
+  const previewing = useUI((s) => s.versionPreview !== null)
+  const show = project === 'built' && live && surface === 'preview' && !previewing
 
   /* the two homes and the flight between them */
   const barRef = useRef<HTMLDivElement>(null)

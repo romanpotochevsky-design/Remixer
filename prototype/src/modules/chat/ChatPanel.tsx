@@ -12,8 +12,9 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useWorld, canUseAI } from '@/state/world'
+import { useWorld, canUseAI, type Message, type Version } from '@/state/world'
 import { useT } from '@/i18n'
+import { useUI } from '@/state/ui'
 import {
   IconPlus, IconMic, IconArrowUp, IconChevronDown, IconCheck, IconClose,
   IconReplyArrow, IconThumbUp, IconThumbDown, IconCopy, IconMore,
@@ -34,6 +35,8 @@ import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
 import { useEditor } from '@/modules/editor/session'
 import { GlyphSelect } from '@/modules/editor/icons'
 import { labelOf } from '@/modules/preview/content'
+import { currentOf, versionsOf } from '@/modules/versions/model'
+import { VersionCard, VersionRun } from '@/modules/versions/VersionCard'
 
 /**
  * The stagger step of a turn on the Home → builder arrival (index.css "THE ARRIVAL"):
@@ -613,6 +616,30 @@ export function ChatPanel() {
   const armed = draft.trim().length > 0 && canUseAI(world) && !working
   const lastUserIndex = thread.reduce((at, m, i) => (m.who === 'user' ? i : at), -1)
 
+  /* THE SITE'S VERSIONS (modules/versions): the cards render from these, not from the messages —
+     a version is born «working» and stops being current after it is posted */
+  const versions = versionsOf(world)
+  const currentN = currentOf(world)?.n
+  const previewN = useUI((s) => s.versionPreview)
+  /* the thread, with every run of two or more free-edit cards gathered into one element */
+  const runs: ({ i: number; m: Message; run?: undefined } | { i: number; run: { id: number; v: Version }[]; m?: undefined })[] = []
+  for (let i = 0; i < thread.length; i++) {
+    const m = thread[i]
+    const v = m.kind === 'version' ? versions.find((x) => x.n === m.version) : undefined
+    if (v && v.kind === 'edit') {
+      const run: { id: number; v: Version }[] = [{ id: m.id, v }]
+      let j = i + 1
+      for (; j < thread.length; j++) {
+        const nm = thread[j]
+        const nv = nm.kind === 'version' ? versions.find((x) => x.n === nm.version) : undefined
+        if (!nv || nv.kind !== 'edit') break
+        run.push({ id: nm.id, v: nv })
+      }
+      if (run.length >= 2) { runs.push({ i, run }); i = j - 1; continue }
+    }
+    runs.push({ i, m })
+  }
+
   // Whatever is on screen at the first paint counts as already seen.
   if (seen.current === null) {
     seen.current = new Set(thread.map((m) => m.id))
@@ -795,6 +822,21 @@ export function ChatPanel() {
       if (want === 0 && atEnd.current) { vp.scrollTop = vp.scrollHeight; atEnd.current = true }
     }
 
+    /* A card posted by a press ELSEWHERE — a restore from an old card, a Save on the canvas
+       (modules/versions `followThread`) — is followed to the end even if the reader had scrolled
+       up: they acted, and the result lands at the bottom. Two frames: the card must be laid out. */
+    const toEnd = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+      atEnd.current = true
+      const an = anchor.current
+      if (an) {
+        const below = ls.offsetTop + ls.offsetHeight - sp.offsetHeight - an.offsetTop
+        const want = Math.max(0, vp.clientHeight - TOP_INSET - below)
+        if (Math.abs(want - sp.offsetHeight) >= 1) sp.style.height = `${want}px`
+      }
+      vp.scrollTo({ top: vp.scrollHeight, behavior: 'smooth' })
+    }))
+    window.addEventListener('remixer:thread-end', toEnd)
+
     /* Both boxes: the content grows, and the viewport shrinks under it when the dock puts
        up a panel — either one can leave the newest thing off screen. */
     const ro = new ResizeObserver(follow)
@@ -802,6 +844,7 @@ export function ChatPanel() {
     ro.observe(vp)
     return () => {
       ro.disconnect()
+      window.removeEventListener('remixer:thread-end', toEnd)
       vp.removeEventListener('scroll', onScroll)
       vp.removeEventListener('wheel', mark)
       vp.removeEventListener('touchstart', mark)
@@ -893,8 +936,32 @@ export function ChatPanel() {
               {t({ en: 'Describe what you want to build.', uk: 'Опишіть, що збудувати.' })}
             </p>
           ) : (
-            thread.map((m, i) => {
+            runs.map((g) => {
+              /* A RUN OF THE CUSTOMER'S OWN EDITS — two or more free-edit version cards in a row —
+                 is one element, so the third can fold them into a stack (modules/versions). Keyed by
+                 its first card, so the run keeps its node (and its fan-out) as it grows. */
+              if (g.run) {
+                return (
+                  <div key={`run-${g.run[0].id}`} className="arrive-msg -ml-2 w-[calc(100%+8px)] py-1" style={arriveStep(g.i)}>
+                    <VersionRun items={g.run} current={currentN} previewN={previewN} isFresh={isFresh} />
+                  </div>
+                )
+              }
+              const m = g.m
+              const i = g.i
               const body = typeof m.text === 'string' ? m.text : t(m.text)
+              if (m.kind === 'version') {
+                const v = versions.find((x) => x.n === m.version)
+                if (!v) return null
+                return (
+                  /* the board's card is 8 px wider than the text column, on the left (x 8 in the
+                     432 column, the thread's gutter is 16); `py-1` makes the thread's 20 the
+                     board's 24 round a card */
+                  <div key={m.id} className="arrive-msg -ml-2 w-[calc(100%+8px)] py-1" style={arriveStep(i)}>
+                    <VersionCard v={v} current={currentN === v.n} fresh={isFresh(m.id)} previewing={previewN === v.n} />
+                  </div>
+                )
+              }
               return (
                 /* `arrive-msg`: on the Home → builder arrival the turns cascade in from the
                    top, one after another (`--i` is the stagger step; index.css "THE
@@ -935,7 +1002,9 @@ export function ChatPanel() {
               would be a second, vaguer answer to a question already answered. */}
           {working
             && thread[thread.length - 1]?.kind !== 'brief'
-            && thread[thread.length - 1]?.kind !== 'build' && (
+            && thread[thread.length - 1]?.kind !== 'build'
+            /* a working version card IS the progress — a «Thinking» under it would be a second one */
+            && thread[thread.length - 1]?.kind !== 'version' && (
             <div className="arrive-msg" style={arriveStep(thread.length)}>
               <Waiting label={t({ en: 'Thinking', uk: 'Думаю' })} />
             </div>

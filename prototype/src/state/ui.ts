@@ -367,6 +367,12 @@ interface UIStore {
   /** Preview reload pulse — drives the Siri edge glow for a few seconds. */
   reloading: boolean
   /**
+   * WHICH OLD VERSION THE CANVAS IS SHOWING, or null for the site as it is (the version card's eye,
+   * modules/versions — Lovable's history preview, Bolt's eye). Navigation, not world: looking at an
+   * old version changes nothing about the site, and a reload lands back on the site as it is.
+   */
+  versionPreview: number | null
+  /**
    * Which phase of the Home → builder transition is on screen, or null (see
    * ui/BootCover.tsx and BootPhase above).
    *
@@ -472,6 +478,7 @@ interface UIStore {
   setEditBarDocked: (docked: boolean) => void
   dismissPublishHint: () => void
   triggerReload: (ms?: number) => void
+  setVersionPreview: (n: number | null) => void
 }
 
 /** One timer at a time: mashing reload extends the pulse instead of stacking timers. */
@@ -507,6 +514,7 @@ export const useUI = create<UIStore>((set, get) => ({
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
   reloading: false,
+  versionPreview: null,
   boot: null,
   previewOpen: true,
   previewPath: '/',
@@ -519,7 +527,7 @@ export const useUI = create<UIStore>((set, get) => ({
      attachment via `openBuilder`, which is exactly when it should die. */
   goHome: () => {
     clearBootTimers()
-    set({ page: 'home', boot: null, publishOpen: false, accountOpen: false, mediaOpen: null, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false })
+    set({ page: 'home', boot: null, publishOpen: false, accountOpen: false, mediaOpen: null, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false, versionPreview: null })
   },
   /*
    * The transition, phase by phase. The curtain is raised FIRST and the page switches
@@ -537,7 +545,7 @@ export const useUI = create<UIStore>((set, get) => ({
     const arrive = reduce ? 240 : BOOT_ARRIVE_MS
     set({ boot: 'darken' })
     bootAfter(darken, () =>
-      set({ page: 'builder', boot: glow ? 'glow' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, attachedFile: null, tplFlight: null, previewPath: '/' }))
+      set({ page: 'builder', boot: glow ? 'glow' : 'arrive', templatePickerOpen: false, pickerCard: null, attachedTemplate: null, attachedFile: null, tplFlight: null, previewPath: '/', versionPreview: null }))
     if (glow) bootAfter(darken + glow, () => set({ boot: 'arrive' }))
     bootAfter(darken + glow + arrive, () => set({ boot: null }))
   },
@@ -638,4 +646,6 @@ export const useUI = create<UIStore>((set, get) => ({
     set({ reloading: true })
     reloadTimer = setTimeout(() => set({ reloading: false }), ms)
   },
+  /* the canvas is the site's while an old version is on it: floating windows over it close */
+  setVersionPreview: (versionPreview) => set(versionPreview === null ? { versionPreview } : { versionPreview, publishOpen: false, mediaOpen: null, surface: 'preview' }),
 }))

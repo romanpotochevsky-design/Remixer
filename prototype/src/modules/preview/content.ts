@@ -80,6 +80,42 @@ export const SITE_TEXT: Record<string, string> = {
   'svc.custom-macros.text': 'Tell us the numbers; the chefs build the menu around them.',
   'svc.office-delivery.title': 'Office delivery',
   'svc.office-delivery.text': 'One drop for the whole team, 07:30 at the door.',
+
+  /* The blocks a chat edit can add to Home (modules/versions/changes.ts). Keys like every other
+     text run, so the Visual Editor edits a section Remixer added exactly as it edits the rest. */
+  'ai.strip.eyebrow': 'From our kitchen, this morning',
+  'ai.pricing.title': 'Pick your plan',
+  'ai.pricing.lead': 'Every plan is cooked fresh and weighed to the gram. Pause or switch any week.',
+  'ai.plan.0.name': 'Lunch only',
+  'ai.plan.0.price': '₴1 450 / week',
+  'ai.plan.0.note': 'Five lunches, Monday to Friday',
+  'ai.plan.1.name': 'Weekly',
+  'ai.plan.1.price': '₴2 690 / week',
+  'ai.plan.1.note': 'Lunch and dinner, five days, macros to your goal',
+  'ai.plan.1.badge': 'Most popular',
+  'ai.plan.2.name': 'Office',
+  'ai.plan.2.price': 'From ₴9 900 / week',
+  'ai.plan.2.note': 'One drop for the whole team at 07:30',
+  'ai.plan.cta': 'Choose',
+  'ai.reviews.title': 'What our customers say',
+  'ai.review.0.quote': '“I stopped weighing my food in March. The numbers on the label are the numbers.”',
+  'ai.review.0.name': 'Olena K. · Weekly plan, 7 months',
+  'ai.review.1.quote': '“Lunch at my desk that is actually good, and it is there before I am.”',
+  'ai.review.1.name': 'Dmytro S. · Lunch only, 4 months',
+  'ai.review.2.quote': '“We feed a team of twelve. One order, zero complaints, every morning at 07:30.”',
+  'ai.review.2.name': 'Iryna M. · Office, 1 year',
+  'ai.faq.title': 'Questions, answered',
+  'ai.faq.0.q': 'Can I pause a week?',
+  'ai.faq.0.a': 'Yes — pause or skip any week up to Friday noon before it.',
+  'ai.faq.1.q': 'What if I have an allergy?',
+  'ai.faq.1.a': 'Tell us once; the chefs swap the ingredient in every dish that has it.',
+  'ai.faq.2.q': 'Where do you deliver?',
+  'ai.faq.2.a': 'Across Odesa, between 06:45 and 07:45, to your door or your office.',
+  'ai.faq.3.q': 'How exact are the macros?',
+  'ai.faq.3.a': 'Every portion is weighed; we stay within ±2 g of what the label says.',
+  'ai.order.title': 'Order your first week',
+  'ai.order.lead': 'Leave your number — we call back within the hour to set your macros.',
+  'ai.order.cta': 'Send my order',
 }
 
 /** The three service tiles, in the order the Services page draws them. */
@@ -133,6 +169,8 @@ export const SITE_PHOTO_DEFAULTS: Record<string, PhotoRef> = {
   'about.photo': { kind: 'site', id: 'kitchen' },
   ...Object.fromEntries(MEALS.map((m) => [m.photoKey, { kind: 'site', id: m.id } as PhotoRef])),
   ...Object.fromEntries(SERVICES.map((s) => [`svc.${s.id}.photo`, { kind: 'site', id: `svc-${s.id}` } as PhotoRef])),
+  /* the photo strip a chat edit can add under the hero */
+  ...Object.fromEntries(['kitchen', 'salmon-teriyaki', 'protein-pancakes', 'svc-office-delivery'].map((id, i) => [`ai.strip.${i}.photo`, { kind: 'site', id } as PhotoRef])),
 }
 
 /* -------------------------------------------------------------- resolving */
@@ -208,6 +246,14 @@ export function labelOf(key: string): string {
   /* the Website media panel's «add to chat»: `media:<n>` pictures from the library */
   if (key.startsWith('media:')) { const n = Number(key.slice(6)) || 1; return n === 1 ? 'Photo from library' : `${n} photos from library` }
   if (key.endsWith('.photo')) return 'Photo'
+  /* the blocks a chat edit adds (ai.*) — their own words, before the dish-shaped rules below */
+  if (key.startsWith('ai.plan.') && key.endsWith('.name')) return 'Plan name'
+  if (key.startsWith('ai.review.') && key.endsWith('.name')) return 'Customer name'
+  if (key.endsWith('.quote')) return 'Quote'
+  if (key.endsWith('.price')) return 'Price'
+  if (key.endsWith('.q')) return 'Question'
+  if (key.endsWith('.a')) return 'Answer'
+  if (key.endsWith('.badge')) return 'Badge'
   if (key.endsWith('.title') || key === 'home.hero.title') return 'Heading'
   if (key.endsWith('.name')) return 'Dish name'
   if (key.endsWith('.cta') || key.startsWith('home.cta') || key === 'nav.cta') return 'Button'

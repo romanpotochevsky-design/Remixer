@@ -1,0 +1,25 @@
+/** Stage «Versions — the board's thread» and shoot the chat next to board-messages.png. */
+import { chromium } from 'playwright'
+const BASE = process.env.BASE || 'http://localhost:4173/'
+const OUT = new URL('./shots/', import.meta.url).pathname
+const browser = await chromium.launch({ executablePath: process.env.CHROME, args: ['--no-sandbox'] })
+const page = await browser.newPage({ viewport: { width: 1600, height: 1100 }, deviceScaleFactor: 2 })
+page.on('pageerror', (e) => console.log('PAGE ERROR', e.message))
+await page.goto(BASE + '?p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640', { waitUntil: 'networkidle' })
+await page.evaluate(() => localStorage.clear())
+await page.reload({ waitUntil: 'networkidle' })
+await page.click('.home-card-face')
+await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+await page.waitForTimeout(600)
+await page.click('button[aria-label="Prototype console"]')
+await page.waitForTimeout(400)
+await page.click('button:has-text("Versions — the board’s thread")')
+await page.waitForTimeout(400)
+await page.keyboard.press('Meta+.').catch(() => {})
+await page.evaluate(() => { const b = [...document.querySelectorAll('aside[data-console] button')].find((x) => /close/i.test(x.getAttribute('aria-label') || x.title || '')); b?.click() })
+await page.waitForTimeout(1200)
+const el = await page.$('.chat-dim')
+await el.screenshot({ path: OUT + 'preset-chat.png' })
+await page.screenshot({ path: OUT + 'preset-full.png' })
+console.log(await page.evaluate(() => [...document.querySelectorAll('[data-version-card]')].map((c) => c.dataset.versionCard + ':' + c.querySelector('[data-version-title]')?.textContent).join(' | ')))
+await browser.close()

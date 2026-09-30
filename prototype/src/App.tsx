@@ -51,6 +51,7 @@ import {
 } from '@/ui/motion'
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
+import { PreviewBar } from '@/modules/versions/PreviewBar'
 import {
   LogoRemixer, IconHistory, IconSidebar, IconStyle, IconExtension, IconAnalytics, IconCloud, IconPhotoLibrary,
   IconChatBubble, IconExpand,
@@ -1269,6 +1270,7 @@ export default function App() {
                     </div>
                   )}
                   <SiriGlow active={glow} surface={world.project === 'built' ? 'split' : 'dark'} />
+                  <VersionStageRing />
                 </motion.div>
                 </motion.div>
               </motion.div>
@@ -1332,6 +1334,8 @@ export default function App() {
           <PublishPanel hold={holdPanel} />
           {/* the Visual Editor's bar at the canvas's foot (board 31280:115372) — over the site, not inside the phone frame */}
           <EditBar />
+          {/* an old version on the canvas says so, in the edit bar's slot (modules/versions) */}
+          <PreviewBar />
           <AccountMenu />
           {/* the Website media library over the canvas at the rail (modules/media/MediaPanel.tsx) */}
           <MediaPanel />
@@ -1494,5 +1498,27 @@ export default function App() {
 
       <ScenarioPanel />
     </div>
+  )
+}
+
+
+/**
+ * THE CANVAS WHILE AN OLD VERSION IS ON IT — a 2 px ring of the action blue inside the stage, over
+ * the site and its glow (modules/versions/PreviewBar.tsx says the same in words). Not the live site:
+ * the edge says so all the way round, the way a screen-share border does. Opacity only.
+ */
+function VersionStageRing() {
+  const on = useUI((s) => s.versionPreview !== null)
+  return (
+    <motion.span
+      aria-hidden
+      data-version-ring
+      className="pointer-events-none absolute inset-0 z-30 rounded-[inherit]"
+      style={{ boxShadow: 'inset 0 0 0 2px rgba(81, 166, 255, 0.6)' }}
+      initial={false}
+      animate={{ opacity: on ? 1 : 0 }}
+      transition={{ duration: on ? 0.24 : 0.14, ease: on ? [0.2, 0, 0, 1] : [0.4, 0, 1, 1] }}
+      onUpdate={keepOnMainThread}
+    />
   )
 }

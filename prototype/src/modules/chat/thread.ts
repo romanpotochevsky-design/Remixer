@@ -22,6 +22,9 @@ const DEMO_THREAD: Omit<Message, 'id'>[] = [
       uk: 'Збери мені акуратний сайт для сервісу готових раціонів — точне КБЖВ, тижневі меню, доставка по Одесі.',
     },
   },
+  /* the first generation's version card — above the answer, where the board puts every change's
+     card (31422:42642). It points at the scenario's version 1 (modules/versions/model.ts). */
+  { who: 'ai', kind: 'version', version: 1, text: '' },
   {
     who: 'ai',
     text: {
@@ -47,9 +50,32 @@ export function baselineThread(chat: Chat): Message[] {
 
 /* ------------------------------------------------------------------ replies */
 
-const MATCHED: { on: RegExp; text: Copy }[] = [
+/*
+ * `key` names what the edit does to the page (modules/versions/changes.ts) — and so which version
+ * card it leaves. `null` is a reply that changes nothing on the site, and gets no version.
+ * ⚠️ ORDER IS MEANING: the first rule that matches wins, so «update the navigation MENU» has to meet
+ * the navigation rule before the menu one, and «customer REVIEWS» the testimonials rule before FAQ.
+ */
+const MATCHED: { on: RegExp; key: string | null; text: Copy }[] = [
+  {
+    on: /\bnav|navigation|header/i,
+    key: 'nav',
+    text: {
+      en: 'Updated the navigation — the links now read Menu, Plans, Reviews and FAQ, and the header button says “Start my plan”, so the one action that matters is the one that stands out.',
+      uk: 'Оновив навігацію — посилання тепер Menu, Plans, Reviews і FAQ, а кнопка в шапці каже «Start my plan», щоб головна дія була найпомітнішою.',
+    },
+  },
+  {
+    on: /testimonial|review|quote|social proof/i,
+    key: 'testimonials',
+    text: {
+      en: 'Added a testimonials section under the menu — three customers, their plan and how long they have been ordering. The names are placeholders until you send me real quotes.',
+      uk: 'Додав секцію відгуків під меню — три клієнти, їхній план і як довго вони замовляють. Імена — заглушки, поки не надішлете справжні відгуки.',
+    },
+  },
   {
     on: /colou?r|palette|theme|brand|font|typograph/i,
+    key: 'palette',
     text: {
       en: 'Warmed the palette and set the headings in a single family. The green now only carries actions, so the page reads calmer. Want a darker variant to compare?',
       uk: 'Зробив палітру теплішою і звів заголовки до однієї гарнітури. Зелений тепер лише на діях, сторінка читається спокійніше. Показати темніший варіант для порівняння?',
@@ -57,6 +83,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /photo|image|picture|gallery/i,
+    key: 'photos',
     text: {
       en: 'Added photo slots to every menu card and set them to crop square. They are placeholders for now — upload yours and they drop straight in.',
       uk: 'Додав слоти під фото в кожну картку меню, кроп — квадрат. Поки що це заглушки: завантажте свої, і вони стануть на місце.',
@@ -64,6 +91,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /mobile|phone|responsive|tablet/i,
+    key: 'mobile',
     text: {
       en: 'Tightened the mobile layout — the nav collapses, the cards go single column and the buttons stack full width. Check it with the device switch above the canvas.',
       uk: 'Підтягнув мобільний лейаут — навігація згортається, картки в одну колонку, кнопки на всю ширину. Перевірте перемикачем девайса над канвасом.',
@@ -71,6 +99,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /price|pricing|plan|cost|subscription/i,
+    key: 'pricing',
     text: {
       en: 'Built a pricing section with three plans and put the weekly one in the middle as the default choice. Prices are placeholders — tell me the real ones and I will set them.',
       uk: 'Зібрав секцію з трьома планами, тижневий поставив у центр як вибір за замовчуванням. Ціни — заглушки: скажіть реальні, і я їх проставлю.',
@@ -78,6 +107,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /text|copy|headline|title|wording|word/i,
+    key: 'headline',
     text: {
       en: 'Rewrote the headline and the intro — shorter, and the macro promise now lands in the first line. The old version is one step back in history if you prefer it.',
       uk: 'Переписав заголовок і вступ — коротше, обіцянка про КБЖВ тепер у першому рядку. Стара версія — на крок назад в історії, якщо вона краща.',
@@ -85,6 +115,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /menu|dish|meal|card|food/i,
+    key: 'menuBig',
     text: {
       en: 'The menu cards are larger now, with the calories and protein on one line under the name. Six dishes this week — say the word and I will make it a filterable list.',
       uk: 'Картки меню тепер більші, калорії та білок — одним рядком під назвою. Шість страв на тиждень; скажіть — зроблю список із фільтрами.',
@@ -92,6 +123,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /contact|form|order|email|checkout|book/i,
+    key: 'order',
     text: {
       en: 'Added an order form — name, phone, delivery window and plan. Submissions land in your inbox until you connect a CRM.',
       uk: 'Додав форму замовлення — ім’я, телефон, вікно доставки та план. Заявки йтимуть на пошту, поки не підключите CRM.',
@@ -99,6 +131,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /publish|live|domain|launch|deploy/i,
+    key: null,
     text: {
       en: 'Everything is ready to go live. Hit Publish and I will put this on your address — the preview link keeps working either way.',
       uk: 'Усе готове до запуску. Тисніть Publish — я поставлю сайт на вашу адресу; прев’ю-посилання працюватиме в будь-якому разі.',
@@ -106,6 +139,7 @@ const MATCHED: { on: RegExp; text: Copy }[] = [
   },
   {
     on: /faq|question|about|story|team/i,
+    key: 'faq',
     text: {
       en: 'Added an FAQ block with six questions from the objections this kind of service usually gets. Edit any answer inline.',
       uk: 'Додав блок FAQ із шести питань — за типовими запереченнями до такого сервісу. Будь-яку відповідь можна правити прямо на сторінці.',
@@ -132,9 +166,18 @@ let generic = 0
 
 /** Picks the canned reply for what the user just wrote. */
 export function replyTo(text: string): Copy {
+  return matchPrompt(text).text
+}
+
+/**
+ * The reply AND what the edit does to the page — the key a version card is made from
+ * (modules/versions/changes.ts). An unmatched prompt is a `generic` change: Remixer says it made
+ * it, so a version stands for it, even though the demo page has nothing specific to show.
+ */
+export function matchPrompt(text: string): { key: string | null; text: Copy } {
   const hit = MATCHED.find((r) => r.on.test(text))
-  if (hit) return hit.text
-  return GENERIC[generic++ % GENERIC.length]
+  if (hit) return { key: hit.key, text: hit.text }
+  return { key: 'generic', text: GENERIC[generic++ % GENERIC.length] }
 }
 
 /* --------------------------------------------------------------- the writing */

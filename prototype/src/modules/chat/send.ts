@@ -12,17 +12,18 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, EMPTY_SITE_EDITS, DEFAULT_MEDIA, type Message, type Suggest, type OutlineEdits, type HomeProject } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, EMPTY_SITE_EDITS, DEFAULT_MEDIA, type Message, type Suggest, type OutlineEdits, type HomeProject, type World, EMPTY_SITE_AI } from '@/state/world'
 import { CUSTOM_DOMAIN } from '@/data/domains'
 import { slugOf } from '@/modules/preview/pages'
 import type { Text } from '@/i18n'
 import { useUI, CHAT_MAX, type SurfaceFrom } from '@/state/ui'
-import { baselineThread, replyTo, streamDuration } from './thread'
+import { baselineThread, matchPrompt, replyTo, streamDuration } from './thread'
+import { beginChange, landChange, firstVersion } from '@/modules/versions/model'
 import {
   isWeakPrompt, BRIEF_INTRO, BRIEF_STATUS, BRIEF_QUESTIONS, briefAck, briefDone, OTHER,
   type BriefKey, type BriefAnswers,
 } from './brief'
-import { buildBeats, BUILD_INTRO } from './build'
+import { buildBeats, buildOutline, BUILD_INTRO } from './build'
 import { nextProposal, optionOf, recommended, leadingDone, ratingSaid, ratingThanks, AUTOPILOT_OFF } from './autopilot'
 
 /*
@@ -37,6 +38,14 @@ import { nextProposal, optionOf, recommended, leadingDone, ratingSaid, ratingTha
  */
 /** How long Remixer "works" before answering an ordinary edit. */
 const THINKING_MS = 3400
+/*
+ * …split in two since the version cards (30.09.2026): "Thinking" for the first beat, then the
+ * change's card arrives in its working form and carries the rest of the wait — the card IS the
+ * progress, the way Lovable's card writes its «-ing» title while the agent works. Same 3.4 s in
+ * all; the answer still lands where it always did.
+ */
+const BEGIN_MS = 1100
+const WORK_MS = THINKING_MS - BEGIN_MS
 /** Thinking before the questions — and the number printed as "Thought for Ns". */
 const CLARIFY_MS = 5200
 /** Summary card → the plan appearing. Remixer is "writing" it in this window. */
@@ -127,12 +136,14 @@ function nextId(over: Message[]): number {
   return ++seq
 }
 
-export function sendMessage(raw: string, reply?: Text, about?: string) {
+export function sendMessage(raw: string, reply?: Text, about?: string, page?: string) {
   const text = raw.trim()
   if (!text) return
 
   const { world, set, preset } = useWorld.getState()
   if (!canUseAI(world)) return
+  /* a message is about the site as it IS: an old version on the canvas steps aside for it */
+  useUI.getState().setVersionPreview(null)
 
   // The first typed message freezes the scenario's demo transcript into `sent`
   // and takes over from there; `chat` is only a status flag afterwards.
@@ -194,7 +205,32 @@ export function sendMessage(raw: string, reply?: Text, about?: string) {
   // gets its canned answer and is done in 3.4s; a first build gets a minute of named
   // work, because that is what the real one costs.
   if (fresh) schedule(startFirstBuild, THINKING_MS)
-  else schedule(() => deliverAnswer(text, reply), THINKING_MS)
+  else schedule(() => startChange(text, reply, page), BEGIN_MS)
+}
+
+/**
+ * Remixer starts on an edit. A reply that changes the page posts its version card now, «working»
+ * (modules/versions/model.ts `beginChange`), and the change lands with the answer; a reply that
+ * changes nothing (a question about publishing) has no card and just answers when the wait is up.
+ * `page` — an accepted Autopilot proposal that builds the next page of the plan.
+ */
+function startChange(prompt: string, reply?: Text, page?: string) {
+  const now = useWorld.getState()
+  if (now.world.chat !== 'working') return
+  const hit = page ? { key: `page:${page}`, text: reply } : matchPrompt(prompt)
+  const say = reply ?? hit.text
+  if (!hit.key) { schedule(() => deliverAnswer(prompt, say, false), WORK_MS); return }
+  const p = beginChange(now.world, hit.key, prompt, say)
+  now.set({ ...p, chat: 'working' }, now.preset)
+  schedule(finishChange, WORK_MS)
+}
+
+/** The change lands: the site moves, the card settles, and the answer is written under it. */
+function finishChange() {
+  const now = useWorld.getState()
+  const r = landChange(now.world)
+  if (!r) return
+  deliverAnswer('', r.reply, true, r.patch)
 }
 
 /**
@@ -241,18 +277,22 @@ function openOutline(answers: BriefAnswers) {
   runBuild(answers)
 }
 
-function deliverAnswer(prompt: string, reply?: Text) {
+function deliverAnswer(prompt: string, reply?: Text, changed = true, extra?: Partial<World>) {
   const now = useWorld.getState()
   /* An accepted Autopilot proposal brings its own answer, because only it knows which page
      the row named; everything else is matched on keywords as before. */
   const answer: Message = { id: nextId(now.world.sent), who: 'ai', text: reply ?? replyTo(prompt) }
   now.set(
     {
+      /* `extra` — the version landing with this answer (the site's two layers and the settled
+         card), so the site, the card and the words move in ONE commit */
+      ...extra,
       sent: [...now.world.sent, answer],
       chat: 'long',
       project: 'built',
       credits: Math.max(0, now.world.credits - COST),
-      unpublished: now.world.unpublished + 1,
+      /* a reply that changed nothing on the page leaves nothing to publish */
+      unpublished: now.world.unpublished + (changed ? 1 : 0),
     },
     now.preset,
   )
@@ -487,10 +527,15 @@ function finishBuild(answers: BriefAnswers) {
   /* Leading changes what this line has to do: the proposal that follows it owns the list of
      what to do next, so the line stops naming one (see `leadingDone`). */
   const text = now.world.mode === 'autopilot' ? leadingDone(answers, now.world.planEdits.outline) : briefDone(answers)
-  const done: Message = { id: nextId(now.world.sent), who: 'ai', text }
+  /* version 1 — the first page is a state of the site you can come back to (modules/versions) */
+  const outline = buildOutline(answers, now.world.planEdits.outline)
+  const lang = now.world.lang
+  const v1 = firstVersion(now.world, (outline[0].sections ?? []).map((x) => x.name[lang]), outline.slice(1).map((p) => p.name[lang]))
+  const done: Message = { id: nextId(v1.sent), who: 'ai', text }
   now.set(
     {
-      sent: [...now.world.sent, done],
+      versions: v1.versions,
+      sent: [...v1.sent, done],
       chat: 'long',
       project: 'built',
       brief: now.world.brief,
@@ -604,7 +649,7 @@ export function acceptSuggest() {
     },
     now.preset,
   )
-  if (option.say) sendMessage(say(option.say), option.reply)
+  if (option.say) sendMessage(say(option.say), option.reply, undefined, option.page)
 }
 
 /* ------------------------------------------------------- the satisfaction card */
@@ -808,6 +853,10 @@ export function startBuild(prompt: string) {
       siteEdits: EMPTY_SITE_EDITS,
       /* and its media library — a new site is generated with its own pictures (30.09.2026) */
       media: DEFAULT_MEDIA,
+      /* and its history: a new site has no versions until its first page lands, and nothing
+         Remixer did to the last site's page is done to this one (30.09.2026) */
+      versions: [],
+      siteAi: EMPTY_SITE_AI,
       /*
        * ⚠️ `intakeDomain` IS ABSENT ON PURPOSE — the one axis a new site KEEPS.
        *
@@ -857,6 +906,8 @@ export function resumeInterrupted() {
     }
     /* An 'ack' with no card under it never got the outline open — start it. */
     if (last.kind === 'ack') { schedule(() => openOutline(world.brief.answers), 1400); return }
+    /* A chat edit caught mid-work: its card is posted and «working» — land it. */
+    if (last.kind === 'version' && world.versions[world.versions.length - 1]?.pending) { schedule(finishChange, 1400); return }
     // A 'working' flag over a transcript that already ends in an answer is a
     // leftover from a state saved by an older build — nothing to resume, just
     // settle it so the glow stops and the composer unlocks.
@@ -866,5 +917,5 @@ export function resumeInterrupted() {
   const text = typeof last.text === 'string' ? last.text : ''
   if (world.project === 'empty' && isWeakPrompt(text)) schedule(askForDirection, 1400)
   else if (world.project === 'generating') schedule(startFirstBuild, 1400)
-  else schedule(() => deliverAnswer(text), 1400)
+  else schedule(() => startChange(text), 1400)
 }
