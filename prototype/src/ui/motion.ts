@@ -1335,6 +1335,17 @@ export const editBarSegment = {
      solid early, its buttons a beat later — the house popover at pill size.
    ═══════════════════════════════════════════════════════════════════════════ */
 export const EDIT_DOCK_FLIGHT = { type: 'spring', duration: 0.62, bounce: 0.16 } as const
+/** The glass STRETCHES over the tools (EditBar.tsx `GlassBar`): a width spring with a visible
+ *  overshoot — the edge reaches past its mark and settles back, the liquid the designer asked
+ *  for. Never `layout`: that scales the buttons for the length of the spring (30.09.2026). */
+export const EDIT_BAR_STRETCH = { type: 'spring', duration: 0.6, bounce: 0.34 } as const
+/** The handle the stretching glass uncovers: it only FADES, a beat behind the edge — it never
+ *  moves. A first cut slid it 10 px with the edge; a button that slides under a pointer heading
+ *  for it is the very thing the designer had just rejected («кнопки начинают убегать»). */
+export const editBarTail = {
+  initial: { opacity: 0, transition: { duration: 0.1 } },
+  animate: { opacity: 1, transition: { duration: 0.18, delay: 0.08 } },
+} as const
 export const editBarPop = {
   initial: { opacity: 0, scale: 0.9, x: 10 },
   animate: { opacity: 1, scale: 1, x: 0, transition: { ...EDIT_BAR_SPRING, opacity: { duration: 0.14, ease: [0.2, 0, 0, 1] } } },

@@ -17,7 +17,7 @@
  * WHAT LOVABLE DOES AND WHAT THIS DOES INSTEAD (audits/lovable-visual-edits-teardown.md):
  *  · their active tool is a blue disc that fades in — ours grows from the glyph (editToolOn);
  *  · once a change is pending their bar re-forms into `1 text change · Clear · Send`, stretching
- *    its width with the words squeezed inside — ours springs its box (`layout`) and the new
+ *    its width with the words squeezed inside — ours stretches the glass over tools that stay put (`GlassBar`) and the new
  *    segment fades in a beat later (editBarSegment), the house Panel Arrival at pill size;
  *  · their verbs are Send / Clear — ours are Save / Clear, with Undo and Redo between (the
  *    designer's order), because "Send" is the chat's word and this path never touches the chat.
@@ -41,11 +41,11 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
 import { useT } from '@/i18n'
 import { useWorld, currentSite } from '@/state/world'
 import { useUI } from '@/state/ui'
-import { EDIT_BAR_SPRING, EDIT_DOCK_FLIGHT, editBarIn, editBarInFade, editBarPop, editBarPopFade, editBarSegment, editToolOn } from '@/ui/motion'
+import { EDIT_BAR_SPRING, EDIT_BAR_STRETCH, EDIT_DOCK_FLIGHT, editBarIn, editBarInFade, editBarPop, editBarPopFade, editBarSegment, editBarTail, editToolOn } from '@/ui/motion'
 import { draftCount, hasHistory, isDirty, useEditor, type Tool } from './session'
 import { GlyphDockRight, GlyphEditText, GlyphRedo, GlyphSelect, GlyphUndo, GlyphUndock } from './icons'
 
@@ -94,6 +94,102 @@ function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: stri
   )
 }
 
+/**
+ * THE GLASS THAT STRETCHES — the pill's box is animated as a real box, never as a scale.
+ *
+ * The first cut grew the pill with motion's `layout`: the box sprang, and the buttons inside
+ * were SCALED along with it for the length of the spring (designer 30.09.2026, by recording:
+ * «зачем оно деформирует кнопки при анимации???»). And the pill was centred, so 41 px of growth
+ * on the right pushed every tool 20 px to the left — under a pointer that was heading for one of
+ * them («кнопки начинают от тебя убегать левее»). Both are the same mistake: the CONTENT moved.
+ *
+ * Here the content never moves. The tools are laid out once, anchored to one side (`side`), and
+ * only the glass around them changes: an outer sizer holds the resting width (so the centred pill
+ * sits where it did), and the glass pill itself, absolutely anchored to that side, springs its
+ * WIDTH over the resting box towards the far side — clipping whatever it has not yet reached. The
+ * spring overshoots (`EDIT_BAR_STRETCH`): the edge stretches past its mark and settles back, which
+ * is the liquid the designer asked for. Widths are MEASURED from the content, never typed.
+ *
+ * A width animation on one small fixed-size element (the Reveal's measured exception); nothing
+ * outside the pill lays out again.
+ */
+function GlassBar({ side, reveal, tail, pillRef, pillProps, children }: {
+  side: 'left' | 'right'
+  reveal: boolean
+  tail?: React.ReactNode
+  pillRef?: React.Ref<HTMLDivElement>
+  pillProps?: Record<string, unknown>
+  children: React.ReactNode
+}) {
+  const reduce = useReducedMotion()
+  const root = useRef<HTMLDivElement | null>(null)
+  const tailRef = useRef<HTMLDivElement>(null)
+  const glassW = useMotionValue(0)
+  const [w, setW] = useState<{ base: number; tail: number } | null>(null)
+  /* the box is the CONTENT's own, in flow — measured, never typed; the glass layer behind it takes
+     that width at once (jump), and springs to it or past it afterwards */
+  useLayoutEffect(() => {
+    const el = root.current
+    if (!el) return
+    const measure = () => {
+      const base = el.offsetWidth
+      const t = tailRef.current ? tailRef.current.offsetWidth : 0
+      setW((prev) => (prev && prev.base === base && prev.tail === t ? prev : { base, tail: t }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    if (tailRef.current) ro.observe(tailRef.current)
+    return () => ro.disconnect()
+  }, [])
+  const first = useRef(true)
+  useEffect(() => {
+    if (!w) return
+    const target = reveal ? w.base + w.tail - 4 : w.base
+    if (first.current) { first.current = false; glassW.jump(target); return }
+    if (reduce) { glassW.jump(target); return }
+    const ctrl = animate(glassW, target, EDIT_BAR_STRETCH)
+    return () => ctrl.stop()
+  }, [w, reveal, reduce, glassW])
+  const anchor = side === 'left' ? 'left-0' : 'right-0'
+  return (
+    <div
+      ref={(el) => { root.current = el; if (typeof pillRef === 'function') pillRef(el); else if (pillRef) (pillRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}
+      {...pillProps}
+      className="pointer-events-auto relative h-10"
+      data-ve-stretched={reveal ? '' : undefined}
+    >
+      {/* THE GLASS — a layer behind the tools that is free to be wider than they are */}
+      <motion.div
+        className={`liquid-glass absolute top-0 ${anchor} z-0 h-10 overflow-hidden rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.33)]`}
+        style={{ width: w ? glassW : '100%' }}
+        data-ve-glass
+        aria-hidden={!tail}
+      >
+        {!reduce && <span className="glass-glint" aria-hidden />}
+        {/* what the stretch uncovers sits inside the glass, past the content's edge, clipped until reached */}
+        {tail && (
+          <motion.div
+            ref={tailRef}
+            className="absolute top-0 flex h-10 items-center gap-1 pl-1 pr-1"
+            style={side === 'left' ? { left: w ? w.base - 4 : undefined } : { right: w ? w.base - 4 : undefined }}
+            variants={editBarTail}
+            initial="initial"
+            animate={reveal ? 'animate' : 'initial'}
+            onUpdate={keepOnMainThread}
+            aria-hidden={!reveal}
+            data-ve-dock-segment={reveal ? '' : undefined}
+          >
+            {tail}
+          </motion.div>
+        )}
+      </motion.div>
+      {/* THE TOOLS — in flow, on top, never moved and never scaled */}
+      <div className="relative z-[1] flex h-10 items-center gap-1 p-1">{children}</div>
+    </div>
+  )
+}
+
 export function EditBar() {
   const { t } = useT()
   const reduce = useReducedMotion()
@@ -138,7 +234,9 @@ export function EditBar() {
   useEffect(() => { if (!show) setPopped(false) }, [show])
 
   const dock = () => {
-    const from = barRef.current ? rectOf(barRef.current) : null
+    /* the flight starts from the GLASS — stretched over the handle at this moment — not from the tools' box */
+    const glass = barRef.current?.querySelector('[data-ve-glass]') ?? barRef.current
+    const from = glass ? rectOf(glass) : null
     setHover(false)
     if (from && !reduce) setFlight({ dir: 'dock', from })
     setDocked(true)
@@ -258,11 +356,7 @@ export function EditBar() {
           {floating && (
             <motion.div
               key="bar"
-              ref={barRef}
-              data-ve-bar
-              data-ve-dirty={dirty ? '' : undefined}
-              layout
-              className="liquid-glass pointer-events-auto relative flex items-center gap-1 rounded-[16px] p-1 shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
+              className="pointer-events-auto relative"
               variants={reduce ? editBarInFade : editBarIn}
               initial={flight?.dir === 'undock' ? false : 'initial'}
               animate="animate"
@@ -275,21 +369,24 @@ export function EditBar() {
               onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHover(false) }}
               style={hidden}
             >
-              {!reduce && <span className="glass-glint" aria-hidden />}
-              {tools}
-              {/* the dock handle grows out of the pill on hover (the box springs, the segment fades a
-                  beat later — the batch segment's own choreography); a pending batch keeps the pill
-                  where it is, so the handle waits until the batch is saved or cleared */}
-              <AnimatePresence initial={false}>
-                {hover && !history && (
-                  <motion.div key="dock" className="flex items-center gap-1" variants={editBarSegment} initial="initial" animate="animate" exit="exit" onUpdate={keepOnMainThread} data-ve-dock-segment>
+              <GlassBar
+                side="left"
+                reveal={hover && !history}
+                pillRef={barRef}
+                pillProps={{ 'data-ve-bar': '', 'data-ve-dirty': dirty ? '' : undefined }}
+                /* the dock handle: the glass stretches to the right to uncover it — the tools do not
+                   move; a pending batch keeps the pill where it is (Save/Clear are the only way out) */
+                tail={
+                  <>
                     <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-                    <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} title={dockBtnLabel} onClick={dock} data-ve-dock-to-rail>
+                    <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} title={dockBtnLabel} onClick={dock} tabIndex={hover && !history ? 0 : -1} data-ve-dock-to-rail>
                       <GlyphDockRight size={22} />
                     </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </>
+                }
+              >
+                {tools}
+              </GlassBar>
             </motion.div>
           )}
         </AnimatePresence>
@@ -327,11 +424,7 @@ export function EditBar() {
               <div className="absolute right-[56px] top-1/2 z-50 -translate-y-1/2">
                 <motion.div
                   key="pop"
-                  data-ve-bar
-                  data-ve-popped
-                  data-ve-dirty={dirty ? '' : undefined}
-                  layout
-                  className="liquid-glass pointer-events-auto relative flex items-center gap-1 rounded-[16px] p-1 shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
+                  className="relative"
                   style={{ transformOrigin: 'right center' }}
                   variants={reduce ? editBarPopFade : editBarPop}
                   initial="initial"
@@ -340,12 +433,13 @@ export function EditBar() {
                   transition={EDIT_BAR_SPRING}
                   onUpdate={keepOnMainThread}
                 >
-                  {!reduce && <span className="glass-glint" aria-hidden />}
-                  {tools}
-                  <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-                  <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} title={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} onClick={undock} data-ve-undock>
-                    <GlyphUndock size={22} />
-                  </button>
+                  <GlassBar side="right" reveal={false} pillProps={{ 'data-ve-bar': '', 'data-ve-popped': '', 'data-ve-dirty': dirty ? '' : undefined }}>
+                    {tools}
+                    <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+                    <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} title={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} onClick={undock} data-ve-undock>
+                      <GlyphUndock size={22} />
+                    </button>
+                  </GlassBar>
                 </motion.div>
               </div>
             )}

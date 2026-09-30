@@ -128,12 +128,12 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
   const rest = await p.evaluate(() => {
     const el = document.querySelector('[data-ve-bar]'); const main = document.querySelector('main')
     if (!el || !main) return null
-    const r = el.getBoundingClientRect(), m = main.getBoundingClientRect(), cs = getComputedStyle(el)
+    const r = el.getBoundingClientRect(), m = main.getBoundingClientRect(), cs = getComputedStyle(el.querySelector('[data-ve-glass]') || el)
     const tools = [...el.querySelectorAll('[data-ve-tool]')].map((t) => { const q = t.getBoundingClientRect(); return { tool: t.dataset.veTool, x: +q.x.toFixed(2), w: +q.width.toFixed(2), h: +q.height.toFixed(2), pressed: t.getAttribute('aria-pressed'), glyph: !!t.querySelector('svg'), disc: !!t.querySelector('span[aria-hidden]') } })
     return {
       inMain: main.contains(el), centreOff: +((r.x + r.width / 2) - (m.x + m.width / 2)).toFixed(2), lift: +(m.bottom - r.bottom).toFixed(2), w: +r.width.toFixed(2), h: +r.height.toFixed(2),
       tools, gap: tools.length === 2 ? +(tools[1].x - (tools[0].x + tools[0].w)).toFixed(2) : null,
-      glass: el.classList.contains('liquid-glass'), glint: !!el.querySelector('.glass-glint'), radius: cs.borderRadius, shadow: cs.boxShadow, pointer: cs.pointerEvents, hostPointer: getComputedStyle(el.parentElement).pointerEvents,
+      glass: !!el.querySelector('.liquid-glass'), glint: !!el.querySelector('.glass-glint'), radius: cs.borderRadius, shadow: cs.boxShadow, pointer: getComputedStyle(el).pointerEvents, hostPointer: getComputedStyle(el.closest('[data-ve-bar-host]')).pointerEvents,
       batch: !!document.querySelector('[data-ve-batch]'), dirty: el.hasAttribute('data-ve-dirty'),
       toolbarText: document.querySelector('[data-canvas-toolbar]')?.innerText ?? '', editing: document.querySelector('[data-site-editing]')?.getAttribute('data-site-editing') ?? null,
     }

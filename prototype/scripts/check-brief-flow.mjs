@@ -6038,12 +6038,12 @@ await shot('30-plan-review')
   const rest = await p.evaluate(() => {
     const el = document.querySelector('[data-ve-bar]'); const main = document.querySelector('main')
     if (!el || !main) return null
-    const r = el.getBoundingClientRect(), m = main.getBoundingClientRect(), cs = getComputedStyle(el)
+    const r = el.getBoundingClientRect(), m = main.getBoundingClientRect(), cs = getComputedStyle(el.querySelector('[data-ve-glass]') || el)
     const tools = [...el.querySelectorAll('[data-ve-tool]')].map((t) => { const q = t.getBoundingClientRect(); return { tool: t.dataset.veTool, x: +q.x.toFixed(2), w: +q.width.toFixed(2), h: +q.height.toFixed(2), pressed: t.getAttribute('aria-pressed'), glyph: !!t.querySelector('svg'), disc: !!t.querySelector('span[aria-hidden]') } })
     return {
       inMain: main.contains(el), centreOff: +((r.x + r.width / 2) - (m.x + m.width / 2)).toFixed(2), lift: +(m.bottom - r.bottom).toFixed(2), w: +r.width.toFixed(2), h: +r.height.toFixed(2),
       tools, gap: tools.length === 2 ? +(tools[1].x - (tools[0].x + tools[0].w)).toFixed(2) : null,
-      glass: el.classList.contains('liquid-glass'), glint: !!el.querySelector('.glass-glint'), radius: cs.borderRadius, shadow: cs.boxShadow, pointer: cs.pointerEvents, hostPointer: getComputedStyle(el.parentElement).pointerEvents,
+      glass: !!el.querySelector('.liquid-glass'), glint: !!el.querySelector('.glass-glint'), radius: cs.borderRadius, shadow: cs.boxShadow, pointer: getComputedStyle(el).pointerEvents, hostPointer: getComputedStyle(el.closest('[data-ve-bar-host]')).pointerEvents,
       batch: !!document.querySelector('[data-ve-batch]'), dirty: el.hasAttribute('data-ve-dirty'),
       toolbarText: document.querySelector('[data-canvas-toolbar]')?.innerText ?? '', editing: document.querySelector('[data-site-editing]')?.getAttribute('data-site-editing') ?? null,
     }
@@ -6433,21 +6433,22 @@ await shot('30-plan-review')
   await p.click('[data-ve-clear]').catch(() => {})
 
   /* ── 1 · the handle grows on hover ─────────────────────────────────────────────── */
-  const rest = { w: await widthOf('[data-ve-bar]'), seg: !!(await p.$('[data-ve-dock-segment]')), slot: !!(await p.$('[data-rail-dock]')) }
-  check('at rest the pill is 76 wide with no dock handle, and the rail has no dock slot', rest.w === 76 && !rest.seg && !rest.slot, JSON.stringify(rest))
+  const rest = { w: await widthOf('[data-ve-bar]'), seg: !!(await p.$('[data-ve-dock-segment]')), slot: !!(await p.$('[data-rail-dock]')), tools: await p.evaluate(() => [...document.querySelectorAll('[data-ve-bar] [data-ve-tool]')].map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10, getComputedStyle(t).transform] })) }
+  check('at rest the pill is 76 wide with no dock handle, and the rail has no dock slot', rest.w === 76 && !rest.seg && !rest.slot, JSON.stringify({ w: rest.w, seg: rest.seg, slot: rest.slot }))
   const bb = await (await p.$('[data-ve-bar]')).boundingBox()
   await p.mouse.move(bb.x + 20, bb.y + 20)
   const widths = []
-  for (let i = 0; i < 12; i++) { await p.waitForTimeout(50); widths.push(await widthOf('[data-ve-bar]')) }
-  const hov = { w: widths.at(-1), handle: !!(await p.$('[data-ve-dock-to-rail]')), steps: new Set(widths).size }
-  check('hovering grows a glass segment with the «›|» handle — the box springs through intermediate widths to 117', hov.handle && hov.w === 117 && hov.steps >= 3, JSON.stringify({ hov, widths }))
+  for (let i = 0; i < 12; i++) { await p.waitForTimeout(50); widths.push(await widthOf('[data-ve-bar] [data-ve-glass]')) }
+  const hov = { w: widths.at(-1), handle: !!(await p.$('[data-ve-dock-to-rail]')), steps: new Set(widths).size, tools: await p.evaluate(() => [...document.querySelectorAll('[data-ve-bar] [data-ve-tool]')].map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10, getComputedStyle(t).transform] })), bar: await widthOf('[data-ve-bar]') }
+  check('hovering STRETCHES THE GLASS over the tools to uncover the «›|» handle — through intermediate widths, past 117 and back (a liquid edge), the tools\' box still 76', hov.handle && hov.w === 117 && hov.steps >= 3 && Math.max(...widths) > 117 && hov.bar === 76, JSON.stringify({ hov, widths }))
+  check('…and the tools themselves neither move nor scale while it stretches', hov.tools.length === 2 && hov.tools.every((t, i) => Math.abs(t[0] - rest.tools[i][0]) < 0.6 && Math.abs(t[1] - rest.tools[i][1]) < 0.6 && t[2] === 'none'), JSON.stringify({ hov: hov.tools, rest: rest.tools }))
   await shot('Q1-dock-handle')
   await p.mouse.move(bb.x + 20, bb.y - 200); await p.waitForTimeout(450)
-  check('leaving folds the handle — 76 again', (await widthOf('[data-ve-bar]')) === 76)
+  check('leaving folds the handle — 76 again', (await widthOf('[data-ve-bar] [data-ve-glass]')) === 76)
 
   /* ── 2 · «›» flies the glass into the rail ─────────────────────────────────────── */
   await p.mouse.move(bb.x + 20, bb.y + 20); await p.waitForTimeout(500)
-  const from = await p.evaluate(() => { const r = document.querySelector('[data-ve-bar]').getBoundingClientRect(); return { x: r.x, w: r.width } })
+  const from = await p.evaluate(() => { const r = document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect(); return { x: r.x, w: r.width } })
   await p.click('[data-ve-dock-to-rail]')
   const flight = []
   for (let i = 0; i < 40; i++) {
@@ -6462,8 +6463,8 @@ await shot('30-plan-review')
     const r = d.getBoundingClientRect(), q = sup.getBoundingClientRect(), nav = d.closest('nav').getBoundingClientRect()
     return { w: r.width, h: r.height, radius: getComputedStyle(d).borderRadius, gap: Math.round(q.top - r.bottom), off: Math.round((r.x + r.width / 2) - (nav.x + nav.width / 2)), bar: !!document.querySelector('[data-ve-bar]'), flight: !!document.querySelector('[data-ve-flight]'), slot: !!document.querySelector('[data-rail-dock]') }
   })
-  check('«›» flies ONE glass box from the pill to the slot — it starts at the pill\'s size and lands 48 tall, through at least 8 sampled frames',
-    fr.length >= 8 && Math.abs(fr[0].x - from.x) < 120 && fr[0].w > 90 && fr.at(-1).w <= 52 && fr.at(-1).h >= 44, JSON.stringify({ first: fr[0], last: fr.at(-1), from }))
+  check('«›» flies ONE glass box from the STRETCHED glass (117) to the slot — it starts at that size and lands 48 tall, through at least 8 sampled frames',
+    fr.length >= 8 && Math.abs(fr[0].x - from.x) < 120 && fr[0].w > 90 && fr[0].w <= 121 && fr.at(-1).w <= 52 && fr.at(-1).h >= 44, JSON.stringify({ first: fr[0], last: fr.at(-1), from }))
   check('while it flies neither home is drawn — the pill is hidden and the rail button is hidden', fr.length > 0 && fr.every((f) => f.barVis === 'hidden' && (f.dockVis === null || f.dockVis === 'hidden')), JSON.stringify(fr.slice(0, 3)))
   check('docked: a 48 × 48 r16 rail button centred on the rail, 8 above the support button; the floating pill is gone',
     docked.w === 48 && docked.h === 48 && docked.radius === '16px' && docked.gap === 8 && docked.off === 0 && !docked.bar && !docked.flight && docked.slot, JSON.stringify(docked))
@@ -6472,7 +6473,7 @@ await shot('30-plan-review')
   /* ── 3 · the tools pop out of the rail button ──────────────────────────────────── */
   const db = await (await p.$('[data-ve-dock]')).boundingBox()
   await p.mouse.move(db.x + 24, db.y + 24); await p.waitForTimeout(700)
-  const pop = await p.evaluate(() => { const el = document.querySelector('[data-ve-popped]'); if (!el) return null; const r = el.getBoundingClientRect(), d = document.querySelector('[data-ve-dock]').getBoundingClientRect(); return { gap: Math.round(d.left - r.right), off: Math.round((r.y + r.height / 2) - (d.y + d.height / 2)), tools: el.querySelectorAll('[data-ve-tool]').length, undock: !!el.querySelector('[data-ve-undock]'), glass: el.classList.contains('liquid-glass'), opacity: getComputedStyle(el).opacity } })
+  const pop = await p.evaluate(() => { const el = document.querySelector('[data-ve-popped]'); if (!el) return null; const r = el.getBoundingClientRect(), d = document.querySelector('[data-ve-dock]').getBoundingClientRect(); return { gap: Math.round(d.left - r.right), off: Math.round((r.y + r.height / 2) - (d.y + d.height / 2)), tools: el.querySelectorAll('[data-ve-tool]').length, undock: !!el.querySelector('[data-ve-undock]'), glass: !!el.querySelector('.liquid-glass'), opacity: getComputedStyle(el).opacity } })
   check('hovering the rail button pops a glass pill 8 px to its left, centred on it, with Edit, Select and «|‹»', !!pop && pop.gap === 8 && Math.abs(pop.off) <= 1 && pop.tools === 2 && pop.undock && pop.glass && pop.opacity === '1', JSON.stringify(pop))
   await shot('Q3-popped')
   await p.click('[data-ve-popped] [data-ve-tool="edit"]'); await p.waitForTimeout(500)

@@ -26,19 +26,24 @@ await page.waitForTimeout(800)
 const rest = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar]'); const r = b.getBoundingClientRect(); return { w: r.width, seg: !!document.querySelector('[data-ve-dock-segment]'), slot: !!document.querySelector('[data-rail-dock]') } })
 check('at rest: 76 wide, no handle, no rail slot', rest.w === 76 && !rest.seg && !rest.slot, rest)
 const bb = await (await page.$('[data-ve-bar]')).boundingBox()
+const toolsAt = () => page.evaluate(() => [...document.querySelectorAll('[data-ve-bar] [data-ve-tool]')].map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10, getComputedStyle(t).transform] }))
+const restTools = await toolsAt()
 await page.mouse.move(bb.x + 20, bb.y + 20)
-const widths = []
-for (let i = 0; i < 12; i++) { await page.waitForTimeout(50); widths.push(await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar]').getBoundingClientRect().width))) }
-const hov = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar]'); return { w: Math.round(b.getBoundingClientRect().width), handle: !!document.querySelector('[data-ve-dock-to-rail]'), divider: !!document.querySelector('[data-ve-dock-segment] span[aria-hidden]') } })
+const widths = []; const toolTrace = []
+for (let i = 0; i < 12; i++) { await page.waitForTimeout(50); widths.push(await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect().width))); toolTrace.push(await toolsAt()) }
+const still = toolTrace.every((f) => f.every((t, i) => Math.abs(t[0] - restTools[i][0]) < 0.6 && Math.abs(t[1] - restTools[i][1]) < 0.6 && t[2] === 'none'))
+check('while the glass stretches the tools neither move nor scale', still, { restTools, moved: toolTrace.filter((f) => !f.every((t, i) => Math.abs(t[0] - restTools[i][0]) < 0.6 && t[2] === 'none')).slice(0, 2) })
+check('the stretch overshoots — a liquid edge, not a slide', Math.max(...widths) > 117, widths)
+const hov = await page.evaluate(() => { const b = document.querySelector('[data-ve-bar] [data-ve-glass]'); return { w: Math.round(b.getBoundingClientRect().width), handle: !!document.querySelector('[data-ve-dock-to-rail]'), divider: !!document.querySelector('[data-ve-dock-segment] span[aria-hidden]') } })
 log('widths on hover', widths.join(' '))
-check('hover: the handle segment grows the pill through intermediate widths to 117', hov.handle && hov.divider && hov.w === 117 && new Set(widths).size >= 3, { hov, widths })
+check('hover: the GLASS stretches to 117 through intermediate widths while the tools stay', hov.handle && hov.divider && hov.w === 117 && new Set(widths).size >= 3, { hov, widths })
 await page.screenshot({ path: OUT + 'd1-hover.png' })
 await page.mouse.move(bb.x + 20, bb.y - 200); await page.waitForTimeout(400)
-check('leave: handle folds, 76 again', (await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar]').getBoundingClientRect().width))) === 76)
+check('leave: handle folds, 76 again', (await page.evaluate(() => Math.round(document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect().width))) === 76)
 
 /* 2 · click › → the glass flies into the rail slot above the support button */
 await page.mouse.move(bb.x + 20, bb.y + 20); await page.waitForTimeout(500)
-const from = await page.evaluate(() => { const r = document.querySelector('[data-ve-bar]').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } })
+const from = await page.evaluate(() => { const r = document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } })
 await page.click('[data-ve-dock-to-rail]')
 const trace = []
 for (let i = 0; i < 40; i++) {
@@ -63,7 +68,9 @@ await page.screenshot({ path: OUT + 'd2-docked.png' })
 /* 3 · hover the rail button → tools pop out to its left; Edit works from there */
 const db = await (await page.$('[data-ve-dock]')).boundingBox()
 await page.mouse.move(db.x + 24, db.y + 24); await page.waitForTimeout(700)
-const pop = await page.evaluate(() => { const p = document.querySelector('[data-ve-popped]'); if (!p) return null; const r = p.getBoundingClientRect(), d = document.querySelector('[data-ve-dock]').getBoundingClientRect(); return { gap: Math.round(d.left - r.right), centreOff: Math.round((r.y + r.height / 2) - (d.y + d.height / 2)), tools: document.querySelectorAll('[data-ve-popped] [data-ve-tool]').length, undock: !!document.querySelector('[data-ve-undock]'), glass: p.classList.contains('liquid-glass'), opacity: getComputedStyle(p).opacity, transform: getComputedStyle(p).transform } })
+if (0) log('dbg', await page.evaluate(() => ({ expanded: document.querySelector('[data-ve-dock]')?.getAttribute('aria-expanded'), flight: !!document.querySelector('[data-ve-flight]'), hostVis: getComputedStyle(document.querySelector('[data-ve-dock-host]')).visibility, popped: !!document.querySelector('[data-ve-popped]'), hostHtml: document.querySelector('[data-ve-dock-host]').innerHTML.length, under: (() => { const d = document.querySelector('[data-ve-dock]').getBoundingClientRect(); const e = document.elementFromPoint(d.x + 24, d.y + 24); return e && (e.tagName + '.' + e.className.toString().slice(0, 60) + ' ' + JSON.stringify(Object.keys(e.dataset))) })() })))
+if (0) log('db', JSON.stringify(db), await page.evaluate(() => { const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)] }; return JSON.stringify({ nav: r('[data-ve-dock]') && r(document.querySelector('[data-ve-dock]').closest('nav') ? 'nav' : 'x'), sup: r('nav button[aria-label="Support chat"]'), dock: r('[data-ve-dock]'), host: r('[data-ve-dock-host]'), slot: r('[data-rail-dock]'), vh: innerHeight, sizer: r('[data-ve-dock-host] .relative.h-10') }) }))
+const pop = await page.evaluate(() => { const p = document.querySelector('[data-ve-popped]'); if (!p) return null; const r = p.getBoundingClientRect(), d = document.querySelector('[data-ve-dock]').getBoundingClientRect(); return { gap: Math.round(d.left - r.right), centreOff: Math.round((r.y + r.height / 2) - (d.y + d.height / 2)), tools: document.querySelectorAll('[data-ve-popped] [data-ve-tool]').length, undock: !!document.querySelector('[data-ve-undock]'), glass: !!p.querySelector('.liquid-glass'), opacity: getComputedStyle(p).opacity, transform: getComputedStyle(p).transform } })
 log(pop)
 check('pop-out: glass pill 8 px left of the button, centred on it, Edit + Select + ‹', pop && pop.gap === 8 && Math.abs(pop.centreOff) <= 1 && pop.tools === 2 && pop.undock && pop.glass && pop.opacity === '1', pop)
 await page.screenshot({ path: OUT + 'd3-popped.png' })

@@ -1,0 +1,10 @@
+import { chromium } from 'playwright'
+const b = await chromium.launch({ executablePath: process.env.CHROME, args: ['--no-sandbox'] })
+const page = await b.newPage({ viewport: { width: 1600, height: 900 } })
+await page.goto('http://localhost:4173/?p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640', { waitUntil: 'networkidle' })
+await page.evaluate(() => localStorage.removeItem('remixer-prototype/world/v6'))
+await page.waitForTimeout(400); await page.click('.home-card-face')
+await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
+await page.waitForSelector('[data-ve-bar]'); await page.waitForTimeout(800)
+console.log(await page.evaluate(() => { const s = document.querySelector('.flex.h-full.overflow-hidden'); const deep = []; const walk = (e, d) => { for (const c of e.children) { const r = c.getBoundingClientRect(); if (r.bottom > 905 && getComputedStyle(c).position !== 'fixed') { deep.push(`${'  '.repeat(d)}${c.tagName}.${String(c.className).slice(0, 50)} bottom=${Math.round(r.bottom)} h=${Math.round(r.height)}`); if (d < 6) walk(c, d + 1) } } }; walk(s, 0); return { sh: s.scrollHeight, ch: s.clientHeight, deep: deep.slice(0, 20) } }))
+await b.close()
