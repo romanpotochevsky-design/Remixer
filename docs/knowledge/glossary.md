@@ -22,6 +22,7 @@
 | **Undo / Redo** | шаг назад / вперёд по пачке правок в открытом режиме | там же, плюс ⌘Z / ⇧⌘Z |
 | **Replace photo** | заменить фото на сайте (окно Image: Upload File · From Library · Generate via Prompt) | пилюля на фото в режиме Edit |
 | **Select** | выделить элемент сайта, чтобы задать про него вопрос чату (платная дорожка ИИ) | вторая кнопка панели редактора |
+| **Upload Media / Generate / Delete** | глаголы футера и бара панели Website media: загрузить с устройства (бесплатно) · сгенерировать картинку в библиотеку (кредиты) · удалить выбранное через подтверждение «Delete N images?» | панель Website media (30.09.2026) |
 
 Один глагол = одно действие. «Connect · free» не писать — если это твой домен, кнопка
 просто **Connect**.
@@ -109,4 +110,6 @@
 | **Edit bar** | стеклянная панель внизу превью с двумя инструментами Visual Editor (Edit «T в рамке» · Select «курсор с лучами»); при истории правок несёт `N changes · Undo · Redo · Clear · Save` | `modules/editor/EditBar.tsx` |
 | **siteEdits** | сохранённый слой правок клиента поверх компилированного сайта: тексты, фото, Fit/Fill, прозрачность, высота — по стабильным ключам контента; ось сайта | `state/world.ts`, `modules/preview/content.ts` |
 | **Edit session** | несохранённая пачка правок (draft, past/future) и выбор; живёт в `useEditor`, умирает со сменой сайта, пресета или страницы | `modules/editor/session.ts` |
+| **Website media** | библиотека медиа сайта — панель над канвасом у правого рейла (Image · Video · Audio · Docs), два режима: `manage` (с рейла) и `pick` (из окна Image, «Choose a photo») | `modules/media/MediaPanel.tsx`, `ui.mediaOpen` |
+| **media** (ось) | список refs картинок библиотеки сайта, новые первыми; байты загрузок — в `modules/editor/media.ts` | `state/world.ts` |
 | **Content key** | адрес текста или фото на сайте (`home.hero.title`, `meal.power-bowl.photo`, `page.<id>.title`) | `modules/preview/content.ts` |
