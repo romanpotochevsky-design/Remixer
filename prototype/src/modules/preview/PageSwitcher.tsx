@@ -1,49 +1,65 @@
 /**
- * THE PAGE SWITCHER — the canvas toolbar's centre control, in place of the address chip
- * (designer, 25.09.2026, with a 30 s screen recording of Lovable's preview toolbar: «вместо этой
- * кнопки мы по классике хотим туда вставить переключатель страниц сайта… нужно сделать точно так
- * же логику работы этого переключателя как у lovable… саму логику и UX делаем как у lovable на
- * видео один в один, но дизайн, анимации и эффекты используем наши, крутые»).
+ * THE PAGE PILL — the canvas toolbar's centre control: the site's PAGE, with the preview's three
+ * tools riding inside it, and the page menu under it.
  *
- * WHAT THE RECORDING SHOWS, frame by frame (scratchpad/lov-pages, 10 fps), and what each beat is
- * here:
- *  · a pill in the toolbar's centre reads the CURRENT ROUTE with a chevron; pressing it toggles a
- *    menu hung under the pill, left-aligned and as wide as the pill; the chevron flips while open;
- *  · the menu is a SEARCH FIELD on top (magnifier, placeholder «Find page or enter path», a ✕ that
- *    clears) over a LIST of routes; the current one carries a check; the field is PRE-FILLED with
- *    the current route, fully selected, and that pre-fill does NOT filter the list — typing does;
- *  · the list scrolls under the field, which stays put; the highlighted row follows the pointer and
- *    carries a glyph at its right edge; the first row is highlighted when the menu opens
- *    (cmdk's law), ↑ ↓ move it, Enter takes it, Esc closes;
- *  · pressing a row closes the menu, the pill reads the new route AT ONCE and the preview follows
- *    (their iframe blanks for ~600 ms while it loads — we have no iframe, the site hands over);
- *  · typing something that matches no route collapses the list to ONE row, «Go to <what you
- *    typed>», which navigates to that path — their app answers with its 404 route, our site with
- *    its own not-found page;
- *  · the pill FOLLOWS THE SITE: when the app itself navigates (their /auth redirected to /admin),
- *    the pill updates. Here a link inside the preview writes the same `ui.previewPath`.
+ * TWO BOARDS, one control:
  *
- * THE MENU HAS ITS OWN BOARD — Figma 31076:31629, the frame `Menu` 31076:37714 (designer,
- * 25.09.2026: «вот макет дропдауна и расположения страниц… сделай дизайн перфект пиксель как в
- * макете»), and it replaced what this file had invented around Lovable's logic:
- *  · it sits ON the pill, corner on corner (the board's `Menu` lies at the pill's own x and y, 280
- *    wide) — the search field takes the pill's place, the list hangs below; it grows out of the
- *    pill it covers (motion.ts `pageMenuIn`), the attach menu's law over its «+»;
- *  · it is SOLID `Gray/700` under a 4 % inset rim at radius 10 with the board's shadow — not the
- *    toolbar's glass we had put on it;
- *  · the field is 47 + a 1 px `Neutral Alpha/100` rule: the board's search glyph at 32 % white,
- *    the route in 15/1.7 Proxima at `Background/Neutral/500` (#c7c7cd in the dark theme), no ✕;
- *  · the rows are the kit's `-2 density` items — 48 tall, radius 8, 12 in, a 24 leading slot, 15/24
- *    — and they print ROUTES: `/`, `/about`… The current page wears the check and Semibold; the
- *    highlighted row wears `Neutral Alpha/100` (8 % white). No trailing glyph — the board draws
- *    none. This REPLACES the names (Home, About…) the designer had picked the same morning over
- *    the alternatives shown him; the board is the later word. The pill follows the list: it prints
- *    the route too, as Lovable's does;
- *  · five rows show, then the list scrolls beside a DRAWN bar — 4 wide in its own 10 px column,
- *    24 % white, always on while there is something to scroll.
- * Hover is still the pointer's (one highlight for mouse and keyboard), the press the house bloom,
- * the rim catches the light on arrival. The pill keeps the board's 280 × 40 box (Figma
- * 25819:143144, "project button").
+ *  1. THE PILL — Figma 31379:2968 `V2` on the toolbar board 31280:85401 «Design 2.0» (designer,
+ *     30.09.2026: «вот так выглядит теперь верхняя панель без кнопки Visual Editor и я перекомпоновал
+ *     оставшиеся кнопки»). One box 360 × 40, radius 10, the `Neutral Alpha/200` rim (12 % white in
+ *     the dark theme), padding 4 left / 2 right, centred in the toolbar's content box — and it
+ *     ABSORBED the toolbar's left group: the Visual Editor pill went to the edit bar at the bottom of
+ *     the preview (modules/editor/EditBar.tsx), and the reload and the device switch moved in here.
+ *       · at 4 / 4: the RELOAD, a 32 icon button (radius 10, the board's filled 24 glyph), the glow
+ *         pulse it always triggered;
+ *       · at 44: the page's NAME — «Home», «About» — Body Strong 15/1.4 Semibold, white, pt 2. The
+ *         name, not the route: the 25.09 pill printed routes after the menu's board, and this board
+ *         is the later word. The MENU's rows still print routes (their own board, below). NO CHEVRON
+ *         — the board draws none, and the designer confirmed the pill stays the door: «клик по полю
+ *         открывает страницы». So the whole pill, less its three buttons, is the menu's trigger;
+ *       · at 285 / 2: `Preview buttons` — 73 × 36, radius 12, padding 2, gap 2, no fill of its own:
+ *         the DEVICE switch (32; the glyph IS the current stop — monitor, tablet, phone — and a press
+ *         cycles desktop → tablet → mobile, three stops since this board: «это просто кнопка
+ *         переключателя девайса для превью, пк, телефон, планшет, иконки должны меняться»), a 1 × 32
+ *         divider at `Neutral Alpha/100` (8 %), and OPEN IN NEW TAB (32; «открывает превью сайта на
+ *         новой вкладке на весь экран, по сути стейджинг» — Root.tsx renders the bare site for
+ *         `?view=site&path=…`).
+ *     The credits chip that stood at the toolbar's right is gone with this board («кредиты убрал
+ *     потому что спрятаны в меню пользователя» — the account menu under the rail's avatar carries
+ *     the balance); Publish stands alone there.
+ *     ⚠️ The rim is an INSET box-shadow, never `border`: a border would push every child 1 px off
+ *     the board's coordinates (the kit's rule since the composer — CLAUDE.md «inset box-shadow, не
+ *     border»). ⚠️ The trigger is a button laid UNDER the three tool buttons (absolute, the pill's
+ *     whole box) rather than around them: a button inside a button is not HTML, and the board's
+ *     `state-layer` is the whole pill — so the hover wash and the press bloom cover the pill to its
+ *     corners, while the tools, above it, keep their own 32 × 32 wash.
+ *
+ *  2. THE MENU — Figma 31076:31629, the frame `Menu` 31076:37714 (designer, 25.09.2026: «вот макет
+ *     дропдауна и расположения страниц… сделай дизайн перфект пиксель как в макете»). Its logic is
+ *     Lovable's, frame by frame off a 30 s recording of their route picker (scratchpad/lov-pages;
+ *     the designer that morning: «саму логику и UX делаем как у lovable на видео один в один, но
+ *     дизайн, анимации и эффекты используем наши, крутые»):
+ *      · it sits ON the pill, corner on corner, as wide as the pill (360 now) — the search field takes
+ *        the pill's place, the list hangs below; it grows out of the pill it covers (motion.ts
+ *        `pageMenuIn`), the attach menu's law over its «+»;
+ *      · SOLID `Gray/700` under a 4 % inset rim at radius 10 with the board's shadow — no glass;
+ *      · the field is 47 + a 1 px `Neutral Alpha/100` rule: the board's search glyph at 32 % white,
+ *        the route in 15/1.7 Proxima at `Background/Neutral/500` (#c7c7cd in the dark theme), no ✕;
+ *        PRE-FILLED with the current route, selected whole, and that pre-fill does NOT filter the
+ *        list — typing does; the first row highlighted on open (cmdk's law), ↑ ↓ move it, Enter
+ *        takes it, Esc and a press outside close;
+ *      · the rows are the kit's `-2 density` items — 48 tall, radius 8, 12 in, a 24 leading slot,
+ *        15/24 — printing ROUTES: `/`, `/about`… The current page wears the check and Semibold; the
+ *        highlighted row wears `Neutral Alpha/100` and FOLLOWS THE POINTER (one highlight for mouse
+ *        and keyboard). No trailing glyph — the board draws none;
+ *      · five rows show, then the list scrolls beside a DRAWN bar — 4 wide in its own 10 px column,
+ *        24 % white, always on while there is something to scroll;
+ *      · pressing a row closes the menu, the pill reads the new page AT ONCE, the preview follows
+ *        (their iframe blanks ~600 ms; our site hands over — motion.ts `pageSwap`); typing what
+ *        matches no route collapses the list to ONE row, «Go to <typed>», which navigates there and
+ *        the site answers with its own not-found page (their app: its 404 route) — the pill then
+ *        prints that route, having no name for it; the pill FOLLOWS THE SITE: a link inside the
+ *        preview writes the same `ui.previewPath`.
  *
  * ⚠️ Every fade here is on the main thread (`onUpdate` stub): a composited fade hands the element
  * back with its pre-animation opacity for one frame between `finish` and the next render — the
@@ -53,13 +69,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld } from '@/state/world'
-import { useUI } from '@/state/ui'
+import { useUI, nextDevice, type Device } from '@/state/ui'
 import { useT } from '@/i18n'
 import { ScrollArea } from '@/ui/ScrollArea'
-import { IconArrowRight, IconChevronDown, IconPage } from '@/ui/icons'
+import { IconArrowRight, IconMonitor, IconPhone, IconTablet } from '@/ui/icons'
 import { pageMenuIn, pageMenuInFade, popoverContent } from '@/ui/motion'
-import { matchPages, normalizePath, sitePages, type SitePage } from './pages'
-import { GlyphCheck24, GlyphSearch24 } from './boardIcons'
+import { findPage, matchPages, normalizePath, sitePages, type SitePage } from './pages'
+import { GlyphCheck24, GlyphOpenNew24, GlyphReload24, GlyphSearch24 } from './boardIcons'
 
 /** The kit's `-2 density` rows are 48 with 1 px between them; the board's list window is five of
  *  them (5 × 48 + 4 = 244) before it scrolls. */
@@ -71,50 +87,108 @@ const keepOnMainThread = () => {}
 
 type Item = { kind: 'page'; page: SitePage } | { kind: 'goto'; path: string }
 
+/** The board's `Preview icon button (Dark theme)`: 32 × 32, radius 10, the house 8 % wash on hover, the
+ *  house bloom on press. Shared by the pill's three tools. */
+const TOOL_BTN =
+  'press-bloom grid h-8 w-8 flex-none place-items-center rounded-[10px] text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]'
+
+/** The device button's glyph IS the stop the canvas is on (Lovable's law, three stops since 30.09.2026). */
+const DeviceGlyph = ({ device }: { device: Device }) =>
+  device === 'desktop' ? <IconMonitor size={24} /> : device === 'tablet' ? <IconTablet size={24} /> : <IconPhone size={24} />
+
 export function PageSwitcher() {
   const { t } = useT()
   const answers = useWorld((s) => s.world.brief.answers)
   const outline = useWorld((s) => s.world.planEdits.outline)
   const previewPath = useUI((s) => s.previewPath)
   const setPreviewPath = useUI((s) => s.setPreviewPath)
+  const reloading = useUI((s) => s.reloading)
+  const triggerReload = useUI((s) => s.triggerReload)
+  const device = useUI((s) => s.device)
+  const setDevice = useUI((s) => s.setDevice)
   const pages = useMemo(() => sitePages(answers, outline), [answers, outline])
   const [open, setOpen] = useState(false)
-  const pill = useRef<HTMLButtonElement>(null)
+  /* the menu measures the WHOLE pill — it lies on it corner on corner, as wide */
+  const pill = useRef<HTMLDivElement>(null)
+
+  /* the page's name; a route the outline has no page for («Go to /promo») prints as the route */
+  const current = findPage(pages, previewPath)
+  const label = current ? t(current.name) : normalizePath(previewPath)
+
+  /* what one press of the device button does next, said in the label (EN/UK, like every control here) */
+  const next = nextDevice(device)
+  const deviceLabel =
+    next === 'tablet' ? t({ en: 'Switch to tablet view', uk: 'Перемкнути на вигляд планшета' })
+    : next === 'mobile' ? t({ en: 'Switch to mobile view', uk: 'Перемкнути на мобільний вигляд' })
+    : t({ en: 'Switch to desktop view', uk: 'Перемкнути на вигляд десктопа' })
+
+  /*
+   * STAGING: the bare site in a tab of its own (Root.tsx reads `view=site`). `path` carries the page
+   * the canvas stands on; the world itself is not in the link — the new tab reads the same stored
+   * snapshot (world.ts `paramsToWorld` knows only its short keys, so the two extra ones are ignored
+   * and storage wins whole). `noopener`: the tab is a viewer, it gets no handle on the builder.
+   */
+  const openStaging = () => {
+    const url = `${location.pathname}?view=site&path=${encodeURIComponent(normalizePath(previewPath))}`
+    window.open(url, '_blank', 'noopener')
+  }
 
   return (
     <>
-      <button
+      <div
         ref={pill}
-        type="button"
-        data-page-switch
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={t({ en: 'Page', uk: 'Сторінка' })}
-        onClick={() => setOpen((o) => !o)}
-        /* the board's project-button box (280 × 40, radius 10, NA/200 rim), the house wash on hover
-           and the house bloom on press */
-        className={`press-bloom mx-2 flex h-10 w-[280px] min-w-0 shrink items-center justify-between rounded-[10px] border border-[var(--white-200)] px-2 transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] ${
-          open ? 'bg-[var(--white-100)]' : ''
-        }`}
+        data-page-pill
+        /* the board's project button: 360 × 40, radius 10, the NA/200 rim INSIDE (an inset shadow, so
+           the children sit at the board's coordinates), 4 of padding at the left and 2 at the right;
+           `shrink` so a narrow canvas (down to 480) squeezes the pill rather than the toolbar */
+        className="relative flex h-10 w-[360px] min-w-0 shrink items-center rounded-[10px] pl-1 pr-0.5 shadow-[inset_0_0_0_1px_var(--white-200)]"
       >
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="grid h-6 w-6 flex-none place-items-center text-[var(--white-400)]">
-            <IconPage size={20} />
-          </span>
-          {/* the route the preview stands on — the list prints routes (its board), so the pill does */}
-          <span className="truncate text-[15px] font-semibold leading-[1.4]" data-page-label>
-            {normalizePath(previewPath)}
-          </span>
-        </span>
-        <span
-          data-page-chevron
-          className="grid h-6 w-6 flex-none place-items-center text-[var(--white-400)]"
-          /* the chevron flips while the menu is up — Lovable's pill does the same */
-          style={{ transform: open ? 'scaleY(-1)' : undefined, transition: 'transform .2s var(--ease-std)' }}
+        {/* the trigger — the pill's whole box, under the tools: its wash and bloom reach the corners */}
+        <button
+          type="button"
+          data-page-switch
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={t({ en: 'Page', uk: 'Сторінка' })}
+          onClick={() => setOpen((o) => !o)}
+          className={`press-bloom absolute inset-0 flex items-center rounded-[10px] pl-[44px] pr-[80px] text-left transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] ${
+            open ? 'bg-[var(--white-100)]' : ''
+          }`}
         >
-          <IconChevronDown size={18} />
-        </span>
-      </button>
+          {/* `Project Name` 31379:2977: a 24 box with the 15/1.4 name 2 below its top */}
+          <span className="block h-6 min-w-0 truncate pt-0.5 text-[15px] font-semibold leading-[1.4] text-white" data-page-label>
+            {label}
+          </span>
+        </button>
+        {/* reload — 32 at 4 / 4; the glyph turns while the pulse runs, as it always has */}
+        <button
+          type="button"
+          data-page-reload
+          onClick={() => triggerReload()}
+          aria-label={t({ en: 'Reload preview', uk: 'Перезавантажити прев’ю' })}
+          className={`relative z-10 ${TOOL_BTN}`}
+        >
+          <span className={reloading ? 'flex animate-spin' : 'flex'} style={reloading ? { animationDuration: '1.1s' } : undefined}>
+            <GlyphReload24 />
+          </span>
+        </button>
+        {/* `Preview buttons` 31379:3007 — 73 × 36 at the pill's right: device | divider | open */}
+        <div className="relative z-10 ml-auto flex h-9 flex-none items-center gap-0.5 rounded-[12px] p-0.5" data-page-tools>
+          <button type="button" data-page-device={device} onClick={() => setDevice(next)} aria-label={deviceLabel} className={TOOL_BTN}>
+            <DeviceGlyph device={device} />
+          </button>
+          <span className="h-8 w-px flex-none bg-[var(--white-100)]" aria-hidden />
+          <button
+            type="button"
+            data-page-open
+            onClick={openStaging}
+            aria-label={t({ en: 'Open the site in a new tab', uk: 'Відкрити сайт у новій вкладці' })}
+            className={TOOL_BTN}
+          >
+            <GlyphOpenNew24 />
+          </button>
+        </div>
+      </div>
       <PageMenu
         open={open}
         anchor={pill}
@@ -129,7 +203,7 @@ export function PageSwitcher() {
 
 function PageMenu({ open, anchor, pages, currentPath, onClose, onPick }: {
   open: boolean
-  anchor: React.RefObject<HTMLButtonElement | null>
+  anchor: React.RefObject<HTMLElement | null>
   pages: SitePage[]
   currentPath: string
   onClose: () => void

@@ -103,6 +103,14 @@ const asideWidth = () => p.$eval('aside', (el) => el.getBoundingClientRect().wid
  * rendered text only, script and style excluded.
  */
 const text = () => p.evaluate(() => document.body.innerText)
+/*
+ * THE BALANCE IS READ OFF THE WORLD, NOT OFF THE TOOLBAR (30.09.2026). The credits chip left the
+ * canvas toolbar with board 31280:86548 (designer: «кредиты убрал потому что спрятаны в меню
+ * пользователя» — the account menu under the rail's avatar carries the balance, block N), so the
+ * one place a run can read the number without opening a menu is the stored world — the same
+ * snapshot the account menu prints from (`world.credits`).
+ */
+const storedCredits = () => p.evaluate(() => JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').credits)
 const onHome = () => p.$('input[aria-label="Describe the site you want"]').then(Boolean)
 const panelUp = () => p.$('section[aria-label="Questions before building"]').then(Boolean)
 const planUp = () => p.$('section[aria-label="Plan, waiting for your approval"]').then(Boolean)
@@ -1656,8 +1664,8 @@ check('…and is still at its end after the canvas opens and re-wraps it',
   check('the acknowledgement reads as one sentence',
     body.includes('a site for what you described, built to sell, across a few pages, in Warm Clay with friendly lettering'))
   check('the brief is still readable after the build', body.includes('Warm Clay') && body.includes('Friendly'))
-  /* the toolbar is back, because the site is — and the balance is on it again */
-  check('the build spends credits', body.includes('1 990'), 'toolbar balance after one build')
+  /* the toolbar is back, because the site is; the balance is the world's (the chip is gone, see `storedCredits`) */
+  check('the build spends credits', (await storedCredits()) === 1990, `stored balance after one build: ${await storedCredits()}`)
   check('Publish comes alive once the site exists',
     !(await p.$eval('header button:has-text("Publish")', (el) => el.disabled)))
   /*
@@ -1911,8 +1919,8 @@ await p.waitForTimeout(6000); await shot('15b-autopilot-rating')
   check('the outline card keeps the sections it was built with',
     body.includes('Product grid') && !body.includes('Enquiry form'),
     'a send used to clear the answered brief and rewrite the card')
-  check('the build it started spends a build’s worth of credits', body.includes('1 980'),
-    'toolbar balance after the accepted proposal')
+  check('the build it started spends a build’s worth of credits', (await storedCredits()) === 1980,
+    `stored balance after the accepted proposal: ${await storedCredits()}`)
 }
 
 /* ------------------ the satisfaction card (Figma 25744:139153), asked once, after the
@@ -2014,7 +2022,7 @@ await p.waitForTimeout(2200); await shot('15d-rated')
     body.includes('that is good to hear') && body.includes('Your note goes with it'))
   /* THE ONE LINE THAT MUST NEVER CHANGE: telling us how we did is free. Charging for it —
      and above all charging for a bad score — would be the worst line in the product. */
-  check('rating costs nothing', body.includes('1 980'), 'toolbar balance unchanged by the rating')
+  check('rating costs nothing', (await storedCredits()) === 1980, `stored balance unchanged by the rating: ${await storedCredits()}`)
 }
 
 /* And now the second proposal, on the next edit — the card does not come back. */
@@ -5351,6 +5359,17 @@ await shot('30-plan-review')
 /* ═══════════════════════════════════════════════════════════════════════════════════
  * L · THE PAGE SWITCHER — Lovable's route picker, in our glass
  *
+ * ⚠️ THE PILL WAS REDRAWN ON 30.09.2026 — board 31280:85401 «Design 2.0», frame `V2` 31379:2968
+ * (designer: «вот так выглядит теперь верхняя панель без кнопки Visual Editor и я перекомпоновал
+ * оставшиеся кнопки»): 360 × 40 now, centred in the toolbar's content box, the rim an inset shadow;
+ * the RELOAD (32) leads it, the page's NAME follows (not the route — the menu's rows keep the
+ * routes), NO chevron («клик по полю открывает страницы» — the pill stays the trigger), and at its
+ * right the `Preview buttons` group: the DEVICE switch, three stops now («пк, телефон, планшет,
+ * иконки должны меняться»), a 1 × 32 divider and OPEN IN NEW TAB («открывает превью сайта на новой
+ * вкладке на весь экран, по сути стейджинг» — Root.tsx `?view=site`). The toolbar's left group and
+ * its credits chip are gone («кредиты убрал потому что спрятаны в меню пользователя»). The menu
+ * below is unchanged but for its width: it is as wide as the pill.
+ *
  * Designer, 25.09.2026, with a 30 s recording of Lovable's preview toolbar: «вместо этой
  * кнопки мы по классике хотим туда вставить переключатель страниц сайта… саму логику и UX
  * делаем как у lovable на видео один в один, но дизайн, анимации и эффекты используем
@@ -5386,9 +5405,9 @@ await shot('30-plan-review')
     const s = []; const t0 = performance.now()
     const tick = () => {
       const now = performance.now(); const menu = document.querySelector('[data-page-menu]'); const m = menu ? mat(menu) : null
-      const chev = document.querySelector('[data-page-chevron]'); const cm = chev ? mat(chev) : null; const glint = menu?.querySelector('.glass-glint')
+      const glint = menu?.querySelector('.glass-glint')
       s.push({ t: Math.round(now - t0), menu: menu ? { o: +(+getComputedStyle(menu).opacity).toFixed(3), s: m ? +m[0].toFixed(4) : 1, y: m ? +m[5].toFixed(1) : 0, glint: glint ? +(+getComputedStyle(glint).opacity).toFixed(2) : 0 } : null,
-        chev: cm ? +cm[3].toFixed(2) : 1, label: document.querySelector('[data-page-label]')?.textContent,
+        label: document.querySelector('[data-page-label]')?.textContent,
         pages: [...document.querySelectorAll('[data-site-page]')].map((e) => [e.dataset.sitePage, +(+getComputedStyle(e).opacity).toFixed(2)]) })
       if (now - t0 < ms) setTimeout(() => requestAnimationFrame(tick), 0)
     }
@@ -5405,10 +5424,70 @@ await shot('30-plan-review')
   }
 
   /* ── the pill ──────────────────────────────────────────────────────────────────── */
-  const pill = await p.$eval('[data-page-switch]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { x: r.x, y: r.y, w: r.width, h: r.height, r: cs.borderTopLeftRadius, border: cs.borderTopColor, expanded: e.getAttribute('aria-expanded'), inHeader: !!e.closest('header') } })
-  check('the toolbar’s centre is the PAGE SWITCHER in the board’s 280 × 40 project-button box (radius 10, NA/200 rim), reading the ROUTE the preview stands on — «/» — with the menu closed',
-    pill.w === 280 && pill.h === 40 && pill.r === '10px' && pill.border === 'rgba(255, 255, 255, 0.12)' && pill.inHeader && pill.expanded === 'false' && (await label()) === '/' && (await pagePath()) === '/',
+  const pill = await p.$eval('[data-page-pill]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { x: r.x, y: r.y, w: r.width, h: r.height, r: cs.borderTopLeftRadius, shadow: cs.boxShadow, border: cs.borderTopWidth, expanded: e.querySelector('[data-page-switch]').getAttribute('aria-expanded'), inHeader: !!e.closest('header') } })
+  check('the toolbar’s centre is the PAGE PILL in the board’s 360 × 40 project-button box (V2 31379:2968: radius 10, the NA/200 rim as an INSET shadow, no border), reading the NAME of the page the preview stands on — «Home» — with the menu closed',
+    pill.w === 360 && pill.h === 40 && pill.r === '10px' && pill.border === '0px' && /rgba\(255, 255, 255, 0\.12\) 0px 0px 0px 1px inset/.test(pill.shadow) && pill.inHeader && pill.expanded === 'false' && (await label()) === 'Home' && (await pagePath()) === '/',
     JSON.stringify({ ...pill, label: await label() }))
+  /* the board's coordinates, read off the pill's own box: Icon + Text at 4 / 8 (the 32 reload at 4 / 4, the name at 44
+     in a 24 box, pt 2), `Preview buttons` 73 × 36 at 285 / 2 (device 32 at 2, the 1 × 32 divider at 36, open at 39),
+     and the toolbar's three boxes: the pill centred in the 2064-wide content box (pr 8), Publish flush to its right */
+  const anat = await p.evaluate(() => {
+    const pill = document.querySelector('[data-page-pill]'); const P = pill.getBoundingClientRect(); const header = pill.closest('header').getBoundingClientRect()
+    const rel = (el) => { const r = el.getBoundingClientRect(); return [+(r.x - P.x).toFixed(2), +(r.y - P.y).toFixed(2), +r.width.toFixed(2), +r.height.toFixed(2)] }
+    const q = (sel) => pill.querySelector(sel); const tools = q('[data-page-tools]'); const divider = tools.children[1]
+    const publish = [...document.querySelectorAll('header button')].find((b) => /^Publish/.test(b.innerText)); const pb = publish.getBoundingClientRect()
+    const lf = getComputedStyle(q('[data-page-label]'))
+    return { centreOff: +((P.x + P.width / 2) - (header.x + (header.width - 8) / 2)).toFixed(2), headerW: header.width, y: +(P.y - header.y).toFixed(2),
+      trigger: rel(q('[data-page-switch]')), reload: rel(q('[data-page-reload]')), reloadR: getComputedStyle(q('[data-page-reload]')).borderTopLeftRadius, reloadGlyph: rel(q('[data-page-reload] svg')),
+      label: rel(q('[data-page-label]')), labelFont: [lf.fontSize, lf.lineHeight, lf.fontWeight, lf.color].join(' '),
+      tools: rel(tools), toolsR: getComputedStyle(tools).borderTopLeftRadius, device: rel(q('[data-page-device]')), deviceGlyph: rel(q('[data-page-device] svg')), divider: rel(divider), dividerInk: getComputedStyle(divider).backgroundColor,
+      open: rel(q('[data-page-open]')), openGlyph: rel(q('[data-page-open] svg')), chevron: !!document.querySelector('[data-page-chevron]'),
+      publish: [+(header.x + header.width - 8 - (pb.x + pb.width)).toFixed(2), pb.height], leftGroup: [...document.querySelectorAll('[data-canvas-toolbar] .liquid-glass')].filter((e) => e.tagName !== 'BUTTON').length, visualEditor: /Visual Editor/.test(document.querySelector('[data-canvas-toolbar]').innerText), coin: !!document.querySelector('[data-canvas-toolbar] [title="Credits"]') }
+  })
+  check('…laid out to the board: the pill CENTRED in the toolbar’s content box at y 6; the 32 reload at 4 / 4 (r10, glyph 24), the name at 44 in a 24 box in 15/21 Semibold white, NO chevron; `Preview buttons` 73 × 36 r12 at 285 / 2 — device 32, a 1 × 32 divider at 8 % white, open-in-new-tab 32, glyphs 24; the trigger is the pill’s whole box under them; Publish 36 tall flush to the content’s right edge; no glass group, no «Visual Editor», no credits chip left in the toolbar',
+    Math.abs(anat.centreOff) <= 0.5 && anat.y === 6 && anat.trigger.join() === '0,0,360,40' && anat.reload.join() === '4,4,32,32' && anat.reloadR === '10px' && anat.reloadGlyph.join() === '8,8,24,24'
+      && anat.label[0] === 44 && anat.label[1] === 8 && anat.label[3] === 24 && anat.labelFont === '15px 21px 600 rgb(255, 255, 255)' && !anat.chevron
+      && anat.tools.join() === '285,2,73,36' && anat.toolsR === '12px' && anat.device.join() === '287,4,32,32' && anat.deviceGlyph.join() === '291,8,24,24' && anat.divider.join() === '321,4,1,32' && anat.dividerInk === 'rgba(255, 255, 255, 0.08)'
+      && anat.open.join() === '324,4,32,32' && anat.openGlyph.join() === '328,8,24,24' && anat.publish[0] === 0 && anat.publish[1] === 36 && anat.leftGroup === 0 && !anat.visualEditor && !anat.coin,
+    JSON.stringify(anat))
+  /* ── the device switch: ONE button, THREE stops, the glyph the stop you are on ────── */
+  const stage = () => p.evaluate(() => { const st = document.querySelector('[data-site-stage]').getBoundingClientRect(); const park = document.querySelector('[data-site-park]').getBoundingClientRect(); const b = document.querySelector('[data-page-device]'); return { w: Math.round(st.width), h: Math.round(st.height), parkW: Math.round(park.width), parkH: Math.round(park.height), centred: Math.abs((st.x + st.width / 2) - (park.x + park.width / 2)) < 1 && Math.abs((st.y + st.height / 2) - (park.y + park.height / 2)) < 1, device: b.dataset.pageDevice, label: b.getAttribute('aria-label'), glyph: b.querySelector('svg').innerHTML } })
+  const d0 = await stage()
+  await p.click('[data-page-device]'); await p.waitForTimeout(600); const d1 = await stage()
+  await p.click('[data-page-device]'); await p.waitForTimeout(600); const d2 = await stage()
+  await p.click('[data-page-device]'); await p.waitForTimeout(600); const d3 = await stage()
+  check('the device button cycles desktop → tablet (a 768-wide frame, clamped to the canvas’s height, centred) → mobile (390 × 844, clamped the same way, centred) → desktop (the canvas), its glyph changing at every stop and its label naming the NEXT stop',
+    d0.device === 'desktop' && d0.w === d0.parkW && d0.h === d0.parkH && d0.label === 'Switch to tablet view'
+      && d1.device === 'tablet' && d1.w === 768 && d1.h === Math.min(1024, d1.parkH) && d1.centred && d1.label === 'Switch to mobile view'
+      && d2.device === 'mobile' && d2.w === 390 && d2.h === Math.min(844, d2.parkH) && d2.centred && d2.label === 'Switch to desktop view'
+      && d3.device === 'desktop' && d3.w === d3.parkW && d3.h === d3.parkH && d3.label === 'Switch to tablet view'
+      && new Set([d0.glyph, d1.glyph, d2.glyph]).size === 3 && d3.glyph === d0.glyph,
+    JSON.stringify({ d0: [d0.device, d0.w, d0.h, d0.label], d1: [d1.device, d1.w, d1.h, d1.centred, d1.label], d2: [d2.device, d2.w, d2.h, d2.centred, d2.label], d3: [d3.device, d3.w, d3.h, d3.label] }))
+  /* ── reload: the pulse the button always triggered, the glyph turning while it runs ──── */
+  await p.click('[data-page-reload]'); await p.waitForTimeout(150)
+  check('the reload button in the pill still runs the preview’s pulse — the glyph turns while it does',
+    !!(await p.$('[data-page-reload] .animate-spin')) && !(await p.$('[data-page-menu]')))
+  await p.waitForTimeout(3300)
+  /* ── open in a new tab: STAGING — the bare site at `?view=site&path=…` ─────────────── */
+  await p.evaluate(() => { window.__opened = []; window.open = (u, t, f) => { window.__opened.push([u, t, f]); return null } })
+  await p.click('[data-page-open]'); await p.waitForTimeout(150)
+  const opened = await p.evaluate(() => window.__opened)
+  check('open-in-new-tab opens the SITE in a tab of its own — `?view=site&path=/` on the same path, `_blank`, `noopener` — and touches nothing here (the preview and the pill stand where they were)',
+    opened.length === 1 && opened[0][0] === `${new URL(BASE).pathname}?view=site&path=%2F` && opened[0][1] === '_blank' && opened[0][2] === 'noopener' && (await label()) === 'Home' && (await pagePath()) === '/',
+    JSON.stringify(opened))
+  {
+    const tab = await ctx.newPage()
+    await tab.goto(`${BASE}${BASE.includes('?') ? '&' : '?'}view=site&path=%2Fabout`, { waitUntil: 'networkidle' }); await tab.waitForTimeout(600)
+    const staging = await tab.evaluate(() => { const v = document.querySelector('[data-site-view]'); const r = v.getBoundingClientRect(); const pg = document.querySelector('[data-site-page]'); return { fills: r.x === 0 && r.y === 0 && r.width === innerWidth && r.height === innerHeight, stage: v.classList.contains('site-stage'), ct: getComputedStyle(v).containerType, page: pg?.dataset.sitePage, h1: document.querySelector('[data-site-page] h1')?.textContent, chrome: !!document.querySelector('[data-canvas-toolbar], [data-page-pill], aside, [data-account-trigger], .arrive-rail') /* the builder's chrome — not `nav`: the SITE has one */, links: [...new Set([...document.querySelectorAll('[data-site-page] [data-site-link]')].map((e) => e.dataset.siteLink))].sort().join(' '), url: location.search } })
+    await tab.click('[data-site-page] [data-site-link="/"]'); await tab.waitForTimeout(700)
+    const navigated = await tab.evaluate(() => ({ page: document.querySelector('[data-site-page]')?.dataset.sitePage, url: location.search }))
+    /* the site's pages come from the stored world (the outline never travels in a link), so the staging tab lists the builder's pages */
+    check('the staging tab is the bare site filling the window — the linked page («/about») on `.site-stage` (its container queries answer to the window), no toolbar, chat or rail, the same pages as the builder’s switcher — and the site’s own links navigate it while the link stays in the bar',
+      staging.fills && staging.stage && staging.ct === 'inline-size' && staging.page === '/about' && staging.h1 === 'About' && !staging.chrome && staging.links === '/ /about /contact /services' && staging.url === '?view=site&path=%2Fabout'
+        && navigated.page === '/' && navigated.url === '?view=site&path=%2Fabout',
+      JSON.stringify({ staging, navigated }))
+    await tab.close()
+  }
   check('…and the address chip is gone from the toolbar: no header button prints the staging host (the address lives in the Publish panel)',
     (await p.$$eval('header button', (els) => els.filter((e) => /remixer\.ai/.test(e.innerText)).length)) === 0)
 
@@ -5420,15 +5499,12 @@ await shot('30-plan-review')
   const monoS = of.every((f, i) => i === 0 || f.menu.s >= of[i - 1].menu.s - 0.0005)
   const glintPeak = Math.max(...of.map((f) => f.menu.glint))
   const originAt = await p.$eval('[data-page-menu]', (e) => getComputedStyle(e).transformOrigin)
-  check('pressing the pill GROWS the menu out of the pill it covers: from ≤ .92 at the pill’s centre (origin 140px 20px), no travel, scale and opacity rising monotonically, solid within 260 ms while still growing, the rim catching light (glint > .3 within the film)',
-    of.length >= 10 && of[0].menu.s <= 0.92 && Math.abs(of[0].menu.y) < 0.5 && originAt === '140px 20px' && of[0].menu.o < 0.5 && monoO && monoS && solidAt !== undefined && solidAt <= 260 && of.find((f) => f.t === solidAt).menu.s < 1 && of[of.length - 1].menu.s >= 0.999 && glintPeak > 0.3,
+  check('pressing the pill GROWS the menu out of the pill it covers: from ≤ .92 at the pill’s centre (origin 180px 20px), no travel, scale and opacity rising monotonically, solid within 260 ms while still growing, the rim catching light (glint > .3 within the film)',
+    of.length >= 10 && of[0].menu.s <= 0.92 && Math.abs(of[0].menu.y) < 0.5 && originAt === '180px 20px' && of[0].menu.o < 0.5 && monoO && monoS && solidAt !== undefined && solidAt <= 260 && of.find((f) => f.t === solidAt).menu.s < 1 && of[of.length - 1].menu.s >= 0.999 && glintPeak > 0.3,
     JSON.stringify({ first: of[0], originAt, solidAt, monoO, monoS, glintPeak, last: of[of.length - 1] }))
-  check('…and the chevron flips (scaleY 1 → −1) on the same beat',
-    openFilm[0].chev === 1 && openFilm[openFilm.length - 1].chev === -1 && openFilm.some((f) => f.chev > -0.9 && f.chev < 0.9),
-    JSON.stringify(openFilm.map((f) => f.chev).filter((v, i, a) => a.indexOf(v) === i).slice(0, 8)))
   await p.waitForTimeout(200)
   const menu = await p.$eval('[data-page-menu]', (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { left: r.left, top: r.top, width: r.width, height: r.height, inBody: e.parentElement === document.body, blur: cs.backdropFilter, bg: cs.backgroundColor, r: cs.borderTopLeftRadius, shadow: cs.boxShadow, pad: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].join(' '), role: e.getAttribute('role') } })
-  check('the menu sits ON the pill, corner on corner — its board lays it at the pill’s own x and y, the pill’s 280 wide — in <body>: SOLID Gray/700 (no glass), radius 10, a 4 % inset rim and the 0 8 32 shadow at 50 %, 2 px of side padding and 4 under the list, a listbox; four pages make it 48 + 4 + 4 × 48 + 3 + 4 = 251 tall',
+  check('the menu sits ON the pill, corner on corner — its board lays it at the pill’s own x and y, the pill’s 360 wide — in <body>: SOLID Gray/700 (no glass), radius 10, a 4 % inset rim and the 0 8 32 shadow at 50 %, 2 px of side padding and 4 under the list, a listbox; four pages make it 48 + 4 + 4 × 48 + 3 + 4 = 251 tall',
     near(menu.left, pill.x, 0.5) && near(menu.width, pill.w, 0.5) && near(menu.top, pill.y, 0.5) && near(menu.height, 251, 0.5) && menu.inBody && menu.blur === 'none' && menu.bg === 'rgb(63, 63, 70)' && menu.r === '10px'
       && menu.shadow.endsWith('rgba(255, 255, 255, 0.04) 0px 0px 0px 1px inset, rgba(39, 39, 39, 0.5) 0px 8px 32px 0px') && menu.pad === '0px 2px 4px 2px' && menu.role === 'listbox',
     JSON.stringify({ menu, pill: [pill.x, pill.y] }))
@@ -5441,13 +5517,13 @@ await shot('30-plan-review')
   })
   check('the field is the board’s: 47 tall + a 1 px rule at 8 % white, the search glyph 24 at 12 in 32 % white, the text at 48 in 15/1.7 #c7c7cd, 3 px below the line — focused, PRE-FILLED with the current route «/» selected whole, NO ✕ (the board draws none) — and the list under it is NOT filtered by that pre-fill',
     field.focused && field.value === '/' && field.sel[0] === 0 && field.sel[1] === 1 && field.placeholder === 'Find page or enter path' && !field.clear && field.color === 'rgb(199, 199, 205)' && field.font === '15px/25.5px'
-      && field.field.join() === '2,0,276,47' && field.icon.join() === '14,11.5,24,24' && field.iconInk === 'rgba(255, 255, 255, 0.32)' && field.input[0] === 50 && near(field.input[1], 12.25, 0.3)
-      && field.rule.join() === '2,47,276,1' && field.ruleInk === 'rgba(255, 255, 255, 0.08)' && (await rows()).length === 4,
+      && field.field.join() === '2,0,356,47' && field.icon.join() === '14,11.5,24,24' && field.iconInk === 'rgba(255, 255, 255, 0.32)' && field.input[0] === 50 && near(field.input[1], 12.25, 0.3)
+      && field.rule.join() === '2,47,356,1' && field.ruleInk === 'rgba(255, 255, 255, 0.08)' && (await rows()).length === 4,
     JSON.stringify(field))
   const r0 = await rows()
   const top0 = r0[0].y - menu.top
-  check('the rows are the kit’s `-2 density` items printing ROUTES in the outline’s order — / · /about · /services · /contact — 48 tall, 1 px apart, 4 under the rule, 276 wide while nothing scrolls; the current page wears the check and Semibold (others Regular), the FIRST row highlighted in the 8 % wash',
-    r0.map((r) => r.text).join('·') === '/·/about·/services·/contact' && r0.map((r) => r.path).join('·') === '/·/about·/services·/contact' && r0.every((r) => r.h === 48 && near(r.w, 276, 0.1))
+  check('the rows are the kit’s `-2 density` items printing ROUTES in the outline’s order — / · /about · /services · /contact — 48 tall, 1 px apart, 4 under the rule, 356 wide while nothing scrolls; the current page wears the check and Semibold (others Regular), the FIRST row highlighted in the 8 % wash',
+    r0.map((r) => r.text).join('·') === '/·/about·/services·/contact' && r0.map((r) => r.path).join('·') === '/·/about·/services·/contact' && r0.every((r) => r.h === 48 && near(r.w, 356, 0.1))
       && near(top0, 52, 0.1) && r0.every((r, i) => i === 0 || near(r.y - r0[i - 1].y, 49, 0.1))
       && r0.map((r) => r.current).join() === 'true,false,false,false' && r0.map((r) => r.check).join() === 'true,false,false,false' && r0.map((r) => r.weight).join() === '600,400,400,400'
       && r0.map((r) => r.active).join() === 'true,false,false,false' && r0[0].bg === 'rgba(255, 255, 255, 0.08)' && r0.slice(1).every((r) => r.bg === 'rgba(0, 0, 0, 0)')
@@ -5484,34 +5560,34 @@ await shot('30-plan-review')
     JSON.stringify({ goto, frames: cf.length, lastO: cf[cf.length - 1]?.menu.o, lastS: cf[cf.length - 1]?.menu.s, goneAt: gone?.t }))
   const labelAt = closeFilm.find((f) => f.label === '/promo')?.t
   await p.waitForTimeout(500)
-  check('…the pill reads the new route AT ONCE (the label changes in the first frames of the press, before the menu is gone) and the preview stands on the site’s own not-found page for it — the old page gone, the chevron back down',
+  check('…the pill reads the new route AT ONCE (the label changes in the first frames of the press, before the menu is gone — a route with no page has no name, so the pill prints the route) and the preview stands on the site’s own not-found page for it — the old page gone, the trigger collapsed',
     labelAt !== undefined && labelAt <= (gone?.t ?? 0) && (await label()) === '/promo' && (await pagePath()) === '/promo' && !!(await p.$('[data-site-notfound]'))
-      && (await p.$$('[data-site-page]')).length === 1 && (await p.$eval('[data-page-switch]', (e) => e.getAttribute('aria-expanded'))) === 'false' && closeFilm[closeFilm.length - 1].chev === 1,
+      && (await p.$$('[data-site-page]')).length === 1 && (await p.$eval('[data-page-switch]', (e) => e.getAttribute('aria-expanded'))) === 'false',
     JSON.stringify({ labelAt, goneAt: gone?.t, label: await label(), page: await pagePath() }))
   /* the site's own link home moves the pill — the pill follows the site */
   await p.click('[data-site-notfound] [data-site-link="/"]'); await p.waitForTimeout(700)
-  check('a link INSIDE the site («Back to home» on the not-found page) moves the preview and the pill follows it — «/»',
-    (await label()) === '/' && (await pagePath()) === '/' && !!(await p.$('.site-stage h1')))
+  check('a link INSIDE the site («Back to home» on the not-found page) moves the preview and the pill follows it — «Home»',
+    (await label()) === 'Home' && (await pagePath()) === '/' && !!(await p.$('.site-stage h1')))
   /* picking a page: the preview hands over sequentially, the label first */
   await p.mouse.click(pill.x + 140, pill.y + 20); await p.waitForTimeout(500)
   const swapFilm = await filmed(() => film(900), () => p.click('[data-page-row="/services"]'))
   const oldGone = swapFilm.find((f) => !f.pages.some(([id]) => id === '/'))?.t
   const newStarts = swapFilm.find((f) => f.pages.some(([id, o]) => id === '/services' && o > 0.2))?.t
   const oldMono = swapFilm.map((f) => f.pages.find(([id]) => id === '/')?.[1]).filter((v) => v !== undefined).every((v, i, a) => i === 0 || v <= a[i - 1] + 0.001)
-  const labelSwap = swapFilm.find((f) => f.label === '/services')?.t
+  const labelSwap = swapFilm.find((f) => f.label === 'Services')?.t
   const last = swapFilm[swapFilm.length - 1]
   /* one software-raster frame (~40 ms) of slack on the hand-over: the old page's node leaves on the React commit
      after its 120 ms exit lands, and on a 36–43 ms frame that commit can fall one frame after the new page's
      opacity has passed .2 (measured 24–28 ms late on three runs, 25.09.2026) — a page at ≤ .2 alpha for one frame is
      not the double exposure the rule forbids; a 60 ms overlap (seen once under load) still fails */
-  check('picking /services hands the preview over SEQUENTIALLY: the home page fades out monotonically and is gone before the Services page passes .2, the new page settles at 1 within the film, and the pill read «/services» before either moved',
+  check('picking /services hands the preview over SEQUENTIALLY: the home page fades out monotonically and is gone before the Services page passes .2, the new page settles at 1 within the film, and the pill read «Services» before either moved',
     oldGone !== undefined && newStarts !== undefined && newStarts >= oldGone - 45 && oldMono && labelSwap !== undefined && labelSwap <= oldGone
       && last.pages.length === 1 && last.pages[0][0] === '/services' && last.pages[0][1] === 1 && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'Services',
     JSON.stringify({ oldGone, newStarts, oldMono, labelSwap, last }))
   /* the footer's page links: the second door, and the pill follows again */
   const foot = await p.$('[data-site-page] [data-site-link="/about"]'); await foot.scrollIntoViewIfNeeded(); await p.waitForTimeout(200); await foot.click(); await p.waitForTimeout(700)
-  check('the site’s footer carries its pages as links, and following «About» there moves the pill to «/about»',
-    (await label()) === '/about' && (await pagePath()) === '/about' && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'About')
+  check('the site’s footer carries its pages as links, and following «About» there moves the pill to «About»',
+    (await label()) === 'About' && (await pagePath()) === '/about' && (await p.$eval('[data-site-page] h1', (e) => e.textContent)) === 'About')
   /* reopen: the check moved, the field holds the new route; Esc and a press outside close */
   await p.mouse.click(pill.x + 140, pill.y + 20); await p.waitForTimeout(500)
   const re = { field: await p.$eval('[data-page-input]', (e) => [e.value, e.selectionStart, e.selectionEnd]), current: (await rows()).filter((r) => r.current).map((r) => r.path) }
@@ -5532,7 +5608,7 @@ await shot('30-plan-review')
   await p.click('.home-card-face')
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
   await p.waitForTimeout(600)
-  const pl = await p.$eval('[data-page-switch]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y } })
+  const pl = await p.$eval('[data-page-pill]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y } })
   await p.mouse.click(pl.x + 140, pl.y + 20); await p.waitForTimeout(700)
   const long = await p.evaluate(() => {
     const menu = document.querySelector('[data-page-menu]'); const m = menu.getBoundingClientRect(); const th = menu.querySelector('.scroll-thumb'); const tr = th.getBoundingClientRect(); const tcs = getComputedStyle(th)
@@ -5540,8 +5616,8 @@ await shot('30-plan-review')
     const sc = menu.querySelector('.scroll-area > div')
     return { h: m.height, rows: rs.length, w: rs.map((r) => +r.width.toFixed(2)), window: sc.clientHeight, thumb: { off: th.hasAttribute('data-off'), x: +(tr.x - m.x).toFixed(2), y: +(tr.y - m.y).toFixed(2), w: tr.width, o: tcs.opacity, bg: tcs.backgroundColor } }
   })
-  check('a site with seven pages: the list window is FIVE rows (5 × 48 + 4 = 244, the menu 300 tall, the board’s own height), the rows give 10 px to the scrollbar’s column (266), and the bar is DRAWN — 4 wide at 2 from the column’s edge, 4 below its top, 24 % white, shown without a scroll',
-    near(long.h, 300, 0.5) && long.rows === 7 && long.window === 244 && long.w.every((w) => near(w, 266, 0.1)) && !long.thumb.off && near(long.thumb.x, 272, 0.1) && near(long.thumb.y, 56, 0.1) && long.thumb.w === 4 && long.thumb.o === '1' && long.thumb.bg === 'rgba(255, 255, 255, 0.24)',
+  check('a site with seven pages: the list window is FIVE rows (5 × 48 + 4 = 244, the menu 300 tall, the board’s own height), the rows give 10 px to the scrollbar’s column (346), and the bar is DRAWN — 4 wide at 2 from the column’s edge, 4 below its top, 24 % white, shown without a scroll',
+    near(long.h, 300, 0.5) && long.rows === 7 && long.window === 244 && long.w.every((w) => near(w, 346, 0.1)) && !long.thumb.off && near(long.thumb.x, 352, 0.1) && near(long.thumb.y, 56, 0.1) && long.thumb.w === 4 && long.thumb.o === '1' && long.thumb.bg === 'rgba(255, 255, 255, 0.24)',
     JSON.stringify(long))
   await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 }
@@ -5821,7 +5897,9 @@ await shot('30-plan-review')
       menu: r('[data-account-menu]'), header: r('[data-account-header]'), avatar: r('[data-account-avatar]'), credits: r('[data-account-credits]'), bar: r('[data-account-bar]'), add: r('[data-account-add]'), list: r('[data-account-list]'), logout: r('[data-account-logout]'),
       rows: [...document.querySelectorAll('[data-account-row]')].map((e) => { const b = e.getBoundingClientRect(); return [+b.x.toFixed(1), +b.y.toFixed(1), +b.width.toFixed(1), +b.height.toFixed(1)] }),
       blur: cs.backdropFilter, bg: cs.backgroundColor, shadow: cs.boxShadow, radius: cs.borderRadius, origin: cs.transformOrigin, trigger: [tg.x + tg.width / 2, tg.y + tg.height / 2], expanded: document.querySelector('[data-account-trigger]').getAttribute('aria-expanded'),
-      balance: document.querySelector('[data-account-balance]').textContent, plan: document.querySelector('[data-account-plan]').textContent, extra: document.querySelector('[data-account-extra]').textContent, toolbar: [...document.querySelectorAll('header span')].map((e) => e.textContent).find((x) => /^\d[\d ]*$/.test(x || '')) }
+      balance: document.querySelector('[data-account-balance]').textContent, plan: document.querySelector('[data-account-plan]').textContent, extra: document.querySelector('[data-account-extra]').textContent,
+      /* the world's own figure — the toolbar carries no credits chip since board 31280:86548 (30.09.2026) */
+      stored: JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}').credits, toolbarChip: [...document.querySelectorAll('header span')].map((e) => e.textContent).find((x) => /^\d[\d ]*$/.test(x || '')) }
   })
   const m = geo.menu
   check('the account menu lies where the re-drawn board draws it — 288 wide, 8 from the top and right edges, 598 tall = header 139 + credits card 260 + list 191 + 8 — covering the avatar that opened it',
@@ -5838,9 +5916,9 @@ await shot('30-plan-review')
   check('…the glass is the board’s: rgba(31,31,31,.7) under a 40 px backdrop blur, the 8 % rim INSIDE (an inset shadow, not a border), r20, 0 8 72 at 50 %',
     geo.bg === 'rgba(31, 31, 31, 0.7)' && geo.blur === 'blur(40px)' && /rgba\(255, 255, 255, 0\.08\) 0px 0px 0px 1px inset/.test(geo.shadow) && /rgba\(0, 0, 0, 0\.5\) 0px 8px 72px/.test(geo.shadow) && geo.radius === '20px',
     JSON.stringify({ bg: geo.bg, blur: geo.blur, shadow: geo.shadow, radius: geo.radius }))
-  check('…and the balance is the toolbar’s own: plan and one-time credits add up to it',
-    geo.balance === geo.toolbar.replace(/ /g, '') && +geo.plan.replace(/ /g, '') + +geo.extra.replace(/ /g, '') === +geo.balance.replace(/ /g, ''),
-    JSON.stringify({ balance: geo.balance, plan: geo.plan, extra: geo.extra, toolbar: geo.toolbar }))
+  check('…and the balance is the world’s own (`world.credits` — the toolbar carries no chip any more, the menu is where the balance lives): plan and one-time credits add up to it',
+    +geo.balance.replace(/ /g, '') === geo.stored && geo.toolbarChip === undefined && +geo.plan.replace(/ /g, '') + +geo.extra.replace(/ /g, '') === +geo.balance.replace(/ /g, ''),
+    JSON.stringify({ balance: geo.balance, plan: geo.plan, extra: geo.extra, stored: geo.stored, toolbarChip: geo.toolbarChip }))
   const os = open.map((f) => f.o), ss = open.map((f) => f.s), gs = open.map((f) => f.g)
   const peak = Math.max(...ss), gPeak = Math.max(...gs)
   check('the menu opens as glass out of the avatar: transform origin on the avatar’s centre, scale .92 → one soft overshoot (≤ 1.01) → 1, opacity rising monotonically to 1 without a blink, the rim catching the light and letting it go',

@@ -116,6 +116,21 @@ export const IconPhone = ({ size = 20, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * The tablet — the third stop of the device switch (designer, 30.09.2026: «пк, телефон,
+ * планшет, иконки должны меняться»). Drawn as the phone's sibling: the same 24 box, the same
+ * 1.7 stroke, the same 18 of height and the same home-bar at 17.8, only 16 wide — so the three
+ * glyphs cycling on ONE button read as one family, not three weights. The board (31379:2968)
+ * drew only the phone, at stroke 1.5; ours stays at the kit's 1.7 so the monitor beside it
+ * does not look heavier than the frame that replaces it.
+ */
+export const IconTablet = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="4" y="3" width="16" height="18" rx="2.5" />
+    <path d="M10.5 17.8h3" />
+  </svg>
+)
+
 /** Six-dot grid — the project switcher. */
 export const IconGrid = ({ size = 24, className }: IconProps) => (
   <svg {...base(size)} className={className} strokeWidth="0" fill="currentColor">

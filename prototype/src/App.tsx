@@ -13,7 +13,7 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react'
 import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, usePresence, useReducedMotion, useTransform, type MotionStyle, type MotionValue } from 'motion/react'
 import { useWorld, canUseAI, hasPlan, registrantUnconfirmed , type PaneMotion } from '@/state/world'
-import { useUI, fromRect, MOBILE_WIDTH, MOBILE_HEIGHT, type Surface, type SurfaceFrom } from '@/state/ui'
+import { useUI, fromRect, MOBILE_WIDTH, MOBILE_HEIGHT, TABLET_WIDTH, TABLET_HEIGHT, type Surface, type SurfaceFrom } from '@/state/ui'
 import { CUSTOM_DOMAIN } from '@/data/domains'
 import { ScenarioPanel } from '@/devtools/ScenarioPanel'
 import { PlanVariantSwitch } from '@/modules/chat/PlanVariantSwitch'
@@ -34,6 +34,7 @@ import { PanelCart } from '@/modules/panel/PanelCart'
 import { ChatPanel } from '@/modules/chat/ChatPanel'
 import { SiteStage } from '@/modules/preview/SiteStage'
 import { PageSwitcher } from '@/modules/preview/PageSwitcher'
+import { EditBar } from '@/modules/editor/EditBar'
 import { SiteSwitch } from '@/modules/sites/SiteSwitch'
 import { SitesShelf } from '@/modules/sites/SitesShelf'
 import { AccountMenu } from '@/modules/account/AccountMenu'
@@ -50,8 +51,7 @@ import {
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
-  LogoRemixer, IconHistory, IconSidebar, IconVisualEditor, IconReload, IconMonitor, IconPhone,
-  IconChevronDown, IconCoin, IconStyle, IconExtension, IconAnalytics, IconCloud,
+  LogoRemixer, IconHistory, IconSidebar, IconStyle, IconExtension, IconAnalytics, IconCloud,
   IconChatBubble, IconExpand,
 } from '@/ui/icons'
 
@@ -737,7 +737,9 @@ export default function App() {
   const { world } = useWorld()
   const accountOpen = useUI((s) => s.accountOpen)
   const toggleAccount = useUI((s) => s.toggleAccount)
-  const { surface, openSurface, closeSurface, togglePublish, reloading, triggerReload, device, setDevice, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
+  /* the reload and the device switch moved INTO the page pill (PageSwitcher.tsx, board 31379:2968) — the
+     shell keeps `device` for the stage's box and `reloading` for the glow */
+  const { surface, openSurface, closeSurface, togglePublish, reloading, device, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
 
   /*
    * A SURFACE IS LEAVING THE CANVAS. From the moment `surface` goes back to the preview until
@@ -1061,8 +1063,8 @@ export default function App() {
           * the balance group in the chat's toolbar with it.
           *
           * The reasoning is the one the right rail already follows, one control further:
-          * Visual Editor, the reload, the device toggle, the address and Publish all act
-          * ON a site, and through the brief, the plan and the whole build there is none.
+          * the page pill with its reload, device switch and staging door, and Publish all
+          * act ON a site, and through the brief, the plan and the whole build there is none.
           * A control with nothing to do is better absent than dead — the same sentence
           * that greys out Publish, taken to its end. It arrives when the site does.
           */}
@@ -1075,80 +1077,30 @@ export default function App() {
              top), so nothing below moves — the site the shelf measures stays exactly where it stood */
           style={{ height: 'var(--topbar-h)', opacity: toolbarP, y: toolbarY }}
         >
-          {/* left: Visual Editor + device preview */}
-          <div className="flex items-center gap-2 pl-2">
-            <Glass className="h-9 justify-center pr-5">
-              <span className="grid h-9 w-10 place-items-center text-[var(--white-700)]">
-                <IconVisualEditor size={18} />
-              </span>
-              <span className="text-[14px] leading-none text-[var(--white-900)]">Visual Editor</span>
-            </Glass>
-            <Glass className="h-9 gap-0.5 p-0.5">
-              <button
-                onClick={() => triggerReload()}
-                aria-label={t({ en: 'Reload preview', uk: 'Перезавантажити прев’ю' })}
-                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-              >
-                <span className={reloading ? 'animate-spin' : undefined} style={reloading ? { animationDuration: '1.1s' } : undefined}>
-                  <IconReload size={17} />
-                </span>
-              </button>
-              <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-              {/* ONE control, as in Lovable (verified on a screen recording of their
-                  builder): the icon IS the view you are in — a monitor while the canvas
-                  is desktop, a phone once you switch — and clicking flips it. */}
-              <button
-                onClick={() => setDevice(device === 'desktop' ? 'mobile' : 'desktop')}
-                aria-label={
-                  device === 'desktop'
-                    ? t({ en: 'Switch to mobile view', uk: 'Перемкнути на мобільний вигляд' })
-                    : t({ en: 'Switch to desktop view', uk: 'Перемкнути на вигляд десктопа' })
-                }
-                className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--white-900)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)]"
-              >
-                {device === 'desktop' ? <IconMonitor size={17} /> : <IconPhone size={17} />}
-              </button>
-              {/*
-                * NO COLLAPSE ARROW HERE EITHER (designer, 07.09.2026, twice: "эта стрелка
-                * не нужна тут, она видна только когда скрыто превью", then "какова черта я
-                * вижу тут эту кнопку?"). The rule is exactly one arrow in the whole shell,
-                * in the chat header, and only while the preview is away — it expands.
-                *
-                * Collapsing is a DRAG: pulling the divider past the canvas minimum puts
-                * the preview away (ChatResizer, PREVIEW_MIN). Do not add a button back on
-                * either side.
-                */}
-            </Glass>
-          </div>
+          {/*
+            * THE TOOLBAR IS THREE BOXES — board 31280:86548 `Top Toolbar` on «Design 2.0» (designer,
+            * 30.09.2026: «вот так выглядит теперь верхняя панель без кнопки Visual Editor и я
+            * перекомпоновал оставшиеся кнопки»): `Left buttons` 320 — EMPTY, its Visual Editor pill
+            * gone to the edit bar at the preview's foot (EditBar.tsx) and its reload | device group
+            * gone INTO the page pill; `V2` 360, the page pill, centred in the toolbar's 2064 content
+            * box (its x is 852 = (2064 − 360) / 2); `Right` 320 — Publish alone, flush to the content's
+            * right edge. The credits chip that stood beside Publish is GONE («кредиты убрал потому
+            * что спрятаны в меню пользователя» — the account menu under the avatar carries the
+            * balance). The two side boxes share the free width equally, so the pill stays centred at
+            * every canvas width; on a narrow canvas (down to 480) the right box keeps Publish whole
+            * (`min-w-fit`) and the pill shrinks before Publish would.
+            */}
+          <div className="min-w-0 flex-1" aria-hidden />
 
-          {/* centre: the PAGE SWITCHER, in the board's 280 × 40 project-button box (Figma
-              25819:143144). It replaced the address chip on 25.09.2026 (designer, with a recording
-              of Lovable's route picker: «вместо этой кнопки мы по классике хотим туда вставить
-              переключатель страниц сайта»): the pill reads the page the preview stands on, the
-              menu under it lists the plan's pages with a search field, and the preview follows.
-              The address, its status and the door to the Domains window live in the Publish panel,
-              which was already the one place the connection is read (13.09.2026). */}
+          {/* centre: the PAGE PILL (Figma 31379:2968) — reload · the page's name (the menu's trigger,
+              since 25.09.2026 in place of the address chip: «вместо этой кнопки мы по классике хотим
+              туда вставить переключатель страниц сайта») · device switch | open in a new tab. The
+              address, its status and the door to the Domains window live in the Publish panel, which
+              was already the one place the connection is read (13.09.2026). */}
           <PageSwitcher />
 
-          {/* right: credits (amber, permanent — never move it off the toolbar) + Publish */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`flex h-9 items-center gap-3 rounded-[12px] border py-0 pl-[7px] pr-[6px] ${
-                world.credits === 0 ? 'border-[#ef444440]' : 'border-[var(--credit-border)]'
-              }`}
-              style={{ background: 'linear-gradient(to bottom, var(--credit-from), var(--credit-to))' }}
-              title={t({ en: 'Credits', uk: 'Кредити' })}
-            >
-              <span className="flex items-center gap-2">
-                <IconCoin size={20} />
-                <span className="text-[15px] font-medium tabular-nums text-white">
-                  {world.credits.toLocaleString('en-US').replace(/,/g, ' ')}
-                </span>
-              </span>
-              <span className="grid h-6 w-6 place-items-center text-[var(--white-400)]">
-                <IconChevronDown size={16} />
-              </span>
-            </div>
+          {/* right: Publish, alone since the credits chip left the toolbar (30.09.2026) */}
+          <div className="flex min-w-fit flex-1 items-center justify-end">
             {/*
               * Publish is DEAD until there is a site to publish (designer, 07.09.2026).
               * `built` is the only state that qualifies: on an empty project there is
@@ -1270,11 +1222,13 @@ export default function App() {
                   className="site-stage relative overflow-hidden rounded-shell after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] after:content-['']"
                   data-site-stage
                   initial={false}
+                  /* three stops since 30.09.2026 (ui.ts `Device`): the frames are fixed, the desktop fills */
                   animate={{
-                    width: device === 'mobile' ? MOBILE_WIDTH : '100%',
-                    height: device === 'mobile' ? MOBILE_HEIGHT : '100%',
+                    width: device === 'mobile' ? MOBILE_WIDTH : device === 'tablet' ? TABLET_WIDTH : '100%',
+                    height: device === 'mobile' ? MOBILE_HEIGHT : device === 'tablet' ? TABLET_HEIGHT : '100%',
                   }}
-                  style={{ maxHeight: '100%' }}
+                  /* the clamps: a 1024-tall tablet on a short canvas, a 768-wide one on a canvas dragged to 480 */
+                  style={{ maxHeight: '100%', maxWidth: '100%' }}
                   transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
                 >
                   {world.project === 'built' ? (
@@ -1366,6 +1320,8 @@ export default function App() {
           </AnimatePresence>
 
           <PublishPanel hold={holdPanel} />
+          {/* the Visual Editor's bar at the canvas's foot (board 31280:115372) — over the site, not inside the phone frame */}
+          <EditBar />
           <AccountMenu />
       {/* The design system's "are you sure?" — mounted ONCE, here, because its scrim covers
           the whole shell (board 30282:51628). Anything that needs it calls

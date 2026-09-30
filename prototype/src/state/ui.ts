@@ -117,10 +117,14 @@ export interface DomainModal {
 }
 
 /**
- * Canvas device emulation. Same two stops every builder in the category ships
- * (Lovable, Bolt, v0): the desktop view fills the canvas, the mobile view is a
- * phone-width frame floating on the ground. 390px is the iPhone 14/15 logical
- * width — the modal phone on the US market this product sells to.
+ * Canvas device emulation. THREE stops since 30.09.2026 (designer, on the redrawn toolbar
+ * board 31280:86548: «это просто кнопка переключателя девайса для превью, пк, телефон,
+ * планшет, иконки должны меняться»): the desktop view fills the canvas, the tablet and the
+ * phone are fixed frames floating on the ground. Until then it was the category's two stops
+ * (Lovable, Bolt, v0 — desktop and phone); the one-button cycle stays, one stop longer.
+ * 390px is the iPhone 14/15 logical width — the modal phone on the US market this product
+ * sells to; 768 × 1024 is the iPad's portrait logical size, the tablet every preview
+ * emulator means by "tablet".
  */
 /** Chat column bounds. Below ~340 the bubbles stop reading; the upper stop and
  *  the live window check keep the canvas usable at any window size. */
@@ -223,12 +227,23 @@ export interface TemplateFlight {
   card?: number
 }
 
-export type Device = 'desktop' | 'mobile'
+export type Device = 'desktop' | 'tablet' | 'mobile'
 /** iPhone 14/15 logical size. A fixed device, not a full-height column —
  *  measured off a Lovable screen recording: their phone frame keeps a wide
  *  margin above and below and floats in the middle of the canvas. */
 export const MOBILE_WIDTH = 390
 export const MOBILE_HEIGHT = 844
+/** iPad portrait, logical. The same kind of frame as the phone: fixed, centred on the
+ *  ground, `maxHeight: 100%` clamping it on a short canvas (App.tsx, the stage). */
+export const TABLET_WIDTH = 768
+export const TABLET_HEIGHT = 1024
+/**
+ * The one button's cycle — desktop → tablet → mobile → desktop — as the designer named the
+ * stops («пк, телефон, планшет»): the wide view first, then the frames narrowing. The icon on
+ * the button IS the current stop (Lovable's law, kept), so the glyph changes on every press.
+ */
+export const DEVICE_CYCLE: readonly Device[] = ['desktop', 'tablet', 'mobile']
+export const nextDevice = (d: Device): Device => DEVICE_CYCLE[(DEVICE_CYCLE.indexOf(d) + 1) % DEVICE_CYCLE.length]
 
 interface UIStore {
   page: Page
