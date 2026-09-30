@@ -6048,8 +6048,8 @@ await shot('30-plan-review')
       toolbarText: document.querySelector('[data-canvas-toolbar]')?.innerText ?? '', editing: document.querySelector('[data-site-editing]')?.getAttribute('data-site-editing') ?? null,
     }
   })
-  check('the bar stands where the board puts it: centred on the canvas column, its bottom edge 29 above the canvas’s, 40 tall (4 + 32 + 4) — two 32 × 32 tools 4 apart, neither pressed, no batch segment',
-    !!rest && rest.inMain && Math.abs(rest.centreOff) <= 1 && rest.lift === 29 && rest.h === 40 && rest.tools.length === 2 && rest.tools.map((t) => t.tool).join() === 'edit,select'
+  check('the bar stands where the board puts it: centred on the canvas column, its bottom edge 29 above the canvas’s, 42 tall (1 + 4 + 32 + 4 + 1, board 31442:44737) — two 32 × 32 tools 4 apart, neither pressed, no batch segment',
+    !!rest && rest.inMain && Math.abs(rest.centreOff) <= 1 && rest.lift === 29 && rest.h === 42 && rest.tools.length === 2 && rest.tools.map((t) => t.tool).join() === 'edit,select'
       && rest.tools.every((t) => t.w === 32 && t.h === 32 && t.pressed === 'false' && t.glyph && !t.disc) && rest.gap === 4 && !rest.batch && !rest.dirty && rest.editing === null,
     JSON.stringify(rest && { centreOff: rest.centreOff, lift: rest.lift, w: rest.w, h: rest.h, tools: rest.tools, gap: rest.gap, batch: rest.batch }))
   check('…in the house glass: `liquid-glass` with its glint, r16, the board’s 0 8 32 at 33 %, taking the pointer inside a pointer-blind host',
