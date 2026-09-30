@@ -4243,8 +4243,9 @@ await shot('30-plan-review')
     sel[0] === 'rgba(149, 117, 205, 0.12)' && sel[1] === 'rgb(149, 117, 205)', sel.join(' · '))
   const others = await p.evaluate(() => [...document.querySelectorAll('nav.arrive-rail button[aria-pressed="false"]')]
     .map((e) => getComputedStyle(e).backgroundColor))
-  check('…while the three buttons with no window of their own stay dark',
-    others.length === 3 && others.every((c) => c === 'rgba(0, 0, 0, 0)'), others.join(' · '))
+  /* four since 30.09.2026: Style, Integrations, Analytics and the Website media button (its panel is closed) */
+  check('…while the four other buttons stay dark',
+    others.length === 4 && others.every((c) => c === 'rgba(0, 0, 0, 0)'), others.join(' · '))
 
   /* ── the window ──────────────────────────────────────────────────────────────── */
   const win = await R('[data-cloud-window]')

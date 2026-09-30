@@ -641,7 +641,26 @@ export type SiteSlice = Pick<World, SiteAxis>
 export type SiteContent = Pick<World, 'brief' | 'planEdits' | 'siteEdits'>
 export function siteSliceOf(w: World, id?: string): SiteContent {
   if (!id || id === w.site) return w
-  return w.stash[id] ?? SITE_SLICES[id] ?? { brief: EMPTY_BRIEF, planEdits: EMPTY_PLAN_EDITS, siteEdits: EMPTY_SITE_EDITS }
+  return completeSlice(w.stash[id] ?? SITE_SLICES[id] ?? {})
+}
+
+/**
+ * ⚠️ A STASHED SLICE MAY PREDATE AN AXIS — AND IT IS DRAWN ON THE HOME PAGE (30.09.2026, the black
+ * screen). A site the designer generated on 25–29.09 sat in his stash without `siteEdits`; the Home
+ * dock draws such a site as a live miniature through `siteSliceOf`, which handed the slice over as
+ * it was, and the first `edits.text[key]` threw on `undefined` — before any click, on the page the
+ * prototype opens on. `set()` completed a slice only when the site was SWITCHED TO; every reader of
+ * a slice has to go through this instead. Missing axes take their empty values; a stored key is
+ * never overwritten. Same cure as `set()`'s, in one place, for every axis a slice can lack.
+ */
+export function completeSlice<T extends Partial<SiteSlice>>(s: T): T & Pick<SiteSlice, 'brief' | 'planEdits' | 'siteEdits' | 'media'> {
+  return {
+    ...s,
+    brief: s.brief ?? EMPTY_BRIEF,
+    planEdits: s.planEdits ?? EMPTY_PLAN_EDITS,
+    siteEdits: s.siteEdits ?? EMPTY_SITE_EDITS,
+    media: s.media ?? DEFAULT_MEDIA,
+  }
 }
 
 /** The slice of a world that belongs to the site it stands in. */
@@ -1143,7 +1162,7 @@ export const useWorld = create<Store>((set, get) => ({
        * retired every snapshot to fix a key that no default changed for (the rule: bump when a
        * DEFAULT changes).
        */
-      const whole = restored ? { ...restored, siteEdits: restored.siteEdits ?? EMPTY_SITE_EDITS, media: restored.media ?? DEFAULT_MEDIA } : {}
+      const whole = restored ? completeSlice(restored) : {}
       patch = { ...whole, ...patch, stash }
     }
     // Moving the chat axis means a different situation is being staged, so a

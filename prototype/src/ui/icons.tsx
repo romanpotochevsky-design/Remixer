@@ -874,7 +874,7 @@ export const IconLanguage = ({ size = 24, className }: IconProps) => (
 /* Material Symbols `photo_library` (filled), on the same 24 grid as the rail's other glyphs — the
    Website media panel's rail button (30.09.2026). The kit's fifth accent row is «Photo Library». */
 export const IconPhotoLibrary = ({ size = 24, className }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
     <path
       d="M8.5 16.5h10.3c.2 0 .35-.09.44-.27a.46.46 0 0 0-.04-.5l-2.9-3.87a.53.53 0 0 0-.4-.21.53.53 0 0 0-.4.21l-2.7 3.6-1.9-2.53a.53.53 0 0 0-.4-.21.53.53 0 0 0-.4.21l-2.0 2.8a.46.46 0 0 0-.04.5c.09.18.24.27.44.27ZM8 20c-.55 0-1.02-.2-1.41-.59A1.93 1.93 0 0 1 6 18V4c0-.55.2-1.02.59-1.41C6.98 2.2 7.45 2 8 2h14c.55 0 1.02.2 1.41.59.39.39.59.86.59 1.41v14c0 .55-.2 1.02-.59 1.41-.39.39-.86.59-1.41.59H8Zm-4 4c-.55 0-1.02-.2-1.41-.59A1.93 1.93 0 0 1 2 22V7a1 1 0 1 1 2 0v15h15a1 1 0 1 1 0 2H4Z"
       fill="currentColor"
