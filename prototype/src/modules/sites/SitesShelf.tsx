@@ -334,7 +334,7 @@ function SiteCard({ project, current, pictureHidden, flying, onPick }: {
             slot, and while its clone is in the air */}
         <div className="absolute inset-0" style={{ visibility: pictureHidden || flying ? 'hidden' : undefined }} data-site-picture>
           {project.thumb === 'live' ? (
-            <SiteMini className="absolute inset-0" />
+            <SiteMini className="absolute inset-0" site={project.id} />
           ) : (
             <div className="relative w-full" style={{ aspectRatio: DRAWING_ASPECT }}>
               <Thumb id={project.thumb} className="absolute inset-0" />
@@ -416,7 +416,7 @@ function PickFlight({ project, from, to, main, onLand }: {
       aria-hidden
     >
       {project.thumb === 'live' ? (
-        <div className="absolute inset-0"><SitePreview path="/" /></div>
+        <div className="absolute inset-0"><SitePreview path="/" site={project.id} /></div>
       ) : (
         <div className="relative w-full" style={{ aspectRatio: DRAWING_ASPECT }}>
           <Thumb id={project.thumb} className="absolute inset-0" />

@@ -606,7 +606,7 @@ function ProjectCard({ project }: { project: HomeProject }) {
           Hover duration via `--card-hover-dur` — see TemplateCard. */}
       <div className="home-thumb relative w-full overflow-hidden rounded-[12px] ring-[var(--white-200)] transition-shadow duration-[var(--card-hover-dur,var(--dur-fast))] ease-std group-hover:ring-1">
         {/* the live demo site is its own picture (SiteMini); the others are drawn */}
-        {project.thumb === 'live' ? <SiteMini className="absolute inset-0" /> : <Thumb id={project.thumb} className="absolute inset-0" />}
+        {project.thumb === 'live' ? <SiteMini className="absolute inset-0" site={project.id} /> : <Thumb id={project.thumb} className="absolute inset-0" />}
       </div>
 
       <div className="flex h-14 w-full flex-none items-center justify-between">

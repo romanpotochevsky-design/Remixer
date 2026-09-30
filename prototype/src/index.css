@@ -5060,3 +5060,106 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
     opacity: 0;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE VISUAL EDITOR (modules/editor, 30.09.2026) — the rings over the site, the
+   Replace-photo affordance, the text host. One overlay inside the page's scroll
+   content draws every ring (EditOverlay.tsx), so nothing here touches the site's
+   own boxes: no border, no padding, no transform on a site element. Only opacity
+   moves. One blue: the hand tool's --action; the spectrum belongs to AI moments.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ve-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.ve-ring {
+  position: absolute;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgb(21 135 255 / 0.55);
+  opacity: 0;
+  transition: opacity 0.12s var(--ease-std);
+}
+.ve-ring--hover { opacity: 1; }
+.ve-ring--pinned {
+  box-shadow: 0 0 0 1.5px var(--action);
+  opacity: 1;
+}
+/* the reveal on entering the mode: every target rings once, in reading order, and fades */
+.ve-ring--reveal { animation: ve-reveal 0.9s cubic-bezier(0.2, 0, 0.3, 1) both; }
+@keyframes ve-reveal {
+  0% { opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+/* the Select tool's name for what it picked — a human word, never a tag */
+.ve-chip {
+  position: absolute;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--action);
+  color: #fff;
+  font-family: theme(fontFamily.sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  white-space: nowrap;
+}
+/* a text run with the caret in it: the browser's focus ring is the overlay's job */
+.ve-text {
+  outline: none;
+  cursor: text;
+  caret-color: var(--action);
+}
+/* a photo slot in the mode: the affordance is the house glass pill, centred, shown by :hover —
+   CSS, not React state (the card-hover rule) */
+.ve-photo { cursor: pointer; }
+.ve-photo .ve-replace {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-family: theme(fontFamily.sans);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.16s var(--ease-std);
+  pointer-events: none;
+}
+.ve-photo:hover .ve-replace,
+.ve-photo:focus-visible .ve-replace,
+.ve-photo[data-panel-open] .ve-replace { opacity: 1; }
+/* the edit bar's active tool disc and its buttons */
+.ve-bar-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #fff;
+  transition: background-color var(--dur-fast) var(--ease-std), opacity var(--dur-fast) var(--ease-std);
+}
+.ve-bar-btn:hover:not(:disabled) { background: var(--white-100); }
+.ve-bar-btn:disabled { opacity: 0.3; cursor: default; }
+.ve-bar-btn > svg { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ve-ring--reveal { animation: none; opacity: 0; }
+  .ve-ring, .ve-photo .ve-replace, .ve-bar-btn { transition: none; }
+}
+/* the Image panel's opacity slider — the browser's range, in the action blue */
+.ve-range {
+  accent-color: var(--action);
+  height: 20px;
+  cursor: pointer;
+}

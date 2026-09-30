@@ -1285,3 +1285,38 @@ export const accountInFade = {
   exit: { opacity: 0, transition: EXIT },
 } as const
 export const accountStill = { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 1 } } as const
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE EDIT BAR (modules/editor/EditBar.tsx, board 31280:115372, 30.09.2026) —
+   the glass pill at the canvas's bottom edge that switches the Visual Editor on.
+   Its language is the house Panel Arrival, sized to a pill: the container comes
+   up from the edge on a spring and is solid early; what it holds arrives a beat
+   later; leaving is 140 ms flat. Lovable's bar re-forms by stretching its width
+   with the words squeezed inside (~100 ms; audits/lovable-visual-edits-teardown
+   §3) — here the pill's box springs (`layout`) and the new segment fades in on
+   the main thread after the box has moved.
+   ═══════════════════════════════════════════════════════════════════════════ */
+export const EDIT_BAR_SPRING = { type: 'spring', duration: 0.5, bounce: 0.18 } as const
+export const editBarIn = {
+  initial: { opacity: 0, y: 12, scale: 0.96 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { ...EDIT_BAR_SPRING, opacity: { duration: 0.16, ease: [0.2, 0, 0, 1] } } },
+  exit: { opacity: 0, y: 6, scale: 0.98, transition: EXIT },
+} as const
+export const editBarInFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.16 } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+/** The blue disc under the active tool grows from the glyph's centre — a state that ARRIVES,
+ *  not a fill that fades (Lovable's fades in ~150 ms). */
+export const editToolOn = {
+  initial: { scale: 0.6, opacity: 0 },
+  animate: { scale: 1, opacity: 1, transition: SPRING },
+  exit: { scale: 0.85, opacity: 0, transition: EXIT },
+} as const
+/** A segment of the bar (the count, Undo/Redo, Clear/Save) comes in a beat after the box. */
+export const editBarSegment = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.16, delay: 0.06 } },
+  exit: { opacity: 0, transition: EXIT },
+} as const

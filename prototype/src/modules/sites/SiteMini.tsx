@@ -27,7 +27,9 @@ import { SitePreview } from '@/modules/preview/SitePreview'
 
 export const MINI_LAYOUT_W = 1152
 
-export function SiteMini({ className = '' }: { className?: string }) {
+/** `site` — whose site the picture is: the card's project id, so the card shows THAT site's saved
+ *  edits from the stash, not the canvas's (SitePreview.tsx «whose site», 30.09.2026). */
+export function SiteMini({ className = '', site }: { className?: string; site: string }) {
   const host = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<{ w: number; h: number } | null>(null)
   useLayoutEffect(() => {
@@ -49,7 +51,7 @@ export function SiteMini({ className = '' }: { className?: string }) {
           className="pointer-events-none absolute left-0 top-0"
           style={{ width: MINI_LAYOUT_W, height: box.h / k, transform: `scale(${k})`, transformOrigin: '0 0' }}
         >
-          <SitePreview path="/" />
+          <SitePreview path="/" site={site} />
         </div>
       )}
     </div>

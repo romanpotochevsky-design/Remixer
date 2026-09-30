@@ -357,6 +357,45 @@ export interface OutlineEdits {
 }
 export const EMPTY_PLAN_EDITS: PlanEdits = { text: {}, items: {}, outline: {} }
 
+/**
+ * WHERE A REPLACED PHOTO COMES FROM (the Visual Editor, 30.09.2026).
+ *
+ *  · `site`   — one of the pictures the site shipped with (modules/preview/photos.ts), by id.
+ *               "Image from Library" picks these; they weigh nothing extra.
+ *  · `upload` — a file the customer chose from their computer. ⚠️ ONLY THE ID LIVES HERE. The
+ *               bytes go to their own storage key (modules/editor/media.ts): `syncUrl` writes the
+ *               WHOLE world to localStorage on every `set()`, and a data URL inside it turned each
+ *               write from ~0.1 ms into ~40 ms and would have been copied into every stash slice.
+ */
+export type PhotoRef =
+  | { kind: 'site'; id: string }
+  | { kind: 'upload'; id: string; name: string }
+
+/**
+ * THE CUSTOMER'S OWN EDITS TO THE SITE — the Visual Editor's saved layer (designer, 30.09.2026:
+ * «инструменты, которыми клиент сам меняет текст и фото на сайте БЕЗ трат кредитов»).
+ *
+ * A LAYER over the hardcoded site, not a copy of it — the rule `planEdits` already follows: the
+ * site (SitePreview.tsx) still renders its compiled copy, and this only says which text runs and
+ * which photos the customer replaced, keyed by the stable content ids in modules/preview/content.ts
+ * (`home.hero.title`, `meal.power-bowl.name`…). A key holds a value only when it DIFFERS from the
+ * compiled one, so an untouched site is `{}` twice over and a site switch has nothing to leak.
+ * `fit` and `opacity` are the Image panel's two knobs; absent means the site's own.
+ *
+ * Manual edits never spend credits ("manual edits, hosting, and publishing never use credits",
+ * DreamHost KB, confirmed by the designer 13.09.2026): the ONLY writer is the editor's Save
+ * (modules/editor/session.ts), and it moves `unpublished` and nothing else.
+ */
+export interface SiteEdits {
+  text: Record<string, string>
+  photo: Record<string, PhotoRef>
+  fit: Record<string, 'fill' | 'fit'>
+  opacity: Record<string, number>
+  /** The photo box's height in px, where the customer set one; the width follows the layout. */
+  height: Record<string, number>
+}
+export const EMPTY_SITE_EDITS: SiteEdits = { text: {}, photo: {}, fit: {}, opacity: {}, height: {} }
+
 export interface World {
   /** Which language the simulated product renders in. */
   lang: Lang
@@ -542,6 +581,8 @@ export interface World {
   suggest: Suggest
   /** The customer's own edits to the plan. Lives with the transcript, dies with it. */
   planEdits: PlanEdits
+  /** The customer's own edits to the SITE — texts and photos replaced in the Visual Editor. */
+  siteEdits: SiteEdits
 }
 
 /** The composer's mode switcher (Figma 29697:54553). See `World.mode`. */
@@ -558,10 +599,25 @@ export type ChatMode = 'autopilot' | 'build'
  */
 export const SITE_AXES = [
   'project', 'unpublished', 'published', 'mode', 'domain', 'customDomain', 'icann',
-  'chat', 'sent', 'brief', 'build', 'suggest', 'planEdits',
+  'chat', 'sent', 'brief', 'build', 'suggest', 'planEdits', 'siteEdits',
 ] as const
 export type SiteAxis = (typeof SITE_AXES)[number]
 export type SiteSlice = Pick<World, SiteAxis>
+
+/**
+ * WHAT ONE SITE'S PAGE IS RENDERED FROM — for the site on the canvas AND for any other site's
+ * picture (a shelf card, a dock card, the pick flight's clone). Those pictures used to read the
+ * CURRENT world, which was invisible while every site drew the same compiled copy; with the
+ * Visual Editor (30.09.2026) one site's edits would have shown on another site's card. The
+ * current site reads live; another site reads its stash, or its demo default, or — a site made
+ * this session and never stashed — the compiled copy. Three fields, referentially stable, so a
+ * selector on each does not re-render the picture on unrelated world moves.
+ */
+export type SiteContent = Pick<World, 'brief' | 'planEdits' | 'siteEdits'>
+export function siteSliceOf(w: World, id?: string): SiteContent {
+  if (!id || id === w.site) return w
+  return w.stash[id] ?? SITE_SLICES[id] ?? { brief: EMPTY_BRIEF, planEdits: EMPTY_PLAN_EDITS, siteEdits: EMPTY_SITE_EDITS }
+}
 
 /** The slice of a world that belongs to the site it stands in. */
 export function sliceOf(w: World): SiteSlice {
@@ -579,6 +635,7 @@ export function sliceOf(w: World): SiteSlice {
 const SITE_BASE: Omit<SiteSlice, 'sent' | 'domain' | 'customDomain' | 'published' | 'unpublished'> = {
   project: 'built', mode: 'autopilot', icann: false, chat: 'long',
   brief: EMPTY_BRIEF, build: EMPTY_BUILD, suggest: EMPTY_SUGGEST, planEdits: EMPTY_PLAN_EDITS,
+  siteEdits: EMPTY_SITE_EDITS,
 }
 export const SITE_SLICES: Record<string, SiteSlice> = {
   synco: {
@@ -640,6 +697,7 @@ export const DEFAULT_WORLD: World = {
   build: EMPTY_BUILD,
   suggest: EMPTY_SUGGEST,
   planEdits: EMPTY_PLAN_EDITS,
+  siteEdits: EMPTY_SITE_EDITS,
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -1035,7 +1093,16 @@ export const useWorld = create<Store>((set, get) => ({
       const w = get().world
       const stash = { ...w.stash, [w.site]: sliceOf(w) }
       const restored = stash[patch.site] ?? SITE_SLICES[patch.site] ?? null
-      patch = { ...(restored ?? {}), ...patch, stash }
+      /*
+       * A slice stashed by an OLDER build may lack an axis added since (`siteEdits`, 30.09.2026):
+       * spread as it is, the missing key would simply not be in the patch, and the LEAVING site's
+       * value would stay on screen for the site being entered — the leak the SITE_AXES rule exists
+       * to prevent. Completing the slice here is the generic cure; a storage-key bump would have
+       * retired every snapshot to fix a key that no default changed for (the rule: bump when a
+       * DEFAULT changes).
+       */
+      const whole = restored ? { ...restored, siteEdits: restored.siteEdits ?? EMPTY_SITE_EDITS } : {}
+      patch = { ...whole, ...patch, stash }
     }
     // Moving the chat axis means a different situation is being staged, so a
     // transcript typed under the old one is stale — unless the caller is the
@@ -1062,6 +1129,13 @@ export const useWorld = create<Store>((set, get) => ({
     // situation it would put their sentences into somebody else's document.
     if (patch.chat !== undefined && patch.planEdits === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
       patch = { ...patch, planEdits: EMPTY_PLAN_EDITS }
+    }
+    // …and the texts and photos the customer replaced in the Visual Editor — the same test, for
+    // the same reason as the plan's edits: they belong to one site's situation, and a staged
+    // scenario is a different one. A live Save appends nothing to the transcript and never moves
+    // `chat`, so it is untouched by this rule.
+    if (patch.chat !== undefined && patch.siteEdits === undefined && (patch.sent === undefined || patch.sent.length === 0)) {
+      patch = { ...patch, siteEdits: EMPTY_SITE_EDITS }
     }
     // The registrant-email clock is owed by a REGISTRATION, so it cannot outlive the
     // domain it was started for: move the domain axis to a state where the project is back

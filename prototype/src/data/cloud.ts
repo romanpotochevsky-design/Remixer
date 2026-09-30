@@ -29,6 +29,13 @@ export interface CloudRow {
   /** The dish tile: the site's own gradient + emoji, because we ship no photos. */
   tint: string
   emoji: string
+  /**
+   * The two macros the site prints under every dish (SitePreview.tsx reads THIS table since
+   * 30.09.2026 — one source for the six meals, so a name the customer changes in the Visual
+   * Editor changes here too instead of drifting). Only meals carry them.
+   */
+  kcal?: number
+  protein?: number
 }
 
 export interface CloudTable {
@@ -40,7 +47,8 @@ export interface CloudTable {
   rows: CloudRow[]
 }
 
-const MEALS: CloudRow[] = [
+/** The six dishes — the site's menu and the Cloud table are this one list (see `kcal`). */
+export const CLOUD_MEALS: CloudRow[] = [
   {
     id: 'power-bowl',
     name: 'Power Bowl',
@@ -51,6 +59,8 @@ const MEALS: CloudRow[] = [
     imageUrl: 'https://cdn.remixer.ai/fit-ration/power-bowl.jpg?w=600&q=80',
     tint: 'linear-gradient(135deg,#dff1e4,#b7dfc4)',
     emoji: '🥗',
+    kcal: 520,
+    protein: 42,
   },
   {
     id: 'lean-beef-rice',
@@ -62,6 +72,8 @@ const MEALS: CloudRow[] = [
     imageUrl: 'https://cdn.remixer.ai/fit-ration/lean-beef-rice.jpg?w=600&q=80',
     tint: 'linear-gradient(135deg,#f6e8d9,#eacdaa)',
     emoji: '🍛',
+    kcal: 610,
+    protein: 48,
   },
   {
     id: 'salmon-teriyaki',
@@ -73,6 +85,8 @@ const MEALS: CloudRow[] = [
     imageUrl: 'https://cdn.remixer.ai/fit-ration/salmon-teriyaki.jpg?w=600&q=80',
     tint: 'linear-gradient(135deg,#fbe3dc,#f3bfae)',
     emoji: '🍣',
+    kcal: 570,
+    protein: 39,
   },
   {
     id: 'chicken-pesto-pasta',
@@ -84,6 +98,8 @@ const MEALS: CloudRow[] = [
     imageUrl: 'https://cdn.remixer.ai/fit-ration/chicken-pesto-pasta.jpg?w=600&q=80',
     tint: 'linear-gradient(135deg,#eef2da,#d7e3ae)',
     emoji: '🍝',
+    kcal: 640,
+    protein: 45,
   },
   {
     id: 'greek-wrap',
@@ -95,6 +111,8 @@ const MEALS: CloudRow[] = [
     imageUrl: 'https://cdn.remixer.ai/fit-ration/greek-wrap.jpg?w=600&q=80',
     tint: 'linear-gradient(135deg,#e7ecf6,#c3d2ec)',
     emoji: '🌯',
+    kcal: 480,
+    protein: 33,
   },
   {
     id: 'protein-pancakes',
@@ -106,6 +124,8 @@ const MEALS: CloudRow[] = [
     imageUrl: 'https://cdn.remixer.ai/fit-ration/protein-pancakes.jpg?w=600&q=80',
     tint: 'linear-gradient(135deg,#f9ecdf,#f0d3b0)',
     emoji: '🥞',
+    kcal: 430,
+    protein: 31,
   },
 ]
 
@@ -147,7 +167,7 @@ const ORDERS: CloudRow[] = [
 
 /** The databases the left menu lists, in the order the board draws them. */
 export const CLOUD_TABLES: CloudTable[] = [
-  { id: 'meals', name: 'Meals', title: 'Meals', rows: MEALS },
+  { id: 'meals', name: 'Meals', title: 'Meals', rows: CLOUD_MEALS },
   { id: 'orders', name: 'Orders', title: 'Orders', rows: ORDERS },
 ]
 

@@ -17,6 +17,19 @@
  *
  * The handover between pages is the dock's sequential rule (motion.ts `pageSwap`): the leaving page
  * is gone in 120 ms, the arriving one rises into place a beat later — never two pages at half alpha.
+ *
+ * EDITABLE SINCE 30.09.2026 (the Visual Editor, modules/editor). Every text run is a `T` and every
+ * picture a `Photo` (site-parts.tsx), addressed by the keys in content.ts; the customer's own words
+ * and pictures (`World.siteEdits`, plus the editor's staged draft on the canvas) lay over the
+ * compiled copy through `SiteContext`. With no tool on, `T` and `Photo` render exactly the plain
+ * elements this file rendered before — no wrappers, no refs — so the page's geometry, the minis on
+ * the shelf and the glow's two-tone test stand are untouched.
+ *
+ * WHOSE SITE. The canvas instance renders the site the builder stands in and wears the editor;
+ * a picture of another site (`site` prop — a shelf card, a dock card, the pick flight's clone)
+ * renders THAT site's saved layer from the stash (world.ts `siteSliceOf`) and never edits. Before
+ * this every picture read the current world, which nobody could see while all sites shared one
+ * compiled copy.
  */
 const keepOnMainThread = () => {}
 
@@ -28,34 +41,38 @@ function SiteNav({ go }: { go: (path: string) => void }) {
         <nav className="site-nav-links gap-7 text-[13.5px] text-[#1d1f1aa6]" aria-hidden>
           <span>Menu</span><span>How it works</span><span>Pricing</span><span>FAQ</span>
         </nav>
-        <span className="rounded-full bg-[#2e7d4f] px-4 py-2 text-[13px] font-semibold text-white">Order now</span>
+        <T as="span" k="nav.cta" className="rounded-full bg-[#2e7d4f] px-4 py-2 text-[13px] font-semibold text-white" />
       </div>
 
   )
 }
 
-function HomeBody({ t }: { t: (x: Text) => string }) {
+/** A number with its caption — two text runs, so a `<b>` and a `<br/>` cannot be typed away. */
+function Stat({ k, big = 16, block = false }: { k: string; big?: number; block?: boolean }) {
+  return (
+    <span>
+      <T as="b" k={`${k}.value`} className={`${block ? 'block' : ''} font-bold text-[#1d1f1a]`} style={{ fontSize: big }} />
+      {!block && <br />}
+      <T as="span" k={`${k}.label`} />
+    </span>
+  )
+}
+
+function HomeBody() {
   return (
     <>
       <div className="site-pad site-hero mx-auto max-w-[880px] text-center">
-        <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]">
-          Meal prep · Odesa delivery
-        </p>
-        <h1 className="site-hero-title mx-auto max-w-[16ch] font-bold leading-[1.08] tracking-[-0.03em]" style={{ textWrap: 'balance' }}>
-          Chef-made meals with exact macros
-        </h1>
-        <p className="mx-auto mt-4 max-w-[46ch] text-[16px] leading-[1.6] text-[#1d1f1a99]">
-          Weekly menus cooked fresh every morning. Calories, protein, fat and carbs counted
-          to the gram — so you don’t have to.
-        </p>
+        <T k="home.eyebrow" className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]" />
+        <T as="h1" k="home.hero.title" className="site-hero-title mx-auto max-w-[16ch] font-bold leading-[1.08] tracking-[-0.03em]" style={{ textWrap: 'balance' }} />
+        <T k="home.hero.lead" className="mx-auto mt-4 max-w-[46ch] text-[16px] leading-[1.6] text-[#1d1f1a99]" />
         <div className="site-cta mt-7 justify-center gap-3">
-          <span className="rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white">Build my plan</span>
-          <span className="rounded-full border border-[#1d1f1a26] px-6 py-3 text-[14.5px] font-medium text-[#1d1f1a]">See the menu</span>
+          <T as="span" k="home.cta.primary" className="rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white" />
+          <T as="span" k="home.cta.secondary" className="rounded-full border border-[#1d1f1a26] px-6 py-3 text-[14.5px] font-medium text-[#1d1f1a]" />
         </div>
         <div className="site-stats mt-10 justify-center text-[13px] text-[#1d1f1a80]">
-          <span><b className="text-[16px] font-bold text-[#1d1f1a]">4 000+</b><br />meals delivered</span>
-          <span><b className="text-[16px] font-bold text-[#1d1f1a]">±2 g</b><br />macro accuracy</span>
-          <span><b className="text-[16px] font-bold text-[#1d1f1a]">07:30</b><br />at your door</span>
+          <Stat k="home.stat.0" />
+          <Stat k="home.stat.1" />
+          <Stat k="home.stat.2" />
         </div>
       </div>
 
@@ -64,20 +81,16 @@ function HomeBody({ t }: { t: (x: Text) => string }) {
       <div className="bg-[#101210] pb-16 pt-12 text-[#f4f4f0]">
         <div className="site-pad mx-auto max-w-[980px]">
           <div className="mb-5 flex items-end justify-between">
-            <h2 className="text-[24px] font-bold tracking-[-0.02em]">This week’s menu</h2>
-            <span className="text-[13px] font-medium text-[#7ac996]">Full menu →</span>
+            <T as="h2" k="home.menu.title" className="text-[24px] font-bold tracking-[-0.02em]" />
+            <T as="span" k="home.menu.more" className="text-[13px] font-medium text-[#7ac996]" />
           </div>
           <div className="site-grid grid gap-4">
             {MEALS.map((m) => (
-              <div key={m.name} className="overflow-hidden rounded-[14px] border border-[#ffffff14] bg-[#191b17]">
-                <div className="grid h-28 place-items-center text-[40px]" style={{ background: m.tint }} aria-hidden>
-                  {m.emoji}
-                </div>
+              <div key={m.id} className="overflow-hidden rounded-[14px] border border-[#ffffff14] bg-[#191b17]">
+                <Photo k={m.photoKey} className="h-28" tint={m.tint} emoji={m.emoji} />
                 <div className="p-4">
-                  <p className="text-[15px] font-semibold">{m.name}</p>
-                  <p className="mt-1 text-[12.5px] tabular-nums text-[#f4f4f080]">
-                    {m.kcal} kcal · {m.protein} g protein
-                  </p>
+                  <T k={m.nameKey} compiled={m.name} className="text-[15px] font-semibold" />
+                  <T k={m.macrosKey} compiled={mealMacros(m)} className="mt-1 text-[12.5px] tabular-nums text-[#f4f4f080]" />
                 </div>
               </div>
             ))}
@@ -111,10 +124,8 @@ function SiteFooter({ pages, current, go, t }: { pages: SitePage[]; current: str
           ))}
         </nav>
       )}
-      <p className="text-[18px] font-bold text-white">
-        {t({ en: 'Ready when you are.', uk: 'Готові, коли готові ви.' })}
-      </p>
-      <p className="mt-1 text-[13px] text-[#ffffff8c]">fit. — chef-made meals, Odesa · hello@fit-ration.com</p>
+      <T k="footer.tagline" className="text-[18px] font-bold text-white" />
+      <T k="footer.line" className="mt-1 text-[13px] text-[#ffffff8c]" />
     </div>
   )
 }
@@ -123,12 +134,17 @@ function SiteFooter({ pages, current, go, t }: { pages: SitePage[]; current: str
 
 const TILE = 'rounded-[16px] border border-[#1d1f1a14] bg-white p-5'
 
-function PageHead({ title, lead }: { title: string; lead: string }) {
+/**
+ * The page's big heading is `page.<id>.title` — its OWN key, compiled from the page's name. Editing
+ * it changes the heading and nothing else: the page's name, route and template stay the plan's
+ * (pages.ts derives all three from the name).
+ */
+function PageHead({ page, title, leadKey, leadCompiled }: { page: SitePage; title: string; leadKey: string; leadCompiled?: string }) {
   return (
     <div className="site-pad mx-auto max-w-[880px] pb-10 pt-14 text-center">
-      <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]">fit. · Odesa</p>
-      <h1 className="mx-auto max-w-[18ch] text-[40px] font-bold leading-[1.1] tracking-[-0.03em]" style={{ textWrap: 'balance' }}>{title}</h1>
-      <p className="mx-auto mt-4 max-w-[48ch] text-[16px] leading-[1.6] text-[#1d1f1a99]">{lead}</p>
+      <T k="page.eyebrow" className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]" />
+      <T as="h1" k={`page.${page.id}.title`} compiled={title} className="mx-auto max-w-[18ch] text-[40px] font-bold leading-[1.1] tracking-[-0.03em]" style={{ textWrap: 'balance' }} />
+      <T k={leadKey} compiled={leadCompiled} className="mx-auto mt-4 max-w-[48ch] text-[16px] leading-[1.6] text-[#1d1f1a99]" />
     </div>
   )
 }
@@ -144,16 +160,16 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
   if (key === 'about') {
     return (
       <>
-        <PageHead title={name} lead="A small kitchen in Odesa that cooks every morning for people who count their macros." />
+        <PageHead page={page} title={name} leadKey="about.lead" />
         <div className="site-pad mx-auto grid max-w-[980px] gap-6 pb-16 md:grid-cols-2">
-          <div className="grid min-h-[260px] place-items-center rounded-[20px] text-[64px]" style={{ background: 'linear-gradient(135deg,#dff1e4,#b7dfc4)' }} aria-hidden>🥘</div>
+          <Photo k="about.photo" className="min-h-[260px] rounded-[20px]" tint="linear-gradient(135deg,#dff1e4,#b7dfc4)" emoji="🥘" emojiSize={64} />
           <div className="flex flex-col justify-center gap-4 text-[15.5px] leading-[1.65] text-[#1d1f1a]">
-            <p>We started in 2023 with one oven, two chefs and a spreadsheet of macros. Today the kitchen cooks around 400 meals a day and still weighs every portion to the gram.</p>
-            <p>Menus change weekly. Nothing is frozen, nothing sits overnight — what leaves the kitchen at 06:30 is on your doorstep by 07:30.</p>
+            <T k="about.p1" />
+            <T k="about.p2" />
             <div className="mt-2 flex gap-8 text-[13px] text-[#1d1f1a80]">
-              <span><b className="block text-[18px] font-bold text-[#1d1f1a]">2</b>chefs</span>
-              <span><b className="block text-[18px] font-bold text-[#1d1f1a]">400</b>meals a day</span>
-              <span><b className="block text-[18px] font-bold text-[#1d1f1a]">1</b>oven, still</span>
+              <Stat k="about.stat.0" big={18} block />
+              <Stat k="about.stat.1" big={18} block />
+              <Stat k="about.stat.2" big={18} block />
             </div>
           </div>
         </div>
@@ -161,20 +177,22 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
     )
   }
   if (key === 'contact') {
+    const LABEL = 'block text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[#1d1f1a80]'
     return (
       <>
-        <PageHead title={name} lead="Questions about a plan, an allergy or a delivery window — write, call or come by." />
+        <PageHead page={page} title={name} leadKey="contact.lead" />
         <div className="site-pad mx-auto grid max-w-[980px] gap-6 pb-16 md:grid-cols-2">
           <div className={`${TILE} flex flex-col gap-4 text-[15px] leading-[1.6]`}>
-            <p><span className="block text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[#1d1f1a80]">Kitchen</span>Kanatna 42, Odesa · Mon–Sat 06:00–14:00</p>
-            <p><span className="block text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[#1d1f1a80]">Write</span>hello@fit-ration.com</p>
-            <p><span className="block text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[#1d1f1a80]">Call</span>+380 48 700 12 34</p>
+            <p><T as="span" k="contact.kitchen.label" className={LABEL} /><T as="span" k="contact.kitchen.value" /></p>
+            <p><T as="span" k="contact.write.label" className={LABEL} /><T as="span" k="contact.write.value" /></p>
+            <p><T as="span" k="contact.call.label" className={LABEL} /><T as="span" k="contact.call.value" /></p>
           </div>
-          <div className={`${TILE} flex flex-col gap-3`} aria-hidden>
-            <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]">Your name</div>
-            <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]">Email</div>
-            <div className="h-24 rounded-[10px] border border-[#1d1f1a1f] px-4 py-3 text-[14px] text-[#1d1f1a66]">How can we help?</div>
-            <span className="mt-1 self-start rounded-full bg-[#2e7d4f] px-5 py-2.5 text-[14px] font-semibold text-white">Send</span>
+          <div className={`${TILE} flex flex-col gap-3`}>
+            {/* the form is decoration: its fields never take input, so they are not targets */}
+            <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]" aria-hidden>Your name</div>
+            <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]" aria-hidden>Email</div>
+            <div className="h-24 rounded-[10px] border border-[#1d1f1a1f] px-4 py-3 text-[14px] text-[#1d1f1a66]" aria-hidden>How can we help?</div>
+            <T as="span" k="contact.form.cta" className="mt-1 self-start rounded-full bg-[#2e7d4f] px-5 py-2.5 text-[14px] font-semibold text-white" />
           </div>
         </div>
       </>
@@ -185,39 +203,45 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
     return (
       <>
         <div className="site-pad mx-auto grid max-w-[980px] gap-8 pb-16 pt-14 md:grid-cols-2">
-          <div className="grid min-h-[320px] place-items-center rounded-[20px] text-[96px]" style={{ background: m.tint }} aria-hidden>{m.emoji}</div>
+          <Photo k={m.photoKey} className="min-h-[320px] rounded-[20px]" tint={m.tint} emoji={m.emoji} emojiSize={96} />
           <div className="flex flex-col justify-center">
-            <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]">{name}</p>
-            <h1 className="text-[36px] font-bold leading-[1.1] tracking-[-0.03em]">{m.name}</h1>
-            <p className="mt-3 text-[15.5px] leading-[1.6] text-[#1d1f1a99]">Quinoa, roast chicken, avocado, pickled cabbage and a tahini dressing. Cooked this morning, delivered cold, ready in two minutes.</p>
-            <p className="mt-5 text-[14px] tabular-nums text-[#1d1f1a80]">{m.kcal} kcal · {m.protein} g protein · 18 g fat · 44 g carbs</p>
-            <span className="mt-6 self-start rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white">Add to my plan</span>
+            <T k={`page.${page.id}.title`} compiled={name} className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2e7d4f]" />
+            <T as="h1" k={m.nameKey} compiled={m.name} className="text-[36px] font-bold leading-[1.1] tracking-[-0.03em]" />
+            <T k="item.desc" className="mt-3 text-[15.5px] leading-[1.6] text-[#1d1f1a99]" />
+            <T k="item.macros" className="mt-5 text-[14px] tabular-nums text-[#1d1f1a80]" />
+            <T as="span" k="item.cta" className="mt-6 self-start rounded-full bg-[#2e7d4f] px-6 py-3 text-[14.5px] font-semibold text-white" />
           </div>
         </div>
       </>
     )
   }
-  /* Services, Catalogue, Menu, or any name the plan gave: three tiles in the site's voice */
-  const tiles = key === 'catalogue' || key === 'menu'
-    ? MEALS.slice(0, 3).map((m) => ({ title: m.name, text: `${m.kcal} kcal · ${m.protein} g protein`, tint: m.tint, emoji: m.emoji }))
-    : [
-        { title: 'Weekly plan', text: 'Five days of lunches and dinners, macros set to your goal.', tint: 'linear-gradient(135deg,#dff1e4,#b7dfc4)', emoji: '📅' },
-        { title: 'Custom macros', text: 'Tell us the numbers; the chefs build the menu around them.', tint: 'linear-gradient(135deg,#f6e8d9,#eacdaa)', emoji: '⚖️' },
-        { title: 'Office delivery', text: 'One drop for the whole team, 07:30 at the door.', tint: 'linear-gradient(135deg,#e7ecf6,#c3d2ec)', emoji: '🏢' },
-      ]
+  /* Services, Catalogue, Menu, or any name the plan gave: three tiles in the site's voice. A menu
+     page's tiles ARE dishes (the same keys as the home grid — one dish, one name); a services page's
+     are its own. */
+  const dishes = key === 'catalogue' || key === 'menu'
   return (
     <>
-      <PageHead title={name} lead="Everything fit. cooks and delivers, in one place." />
+      <PageHead page={page} title={name} leadKey={`page.${page.id}.lead`} leadCompiled={SITE_TEXT['services.lead']} />
       <div className="site-pad mx-auto grid max-w-[980px] gap-4 pb-16 md:grid-cols-3">
-        {tiles.map((x) => (
-          <div key={x.title} className="overflow-hidden rounded-[16px] border border-[#1d1f1a14] bg-white">
-            <div className="grid h-28 place-items-center text-[40px]" style={{ background: x.tint }} aria-hidden>{x.emoji}</div>
-            <div className="p-5">
-              <p className="text-[16px] font-semibold">{x.title}</p>
-              <p className="mt-1 text-[13.5px] leading-[1.5] text-[#1d1f1a99]">{x.text}</p>
-            </div>
-          </div>
-        ))}
+        {dishes
+          ? MEALS.slice(0, 3).map((m) => (
+              <div key={m.id} className="overflow-hidden rounded-[16px] border border-[#1d1f1a14] bg-white">
+                <Photo k={m.photoKey} className="h-28" tint={m.tint} emoji={m.emoji} />
+                <div className="p-5">
+                  <T k={m.nameKey} compiled={m.name} className="text-[16px] font-semibold" />
+                  <T k={m.macrosKey} compiled={mealMacros(m)} className="mt-1 text-[13.5px] leading-[1.5] text-[#1d1f1a99]" />
+                </div>
+              </div>
+            ))
+          : SERVICES.map((s) => (
+              <div key={s.id} className="overflow-hidden rounded-[16px] border border-[#1d1f1a14] bg-white">
+                <Photo k={`svc.${s.id}.photo`} className="h-28" tint={s.tint} emoji={s.emoji} />
+                <div className="p-5">
+                  <T k={`svc.${s.id}.title`} className="text-[16px] font-semibold" />
+                  <T k={`svc.${s.id}.text`} className="mt-1 text-[13.5px] leading-[1.5] text-[#1d1f1a99]" />
+                </div>
+              </div>
+            ))}
       </div>
     </>
   )
@@ -245,42 +269,58 @@ function NotFound({ path, go, t }: { path: string; go: (path: string) => void; t
 }
 
 
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useT, type Text } from '@/i18n'
-import { useWorld } from '@/state/world'
+import { useWorld, siteSliceOf, type SiteEdits } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { pageSwap, pageSwapFade } from '@/ui/motion'
+import { useEditor } from '@/modules/editor/session'
+import { EditOverlay } from '@/modules/editor/EditOverlay'
+import { ImagePanel } from '@/modules/editor/ImagePanel'
 import { findPage, normalizePath, sitePages, type SitePage } from './pages'
+import { MEALS, SERVICES, SITE_TEXT, mealMacros } from './content'
+import { Photo, SiteContext, T, type SiteCtx } from './site-parts'
 
-const MEALS = [
-  { name: 'Power Bowl', kcal: 520, protein: 42, tint: 'linear-gradient(135deg,#dff1e4,#b7dfc4)', emoji: '🥗' },
-  { name: 'Lean Beef & Rice', kcal: 610, protein: 48, tint: 'linear-gradient(135deg,#f6e8d9,#eacdaa)', emoji: '🍛' },
-  { name: 'Salmon Teriyaki', kcal: 570, protein: 39, tint: 'linear-gradient(135deg,#fbe3dc,#f3bfae)', emoji: '🍣' },
-  { name: 'Chicken Pesto Pasta', kcal: 640, protein: 45, tint: 'linear-gradient(135deg,#eef2da,#d7e3ae)', emoji: '🍝' },
-  { name: 'Greek Wrap', kcal: 480, protein: 33, tint: 'linear-gradient(135deg,#e7ecf6,#c3d2ec)', emoji: '🌯' },
-  { name: 'Protein Pancakes', kcal: 430, protein: 31, tint: 'linear-gradient(135deg,#f9ecdf,#f0d3b0)', emoji: '🥞' },
-]
+/** The staged draft laid over the saved layer — what the canvas shows while a tool is on. */
+const overlay = (saved: SiteEdits, draft: SiteEdits): SiteEdits => ({
+  text: { ...saved.text, ...draft.text },
+  photo: { ...saved.photo, ...draft.photo },
+  fit: { ...saved.fit, ...draft.fit },
+  opacity: { ...saved.opacity, ...draft.opacity },
+  height: { ...saved.height, ...draft.height },
+})
 
 /**
  * `path` pins the site to one page — the miniature on a shelf card (modules/sites/SiteMini.tsx)
  * shows the home page whatever the canvas stands on, and a picture does not navigate, so its
- * links are inert. Without it the site stands on `ui.previewPath` and its links move it.
+ * links are inert. `site` names WHOSE site a picture shows; without it this is the canvas, the
+ * site the builder stands in, and the one instance the Visual Editor works on.
  */
-export function SitePreview({ path: pinned }: { path?: string } = {}) {
+export function SitePreview({ path: pinned, site }: { path?: string; site?: string } = {}) {
   const { t } = useT()
   const reduce = useReducedMotion()
-  const answers = useWorld((s) => s.world.brief.answers)
-  const outline = useWorld((s) => s.world.planEdits.outline)
+  const answers = useWorld((s) => siteSliceOf(s.world, site).brief.answers)
+  const outline = useWorld((s) => siteSliceOf(s.world, site).planEdits.outline)
+  const saved = useWorld((s) => siteSliceOf(s.world, site).siteEdits)
   const previewPath = useUI((s) => s.previewPath)
   const setPath = useUI((s) => s.setPreviewPath)
+  const canvas = pinned === undefined && site === undefined
+  const tool = useEditor((s) => (canvas ? s.tool : null))
+  const draft = useEditor((s) => (canvas && s.tool ? s.draft : null))
   const go = pinned !== undefined ? () => {} : setPath
   const pages = useMemo(() => sitePages(answers, outline), [answers, outline])
   const path = normalizePath(pinned ?? previewPath)
   const page = findPage(pages, path)
+  const ctx = useMemo<SiteCtx>(
+    () => ({ edits: draft ? overlay(saved, draft) : saved, editing: tool === 'edit', selecting: tool === 'select' }),
+    [saved, draft, tool],
+  )
+  const wrap = useRef<HTMLDivElement | null>(null)
   return (
-    <div className="relative h-full" data-prototype-note="generated site, not builder chrome">
+    <SiteContext.Provider value={ctx}>
+    <div className="relative h-full" data-prototype-note="generated site, not builder chrome" data-site-editing={tool ?? undefined}>
       <AnimatePresence initial={false}>
         <motion.div
           key={path}
@@ -294,17 +334,22 @@ export function SitePreview({ path: pinned }: { path?: string } = {}) {
         >
           {/* each page owns its scroller, so a new page opens at its top */}
           <ScrollArea className="h-full" innerClassName="bg-[#fbfaf7] font-sans text-[#1d1f1a]" thumb="auto">
-            {/* a page shorter than the canvas still ends in its footer, not in bare ground */}
-            <div className="flex min-h-full flex-col">
+            {/* a page shorter than the canvas still ends in its footer, not in bare ground; `relative`
+                so the editor's overlay (rings) rides inside the scroll content with the page */}
+            <div ref={wrap} className="relative flex min-h-full flex-col">
               <SiteNav go={go} />
               <div className="flex-1">
-                {page ? (page.index === 0 ? <HomeBody t={t} /> : <InnerBody page={page} t={t} />) : <NotFound path={path} go={go} t={t} />}
+                {page ? (page.index === 0 ? <HomeBody /> : <InnerBody page={page} t={t} />) : <NotFound path={path} go={go} t={t} />}
               </div>
               <SiteFooter pages={pages} current={path} go={go} t={t} />
+              {tool && <EditOverlay host={wrap} />}
             </div>
           </ScrollArea>
         </motion.div>
       </AnimatePresence>
+      {/* the Image panel beside the photo whose «Replace photo» was pressed — canvas only */}
+      {tool === 'edit' && <ImagePanel />}
     </div>
+    </SiteContext.Provider>
   )
 }
