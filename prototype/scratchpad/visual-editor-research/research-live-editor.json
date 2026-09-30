@@ -1,0 +1,166 @@
+{
+ "summary": "Живой продукт DreamHost (panel.dreamhost.com/ai-editor) Visual Editor ИМЕЕТ, но только как точку входа в тулбаре: в каждом кадре всех трёх записей дизайнера (22.09, 23.09 и 25.09.2026) стоит чип с оранжевым глифом («T» в квадратной рамке выделения с угловыми ручками) и белой подписью «Visual Editor». Ни в одном кадре редактор не включён. Нет клика по кнопке, нет рамок ховера и выбора, нет каретки в тексте сайта, нет замены фото, нет панели Save/Undo/Redo/Exit. Как выглядит и что умеет режим редактирования, записи не показывают, и выдумывать это нельзя. Всё, что известно о самом режиме, взято из KB DreamHost через суммаризатор WebSearch (13.09.2026, глазами никто не читал). У верхней панели Visual Editor четыре кнопки: `Save` · `Undo` · `Redo` · `Exit` (verified-через-суммаризатор). Значит, это отдельный режим с выходом, явным сохранением и историей внутри сессии. Редактор доступен «on all Remixer plans, including Legacy, Trial, and paid plans» (likely). Цена: «Manual edits, hosting, and publishing never use credits.» Это подтвердил и дизайнер 13.09.2026. Кредиты тратит только работа AI (генерация, промпты в чате, новая картинка). При нулевом балансе AI встаёт на паузу, а ручное редактирование и публикация продолжают работать (likely); мира с нулём кредитов в world.ts нет. Как правка из Visual Editor доходит до публикации, не показывают ни записи, ни KB. В живом тулбаре обычная синяя кнопка «Publish» без счётчика и без «Publish changes». Бар «1 unpublished change» и «Publish changes» — канон борда Figma, а не наблюдение за продуктом. Раскладка тулбара различается между записями. При свёрнутом чате (22.09 и 23.09) порядок такой: [Visual Editor] → [reload | device], адрес с шевроном по центру, Publish справа, крайняя правая иконка открывает чат. При открытом чате (25.09) группа [reload | device] стоит ПЕРЕД [Visual Editor], а чат — колонка СПРАВА, в её шапке пилюля кредитов (~«2000»). При свёрнутом чате баланса на экране нет вообще. Это расходится с описанием шелла Remixer в аудите Q3 (чат слева ~408, рейл справа, чип кредитов в тулбаре). Ловушка: в KB живут два Remixer, и одна статья про Undo/Redo, судя по всему, описывает легаси-билдер («undo and redo buttons on the top left of the edit page»). Строку Save/Undo/Redo/Exit поэтому нельзя печатать в UI, пока человек не сверит статью 50653967848468 глазами. В прототипе сейчас «Visual Editor» — неинтерактивный <span> в стеклянном чипе с иконкой «карандаш над квадратом»: у кнопки нет обработчика, режима редактирования не существует. Увеличенные кропы тулбара и рейла, которые я снял, лежат в сессионном скретчпаде (/tmp/claude-0/-home-user-Remixer/c53447d0-109b-593b-95d3-2464459bcb3d/scratchpad/crop/: a01-left.png, a01-right.png, a01-rail.png, open1-toolbar.png, coarse-1.png, coarse-chat.png). В репозитории ничего не изменено.",
+ "findings": [
+  {
+   "topic": "Evidence base",
+   "fact": "Живой редактор изучен только по экранным записям дизайнера. Две записи 22.09.2026 (24 с и 32 с, 3504×1836) с panel.dreamhost.com/ai-editor/?domain=8d2c4c50a1fd16ee.remixer.ai, запись Cloud-меню 23.09.2026 (3422×1530) и запись переключателя сайтов 25.09.2026 (5,9 с). Прокси сессии режет panel.dreamhost.com (403), логина у Claude нет.",
+   "source": "/home/user/Remixer/docs/research/live-ai-editor.md:3-10; /home/user/Remixer/prototype/scratchpad/cloud-menu/README.md:1-9; /home/user/Remixer/docs/handoff/site-switcher-spec.md:8-9",
+   "status": "verified",
+   "date": "2026-09-22..25"
+  },
+  {
+   "topic": "Visual Editor exists (entry point)",
+   "fact": "В живом тулбаре канваса есть чип «Visual Editor»: оранжевый/янтарный глиф (буква T в квадратной рамке выделения с угловыми ручками), белая подпись, тёмная заливка чипа. Он виден в каждом кадре всех трёх записей: и над сайтом, и когда открыто окно Cloud. Глиф оранжевый во всех состояниях, то есть это цвет покоя, а не индикатор активности. Высота чипа примерно 36 CSS px (оценка по JPEG).",
+   "source": "/home/user/Remixer/prototype/scratchpad/live-editor/keep/a-01.jpg (toolbar x≈58–162, y≈7–37 in 1400px frame); keep/a-08.jpg; /home/user/Remixer/prototype/scratchpad/cloud-menu/ov-001.jpg; /home/user/Remixer/prototype/scratchpad/site-switch/sheet-open1.jpg",
+   "status": "verified",
+   "date": "2026-09-22..25"
+  },
+  {
+   "topic": "Visual Editor mode — evidence is silent",
+   "fact": "Ни в одном сохранённом кадре Visual Editor не включён. Курсор ни разу не наводится на кнопку и не кликает её. Нет рамки ховера или выбора элемента, нет каретки в тексте сайта, нет UI замены картинки, нет верхней панели Save/Undo/Redo/Exit. Как выглядит режим, что в нём можно выбрать и как идёт правка текста и фото, записи НЕ показывают.",
+   "source": "all 12 frames in /home/user/Remixer/prototype/scratchpad/live-editor/keep/; contact sheets live-editor/a-sheet.jpg, b-sheet.jpg, sheet-a1..a3, sheet-b1; site-switch/sheet-coarse.jpg, sheet-open1.jpg; cloud-menu/ov-001.jpg",
+   "status": "verified",
+   "date": "2026-09-22..25"
+  },
+  {
+   "topic": "Visual Editor top panel (KB)",
+   "fact": "Верхняя панель Visual Editor: `Save` · `Undo` · `Redo` · `Exit`. Отсюда следует, что это отдельный режим с явным выходом, явным сохранением и историей правок. Вероятный источник — KB «Remixer Visual Editor overview», https://help.dreamhost.com/hc/en-us/articles/50653967848468-Remixer-Visual-Editor-overview (длинный id = текущий продукт). Какой статье принадлежит строка, по-строчно не записано.",
+   "source": "/home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:625, :166, :176-177",
+   "status": "verified",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Method caveat on KB facts",
+   "fact": "Ни один агент не открыл страницу DreamHost: KB читали через суммаризатор WebSearch. Здесь «verified» значит «формулировка вернулась в кавычках дважды». Любую строку для отгружаемого UI должен сверить глазами человек. Второисточник может поднять вопрос, но не может отменить слово дизайнера или инженерии.",
+   "source": "/home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:92-139",
+   "status": "verified",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Legacy-Remixer trap for Undo/Redo",
+   "fact": "В KB живут два Remixer. Статьи с id вида 1150xxxxx/3600xxxxx описывают СТАРЫЙ drag-and-drop-билдер. Аудит Q3 отмечает, что статья про Undo/Redo, похоже, описывает легаси-билдер («undo and redo buttons on the top left of the edit page»), а не AI-билдер 2026 года. Любое утверждение про undo нужно сверять с id статьи.",
+   "source": "/home/user/Remixer/docs/research/lenses.json:666; /home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:168-181",
+   "status": "unconfirmed",
+   "date": "2026-08-13 / 2026-09-13"
+  },
+  {
+   "topic": "Plan availability",
+   "fact": "Visual Editor доступен «on all Remixer plans, including Legacy, Trial, and paid plans», значит существует третий класс плана Legacy. Гейт плана в world.ts про Legacy не знает.",
+   "source": "/home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:312; /home/user/Remixer/docs/knowledge/product-facts.md:940-945, :952-954",
+   "status": "likely",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Cost — manual edits are free",
+   "fact": "Дословно из KB: «Manual edits, hosting, and publishing never use credits.» и «Publishing does not use credits.» Кредиты тратит только работа AI: начальная генерация, промпты в чате, генерация новой картинки. Источник — KB Understanding Remixer credits (44981865908884); дизайнер подтвердил 13.09.2026.",
+   "source": "/home/user/Remixer/docs/knowledge/product-facts.md:45, :569-575, :595-600; /home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:73-80, :307",
+   "status": "verified",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Zero-balance behaviour",
+   "fact": "Дословно из KB: «If your balance reaches zero, AI features pause until you add additional Remixer Credits… or your credits reset.» При нулевом балансе ручное редактирование и публикация продолжают работать. Мира с нулём кредитов в world.ts нет.",
+   "source": "/home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:315; /home/user/Remixer/docs/knowledge/product-facts.md:958-960",
+   "status": "likely",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "How edits reach publishing — live product",
+   "fact": "Во всех кадрах живого продукта обычная синяя кнопка «Publish» (цвет по JPEG ≈ rgb(8,108,222); замер 13.08 дал #0073EC). Нет счётчика неопубликованных правок, нет «Publish changes», нет точки или бейджа. Как Save в Visual Editor связан с Publish, не показано и не задокументировано. Отгруженный publish-флоу по KB: «In the top menu, click the Publish button. In the pop-up, under Production, select a domain from the dropdown. Click Connect. Your site is immediately published to your live website.», плюс «Publish to Staging».",
+   "source": "/home/user/Remixer/prototype/scratchpad/live-editor/keep/a-01.jpg; keep/b-11.jpg; site-switch/sheet-open1.jpg; /home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:192-208; /home/user/Remixer/docs/knowledge/product-facts.md:431-433",
+   "status": "verified",
+   "date": "2026-09-13 (KB) / 2026-09-22..25 (recordings)"
+  },
+  {
+   "topic": "Publish changes / unpublished counter is board canon, not live",
+   "fact": "Бар «1 unpublished change» + синяя «Publish changes» и погашенное нулевое состояние «Your website is up to date» — это борды Figma 30282:18491 / 30282:52600, реализованы в прототипе. В живых записях этого нет.",
+   "source": "/home/user/Remixer/docs/features/domains/figma-boards.md:332-333; /home/user/Remixer/docs/knowledge/glossary.md:18",
+   "status": "code-fact",
+   "date": "2026-09-14"
+  },
+  {
+   "topic": "Canvas toolbar layout — chat collapsed",
+   "fact": "Записи 22.09 и 23.09 (чат свёрнут). Слева направо: марка Remixer (над рейлом), чип [Visual Editor], затем стеклянная группа [reload ↻ | девайс с глифом телефона]. Адрес «8d2c4c50a1fd16ee.remixer.ai» + шеврон по центру топбара. Синяя «Publish» справа. Крайняя правая иконка-панель разворачивает чат. Фон топбара ≈ rgb(22,22,24), заливка чипов ≈ rgb(34,34,36) (сэмпл по JPEG). Кредитов на экране НЕТ нигде.",
+   "source": "/home/user/Remixer/prototype/scratchpad/live-editor/keep/a-01.jpg; keep/a-08.jpg; /home/user/Remixer/prototype/scratchpad/cloud-menu/ov-001.jpg; /home/user/Remixer/docs/research/live-ai-editor.md:18",
+   "status": "verified",
+   "date": "2026-09-22..23"
+  },
+  {
+   "topic": "Canvas toolbar layout — chat open (order differs)",
+   "fact": "Запись 25.09 (чат открыт). Порядок другой: сначала группа [reload | девайс], ПОТОМ [Visual Editor]. Адрес — пилюля с шевроном по центру канваса, Publish у правого края канваса. Колонка чата СПРАВА от канваса; в шапке «Chat», янтарная пилюля кредитов (глиф монеты, «2000», шеврон) и две иконки. Причина перестановки не установлена: состояние чата или смена версии продукта между записями.",
+   "source": "/home/user/Remixer/prototype/scratchpad/site-switch/sheet-open1.jpg (first cell toolbar); site-switch/sheet-coarse.jpg (cell 1)",
+   "status": "verified",
+   "date": "2026-09-25"
+  },
+  {
+   "topic": "Conflict with Q3 audit shell description",
+   "fact": "Аудит Q3 описывает шелл Remixer так: «Left AI chat panel (~408px)… right icon rail… persistent credits chip in the top toolbar… Visual Editor, a CENTERED DOMAIN SWITCHER». В его сравнительной таблице также стоит «no free direct-manipulation lane». Записи 22–25.09 показывают рейл СЛЕВА, чат СПРАВА и кредиты в шапке чата (при свёрнутом чате их не видно). KB опровергает утверждение про платность ручных правок.",
+   "source": "/home/user/Remixer/docs/research/lenses.json:62, :279, :513; /home/user/Remixer/docs/research/live-ai-editor.md:12-25",
+   "status": "verified",
+   "date": "2026-08-13 (audit) vs 2026-09-22..25 (recordings)"
+  },
+  {
+   "topic": "Device toggle glyph",
+   "fact": "В живом тулбаре кнопка девайса во всех кадрах показывает глиф ТЕЛЕФОНА, пока на экране десктопный вид. Мобильный режим ни разу не снят, поэтому неизвестно, что означает глиф: целевой режим или текущий. В прототипе глиф показывает текущий режим, как у Lovable.",
+   "source": "/home/user/Remixer/prototype/scratchpad/live-editor/keep/a-01.jpg; /home/user/Remixer/prototype/src/App.tsx:1100-1110",
+   "status": "unconfirmed",
+   "date": "2026-09-22"
+  },
+  {
+   "topic": "Live rail — possible media module",
+   "fact": "Рейл слева сверху вниз: марка Remixer, иконка стопки фото, пазл, облако, график, бот с плашкой «Beta»; внизу зелёный freshchat и аватар. В записях открывали только Cloud. Модуль со стопкой фото (возможно, медиатека, которая пригодилась бы для замены фото) ни разу не открыт, его назначение неизвестно.",
+   "source": "/home/user/Remixer/docs/research/live-ai-editor.md:22-23; /home/user/Remixer/prototype/scratchpad/live-editor/keep/a-01.jpg (rail x 0–52)",
+   "status": "unconfirmed",
+   "date": "2026-09-22"
+  },
+  {
+   "topic": "Live editing idiom elsewhere (Cloud)",
+   "fact": "Единственный показанный в живом продукте UI «редактирования» — правый шит внутри окна Cloud: «Edit Record» / «Create Record», поля по колонкам, для булевых True/False, внизу «Cancel» + синяя «Save» / «Create». Картинки там — текстовое поле «Image Url» с плейсхолдером «Press Enter to add multiple values». Прецедент явного Save и синего действия, к Visual Editor отношения не имеет.",
+   "source": "/home/user/Remixer/prototype/scratchpad/live-editor/keep/b-11.jpg; keep/b-15.jpg; /home/user/Remixer/docs/research/live-ai-editor.md:77-78",
+   "status": "verified",
+   "date": "2026-09-22"
+  },
+  {
+   "topic": "Live chat copy (low-res)",
+   "fact": "В чате записи 25.09: карточка «New version available» — «A newer version of the website engine is available. Update to unlock the latest features and improvements.» + кнопка «Update». Плейсхолдер композера «What should I change?». Ответ агента начинается с «Your fit site is already fully built with all pages, the ordering flow, and the 5 role dashboards — what would you like to work on next?». Прочитано с контактного листа низкого разрешения.",
+   "source": "/home/user/Remixer/prototype/scratchpad/site-switch/sheet-coarse.jpg (cell 1)",
+   "status": "likely",
+   "date": "2026-09-25"
+  },
+  {
+   "topic": "Prototype today",
+   "fact": "В прототипе «Visual Editor» — неинтерактивный <span> внутри <Glass> (не button, onClick нет), иконка IconVisualEditor «Pencil over a square» цвета --white-700, подпись 14px --white-900. Весь тулбар канваса скрыт, пока world.project !== 'built'. Режима редактирования нет.",
+   "source": "/home/user/Remixer/prototype/src/App.tsx:1069-1085; /home/user/Remixer/prototype/src/ui/icons.tsx:89-95; /home/user/Remixer/CLAUDE.md:1892-1898",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Audit had no data on Remixer visual editing",
+   "fact": "Аудит Q3 ставит Remixer по «Direct manipulation (visual edit)» оценку «?»: своих данных по визуальному редактированию нет. Открытый вопрос аудита: куда пишет Visual Editor и может ли следующий промпт в чате молча перетереть ручные правки (у Lovable это задокументированный сбой).",
+   "source": "/home/user/Remixer/docs/audits/synthesis.md:82, :788; /home/user/Remixer/docs/audits/remixer-competitive-audit.html:297",
+   "status": "code-fact",
+   "date": "2026-08-13"
+  }
+ ],
+ "implications_for_plan": [
+  "Из живых записей нельзя срисовать ни ховер, ни выбор, ни правку текста на месте, ни замену фото: этого нет ни в одном кадре. Все четыре пункта плана — дизайн с нуля (или по конкурентам и будущим бордам Романа), и так и надо сказать дизайнеру.",
+  "У отгруженного продукта (по KB) Visual Editor — отдельный РЕЖИМ с верхней панелью Save · Undo · Redo · Exit. План должен либо сохранить эти четыре глагола, либо заменить их осознанно и записать это в decisions.md. Печатать эти строки в UI можно только после того, как человек сверит KB 50653967848468 глазами: рядом ловушка с легаси-Remixer.",
+  "«Manual edits… never use credits» — verified и подтверждено дизайнером. Visual Editor не должен трогать world.credits, и это стоит закрепить проверкой в check:brief (кредиты до и после правки равны). Отдельно: KB говорит, что ручные правки работают и при нулевом балансе, поэтому режим нельзя гейтить балансом.",
+  "Связку «правка → Publish» живой продукт не показывает: там обычная «Publish» без счётчика. +1 к unpublished и «Publish changes» — канон НАШЕГО борда. Сначала нужно решить модель: +1 за каждую правку или за каждое нажатие Save (явный Save из KB подсказывает второй вариант, один коммит на сессию).",
+  "Undo: KB документирует Undo/Redo внутри режима. Логично держать стек правок сессии в world (а не в компоненте), чтобы Exit без Save мог откатить, а Save — зафиксировать; иначе undo и unpublished разъедутся.",
+  "Кнопка входа: в прототипе это инертный span. Надо сделать настоящий button с aria-pressed; активное состояние живой продукт не показывает. Иконку (живой оранжевый «T в рамке выделения» против нашего «карандаш над квадратом») не менять без дизайнера.",
+  "Порядок чипов в живом тулбаре зависит от записи (VE первым при свёрнутом чате, reload/device первыми при открытом). Прототип следует борду (VE первым) — не переставлять без вопроса.",
+  "Тулбар гейтится world.project === 'built', поэтому режим редактирования существует только при построенном сайте. Если режим принадлежит сайту, его ось попадает в SITE_AXES и в сброс startBuild (по требованию пользователя).",
+  "Модуль рейла со стопкой фото в живом продукте, возможно, уже медиатека. Если да, замену фото стоит строить как выбор из неё, а не только загрузку, но только после ответа дизайнера."
+ ],
+ "open_questions_for_designer": [
+  "Можете ли вы записать экран, как живой Visual Editor выглядит ВКЛЮЧЁННЫМ (ховер, выбор элемента, правка текста, замена фото, панель Save/Undo/Redo/Exit)? В нынешних записях его ни разу не нажимали, и это закрыло бы почти все неизвестные.",
+  "Верхняя панель живого редактора действительно Save · Undo · Redo · Exit (так говорит KB «Remixer Visual Editor overview», но её не читали глазами)? Сохраняем эти глаголы или переименовываем?",
+  "Правки из Visual Editor идут в «Publish changes» по одной (+1 за каждую) или одним пакетом на нажатие Save?",
+  "Порядок кнопок в живом тулбаре отличается: при свёрнутом чате Visual Editor стоит первым, при открытом — после reload/device. Какой канон? Прототип сейчас ставит Visual Editor первым, как на борде.",
+  "Берём ли живую иконку Visual Editor (оранжевая «T в рамке выделения») или оставляем нашу «карандаш над квадратом»? И должна ли иконка быть оранжевой?",
+  "Что делает модуль рейла со стопкой фото в живом продукте? Это медиатека, из которой нужно брать фото при замене?",
+  "Перетирает ли в живом продукте следующий промпт в чате ручные правки (задокументированный сбой Lovable)? Нужна ли нам блокировка или предупреждение?",
+  "KB говорит, что ручные правки работают при нулевом балансе, а AI на паузе. Добавляем в прототип мир «0 кредитов», чтобы показать это CEO?"
+ ]
+}

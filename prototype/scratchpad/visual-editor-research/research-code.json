@@ -1,0 +1,252 @@
+{
+ "summary": "The canvas-toolbar \"Visual Editor\" is a label with nothing behind it. It is a `<Glass>` div (a plain `liquid-glass` wrapper) holding an icon span and a text span, with no `<button>`, no onClick, no aria and no hover or press class (App.tsx:1078-1085; Glass at App.tsx:59-65). No edit mode exists anywhere in src: the only `contentEditable`s are the Build Plan editors (PlanDocument.tsx:118, PlanEditable.tsx:77, PlanOutline.tsx:90). A grep finds no editMode, no selection or inspector code, no undo/redo, and no Cmd+Z handler. The \"Version history\" (IconHistory) and \"Collapse chat\" buttons in the chat header also have no onClick (App.tsx:1017-1029). The canvas toolbar renders only when `world.project === 'built'` (App.tsx:1069), and the harness asserts `text=Visual Editor` is absent before a site exists (check-brief-flow.mjs:1392-1393). The demo site is one hard-coded fit-ration component, SitePreview.tsx. Nearly all copy is English JSX literals; MEALS (SitePreview.tsx:257-264) and the Services tile array (:203-207) are the only data objects. Page names come from the plan outline (`buildOutline`, via pages.ts). The site has NO real images: every \"photo\" is a div with a CSS linear-gradient and an emoji, marked aria-hidden. There is no `<img>` in SitePreview or thumbs.tsx. SitePreview is mounted in four places: the canvas (via SiteStage, only when the site's `thumb` is 'live'), SiteMini on shelf cards and on the Home dock card, and the PickFlight clone. The three other demo sites (synco, meridian, still) are drawings, so they have nothing to edit. The world has no site-content axis: SitePreview reads only `brief.answers` and `planEdits.outline`. Chat edits cost 10 credits and add +1 to unpublished (send.ts:59, 252-253, 496-497), but the site itself never changes. Publish resets unpublished to 0 (PublishPanel.tsx:1059, 1098). A per-site Visual Editor axis must go into SITE_AXES, SITE_BASE (TypeScript will force this), DEFAULT_WORLD and the startBuild patch. Without a storage-key bump, old v6 stash slices lack the new key, and `set()` would carry the leaving site's edits into the next site (world.ts:1034-1039). The Plan editors already carry the three contentEditable lessons: React must not own the text, `plaintext-only`, commit on blur (Escape reverts). The house pattern for a free write is `editPlanText` (send.ts:665-671): `useWorld.getState().set(patch, preset)`, not `sendMessage`. The harness ends at block N (lines 5793-5867), before the final page-errors check (5869), so the new block is \"O\". The storage key `remixer-prototype/world/v6` appears 9 times as a literal in the harness. The scenario console renders itself from the AXES array (scenarios.ts:560-784). Non-scalar axes use `options` with `patch` + `current`, like `projects`. The console only drives the world store, not the ui store.",
+ "findings": [
+  {
+   "topic": "Visual Editor control today",
+   "fact": "The 'Visual Editor' control is NOT a button: it is `<Glass className=\"h-9 justify-center pr-5\">` containing a span with IconVisualEditor (18px, --white-700, h-9 w-10 slot) and a 14px `--white-900` label span. It has no onClick, no role, no aria-pressed, and no glass-interactive/press-bloom class, so it gets no hover wash and no press bloom. Glass is just `<div className=\"liquid-glass flex items-center rounded-[12px]\">`.",
+   "source": "prototype/src/App.tsx:1078-1085; Glass at App.tsx:59-65; icon at prototype/src/ui/icons.tsx:89-96",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Visual Editor control today",
+   "fact": "The whole canvas toolbar (Visual Editor, reload, device toggle, PageSwitcher, credits chip, Publish) mounts only when `world.project === 'built'`. It fades and becomes pointer-events-none while `surface === 'sites'` (toolbarP / toolbarY from park.ts). The harness asserts the absence of 'Visual Editor' text before a site exists.",
+   "source": "prototype/src/App.tsx:1056-1077; prototype/scripts/check-brief-flow.mjs:1387-1393",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Edit mode anywhere",
+   "fact": "No edit mode exists. grep over src finds no contentEditable outside the Build Plan editors (PlanDocument.tsx:118, PlanEditable.tsx:77, PlanOutline.tsx:90), and no editMode, selected-element, inspector or undo/redo code, and no Cmd+Z keydown handler. The only global modifier shortcut is Ctrl/Cmd+. for the console.",
+   "source": "grep over prototype/src; prototype/src/devtools/ScenarioPanel.tsx:30",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Version history / undo",
+   "fact": "The chat header's 'Version history' button (IconHistory) and 'Collapse chat' button have no onClick, so they are dead. No version history or undo mechanism exists. Canned AI replies nonetheless promise these features: 'The old version is one step back in history' (thread.ts:82), 'upload yours and they drop straight in' (thread.ts:61), 'Edit any answer inline' (thread.ts:110), and 'this does not cost you the previous version' (thread.ts:126).",
+   "source": "prototype/src/App.tsx:1017-1029; prototype/src/modules/chat/thread.ts:61,82,110,118,126",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Where SitePreview is mounted",
+   "fact": "(1) The canvas: App.tsx:1283 `<SiteStage/>`, which returns `<SitePreview/>` only if `currentSite(world).thumb === 'live'` and otherwise renders a drawn `<Thumb>` (SiteStage.tsx:20-29). (2) SiteMini (SiteMini.tsx:52, `<SitePreview path=\"/\"/>`, scaled from a MINI_LAYOUT_W=1152 layout, inert and pointer-events-none), used on shelf cards (SitesShelf.tsx:337) and the Home dock card (Dock.tsx:609). (3) The PickFlight clone (SitesShelf.tsx:419). The canvas site layer is a single `key=\"site\"` element that parks into its shelf card while `surface==='sites'` (App.tsx:1233-1311, 1361). Mobile is the same stage animated to 390x844 (ui.ts:230-231; App.tsx:1273-1276). The site responds to container queries (`.site-stage { container-type: inline-size }`, index.css:365-385).",
+   "source": "prototype/src/modules/preview/SiteStage.tsx:20-29; prototype/src/modules/sites/SiteMini.tsx:28-57; prototype/src/modules/sites/SitesShelf.tsx:337,419; prototype/src/modules/home/Dock.tsx:609; prototype/src/App.tsx:1233-1311",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Demo site structure",
+   "fact": "SitePreview({path?}) reads world.brief.answers and world.planEdits.outline, then computes `pages = sitePages(answers, outline)`. The current path is `normalizePath(pinned ?? ui.previewPath)`. It renders one AnimatePresence page keyed by path (pageSwap/pageSwapFade), each page with its own ScrollArea (thumb 'auto', bg #fbfaf7), as SiteNav + (HomeBody | InnerBody | NotFound) + SiteFooter. Pinned instances (minis) get a no-op `go`. A `keepOnMainThread` onUpdate stub is at line 21.",
+   "source": "prototype/src/modules/preview/SitePreview.tsx:21,271-310",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Demo site pages / routes",
+   "fact": "Pages come from `buildOutline(answers, outline)` (build.ts:214-236): ids 'home' and `page-${i}`. Paths are '/' for the first page and '/' + slugOf(name.en) for the rest (pages.ts:48-55). With an unanswered brief (the default), `pages` falls back to 'few' = Home, About, Services, Contact (brief.ts:206-231, build.ts:177-188), i.e. / /about /services /contact. 'catalogue' gives /catalogue and /item-page. InnerBody picks its template by `page.name.en.toLowerCase()` (SitePreview.tsx:143), so renaming a page in the plan changes both its route and its template. An unknown path renders NotFound.",
+   "source": "prototype/src/modules/preview/pages.ts:48-57; prototype/src/modules/chat/build.ts:177-236; prototype/src/modules/chat/brief.ts:206-249; prototype/src/modules/preview/SitePreview.tsx:141-245",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Editable text — shared chrome",
+   "fact": "SiteNav: logo 'fit.' is a `<button data-site-link=\"/\">` (l.27); the nav items 'Menu / How it works / Pricing / FAQ' are aria-hidden spans, not links (l.28-30); 'Order now' is a span pill (l.31). SiteFooter: the page links are buttons with data-site-link, whose text is `t(p.name)` from the plan outline (l.100-112); 'Ready when you are.' is bilingual via t (l.114-116); 'fit. — chef-made meals, Odesa · hello@fit-ration.com' (l.117). The nav is `sticky top-0 z-10`.",
+   "source": "prototype/src/modules/preview/SitePreview.tsx:24-35,96-120",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Editable text — Home /",
+   "fact": "HomeBody: eyebrow 'Meal prep · Odesa delivery' (l.41-43); h1 'Chef-made meals with exact macros' (.site-hero-title, l.44-46); lead paragraph (l.47-50); CTA spans 'Build my plan' / 'See the menu' (l.51-54); three stats '4 000+ meals delivered', '±2 g macro accuracy', '07:30 at your door' (l.55-59); dark section h2 'This week’s menu' + span 'Full menu →' (l.67-68); six meal cards from MEALS, each with name (l.77) and '{kcal} kcal · {protein} g protein' (l.78-80). Cards use `key={m.name}` (l.72), so editing a name would remount the card.",
+   "source": "prototype/src/modules/preview/SitePreview.tsx:37-90,257-264",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Editable text — inner pages",
+   "fact": "PageHead has eyebrow 'fit. · Odesa', h1 = page name, and a lead line (l.126-134). About: lead, two paragraphs, stats '2 chefs / 400 meals a day / 1 oven, still' (l.144-161). Contact: lead; Kitchen / Write / Call lines (l.169-171); a FAKE form made of aria-hidden divs (not inputs): 'Your name', 'Email', 'How can we help?', 'Send' (l.173-178). Item page: eyebrow, h1 MEALS[0].name, description, macros line, 'Add to my plan' (l.183-199). Services/other: lead 'Everything fit. cooks and delivers, in one place.' plus three tiles, 'Weekly plan', 'Custom macros', 'Office delivery', each with a text line (l.203-221; `key={x.title}`). Catalogue/Menu: the first three MEALS. 404: '404', 'Page not found', 'There’s nothing at {path}…', 'Back to home' button (l.227-245).",
+   "source": "prototype/src/modules/preview/SitePreview.tsx:122-245",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Images in the demo site",
+   "fact": "There are no real images. Every 'photo' is a div with an inline `background: linear-gradient(...)` plus an emoji glyph, marked aria-hidden: meal cards h-28 at 40px (l.73-75), the About tile 🥘 min-h 260 at 64px (l.149), the Item page 96px min-h 320 (l.188), and service tiles 📅 ⚖️ 🏢 (l.204-206, 214). `grep '<img'` returns 0 in SitePreview.tsx and thumbs.tsx. data/cloud.ts mirrors the same six dishes, tints and emoji 'because we ship no photos'.",
+   "source": "prototype/src/modules/preview/SitePreview.tsx:73-75,149,188,204-206,214,257-264; prototype/src/data/cloud.ts:12-30",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Copy storage",
+   "fact": "The copy is hard-coded in JSX as English-only literals. The only data objects are the module constant MEALS (SitePreview.tsx:257-264: name, kcal, protein, tint, emoji; no id field) and the inline Services tile array (l.203-207). Bilingual strings are limited to page names (plan outline), the footer 'Ready when you are.' and the NotFound page. The world holds no site-content state.",
+   "source": "prototype/src/modules/preview/SitePreview.tsx:37-264",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Stacking inside the stage",
+   "fact": "Inside `.site-stage` (App.tsx:1270): site content → SiriGlow `.siri-glow` (absolute, z-index 20, pointer-events none; index.css:1546-1553) → the stage's `::after` 6% hairline (z-30, pointer-events none). The glow is the only load indicator; manual edits should not trigger it (glow runs off `busy = project generating || chat working || reloading`, App.tsx:836-882).",
+   "source": "prototype/src/App.tsx:1260-1308,836-882; prototype/src/index.css:1546-1553",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "World shape",
+   "fact": "World fields (world.ts:360-545): lang, account, trialDay, billing, credits, bonus, inventory, domain, project, unpublished, mode, published, icann, chipInkWhite, intakeDomain, planSimple, paneMotion, customDomain, chat, projects, site, stash, cart, sent, brief, build, suggest, planEdits. DEFAULT_WORLD (607-643): account 'trial', trialDay 22, credits 640, project 'built', unpublished 0, published false, domain 'staging', inventory 'dh-free', site 'fit-ration', projects = DEMO_PROJECTS (fit-ration live + synco/meridian/still drawn, 197-222).",
+   "source": "prototype/src/state/world.ts:360-545,607-643,197-222",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "SITE_AXES and site switching",
+   "fact": "SITE_AXES = project, unpublished, published, mode, domain, customDomain, icann, chat, sent, brief, build, suggest, planEdits (world.ts:559-562). SiteSlice = Pick<World, SiteAxis>. SITE_BASE is typed `Omit<SiteSlice, 'sent'|'domain'|'customDomain'|'published'|'unpublished'>` (579-582), so a new site axis MUST be added there too, or TypeScript fails. SITE_SLICES holds the demo slices for synco/meridian/still (583-605). In set(), a `site` move stashes sliceOf(current) and applies `{...(stash[id] ?? SITE_SLICES[id] ?? {}), ...patch, stash}` (1034-1039). A restored slice that LACKS a key therefore leaves the current world's value in place, so the value leaks from site A to site B.",
+   "source": "prototype/src/state/world.ts:559-605,1034-1039",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "set() staging rules",
+   "fact": "If a patch moves `chat` without `sent`, then `sent` is cleared (1043). If `chat` moves with an empty or absent `sent`, then brief, build, suggest and planEdits are reset (1047-1065). A `domain` move to a non-custom state clears icann (1075-1077). A named preset clears the cart (1082). Then syncUrl writes the URL plus localStorage (1083-1085). planEdits is the precedent for a customer-edit layer that is cleared when a situation is staged.",
+   "source": "prototype/src/state/world.ts:1024-1086",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Storage key and versioning",
+   "fact": "STORAGE_KEY = 'remixer-prototype/world/v6' (world.ts:944), with version history v3-v6 in the comment (929-943). initialWorld reads the URL first (the URL wins whole, except a resumable transcript), else `{...DEFAULT_WORLD, ...saved}`, then normalize (974-1009). URL KEYS: l lang, a account, t trialDay, b billing, c credits, z bonus, i inventory, d domain, p project, u unpublished, v published, h chat, m mode, k icann, n customDomain, g intakeDomain, s site, plus w = projects count (855-868). sent, stash, cart and planEdits are NOT in the URL.",
+   "source": "prototype/src/state/world.ts:855-905,929-1019",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "ui.ts navigation state",
+   "fact": "The UI store holds page, surface ('preview'|'domains'|'plan'|'cloud'|'analytics'|'sites'), device ('desktop'|'mobile'), previewPath (default '/', decl 364, default 475, setPreviewPath 576, reset to '/' in openBuilder 503), publishOpen, accountOpen, reloading/triggerReload(3200ms) (595-599), previewOpen, chatWidth, planTall and others. goHome closes publish/account/modal (483-486). togglePublish closes account; toggleAccount closes publish (591-593). The UI store is not persisted and is not reachable from the scenario console.",
+   "source": "prototype/src/state/ui.ts:233-440,449-600",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "startBuild",
+   "fact": "startBuild(prompt) is in modules/chat/send.ts:753-819. It stops the build clock, creates a new site id `site-<base36>` with a 'live' row at the front of projects, then calls set with: site, projects, project 'empty', chat 'empty', sent [], unpublished 0, published false, domain 'staging', customDomain CUSTOM_DOMAIN, icann false, brief EMPTY_BRIEF, mode 'autopilot', suggest EMPTY_SUGGEST, planEdits EMPTY_PLAN_EDITS. build is cleared implicitly by set's chat rule. intakeDomain is deliberately kept. Then it calls sendMessage(text). Note: a new site created this way still renders the fit-ration content.",
+   "source": "prototype/src/modules/chat/send.ts:753-819",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Credits and unpublished on chat send",
+   "fact": "COST = 10 (send.ts:59). sendMessage returns early if !canUseAI (135; canUseAI = trial|paid && credits>0, world.ts:650-651). After THINKING_MS 3400, deliverAnswer patches `credits: max(0, credits-COST), unpublished: unpublished+1, project 'built', chat 'long'` (242-260). finishBuild does the same for the first build (482-502). submitRating explicitly avoids sendMessage so it does not charge (619-644). editPlanText / editPlanOutline / editPlanItems are the free-write pattern: `const {world,set,preset}=useWorld.getState(); set({...}, preset)` (665-690).",
+   "source": "prototype/src/modules/chat/send.ts:59,130-196,242-260,482-502,619-690",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Publish reset",
+   "fact": "canPublish(w) = domain !== 'old-site' && (domain==='ready' || unpublished>0 || !published) (PublishPanel.tsx:247-248); the topbar uses the same function (App.tsx:1194). publishNow runs after the 2400 ms busy beat and sets `{unpublished: 0, published: true, ...(ready && !icann ? {domain:'live'} : null)}` (1048-1061). retryPublish sets `{domain: icann?'ready':'live', published: true, unpublished: 0}` (1097-1100). The topbar label is 'Publish changes' only when published && unpublished>0, with the count badge shown only then (App.tsx:950-953, 1199-1202). The panel's count line is changeCount (110-120).",
+   "source": "prototype/src/modules/publish/PublishPanel.tsx:110-120,247-248,1048-1100,1146-1194; prototype/src/App.tsx:950-953,1174-1203",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Zero credits / manual editing promise",
+   "fact": "The 'trial-expired' preset promises 'AI is off, manual editing still works' (credits 0, unpublished 2), and App shows 'Trial ended — your site is safe. Upgrade to keep editing with AI.' Nothing in the prototype implements manual editing today, so the Visual Editor would fulfil that promise. The composer is disabled when !canUseAI (ChatPanel.tsx:601, 1033).",
+   "source": "prototype/src/state/scenarios.ts:290-298; prototype/src/App.tsx:1483-1488; prototype/src/modules/chat/ChatPanel.tsx:601,1033",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "contentEditable lessons (Plan)",
+   "fact": "PlanEditable/PlanDocument/PlanOutline: (1) React must not own the text: nodes render EMPTY and text is written imperatively in useLayoutEffect, only when it differs and nobody is focused in the host, otherwise the caret jumps. (2) `contentEditable=\"plaintext-only\"` so a paste brings no markup, with suppressContentEditableWarning, role=textbox, spellCheck false. (3) Commit on blur. Enter commits and blurs; Escape restores the store value and blurs; Backspace on an empty bullet removes it. (4) A document is ONE host (a selection cannot cross two hosts); per-line hosts read as form fields (`.plan-edit` hover plate + blue focus ring, index.css:4495-4503). Commits write a layer over compiled content and drop an edit identical to the compiled text (editPlanText).",
+   "source": "prototype/src/modules/chat/PlanEditable.tsx:1-87; prototype/src/modules/chat/PlanDocument.tsx:1-154; prototype/src/modules/chat/PlanOutline.tsx:63-110; CLAUDE.md:1729-1742,1988-1991; prototype/src/index.css:4495-4520",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Reusable UI: Tooltip",
+   "fact": "`<Tooltip text title? side='top'|'bottom' interactive? className>` is a Liquid Glass bubble with a tail, portaled to body, 350 ms dwell (TIP_SHOW_MS), 120 ms on focus. It hides on scroll/resize/pointerdown/Escape, flips when out of room, and is clamped inside the nearest [data-tip-boundary] or [role=dialog]. Motion is tooltipIn/tooltipInFade/tooltipText.",
+   "source": "prototype/src/ui/Tooltip.tsx:1-267",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Reusable UI: motion.ts exports",
+   "fact": "SPRING 520/34/.9 (26); SPRING_SOFT (29); EXIT 140 ms flat (32); popover + popoverContent, a menu growing from its trigger corner with contents +60 ms (38-49); bubbleSend / messageIn (60-96); cardIn/cardInBody/cardInRow(+Fade) = Card Arrival (117-165); modalScrim/modalSheet (174-184); confirmScrim/confirmSheet(+Fade) (209-224); fullscreenSheet(+Fade) (240-275); FLIGHT_SEAT/FLIGHT_OPEN (300-303); FIELD_GROW/CLOSE (321-322); REVEAL_OPEN/CLOSE + revealBody(+Fade) (358-381); swapText (393); sheetExit (417); stepSwap(+Fade) (449-465); fullscreenContent (496); listSwap/listSwapItem/listSwapBehind/listSwapFade/listSwapPop(+Fade)/gridSwapBehind (511-603); segmentedPill (637); cardAdd(+Fade)/cardAddScrim (693-731); foreignPage/surface (743-750); PANE_* canvas pane (833-859); canvasSite/canvasSiteSheet/canvasSiteFade + SHEET_*/FOCUS_* (862-966); panelIn/panelInBody(+Fade) = Panel Arrival (985-1017); tooltipIn/Fade/Text (1036-1057); verbRoll(+Fade)/HOST_GLIDE (1072-1084); MENU_SPRING + menuGlass(+Fade) (1113-1126); ATTACH_MENU_SPRING/RESIZE, attachMenuIn(+Fade), chipIn/chipInBody/chipInBadge/chipInFade (1151-1194); PAGE_MENU_SPRING, pageMenuIn(+Fade), pageSwap(+Fade) (1216-1240); accountIn/accountInBody/accountRow/accountInFade/accountStill (1253-1287). Reduced motion uses the …Fade twins, which drop offsets; `onUpdate={keepOnMainThread}` stubs keep animations off WAAPI (App.tsx:395, SitePreview.tsx:21).",
+   "source": "prototype/src/ui/motion.ts:26-1287",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Reusable UI: glass, press effects, dialogs, scroll",
+   "fact": "`.liquid-glass` (index.css:1081) has a diagonal gradient rim drawn in ::before (1096), with modifiers --subtle/--control/--pill/--attach/--chip/--composer/--dim/--publish (1131-1426). `.glass-interactive` gives an 8% hover wash plus a press bloom from the click point (1432-1476). `.press-bloom` gives the bloom only, for solid fills (1436). Ripples come from one document-level delegation, installGlassInteractions (ui/ripple.ts; main.tsx:10), opted out with data-no-ripple. `.card-arrive`/`.glass-glint` give the rim light (index.css:3867, 3892). ConfirmDialog is `useConfirm.getState().ask({title, body, confirmLabel, cancelLabel, tone, onConfirm})` (ConfirmDialog.tsx:63; usage PublishPanel.tsx:1076-1086). The Reveal fold is ui/Reveal.tsx:66. ScrollArea props are className, innerClassName, thumb 'light'|'dark'|'auto', axis, viewportRef, onMetrics, thumbClassName, onScroll (ScrollArea.tsx:92-94). Icons include IconEdit, IconPencil, IconCheck, IconClose, IconTrash, IconAttachFile, IconHistory (icons.tsx).",
+   "source": "prototype/src/index.css:1081-1476,3867-3892; prototype/src/ui/ripple.ts:1-60; prototype/src/main.tsx:5-10; prototype/src/ui/ConfirmDialog.tsx:43-72; prototype/src/ui/ScrollArea.tsx:75-94",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Test harness structure",
+   "fact": "check-brief-flow.mjs (5873 lines; `npm run check:brief`). The globals are: `at(q)` appends a query to BASE (l.62); `check(name, ok, extra)` (65-68); `shot(n)` (75); `pickMotion` (83-92, opens the console via Control+.); `text()` = innerText (104); `arrival(sel, wait, ms)` + `checkArrival(what, s)` for Card Arrival filming (113-151); `siteUp()` = `.site-stage h1`; `buildFromHome(prompt)`; `dragShut()`. Blocks: A (242), A2 (1779), B (2067), C (2095), D (2114), E (2149), F (3280), G (3640), H (3819), I (4179), J (4922), K (5134), L (5351), M (5549), N (5793-5867), then the final 'no page errors' check (5869) and the summary (5872). Blocks I-N are `{…}` scopes with local helpers (R, CSS, film, near, mono). The idiom for entering the builder: `await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), {waitUntil:'networkidle'}); await p.click('.home-card-face'); await p.waitForSelector('.boot-cover', {state:'detached', timeout:20000})`. The world is read as `JSON.parse(localStorage.getItem('remixer-prototype/world/v6')||'{}')`, a literal that appears 9 times (1397, 3060, 4113, 4116, 5247, 5251, 5529, 5578, 5786); block K clears storage (5152). Screenshots go to `${OUT}/<Letter>-name.png`. Next block letter: O.",
+   "source": "prototype/scripts/check-brief-flow.mjs:1-242,1397,3060,4113,4116,5152,5247,5251,5529,5578,5786,5793-5873; prototype/package.json:8-11",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Scenario console",
+   "fact": "The console renders itself from AXES (scenarios.ts:560-784) grouped by G (548-558: product, windows, customer, credits, owned, domain, project, chat, home). Axis = {key: keyof World, group, label, kind: 'options'|'segmented'|'number'|'toggle', options?, min/max/step, appliesWhen?, current?} (527-546). Non-scalar axes use options with `patch` plus `current` (e.g. projects 729-743, intakeDomain 769-783). ScenarioPanel renders options as chips (disabled via violations), segmented via <Segmented data-segmented=key>, number as a range, and toggle as an On/Off button calling `set({[key]: !world[key]})` (ScenarioPanel.tsx:234-320). Presets go in PRESETS[] with {id, group PG.*, label, note, tag?, patch} (18-41, 79+). describe(w) builds the spoken summary line (812-875). The console toggles with Cmd/Ctrl+. and closes on Esc (ScenarioPanel.tsx:28-35).",
+   "source": "prototype/src/state/scenarios.ts:18-79,515-878; prototype/src/devtools/ScenarioPanel.tsx:21-43,234-320",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "Artifact size headroom",
+   "fact": "build-artifact.mjs CEILING = 1_150_263 bytes. The current artifact is v119 at 1,149,149 bytes (per the designer), about 1.1 KB of headroom, so any bundled raster photo library will exceed the ceiling (per the rules: try the publish anyway, then raise CEILING).",
+   "source": "prototype/scripts/build-artifact.mjs:212-228",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "DreamHost credits rule",
+   "fact": "'Manual edits, hosting, and publishing never use credits.' Credits are spent only by AI work: the initial generation, chat prompts, and image generation.",
+   "source": "docs/knowledge/product-facts.md:45; docs/knowledge/decisions.md:504",
+   "status": "verified",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "DreamHost live Visual Editor",
+   "fact": "The live DreamHost Visual Editor's top bar carries 'Save · Undo · Redo · Exit'. The KB says the Visual Editor is available 'on all Remixer plans, including Legacy, Trial, and paid plans' (that part rated likely).",
+   "source": "docs/research/dreamhost-domain-connect-research.md:625 (verified), :312 (likely)",
+   "status": "verified",
+   "date": "2026-09-13"
+  }
+ ],
+ "implications_for_plan": [
+  "The Visual Editor pill must become a real control: a `<button>` with aria-pressed, a glass-interactive or press-bloom class and a Tooltip. It stays inside the `project === 'built'` gate, so the harness check at check-brief-flow.mjs:1393 (no 'Visual Editor' text before a site exists) keeps passing.",
+  "Hide or disable the mode for drawn sites: SiteStage renders a `<Thumb>` drawing for synco, meridian and still (SiteStage.tsx:22). Only the 'live' fit-ration site has DOM to edit.",
+  "The site copy has to move out of JSX literals into a content object with STABLE ids (for example 'home.hero.title', 'meal.0.name'), with edits stored as a layer over it, the way PlanEdits layers over the compiled plan. Today MEALS has no id and cards are keyed by name/title (SitePreview.tsx:72, 213), so editing a name would remount the node.",
+  "Proposed new world axis (e.g. `siteEdits: { text: Record<id,string>, images: Record<id,ImageRef> }`). It must go into SITE_AXES (world.ts:559), SITE_BASE (TypeScript will force this, :579), DEFAULT_WORLD (:607) and the startBuild patch (send.ts:773-817), and the storage key should move to v7. Without the bump, v6 stash slices lack the key, and set() (:1034-1039) keeps the leaving site's edits on the next site. Update all 9 `world/v6` literals in check-brief-flow.mjs.",
+  "Decide whether a staged scenario (a chat-axis move with an empty transcript) should also wipe the manual edits, as it wipes planEdits (world.ts:1063-1065). If yes, add a sibling rule there.",
+  "The commit path must NOT go through sendMessage, which charges COST=10 and lights the glow. Use the editPlanText pattern: `set({ siteEdits, unpublished: world.unpublished + 1 }, preset)`, with no triggerReload and no glow. It must also work when canUseAI is false: the trial-expired preset promises 'manual editing still works'.",
+  "Demo visibility: in the default world (published:false) Publish is already blue and the topbar count badge shows only when published && unpublished>0 (App.tsx:1200). To show the +1 on 'Publish changes', stage published:true, or add a preset for it.",
+  "Inline text editing should reuse the Plan lessons: React does not own the text (render empty, write imperatively only when unfocused), `plaintext-only`, commit on blur, Enter commits, Escape reverts. Drop an edit that equals the original text, so an untouched site stays untouched.",
+  "Edits will appear automatically in SiteMini (shelf and dock cards) and in the PickFlight clone, because they mount the same SitePreview and would read the same store. The editing UI (hover outline, selection, toolbar) must render only in the canvas instance (`pinned === undefined`), and must hide while `surface === 'sites'` parks the site layer.",
+  "In edit mode, site navigation has to be intercepted: the logo, the footer page links and 404 'Back to home' are real buttons calling ui.setPreviewPath (data-site-link). Nav items and CTAs are spans. Page names are owned by the plan outline, and a rename changes the route and the template (SitePreview.tsx:143), so renaming pages should go through editPlanOutline or be left out of the Visual Editor.",
+  "Selection chrome must stack correctly inside `.site-stage`: SiteNav is sticky z-10, SiriGlow z-20 (pointer-events none), the hairline ::after z-30. Each page has its own ScrollArea and the page layer is keyed by path, so overlays must follow scroll and page swaps. Mobile is the same component at 390x844, driven by container queries.",
+  "Photo replacement: there are no images today (gradient + emoji divs), the published artifact's CSP blocks external URLs, and the artifact has about 1.1 KB of headroom. Options are local upload through `<input type=file>` to a data URL (heavy for localStorage and duplicated in stash) or an object URL (session-only), or a small built-in set of CSS/SVG 'photos'. AI image generation would cost credits (product-facts.md:45), so it is out of the free path.",
+  "Undo is new work: there is no history, the chat's IconHistory button is dead, and there is no Cmd+Z handler. An editor-level Cmd+Z must not hijack native undo in the chat composer or inside a focused contentEditable. The live DreamHost editor has Save · Undo · Redo · Exit (verified 13.09.2026).",
+  "Motion comes only from motion.ts: popover/popoverContent or pageMenuIn for a small floating toolbar; panelIn/panelInBody (Panel Arrival) or cardIn (Card Arrival) for a larger inspector; tooltipIn for tips; EXIT for 140 ms flat exits; …Fade twins under reduced motion; `onUpdate` stubs against one-frame blinks. Add a row to the design-system.md §7 registry (table at docs/knowledge/design-system.md:4522-4543).",
+  "Tests: add block 'O' after N (check-brief-flow.mjs:5867), before the final page-errors check (5869), using the builder-entry idiom and reading `credits` and `unpublished` from localStorage to prove credits are unchanged and unpublished went up by one. Also cover Escape revert, undo, the site switch not leaking edits, and reload persistence.",
+  "Console: a non-scalar siteEdits axis needs an `options` entry with patch + current (like `projects`) in AXES, most naturally in group G.project; describe() could say 'N manual edits'. If the edit-mode on/off flag lives in ui.ts (navigation), the console cannot stage it; it would need to be a world axis to be console-stageable."
+ ],
+ "open_questions_for_designer": [
+  "How does the mode switch on: a toggle on the existing 'Visual Editor' pill, with a separate edit top bar like the live DreamHost editor (Save · Undo · Redo · Exit)? Or is the site always editable on hover without a mode?",
+  "What counts as one unpublished change: each committed field (on blur), or one per edit session (Save / Exit)?",
+  "Does Undo lower the unpublished count? Does Publish clear the undo stack? Is the chat header's 'Version history' button part of this scope or a separate feature?",
+  "What is editable: headings, paragraphs, CTA labels, nav items, prices/macros, footer and contact details? What about page names, which the Build Plan outline owns today, where a rename changes the page's route and template?",
+  "Where do replacement photos come from: an upload from the computer, a built-in stock set, or AI generation (which costs credits and so leaves the free path)? The demo site has no real photos today, only gradient + emoji tiles.",
+  "Should editing be allowed while Remixer is working (chat 'working', glow on)? If an AI edit lands later, should it keep or overwrite the customer's manual edits?",
+  "Should manual edits leave a line in the chat transcript, or stay silent?",
+  "What should the tool do on the drawn demo sites (synco.com, meridianroast.com, still-studio.com), which have nothing editable: hide the button, or disable it with a tooltip?",
+  "Does editing work in the mobile 390x844 frame, or only on desktop?",
+  "When a scenario is staged from the console, should the manual edits be wiped along with it, the way the plan's edits are?"
+ ]
+}

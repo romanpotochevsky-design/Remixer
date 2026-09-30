@@ -1,0 +1,401 @@
+{
+ "summary": "Our knowledge base covers competitor visual/manual editing well at the level of first-party docs as of the 13.08.2026 audit, but almost never at the pixel level. Nobody's hover outline colour, outline thickness, selection-handle style or label-chip design is recorded. The only visual hints are Lovable's marketing mock, which shows an \"h1\" tag badge on the selected element; v0's \"hover highlights elements, click selects and shows selection handles\"; and Bolt's \"Pick from layers\" for overlapping elements. The category splits cleanly into two mechanisms, and Hostinger is the one product that names them separately. The first is select-to-scope-a-prompt, which is metered: Lovable Select (S), Bolt Select, Hostinger \"Select and edit\", and prompts in Base44 Edit mode. The second is direct edit that bypasses the AI, which is free: Lovable inline text (T, first 100 edits a day free), Base44 manual edits, Replit Element Editor, GoDaddy Edit, Hostinger \"Edit Content\", and v0 Design Mode on the Free plan. Every product that has a free lane draws the paid line at \"does this need the model\", not at \"is this an edit\". GoDaddy is the only competitor with a documented image-replace flow: Edit → select image → toolbar \"Replace\" → pick from device → \"Use this image\", with the copy \"Your image updates right away. No prompt is needed and no credits are used.\" For everyone else, image replacement is undocumented in our KB. Commit models differ. Lovable auto-versions every change with no save. v0 Design Mode batches edits and \"Apply\" creates one chat version. Figma Make stages every edit in the prompt box, credit-free, until one Apply cuts one version. GoDaddy applies immediately and requires a separate Publish. The live DreamHost Visual Editor has a top panel reading \"Save · Undo · Redo · Exit\" (verified 13.09.2026), so the shipped product already uses an explicit edit session with its own undo stack. Undo inside a visual-edit session is documented only for v0 (Undo/Redo/Reset plus a Before/After toggle), the Base44 Canvas (undo/redo) and our own live VE. Everywhere else, undo means per-message revert or version restore; Hostinger's is destructive, and GoDaddy's restore never auto-publishes. The audit recommends five things for our Visual Editor: a free lane with a green \"Free\" chip and an automatic \"This needs the AI\" escalation (catch-up #12); a staged-edits tray with one Apply = one version (lens adopt); \"Visual Editor edits\" listed in the \"Always free\" panel (catch-up #2); lock/blast-radius controls shipped together with the free lane, because Lovable's visual edits get silently overwritten by later prompts (#15, §10.2 Q5); and restore that never auto-publishes (#9). The critique adds warnings. Single-key S/T/D/C shortcuts break the moment a novice types into content. Base44's raw Tailwind field is a support-ticket generator. Image licensing is unaddressed. Real churn happens upstream in the edit loop, which argues for this feature. The audit's premise that manual edits are metered at Remixer is obsolete: the DreamHost KB (\"Manual edits, hosting, and publishing never use credits\"), confirmed by the designer on 13.09.2026, answers table-stakes row 5 in our favour. In the prototype today, \"Visual Editor\" is an inert label with no onClick (App.tsx:1079-1085), and there is no edit mode at all. Our KB has nothing on Squarespace, Webflow editing UX, Durable, 10Web, Canva or the WordPress cohort; Wix Harmony gets one line and Framer and Webflow appear only as pricing.",
+ "findings": [
+  {
+   "topic": "Lovable: how edit mode is entered",
+   "fact": "Floating preview toolbar with four single-key modes: Select elements (S), Edit text inline (T), Draw annotation (D), Add a comment (C). Drags to any corner or the default bottom-centre, minimises to a tab, remembers position/state across sessions, theme Auto/Light/Dark 'so it never fights the user's own design'. Shipped 10 Jun 2026.",
+   "source": "docs/audits/synthesis.md:182; docs/research/recon_dossiers.json:170-171 (docs.lovable.dev/features/preview-toolbar.md)",
+   "status": "verified",
+   "date": "13.08.2026 (fetch); shipped 10.06.2026"
+  },
+  {
+   "topic": "Lovable: toolbar geometry (live)",
+   "fact": "'Floating visual-edit toolbar over the preview bottom: 32×32 buttons on a 36px pitch — Select elements · Edit text inline · Draw annotation · (4th). Parked off-screen when inactive.' The 4th button was not identified.",
+   "source": "docs/audits/lovable-builder-teardown.md:36",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: select = scoped prompt, metered",
+   "fact": "Select elements: 'click one or many, Cmd/Ctrl to multi-select, then describe the change; costs credits'. Selection scopes a chat prompt; it does not edit directly.",
+   "source": "docs/research/recon_dossiers.json:171",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: inline text edit + credits",
+   "fact": "Edit text inline (T) is 'the fastest way to fix a typo, change a headline, or update a label'. 'Free for the first 100 edits per user per day; only beyond that does it consume credits.' Pinning comments is free; replying to Lovable costs.",
+   "source": "docs/research/recon_dossiers.json:177-178; docs/audits/synthesis.md:177-178",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: label chip on selection",
+   "fact": "The lovable.dev hero embeds a simulated product mock of click-to-select visual editing that 'renders a literal \"h1\" tag badge' showing the selected element's tag name. Our dossier: 'the tag-badge idea is worth stealing for Remixer's visual editor'. This is the ONLY recorded label-chip evidence in the KB.",
+   "source": "docs/research/recon_dossiers.json:520-521",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: annotation",
+   "fact": "Draw mode (D) accepts freehand sketches and recognises lines/arrows/rects/circles: 'a quickly drawn circle becomes a clean one'. Sketches attach to a message describing the change (metered).",
+   "source": "docs/research/recon_dossiers.json:184-185",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: commit / versioning",
+   "fact": "'Every change creates a version with no manual save.' History panel with History + Bookmarks tabs. Per version: full-screen preview, code diff, jump to chat message, Revert, Bookmark. The live version carries a 'Published' badge. Our KB does not say whether an inline text edit posts a chat message.",
+   "source": "docs/research/recon_dossiers.json:156-157; docs/audits/synthesis.md:180",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: undo / revert",
+   "fact": "Each response has 'Undo latest edit' and 'Revert to this version'. Revert 'does not restore or roll back your database data', is disabled with tooltip 'Cannot revert this far back in history', and chat history survives a revert so changes can be reapplied (non-destructive).",
+   "source": "docs/research/recon_dossiers.json:135-136, 163-164; docs/audits/synthesis.md:166, 180",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: stale-publish signal",
+   "fact": "Deploy state is stated three ways: a dot on the Publish button when live is stale, a 'Published' badge in History, and the copy 'Publishing creates a snapshot of your project. Changes made afterward don't affect the live site until you republish.'",
+   "source": "docs/audits/synthesis.md:251",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: WEAKNESS — manual edits overwritten",
+   "fact": "'Fine-grained design edits can be overwritten by subsequent prompts' — 'visual edits and chat edits write to the same files with no lock or protected-region concept, careful manual polish is not durable across agent turns.' Single third-party source (Superblocks review).",
+   "source": "docs/research/recon_dossiers.json:614-615; docs/audits/synthesis.md:258; docs/research/lenses.json:621",
+   "status": "likely",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Lovable: settings → prompt pattern",
+   "fact": "The SEO tab has no form. Buttons 'Ask Lovable to edit details' / 'Ask Lovable to edit icon' hand the task to chat: 'Settings that write a prompt into the chat instead of rendering a form.' This is a precedent for escalating from the VE to chat.",
+   "source": "docs/audits/lovable-builder-teardown.md:72-73, 82",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Bolt: select = scope only, no visual editor",
+   "fact": "Composer control 'Select' (element picker, 'greyed until the preview is live') targets an element 'to focus your prompt on that part of the interface'. A 'Pick from layers' sub-menu handles overlapping elements (z-order disambiguation). 'Bolt has NO WYSIWYG/drag visual editor equivalent to Remixer's Visual Editor; selection scopes a prompt, it does not enable direct manipulation.'",
+   "source": "docs/audits/bolt-in-app.md:24; docs/research/recon_dossiers.json:909-910",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Bolt: code-side selection",
+   "fact": "Highlighting code shows 'Ask Bolt', which links the selection into the prompt as a visible chip. The doc hint 'if the button doesn't appear immediately, try right-clicking' is a tell that the hover trigger is unreliable. Manual code edits have an explicit Save / Ctrl+S commit moment.",
+   "source": "docs/research/recon_dossiers.json:902-903, 895-896, 1214",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Bolt: undo / restore",
+   "fact": "Clock icon → 'View history'. Preview a version, then 'Restore this version' → confirm 'Restore version'. 'A success message in the chat history' confirms it. Restores cost no tokens ('Use Version History to undo changes without tokens'). DB is not rolled back. Checkpoints appear as cards in the thread: 'Version 1 at Jul 29 12:59 AM' + bookmark. AI image editing is paid-only.",
+   "source": "docs/research/recon_dossiers.json:979-980, 1092, 1099; docs/audits/bolt-in-app.md:27",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Base44: how edit mode is entered",
+   "fact": "Edit is one of three chat modes, Default / Discuss / Edit ('Lets you click elements in your preview to adjust visuals directly'), switched with Cmd+. / Ctrl+. 'even while you're typing a prompt'. The builder was NOT toured live; this rests on docs only.",
+   "source": "docs/research/recon_dossiers.json:1644-1645; docs/audits/synthesis.md:327; docs/audits/bolt-in-app.md:39",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Base44: what can be edited",
+   "fact": "Clicking an element in Edit mode reveals Colors (bg + text), T (font family, size, text content), Text Style (alignment, case, decoration), Spacing (margin/padding px per side), Corners (radius px), Opacity 0–100, Tailwind Classes (raw), and a trash Delete. There is no image control in the documented list.",
+   "source": "docs/research/recon_dossiers.json:1693-1694; docs/audits/synthesis.md:325",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Base44: credits for manual edits",
+   "fact": "Docs verbatim, not consuming credits: 'Database reads/writes, manual visual edits (dragging, layout changes, direct text editing).' But 'AI-assisted edits in the same Edit mode do cost variable credits' (0.5–4 for Default/Edit vs flat 0.3 Discuss).",
+   "source": "docs/research/recon_dossiers.json:1700-1701, 1651-1652; docs/audits/synthesis.md:20, 325",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Base44: two-stage commit for theme",
+   "fact": "The Theme panel (Colors/Fonts) has 'Apply' (preview) and then 'Save & Apply' (global). The picker supports drag, hex, screen eyedropper and palette. How ordinary Edit-mode changes are committed is not recorded.",
+   "source": "docs/research/recon_dossiers.json:1707-1708",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Base44: undo",
+   "fact": "Two surfaces: a clock-icon Version History in chat, and a Revert icon on every chat message ('restore your app to a previous working version'). Docs warn asking the AI to roll back in chat 'never actually undoes prompt changes'. Canvas got undo/redo on 30 May 2026. Our KB does not say whether manual edits create revert points.",
+   "source": "docs/research/recon_dossiers.json:1665-1666, 1637-1638, 2116",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Base44: limits of the visual editor",
+   "fact": "'The visual editor is good for tweaks but not for fully custom design systems.' Mobile app cuts 'Visual Edits', code, domains, security, templates.",
+   "source": "docs/research/recon_dossiers.json:2150-2151 (G2 aggregation), 1966-1967 (docs)",
+   "status": "likely",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "v0: how Design Mode is entered + hover/select",
+   "fact": "'Enabled from the prompt-form toolbar. Cursor becomes a selection tool; hover highlights elements, click selects and shows selection handles plus the design panel.' Cmd+I / Ctrl+I toggles inspect ↔ interact; Escape deselects. There is a Layers view of the component hierarchy (parent navigation) and an Inspector with links/element IDs. Hover colour and handle style are NOT recorded. v0 builder was not toured; docs only.",
+   "source": "docs/research/recon_dossiers.json:3433-3434, 3440-3441; docs/audits/bolt-in-app.md:39",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "v0: what can be edited",
+   "fact": "Typography (family, size, weight, line height, letter spacing, alignment, decoration), Color, Background, Layout (margin/padding), Border, Appearance (opacity, radius), Shadow, Content (direct text editing). Tailwind-compatible values are surfaced. Image replace is not recorded.",
+   "source": "docs/research/recon_dossiers.json:3434, 3448",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "v0: commit, undo, escalation",
+   "fact": "The panel has Undo, Redo, Reset and a Before/After toggle. 'Apply serializes your edits (and any instructions / screenshots), sends them to the chat, and generates an updated version' — one Apply = one chat version. Typing an instruction at a selected element auto-attaches a screenshot of that element. 'Non-message actions (such as editing code or modifying files directly) do not generate new versions.' Restore is linear: it creates a new latest version.",
+   "source": "docs/research/recon_dossiers.json:3440-3441, 3447-3448, 3461-3462, 3468-3469; docs/audits/synthesis.md:441",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "v0: credits + availability",
+   "fact": "Free plan bullet 'Edit visually with Design Mode' (not paywalled). 'Unavailable on read-only chats or mobile viewports'. Requires the latest preview runtime and chat version. The docs are ambiguous on whether 'mobile viewports' means the device-preview frame or mobile devices; the audit reads it as the iOS app / shared links.",
+   "source": "docs/research/recon_dossiers.json:3454-3455, 3861; docs/audits/synthesis.md:458",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "GoDaddy Airo: how edit mode is entered",
+   "fact": "Six-item top mode bar Preview / Edit / Code / Menu / Media / Settings. Edit = 'Select the desired part of your app and then use the toolbar to edit your selection.' GoDaddy help pages returned 403 to fetching.",
+   "source": "docs/research/recon_dossiers.json:2560-2561, 3150; docs/audits/synthesis.md:387",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "GoDaddy Airo: element toolbar on selection",
+   "fact": "Selecting an image raises 'a horizontal white pill (~full radius, subtle shadow, hairline dividers)' reading Replace | Modify | On click | bookmark | violet AI sparkle. Violet is used only on the AI sparkle ('Violet discipline'). Read off ONE GoDaddy marketing screenshot (AAB-replace-image-17June26.png); the fact-check flagged screenshot-derived visual claims as unmeasurable.",
+   "source": "docs/research/recon_dossiers.json:2644-2645, 3039, 3158; docs/audits/synthesis.md:363; docs/research/factcheck_corrections.json:51-54",
+   "status": "likely",
+   "date": "screenshot 17.06.2026; read 13.08.2026"
+  },
+  {
+   "topic": "GoDaddy Airo: image replacement flow + credits",
+   "fact": "'Replace an existing image (no AI credits used)': Edit → select image → toolbar 'Replace' → pick from device → 'Use this image'. 'Your image updates right away. No prompt is needed and no credits are used.' AI path (generate / 'Find a stock photo…') bills. Getty Images library is available for professional images. This is the only documented image-swap flow in our KB.",
+   "source": "docs/research/recon_dossiers.json:2658-2659, 3159; docs/audits/synthesis.md:377",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "GoDaddy Airo: credit rule + steering copy",
+   "fact": "'Credits are used when you perform an action that uses Airo AI Builder's agents… Credits are not used for non-agent actions.' The free list includes Edit (non-AI changes), Media, and History restore. Docs tip: 'Use Edit for simple edits: If you only need to change text, swap an image or adjust a color, use Edit instead of typing a prompt. It's free, and Airo AI Builder can't make unintended changes when you're editing directly. Save the AI chat for complex tasks.'",
+   "source": "docs/research/recon_dossiers.json:2651-2652, 2819-2820; docs/audits/synthesis.md:365-367",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "GoDaddy Airo: undo / restore / publish",
+   "fact": "History sits under the chat. 'Restore this version' with preview first. Backups restore files/DB/both. Both end 'Once restored, select Publish to make it live' — restore never auto-publishes. Edit changes also go live only on Publish. Deletion has 'no undo button'. The absence of per-message revert/diffs is UNVERIFIABLE (403) per the fact-check.",
+   "source": "docs/research/recon_dossiers.json:2623-2631, 2735-2736; docs/research/factcheck_corrections.json:45-47; docs/audits/synthesis.md:371",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "GoDaddy Airo: IA trap",
+   "fact": "Two asset managers side by side: 'Menu' ('Upload and insert images, videos or documents') and 'Media' ('Edit, upload and manage your app's visuals'). The audit calls this IA 'that reveals its history' (Trap 3). GoDaddy's native app: 'Basic text and image edits work from the app'.",
+   "source": "docs/audits/synthesis.md:387; docs/research/recon_dossiers.json:2917-2918",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Figma Make: staged credit-free edits",
+   "fact": "Right properties panel with full DOM tree (30 Jul 2026): spacing, typography, layout, opacity, z-index, borders, radius, codebase tokens; 'select every instance of an element at once'. Edits 'stage every edit in the prompt box so you can review each change before you commit to it, or discard anything that doesn't look right' — 'staged and credit-free, until you apply them'. Only Apply burns credits and cuts a new version. Tagline 'Click elements to style, swap, or prompt for changes directly in the preview.'",
+   "source": "docs/research/recon_dossiers.json:4205-4206, 4514, 4662, 4671; docs/audits/synthesis.md:494",
+   "status": "verified",
+   "date": "shipped 30.07.2026; read 13.08.2026"
+  },
+  {
+   "topic": "Figma Make: modes + history gap",
+   "fact": "The top-right toolbar carries 'Edit' and 'Annotate for agent' (numbered blue on-canvas callouts, e.g. 'make this section feel calmer'). There is NO file-level version history: 'versions' are builds in chat restored via 'Restore this version'.",
+   "source": "docs/research/recon_dossiers.json:4212-4213, 4254-4255, 4660",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Replit: Element Editor",
+   "fact": "'Click any element in your app's preview to start editing. Directly edit text if it's a string in your source code.' Free, no agent: text content, font size/weight, alignment, text colour, background colour, margin, padding, with an eyedropper colour picker. Beyond that it 'seamlessly sends targeted metadata to Agent'. Paid line = 'does this need the model'. Commit/undo for element edits is not recorded.",
+   "source": "docs/research/recon_dossiers.json:4219-4220, 4519; docs/research/lenses.json:477",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Hostinger Horizons: two separate mechanisms",
+   "fact": "'Select and edit' lets you 'click a specific element… and apply changes only to that section in your next prompt' (metered). Separately, 'Edit Content' mode lets you 'click directly on any static text or image in the preview and edit it immediately without the AI'. Canvas toggle: Preview / Edit content / Code / Data. 'Most builders conflate them.'",
+   "source": "docs/research/recon_dossiers.json:4240-4241, 4156-4157",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Hostinger Horizons: destructive undo",
+   "fact": "Undo 'permanently deletes' the last message+response. Restore warns 'All your messages after this message will be permanently deleted'. 'Undoing or restoring a version does not cost additional credits and does not reinstate credits spent.' Listed in lens 'avoid'.",
+   "source": "docs/research/recon_dossiers.json:4247-4248; docs/research/lenses.json:600-601",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Wix Harmony / Framer / Webflow / Google AI Studio",
+   "fact": "Wix Harmony (Jan 2026): 'vibe coding meets drag and drop', Aria agent 'embedded in the visual editor rather than beside it', 'Move between prompting and total manual control'. Framer AI edits are priced: 'small edit 50, large edit 100' credits (medium confidence). Webflow: 'generating and editing is free' (only custom-domain publish paid). AI Studio: draw/annotate on the running app. No mechanics of selection, image swap or undo are recorded for any of them.",
+   "source": "docs/research/recon_dossiers.json:4054 (summary), 4623, 4366, 4233-4234, pricing_2026 of entry [5]",
+   "status": "likely",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "DreamHost live Visual Editor: shipped strings",
+   "fact": "Top panel of Visual Editor: 'Save' · 'Undo' · 'Redo' · 'Exit'. KB article 'Remixer Visual Editor overview' (id 50653967848468, a current-product long id). The shipped VE is an explicit session with its own Save and undo stack.",
+   "source": "docs/research/dreamhost-domain-connect-research.md:166, 175-177, 625",
+   "status": "verified",
+   "date": "13.09.2026"
+  },
+  {
+   "topic": "DreamHost: manual edits are free",
+   "fact": "KB 'Understanding Remixer credits': 'Manual edits, hosting, and publishing never use credits.' Credits are spent only on AI work (generation, chat prompts, generating a new image). Designer confirmed 13.09.2026.",
+   "source": "docs/knowledge/product-facts.md:45, 572; docs/research/dreamhost-domain-connect-research.md:307",
+   "status": "verified",
+   "date": "13.09.2026"
+  },
+  {
+   "topic": "DreamHost: zero balance + Legacy",
+   "fact": "At zero balance 'AI features pause until you add additional Remixer Credits… or your credits reset' — manual editing and publishing keep working. world.ts has no zero-credit state. VE is available 'on all Remixer plans, including Legacy, Trial, and paid plans'.",
+   "source": "docs/research/dreamhost-domain-connect-research.md:312, 315; docs/knowledge/product-facts.md:940-945, 958-960",
+   "status": "likely",
+   "date": "13.09.2026"
+  },
+  {
+   "topic": "DreamHost: legacy-KB trap",
+   "fact": "Two Remixers live in the KB. Short-id articles (1150xxxxx/3600xxxxx) describe the OLD drag-and-drop builder and must not be cited as shipped behaviour. The lens found an Undo/Redo KB article with 'undo and redo buttons on the top left of the edit page' that 'appears to describe the legacy section-based Remixer'.",
+   "source": "docs/research/dreamhost-domain-connect-research.md:168-177; docs/research/lenses.json:666",
+   "status": "verified",
+   "date": "13.09.2026 / 13.08.2026"
+  },
+  {
+   "topic": "DreamHost live product recording",
+   "fact": "The live topbar has 'Visual Editor' · reload · device on the LEFT. The recordings do not show what Visual Editor does when clicked; the KB is silent on its live selection/hover UI.",
+   "source": "docs/research/live-ai-editor.md:18",
+   "status": "verified",
+   "date": "22.09.2026"
+  },
+  {
+   "topic": "Prototype today",
+   "fact": "'Visual Editor' in the canvas toolbar is a non-interactive Glass span (icon + label, no button, no onClick). No edit mode exists. The toolbar renders only when world.project === 'built'.",
+   "source": "prototype/src/App.tsx:1069, 1078-1085",
+   "status": "code-fact",
+   "date": "30.09.2026"
+  },
+  {
+   "topic": "Audit REC: free lane + escalation (catch-up #12)",
+   "fact": "'Free direct-manipulation lane with a green \"Free\" chip and automatic escalation (\"This needs the AI — about 8 credits\")'. Lens spec: the free set is text content, font family/size/weight, alignment, text colour, bg colour, padding/margin, radius, opacity. Escalation row + 'Ask Remixer' button 'pre-fills the composer with the element reference attached'. First-select hint: 'Nudging, retyping and recolouring are free. Save credits for the big changes.'",
+   "source": "docs/audits/synthesis.md:561; docs/research/lenses.json:538-540, 1026-1028",
+   "status": "verified",
+   "date": "13.08.2026 (recommendation)"
+  },
+  {
+   "topic": "Audit REC: staged edits tray",
+   "fact": "Every VE change stacks as a chip above the composer ('Hero padding 32 → 48 ×'). Footer '4 staged changes' · 'Discard all' · 'Apply'. Apply = a single commit and exactly one version, which 'stops the version history filling with 40 one-pixel checkpoints'.",
+   "source": "docs/research/lenses.json:545-547, 433",
+   "status": "verified",
+   "date": "13.08.2026 (recommendation)"
+  },
+  {
+   "topic": "Audit REC: always-free list in product",
+   "fact": "The credits-chip popover's 'Always free' checklist includes 'Visual Editor edits'. Alt copy: 'Free, always: … editing text and swapping images directly on the page…'. An 11px 'Free' tag on direct visual edits.",
+   "source": "docs/audits/synthesis.md:545; docs/research/lenses.json:116, 433, 1013",
+   "status": "verified",
+   "date": "13.08.2026 (recommendation)"
+  },
+  {
+   "topic": "Audit REC/WARN: locks must ship with free lane",
+   "fact": "'Where does the Visual Editor write, and can a later chat turn silently overwrite manual visual edits? If we share Lovable's architecture, the free-edit lane and the lock mechanism must ship together or the free lane makes the problem worse.' Catch-up #15 (Lock page / 'Skipped Pricing — it's locked. Unlock it?') is 'also the fix for visual edits being overwritten'.",
+   "source": "docs/audits/synthesis.md:563, 788; docs/research/lenses.json:561, 621, 669, 1424",
+   "status": "verified",
+   "date": "13.08.2026 (open question)"
+  },
+  {
+   "topic": "Audit REC: undo semantics",
+   "fact": "#9: 'Restored. Your live site hasn't changed — select Publish to make this version live.' #13: a Revert icon on every AI message, History with a 'Live' chip, disabled 'Can't revert this far back'. Avoid destructive undo (Hostinger). Undo must be 'a button, not a sentence' (Base44).",
+   "source": "docs/audits/synthesis.md:552, 562; docs/research/lenses.json:553-554, 600-601",
+   "status": "verified",
+   "date": "13.08.2026 (recommendation)"
+  },
+  {
+   "topic": "Critique WARN: novice harm",
+   "fact": "'Single-letter shortcuts over a canvas break the moment a novice clicks into content and types… Ship ⌘K and stop.' 'Praising Base44's raw Tailwind class field… a support-ticket generator and a design-system escape hatch.' Per-message cost receipts conflict with credit-anxiety reduction.",
+   "source": "docs/audits/critique.md:62, 63, 66",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Critique: why VE matters + image licensing",
+   "fact": "Real attrition is upstream: 'output is mediocre and the agent can't reliably fix it', and 'edit-loop reliability' is the binding constraint. Images/licensing: 'Novice SMB sites get DMCA'd'. The proposed task basket includes '1 image swap', which was never measured at any competitor.",
+   "source": "docs/audits/critique.md:14, 72, 87",
+   "status": "verified",
+   "date": "13.08.2026"
+  },
+  {
+   "topic": "Obsolete audit premise",
+   "fact": "The audit/lenses describe Remixer as having 'no free direct-manipulation lane' and table-stakes row 5 'Free direct-manipulation lane — Unknown'. This is superseded by the DreamHost KB (manual edits free, 13.09.2026). §9.6's 'no springs, no overshoot' is superseded by the project's motion.ts decisions (CLAUDE.md).",
+   "source": "docs/audits/synthesis.md:473, 715; docs/research/lenses.json:513; docs/knowledge/product-facts.md:45",
+   "status": "verified",
+   "date": "13.08.2026 → 13.09.2026"
+  },
+  {
+   "topic": "KB SILENCE: selection visuals",
+   "fact": "No competitor's hover outline colour/thickness, selected-state outline, handle style, label-chip styling, or parent-select gesture is recorded. Closest: the Lovable mock's 'h1' badge, v0 'hover highlights… selection handles' + Layers panel, Bolt 'Pick from layers', Figma Make DOM tree / 'select every instance'.",
+   "source": "absence across docs/audits/*, docs/research/recon_dossiers.json, lenses.json",
+   "status": "verified",
+   "date": "30.09.2026 (search)"
+  },
+  {
+   "topic": "KB SILENCE: image replace + in-session undo",
+   "fact": "Image-replace UX is documented only for GoDaddy (Replace → device → 'Use this image') and mentioned for Hostinger ('Edit Content' incl. images) and Figma Make ('swap'). Silent for Lovable, Base44, v0, Replit, Bolt. In-session undo is documented only for v0 (Undo/Redo/Reset), Base44 Canvas (undo/redo) and the DreamHost live VE (Save/Undo/Redo/Exit). Whether a manual edit posts a chat message is recorded only for v0/Figma Make (on Apply).",
+   "source": "absence; see recon_dossiers.json:2658, 4240, 4671, 3441, 1638; dreamhost-domain-connect-research.md:625",
+   "status": "verified",
+   "date": "30.09.2026 (search)"
+  },
+  {
+   "topic": "KB SILENCE: other builders",
+   "fact": "Nothing on the visual-editing UX of Squarespace, Webflow (beyond pricing), Durable, 10Web, Canva, Wix Studio or the WordPress cohort (Elementor AI, WP.com AI). This is the blind-zone list from the critique.",
+   "source": "docs/audits/critique.md:6-7, 15; docs/knowledge/competitors.md:64-68",
+   "status": "verified",
+   "date": "30.09.2026 (search)"
+  }
+ ],
+ "implications_for_plan": [
+  "Keep select-to-prompt and direct-edit as two separate mechanisms (Hostinger names both; most competitors conflate them). The Visual Editor should do direct edits that never touch credits (KB-verified). Anything that needs the AI should hand off to chat with the element attached, as v0 attaches a screenshot and Lovable uses 'Ask Lovable to…', rather than silently billing.",
+  "The shipped DreamHost Visual Editor already has an explicit session with 'Save · Undo · Redo · Exit' (verified 13.09.2026). Base the prototype's mode entry/exit and undo on that model unless the designer decides otherwise. It matches v0's Undo/Redo/Reset and differs from Lovable's autosave-every-change.",
+  "Commit granularity drives the '+1 unpublished' rule. The strongest precedents (v0 Apply, Figma Make Apply) are one save/apply = one version, which avoids '40 one-pixel checkpoints'. Model it in world.ts as a pending-edits list that becomes one version and one unpublished change on Save, with 0 credits.",
+  "Image replacement: GoDaddy's zero-credit flow (select image → Replace → pick → 'Use this image' → 'updates right away', copy stating no credits are used) is the only documented reference. Keep AI image generation visibly separate, because generating a new image DOES cost credits per the KB. Avoid GoDaddy's two-asset-manager trap (Menu vs Media).",
+  "Undo: the edit stack should be in-session and non-destructive (Undo/Redo within the VE session). Revert/restore after Save should follow 'restore never auto-publishes'. Never adopt Hostinger-style destructive undo.",
+  "Selection visuals are a KB blank, so pixels must come from the designer's Figma/recording. Constraints we do have: the demo site is two-tone, so the outline must read on white and on dark (Lovable's Auto/Light/Dark toolbar theme exists for this reason). Blue = action per the brand rule. A tag chip must use human names, not 'h1'/'div'.",
+  "Keyboard: per the critique, do not ship single-letter mode shortcuts (S/T), because they collide with typing in inline text. ⌘Z/⇧⌘Z inside the session plus Escape to deselect/exit (v0 precedent) is enough.",
+  "Flag the durability risk explicitly in the plan (synthesis §10.2 Q5, lens open question). In the prototype, decide what a later chat reply does to a manually edited text or photo. At minimum the chat reply should not wipe world state for edited nodes; the lock/protect idea stays an open product question.",
+  "Mobile frame: v0 disables Design Mode on 'mobile viewports' and Base44's mobile app cuts visual edits. Decide whether editing works inside our 390×844 frame or is disabled with an explanation where the control would be (lens avoid: say absence where the control is).",
+  "Merchandise the free lane in the UI: a 'Free' chip or line inside the VE, and 'Visual Editor edits' in any future always-free list (catch-up #2). This is the communication half the 13.09 correction says we still don't do.",
+  "Scope creep: the audit's free set (fonts, colours, spacing, radius, opacity) is wider than the designer's brief (text + photos). Base44's design ceiling and the critique's Tailwind-field warning argue for keeping v1 narrow."
+ ],
+ "open_questions_for_designer": [
+  "Commit model: should our VE mirror the shipped DreamHost panel ('Save · Undo · Redo · Exit', an explicit session)? Or should it auto-apply each edit (GoDaddy 'updates right away') or stage edits in a tray above the composer with one Apply (Figma Make)?",
+  "Does one Save produce exactly +1 to 'Publish changes' regardless of how many texts/photos were changed, or does each edited element count separately?",
+  "Scope of v1: only text and photos (as in the brief), or also the audit's wider free set (text colour, background, spacing, radius, opacity, font), which Base44/Replit/v0 all offer?",
+  "Where does the photo come from on Replace: upload from device only, a media library of already-used images, stock (GoDaddy offers Getty), and/or 'Generate with AI'? The AI option costs credits per the KB and raises the licensing question from the critique.",
+  "Hand-off to AI: when the user wants a change the VE can't make, do we show an 'Ask Remixer' action that pre-fills the chat with the selected element attached (v0 attaches a screenshot)? What cost copy do we show there, given we have no verified per-action credit prices?",
+  "What happens to a manual edit if the next chat prompt regenerates that section: protect it, warn, or allow overwrite? Lovable's documented failure is silent overwrite, and the audit says a free lane without locks makes it worse.",
+  "Selection chrome: outline colour and weight, and whether the selected element gets a label chip. If so, use human names ('Heading', 'Photo', 'Button') rather than tags like Lovable's 'h1'. Also: how to select a parent or an overlapping element (Bolt 'Pick from layers', v0 Layers)?",
+  "Should editing work inside the mobile 390×844 frame, or be disabled there like v0's Design Mode on mobile viewports?",
+  "Where does the mode live: the existing 'Visual Editor' pill in the canvas toolbar as a toggle, or a floating toolbar over the preview like Lovable's bottom-centre pill? How does exit look: 'Exit' as in the live product, Escape, or clicking the pill again?",
+  "Undo after Save: is undo limited to the open session (live product), or can a saved manual edit be reverted later from version history, with the rule that restore never auto-publishes?"
+ ]
+}

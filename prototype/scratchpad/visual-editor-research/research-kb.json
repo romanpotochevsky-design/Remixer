@@ -1,0 +1,411 @@
+{
+ "summary": "Проверено на диске, в ветке claude/remixer-connect-domain-flow-4fpgqc, только чтение. (1) Шаблон фича-базы лежит в docs/features/README.md:32-48 и состоит из 7 разделов: Что это · Анатомия/геометрия · Состояния · Решения · Где код · Открытые вопросы · Ссылки. Четыре правила к нему (строки 50-60): номер узла Figma и дата снятия в первой строке; перечислять все состояния, включая ненарисованные; ⚠️-уроки живут в CLAUDE.md; каждое решение дублируется строкой в decisions.md. Живые базы (cloud, analytics) на практике используют шапку из жирных полей «Борд/Код/Заказ» и добавляют нумерованные разделы по мере работы. (2) Реестр моушена находится в design-system.md:4522-4556. Таблица из 5 колонок: компонент | где живёт в продукте | код | решения и замеры | спека для девелоперов. Именованные компоненты стоят в строках 4530-4547, старые общие строки идут после них. Последний добавленный Account Menu (29.09) вставлен в строку 4543 сразу после Site Switcher, поэтому новую строку Visual Editor логично ставить рядом с компонентами канваса/тулбара (после 4541 Page Switcher или 4543 Account Menu). Кроме строки нужен свой подраздел §7 по образцу 4263. (3) В словаре (glossary.md) нет слов Edit / Save / Discard / Undo: grep нашёл только «keep editing» в строке 41. Глаголы: Add = купить, Connect = подключить своё, Publish = впервые, Publish changes = переопубликовать; Update убран 14.09. Отгруженная панель Visual Editor у DreamHost говорит `Save · Undo · Redo · Exit` (verified, 13.09.2026, через суммаризатор). (4) Кредиты (product-facts.md:45, verified 13.09.2026): тратит только AI — генерация, промпты в чате, генерация картинки. Ручные правки, хостинг и публикация бесплатны. Поэтому замена фото загрузкой бесплатна, а AI-генерация фото платная. При нулевом балансе ручное редактирование продолжает работать (likely). Visual Editor доступен на всех планах, включая Legacy и Trial (likely). Фактов о лимитах загрузки, размере картинок и хранилище в базе нет вообще. В Figma лежат 15 фреймов «Image Library» (модуль картинок не построен). (5) Сессии: один файл `YYYY-MM-DD--slug.md`, запись создаётся в начале и ведётся по ходу. В index.md новая строка идёт наверх таблицы `| Дата | Ветка | Тема | Итог | Запись |` плюс цепочка «Обновлено / До этого» в шапке. Шапка индекса не обновлялась после раунда 55: раунды 56-58 от 29.09 в ней не отражены. (6) Жёсткие правила CLAUDE.md собраны ниже с номерами строк. Главное для редактора: только transform/opacity; стекло по macOS; моушен только из motion.ts; обводки inset-тенями; мёртвый контрол хуже отсутствующего; кнопки 32/40/48; синий = действие, спектр/фиолетовый = только AI; reduced-motion в двух движках плюс варианты *Fade; onUpdate-заглушки; литеральные имена классов; ScrollArea; бамп ключа хранилища; SITE_AXES + startBuild; проверка на опубликованном файле через innerText; перед публикацией читать живой артефакт. (7) В decisions.md уже есть готовая модель правки текста на месте из плана (09.09 и 21.09): правки — слой поверх скомпилированного контента, не копия; React не владеет текстом contentEditable; `plaintext-only`; Enter фиксирует, Escape возвращает как было; одна поверхность-документ вместо кольца-поля на каждой строке (дизайнер отклонил вариант «выделяется только строка»). Прецеденты по кредитам: бесплатное действие не должно идти через sendMessage, потому что он списывает 10 кредитов и зажигает свечение, а проверка «баланс не изменился» читает мир. Решений по undo/истории нет ни одного. Кнопка «Version history» в шапке чата и кнопка «Visual Editor» в тулбаре канваса сегодня инертны. Visual Editor — Glass-пилюля h-9 = 36 px без button и без onClick, то есть мёртвый контрол нелегального размера.",
+ "findings": [
+  {
+   "topic": "Шаблон фича-README",
+   "fact": "Шаблон дословно: \"# <Фича>\\n\\n> Назначение · Обновлено: дд.мм.гггг\\n> Figma: узлы <id> (снято дд.мм.гггг), файл <ссылка>\\n> Код: prototype/src/…\\n\\n## 1. Что это и зачем        — одна-две абзаца, для человека, который видит фичу впервые\\n## 2. Анатомия / геометрия   — размеры, токены, из какого узла Figma взято\\n## 3. Состояния              — полный список, включая пустое и ошибочное\\n## 4. Решения                — короткие строки + ссылка на knowledge/decisions.md\\n## 5. Где код                — файл : что в нём лежит\\n## 6. Открытые вопросы       — что не нарисовано, что спрошено у дизайнера и не отвечено\\n## 7. Ссылки                 — спека / QA / хендофф / ресёрч\"",
+   "source": "/home/user/Remixer/docs/features/README.md:32-48",
+   "status": "code-fact",
+   "date": "2026-09-24 (file updated)"
+  },
+  {
+   "topic": "Правила фича-баз",
+   "fact": "1) «Номер узла Figma и дата снятия — в первой строке». 2) «Состояния перечислять полностью, включая те, которых нет в макете. Отсутствие состояния — самая ценная находка». 3) «Жёсткие ⚠️-уроки живут в CLAUDE.md, здесь — их разъяснение и ссылка на код. Не наоборот». 4) «Решения дублируются одной строкой в knowledge/decisions.md».",
+   "source": "/home/user/Remixer/docs/features/README.md:50-60",
+   "status": "code-fact",
+   "date": "2026-09-24"
+  },
+  {
+   "topic": "Индекс фича-баз",
+   "fact": "Новая фича получает строку в таблице `| Фича | Что внутри | База знаний |`. Строки идут по алфавиту: Analytics, Builder shell, Cloud, Domains, Home page — значит Visual Editor встаёт последним. Рядом поднять строку «Обновлено: 24.09.2026». Раздел «Ещё не имеет своей базы» (строки 20-28) Visual Editor не упоминает.",
+   "source": "/home/user/Remixer/docs/features/README.md:6,12-18,20-28",
+   "status": "code-fact",
+   "date": "2026-09-24"
+  },
+  {
+   "topic": "Как оформляют живые фича-базы на деле",
+   "fact": "cloud/README.md и analytics/README.md вместо блок-цитаты шаблона начинают с жирных полей «**Борд окна:** Figma `…` · **Код:** … · **Заказ:** дата + цитата дизайнера». Разделы нумеруются и растут по раундам работы (у Cloud 12 разделов, например «## 8. Переход сайт ⇄ Cloud … (22.09.2026)»). У Analytics есть отдельные «## 6. Где код», «## 7. Открытые вопросы дизайнеру», «## 8. Ссылки».",
+   "source": "/home/user/Remixer/docs/features/cloud/README.md:1-16; /home/user/Remixer/docs/features/analytics/README.md:14-177 (headings)",
+   "status": "code-fact",
+   "date": "2026-09-24"
+  },
+  {
+   "topic": "Рецепт новой фичи",
+   "fact": "Шесть шагов: 1) создать папку docs/features/<x>/README.md по шаблону; 2) номера узлов Figma и дата снятия в первой строке; 3) разложить по полкам: пиксели и состояния — в фича-README (или figma-spec.md рядом), продуктовые факты — в product-facts.md со статусом и датой, каждое решение дизайнера — в decisions.md; 4) добавить в индекс docs/features/README.md; 5) в CLAUDE.md одну-две строки плюс ⚠️-уроки, спеку туда НЕ переносить; 6) запись сессии и строка в index.md.",
+   "source": "/home/user/Remixer/docs/README.md:98-117",
+   "status": "code-fact",
+   "date": "n/a"
+  },
+  {
+   "topic": "Реестр моушена: формат",
+   "fact": "Вступление: «Всё, что в прототипе ДВИГАЕТСЯ по заказу дизайнера, собрано здесь как компоненты… Новая анимация — новая строка в этой таблице». Шапка таблицы: `| компонент | где живёт в продукте | код | решения и замеры | спека для девелоперов |`.",
+   "source": "/home/user/Remixer/docs/knowledge/design-system.md:4522-4529",
+   "status": "code-fact",
+   "date": "2026-09-08 (section), rows to 29.09"
+  },
+  {
+   "topic": "Реестр моушена: пример строки (Account Menu, дословно)",
+   "fact": "| **Account Menu** — стеклянное меню аккаунта под аватаром рейла: .92 → 1 со спуском 6 px из центра аватара на спринге .68 / .2, содержимое 1.03 → 1 на 100 мс позже, ряды каскадом 30 мс, блик рима; уход 140 мс плоско к .95 | правый рейл (аватар) | `modules/account/AccountMenu.tsx`, `boardIcons.tsx`, `motion.ts` `accountIn` / `accountInBody` / `accountRow`, `ui.accountOpen` | §7 «Меню аккаунта: стекло растёт из аватара»; пробники `prototype/scratchpad/account-menu/` | блок N `check:brief` |",
+   "source": "/home/user/Remixer/docs/knowledge/design-system.md:4543",
+   "status": "code-fact",
+   "date": "2026-09-29"
+  },
+  {
+   "topic": "Реестр моушена: пример строки (Busy Publish, дословно)",
+   "fact": "| **Busy Publish** — нажатие Publish: 2,4 с кнопка синяя и выключена, слева дуга 24 белым (`step-spin`), слово несёт белый проблеск `sh-sweep` без оттенка (56 → 100 → 56 %), мир меняется в конце такта | футер панели Publish (`Publish` / `Publish changes` / `Publish to {домен}`) | `PublishPanel.tsx` (`publishing`, `PUBLISHING_MS`, `commitRef`), `index.css` `.busy-ink` | §5 «Кнопка Publish занята» | `docs/handoff/process-shimmer-spec.md` §«The busy button's word» |",
+   "source": "/home/user/Remixer/docs/knowledge/design-system.md:4546",
+   "status": "code-fact",
+   "date": "2026-09-16"
+  },
+  {
+   "topic": "Реестр моушена: пример строки (Tooltip, дословно)",
+   "fact": "| **Tooltip** — стеклянный пузырь с хвостом, растущий из кончика хвоста (`scale .84 → 1`, ζ ≈ .62: пик 1.014, посадка ~230 мс), слова на такт позже, рим ловит свет 1,1 с мягко (белый .22, пик на 45 %; было .55 / .9 с — «слишком агрессивный и белый» 16.09); показ через 350 мс ховера, уход 120 мс без отскока | слово-статус домена в ряду `Unlink` панели Publish (первый хозяин; любой объект, у которого на экране одно слово или иконка) | `ui/Tooltip.tsx`, `ui/motion.ts` (`TOOLTIP_SPRING`, `tooltipIn`, `tooltipText`), «THE TOOLTIP» в `index.css`, тексты — `modules/domains/status.ts` `HINT` | §5 «Тултип: стеклянный пузырь с хвостом» | `docs/handoff/tooltip-spec.md` |",
+   "source": "/home/user/Remixer/docs/knowledge/design-system.md:4547",
+   "status": "code-fact",
+   "date": "2026-09-16"
+  },
+  {
+   "topic": "Реестр моушена: куда ставить новую строку",
+   "fact": "Именованные компоненты стоят в строках 4530-4547 (Drawn Ring … Tooltip), за ними старые общие строки 4548-4556 (Пузырь дока, Смена шага, Переход, Remixer glow, Флеш, …, Оверлеи). Самая новая строка (Account Menu, 29.09) вставлена в 4543 после Site Switcher (4542) и перед Attach Menu (4544), то есть рядом с родственными компонентами шелла, а не в конец. Для Visual Editor: после Page Switcher (4541, тоже тулбар канваса и тот же превью) или после Account Menu (4543). Каждая строка ссылается на подраздел §7 вида «### <описание> — <Name> (заказ дизайнера, дд.мм.гггг)», который стоит выше реестра (образец — 4263-4274 Account Menu).",
+   "source": "/home/user/Remixer/docs/knowledge/design-system.md:4530-4556, 4263-4274",
+   "status": "code-fact",
+   "date": "2026-09-29"
+  },
+  {
+   "topic": "Четыре правила моушена §7",
+   "fact": "«1. Пружины, не длительности… 2. Растёт из того, что нажали: transform-origin в угол триггера… 3. Контент отстаёт от контейнера на ~60 мс… 4. Уход быстрее прихода и без отскока: EXIT — 0.14 с». «Никогда `transition: all`. Анимируются только `transform` и `opacity`». «Reduced-motion гасится в ДВУХ движках: CSS-блок в index.css и <MotionConfig reducedMotion=\"user\"> в main.tsx». В коде: `export const EXIT = { duration: 0.14, ease: [0.4, 0, 1, 1] }`.",
+   "source": "/home/user/Remixer/docs/knowledge/design-system.md:3607-3632; /home/user/Remixer/prototype/src/ui/motion.ts:32",
+   "status": "code-fact",
+   "date": "n/a"
+  },
+  {
+   "topic": "Словарь: глаголы",
+   "fact": "| **Add** | купить новый домен |; | **Connect** | подключить домен, который уже твой |; | **Publish** | опубликовать впервые |; | **Publish changes** | переопубликовать уже живой сайт | … `Update` из продукта убран (14.09.2026). «Один глагол = одно действие». Открытый спор Add против Buy (макет рисует Buy) — строки 23-26.",
+   "source": "/home/user/Remixer/docs/knowledge/glossary.md:11-26",
+   "status": "code-fact",
+   "date": "2026-09-14"
+  },
+  {
+   "topic": "Словарь: де-жаргон",
+   "fact": "В основных путях нет слов `DNS` · `nameserver` · `A record` · `CNAME` · `301` · `SSL certificate provisioning` · `publish to production` · `propagation`. «Технические слова допустимы только на „продвинутом“ экране». Аудитория — «housewife test». Для редактора то же самое: никаких «element», «DOM», «component», «class».",
+   "source": "/home/user/Remixer/docs/knowledge/glossary.md:28-45",
+   "status": "code-fact",
+   "date": "2026-08-25"
+  },
+  {
+   "topic": "Словарь: слов редактирования нет",
+   "fact": "В glossary.md нет Edit / Save / Discard / Undo / Redo / Revert: grep по edit|save|discard|undo|revert|откат|отмен нашёл только «keep editing» в строке 41 (копирайт подключения домена). Глоссарий обновлялся последний раз 25.08.2026, строка Publish changes — 14.09. Слова редактора придётся заводить в словарь.",
+   "source": "/home/user/Remixer/docs/knowledge/glossary.md (grep), :6",
+   "status": "code-fact",
+   "date": "2026-09-30 (grep)"
+  },
+  {
+   "topic": "Отгруженный словарь Visual Editor DreamHost",
+   "fact": "Таблица «Настоящий словарь DreamHost — дословно»: | `Save` · `Undo` · `Redo` · `Exit` | верхняя панель Visual Editor | verified |. Там же `Add Credits +` (likely). Документ предупреждает: «через суммаризатор поиска, страницы DreamHost не открывались» и «Ни одна строка не перепроверена человеком». Источник KB: «Remixer Visual Editor overview» https://help.dreamhost.com/hc/en-us/articles/50653967848468-Remixer-Visual-Editor-overview (строка 166).",
+   "source": "/home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:608-625, 166, 1-8",
+   "status": "verified",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Кредиты: ручные правки бесплатны",
+   "fact": "«Кредиты тратит только работа AI: начальная генерация, промпты в чате, генерация картинки. Публикация, хостинг и ручные правки кредитов не тратят (\"Manual edits, hosting, and publishing never use credits\")». Источник: KB «Understanding Remixer credits» https://help.dreamhost.com/hc/en-us/articles/44981865908884-Understanding-Remixer-credits, подтверждено дизайнером. Следствие: генерация картинки ПЛАТНАЯ, значит в сценарии замены фото загрузка бесплатна, а «сгенерировать AI-картинку» стоит кредиты.",
+   "source": "/home/user/Remixer/docs/knowledge/product-facts.md:45, 562-607; /home/user/Remixer/docs/knowledge/decisions.md:504",
+   "status": "verified",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Кредиты: действия прототипа",
+   "fact": "«В прототипе публикация НЕ списывает кредиты; списывает только сообщение в чате (−10, prototype/src/modules/chat/send.ts)». CLAUDE.md: отправка в чат = «пузырь → chat: 'working' → glow на превью → через 2.6 с захардкоженный ответ → −10 кредитов → +1 к unpublished».",
+   "source": "/home/user/Remixer/docs/knowledge/product-facts.md:47; /home/user/Remixer/CLAUDE.md:585-591",
+   "status": "code-fact",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Нулевой баланс: ручное редактирование продолжает работать",
+   "fact": "«при нулевом балансе \"AI features pause until you add additional Remixer Credits… or your credits reset\" — чат выключен, ручное редактирование и публикация продолжают работать». Это состояние в прототипе не собрано («которого у нас нет вовсе»).",
+   "source": "/home/user/Remixer/docs/knowledge/product-facts.md:958-960 (п. 25)",
+   "status": "likely",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Visual Editor на всех планах",
+   "fact": "«Visual Editor доступен \"on all Remixer plans, including Legacy, Trial, and paid plans\"». Источники `46355723313812`, `50653967848468`. Класс Legacy помечен как likely, и world.ts о нём не знает.",
+   "source": "/home/user/Remixer/docs/knowledge/product-facts.md:940-953; /home/user/Remixer/docs/research/dreamhost-domain-connect-research.md:312",
+   "status": "likely",
+   "date": "2026-09-13"
+  },
+  {
+   "topic": "Загрузки / картинки / хранилище",
+   "fact": "В product-facts.md нет ни одного факта о лимитах загрузки, размере или формате картинок, квоте хранилища (grep upload|image|storage|photo). Есть другое: в hi-fi Figma лежат «15 фреймов „Website Builder / Image Library“… они принадлежат модулю картинок и, возможно, живые»; «Сама Image Library (пятая кнопка рейла) у нас не построена». У окна Cloud есть комната Storage — не нарисована и пустая.",
+   "source": "/home/user/Remixer/docs/knowledge/product-facts.md (grep); /home/user/Remixer/docs/features/domains/figma-boards.md:286-288; /home/user/Remixer/docs/features/cloud/README.md:158,334-336",
+   "status": "unconfirmed",
+   "date": "2026-09-30 (grep)"
+  },
+  {
+   "topic": "Журнал сессий: имя файла и правила",
+   "fact": "«Одна сессия = один файл… Имя: YYYY-MM-DD--slug.md (дата начала сессии + короткий английский slug через двойной дефис)». Суффикс b для второй сессии в тот же день уже использовался (2026-09-09b, 2026-09-13b). «Запись создаётся В НАЧАЛЕ работы и дописывается по ходу». «index.md обновляется вместе с записью — строкой в самом верху таблицы». «Ничего не переписываем задним числом… „поправка от …“».",
+   "source": "/home/user/Remixer/docs/sessions/README.md:12-21",
+   "status": "code-fact",
+   "date": "2026-08-25"
+  },
+  {
+   "topic": "Журнал сессий: поля и шаблон",
+   "fact": "Обязательные поля: Дата · Ветка · Статус (в работе / завершена / реконструкция) · Роль/состав · Цель · Что сделано · Что решено (принятые И отклонённые, дублируются в decisions.md) · Что осталось · Коммиты · Ссылки. Шаблон: \"# YYYY-MM-DD — <тема>\\n\\n> **Ветка:** claude/… · **Статус:** в работе | завершена | реконструкция\\n> **Состав:** …\\n\\n## Цель\\n## Что сделано\\n## Что решено\\n## Что осталось\\n## Коммиты\\n## Ссылки\"",
+   "source": "/home/user/Remixer/docs/sessions/README.md:23-52",
+   "status": "code-fact",
+   "date": "2026-08-25"
+  },
+  {
+   "topic": "Индекс сессий: формат строки",
+   "fact": "Таблица `| Дата | Ветка | Тема | Итог | Запись |`, новые сверху. Пример: «| 23.09.2026 (передача) | `claude/remixer-connect-domain-flow-4fpgqc` | **Передача в новое окно:** … | завершена · [`2026-09-23--handoff-to-next-window.md`](…) | [запись](…) |». В шапке цепочка «> **Обновлено:** дд.мм.гггг (…— раунд N журнала 13.09b)» и ниже «> **До этого:** …».",
+   "source": "/home/user/Remixer/docs/sessions/index.md:3-16",
+   "status": "code-fact",
+   "date": "2026-09-25"
+  },
+  {
+   "topic": "Индекс сессий отстаёт",
+   "fact": "Последнее «Обновлено» в шапке индекса — 25.09.2026, раунд 55. Раунды 56-58 от 29.09.2026 (полка сайтов, меню аккаунта, v118/v119) в индексе не отражены. Верхняя строка таблицы — передача от 23.09. Всё после неё записано раундами в журнал 2026-09-13b.",
+   "source": "/home/user/Remixer/docs/sessions/index.md:6-16; /home/user/Remixer/docs/sessions/2026-09-13b--connect-domain-for-product-owners.md:3548,3604,3626",
+   "status": "code-fact",
+   "date": "2026-09-29"
+  },
+  {
+   "topic": "CLAUDE.md: перформанс-контракт",
+   "fact": "«Перформанс-контракт: ни одно свойство не инвалидирует paint покадрово — только transform/opacity (наивная версия давала 9 FPS)». Моушен: «Анимируются только transform и opacity». Единственное исключение (repaint текста «Thinking») разрешено только для одного короткого слова.",
+   "source": "/home/user/Remixer/CLAUDE.md:265-267, 324-328",
+   "status": "code-fact",
+   "date": "n/a"
+  },
+  {
+   "topic": "CLAUDE.md: Glow — единственный индикатор загрузки превью",
+   "fact": "«Glow — единственный индикатор загрузки превью. Никакого скелетона, затемнения и перемонтирования сайта… Скелетон был — убран осознанно, не возвращать». Glow — AI-процесс, поэтому ручная правка, скорее всего, не должна его зажигать (вывод, а не правило).",
+   "source": "/home/user/Remixer/CLAUDE.md:303-306; /home/user/Remixer/docs/knowledge/decisions.md:714",
+   "status": "code-fact",
+   "date": "≤2026-08-16"
+  },
+  {
+   "topic": "CLAUDE.md: правила стекла",
+   "fact": "«Стекло — по macOS, не по iOS… заливка rgba(24,24,27,.8), backdrop-blur 16… Рамка — косой градиент… 20% → 7% → 16% по диагонали 150°… Рамка рисуется маской по border-box (::before), не border». «С iOS 26 берём ТОЛЬКО анимации, не материал. Стекло — там, где оно есть в Figma». Блик .glass-sheen на непрозрачной панели откатан.",
+   "source": "/home/user/Remixer/CLAUDE.md:309-323",
+   "status": "code-fact",
+   "date": "2026-08-17"
+  },
+  {
+   "topic": "CLAUDE.md: только motion.ts",
+   "fact": "«Моушен — src/ui/motion.ts, один язык на все оверлеи… пружины вместо длительностей; попап растёт из угла своего триггера (transform-origin); контент приезжает на 60 мс позже контейнера; уход быстрее прихода и без отскока… Новые меню/дропдауны брать отсюда, а не писать свои duration/ease».",
+   "source": "/home/user/Remixer/CLAUDE.md:324-328",
+   "status": "code-fact",
+   "date": "n/a"
+  },
+  {
+   "topic": "CLAUDE.md: обводки inset-тенями",
+   "fact": "«ОБВОДКИ — INSET-ТЕНИ, А НЕ border. Штрих в Figma лежит ВНУТРИ геометрии, а CSS border — снаружи content-box: с ним шит 600 отдавал телу 598». Повторено: «Рамки панели, карточки, баннера и поля — inset box-shadow, не border» (2846); «ВСЕ ОБОДА — INSET-ТЕНИ… пятый раз в проекте» (3318); «Рамку рисовать inset box-shadow, как у стекла шелла» (829-830).",
+   "source": "/home/user/Remixer/CLAUDE.md:742-747, 829-830, 2846-2850, 3318-3321",
+   "status": "code-fact",
+   "date": "2026-08-16..2026-09-24"
+  },
+  {
+   "topic": "CLAUDE.md: мёртвый контрол хуже отсутствующего",
+   "fact": "«ТУЛБАРА КАНВАСА НЕТ, ПОКА НЕТ САЙТА… Visual Editor, перезагрузка, переключатель девайса, адрес и Publish действуют НА сайт… Контрол, которому нечего делать, лучше отсутствует, чем мёртв». То же правило повторено для кнопок рейла (2202) и пилюли Autopilot (2895-2896). decisions: «кнопка, которая загорается и ничего не показывает, — ложь» (170); «полоса, которую нельзя нажать, — мёртвый контрол» (124).",
+   "source": "/home/user/Remixer/CLAUDE.md:1892-1898, 2202, 2895-2896; /home/user/Remixer/docs/knowledge/decisions.md:124,170",
+   "status": "code-fact",
+   "date": "2026-09-11"
+  },
+  {
+   "topic": "Кнопка Visual Editor сегодня мёртвая и нелегального размера",
+   "fact": "В App.tsx кнопка Visual Editor — `<Glass className=\"h-9 justify-center pr-5\">` с двумя `<span>` (иконка + «Visual Editor»). Это не `<button>`, и onClick у неё нет: инертна. Высота h-9 = 36 px. Показывается только при `world.project === 'built'` (1069). Кнопка «Version history» в шапке чата (1017-1022) — `<button>` тоже без onClick.",
+   "source": "/home/user/Remixer/prototype/src/App.tsx:1069-1085, 1017-1022",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "CLAUDE.md: три размера кнопок",
+   "fact": "«У кнопок в дизайн-системе ровно три размера: 32 (Small) · 40 (Medium) · 48 (Large)… 36 — нелегальный размер». Но: «правило противоречит бордам ещё в девяти местах… Publish в топбаре шелла… на 36… молча не поднимать, спрошено, ответа пока нет».",
+   "source": "/home/user/Remixer/CLAUDE.md:836-845",
+   "status": "code-fact",
+   "date": "2026-08-26"
+  },
+  {
+   "topic": "CLAUDE.md / design-system: синий = действие, спектр = AI",
+   "fact": "«Verified бренд-правило: синий #1587FF = действие, индиго/фиолетовый = бренд/план/AI, зелёный = live, янтарный = connecting». design-system: «Смысл: синий = действие. Ничего декоративного синим не красим»; «Спектр… принадлежит AI-моментам… Утилитарные инструменты (например резайзер) — однотонно-синие; иридесцентная версия резайзера была отклонена». Visual Editor — ручной инструмент, поэтому выделение, скорее всего, синее, а не спектр.",
+   "source": "/home/user/Remixer/CLAUDE.md:3766-3768, 341-346; /home/user/Remixer/docs/knowledge/design-system.md:48-62",
+   "status": "code-fact",
+   "date": "2026-08-17"
+  },
+  {
+   "topic": "CLAUDE.md: reduced-motion",
+   "fact": "«В reduced-motion блоке писать `transition: none`, а НЕ `transition-duration: .01ms`» (359). «Reduced-motion должен гасить ОБА движка… <MotionConfig reducedMotion=\"user\"> (main.tsx)» (405-409). «…но MotionConfig reducedMotion=\"user\" НЕ отменяет смещение — он ПРЫГАЕТ в него… Вариант, у которого цель на выходе — смещение, обязан под reduce выбрасывать САМО смещение: в motion.ts для этого лежит listSwapFade, выбирается через useReducedMotion()» (410-417). В motion.ts есть пары *Fade: listSwapFade:554, cardInFade:154, panelInFade:1008, pageSwapFade:1236, accountInFade:1282.",
+   "source": "/home/user/Remixer/CLAUDE.md:359-365, 405-418; /home/user/Remixer/prototype/src/ui/motion.ts",
+   "status": "code-fact",
+   "date": "2026-08-26"
+  },
+  {
+   "topic": "CLAUDE.md: onUpdate-заглушки против кадров-морганий",
+   "fact": "«Спаны глагола держатся на главном потоке — onUpdate с пустым колбэком. Композитный (WAAPI) фейд отдаёт элемент с ДОанимационной инлайновой opacity на такт между finish и следующим рендером… onUpdate — единственный проп, которым motion 11 держит элемент вне WAAPI» (2741-2746). «Все фейды меню и чипа — на главном потоке (onUpdate-заглушка)… проверка „ни одного кадра-моргания“ стоит в check:brief» (1036-1041). Заглушка объявляется локально в файле: `const keepOnMainThread = () => {}` (PublishPanel.tsx:439), из motion.ts она не экспортируется.",
+   "source": "/home/user/Remixer/CLAUDE.md:1036-1041, 2741-2746, 2773-2777; /home/user/Remixer/prototype/src/modules/publish/PublishPanel.tsx:439",
+   "status": "code-fact",
+   "date": "2026-09-16..23"
+  },
+  {
+   "topic": "CLAUDE.md: литеральные имена классов Tailwind",
+   "fact": "«Урок: Tailwind вычищает классы, собранные динамически (`siri-layer--${k}`) — имена классов в tsx всегда писать полными литералами». Повторено для ScrollArea: «Имена классов — полными литералами (Tailwind чистит @layer)».",
+   "source": "/home/user/Remixer/CLAUDE.md:270-271, 3135",
+   "status": "code-fact",
+   "date": "n/a"
+  },
+  {
+   "topic": "CLAUDE.md: только ScrollArea",
+   "fact": "«src/ui/ScrollArea.tsx — все скроллящиеся поверхности только через этот компонент. Нативные скроллбары выключены глобально… Тон: light (тёмный шелл), dark (светлые панели), auto — …для контента сайта, фон которого мы не знаем)».",
+   "source": "/home/user/Remixer/CLAUDE.md:3127-3135",
+   "status": "code-fact",
+   "date": "≤2026-08-16"
+  },
+  {
+   "topic": "CLAUDE.md: бамп ключа хранилища",
+   "fact": "«Смена дефолта мира = бамп ключа хранилища… Мир читается поверх DEFAULT_WORLD; в снимке каждого браузера… лежал unfold, и лист туда не доехал бы никогда… Ключ читают сюита (7 мест) и trace.mjs» (3566-3568). Сейчас «Ключ хранилища v6» (3657), в коде `const STORAGE_KEY = 'remixer-prototype/world/v6'` (world.ts:944). Причины бампа в комментарии: сменилась ФОРМА хранимых данных (v3), сменился смысл индекса (v4), сменился дефолт (v5), выросли новые оси + сменился дефолт (v6). Ключ захардкожен в 9 местах scripts/check-brief-flow.mjs (1397, 3060, 4113, 4116, 5247, 5251, 5529, 5578, 5786) и в пробниках scratchpad.",
+   "source": "/home/user/Remixer/CLAUDE.md:3566-3568, 3657; /home/user/Remixer/prototype/src/state/world.ts:929-944",
+   "status": "code-fact",
+   "date": "2026-09-25"
+  },
+  {
+   "topic": "CLAUDE.md: правило SITE_AXES + startBuild",
+   "fact": "«МИР: world.site — какой сайт открыт, SITE_AXES — что принадлежит сайту (project, unpublished, published, mode, domain, customDomain, icann, chat, sent, brief, build, suggest, planEdits)… Новая ось сайта обязана попасть в SITE_AXES И в список startBuild, иначе переедет из сайта в сайт» (3651-3655). «Список осей в startBuild — это определение того, что значит „новый сайт“: каждая новая ось обязана там появиться или сознательно не появиться» (2008-2009). В коде: SITE_AXES — world.ts:559-562; SITE_BASE / SITE_SLICES (579-606) типизированы как SiteSlice, поэтому новая ось обязана появиться и в SITE_BASE; startBuild — send.ts:753.",
+   "source": "/home/user/Remixer/CLAUDE.md:2000-2010, 3651-3657; /home/user/Remixer/prototype/src/state/world.ts:555-606; /home/user/Remixer/prototype/src/modules/chat/send.ts:753",
+   "status": "code-fact",
+   "date": "2026-09-25"
+  },
+  {
+   "topic": "Утечка оси через старый стеллаж (вывод)",
+   "fact": "При смене сайта `restored = stash[patch.site] ?? SITE_SLICES[patch.site]`, затем `patch = { ...(restored ?? {}), ...patch, stash }`. Если в v6-снимке у среза стеллажа нет новой оси, текущее значение остаётся на месте и правки уходящего сайта оказываются во входящем. Это аргумент за бамп до v7 при добавлении оси правок сайта.",
+   "source": "/home/user/Remixer/prototype/src/state/world.ts:1034-1039",
+   "status": "code-fact",
+   "date": "2026-09-30"
+  },
+  {
+   "topic": "CLAUDE.md: ось published против unpublished и Publish changes",
+   "fact": "«ОСЬ world.published — „сайт когда-либо публиковался“, и это НЕ unpublished > 0»; «„Publish changes“ и счётчик правок появляются только у опубликованного сайта»; «СИНЯЯ ТОЛЬКО ПОКА ЕСТЬ ЧТО ПУБЛИКОВАТЬ… Предикат canPublish(world) экспортируется из PublishPanel и читается ОБЕИМИ кнопками»; «Update из продукта УБРАН… Назад не чинить».",
+   "source": "/home/user/Remixer/CLAUDE.md:2827-2845",
+   "status": "code-fact",
+   "date": "2026-09-14"
+  },
+  {
+   "topic": "CLAUDE.md: счётчик кредитов пропадает без тулбара",
+   "fact": "«Цена этого: счётчик кредитов исчезает с экрана на время брифа, а он единственный показывал, что вопросы бесплатны. Проверка „вопросы и план не стоят ничего“ читает теперь МИР, а не пиксель». Это прецедент для проверки «правка бесплатна» по world.credits.",
+   "source": "/home/user/Remixer/CLAUDE.md:1899-1901",
+   "status": "code-fact",
+   "date": "2026-09-11"
+  },
+  {
+   "topic": "CLAUDE.md: check:brief и проверка опубликованного файла",
+   "fact": "«В этом контейнере скрипт запускается с CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome» (2247). «Проверять ОПУБЛИКОВАННЫЙ файл, а не только dev-сборку — и не через textContent… Ассерты — по innerText… BASE=http://localhost:PORT/файл.html» (3819-3827). «Статика ОБЯЗАНА отдавать charset=utf-8» (3828-3834). Блоки сюиты идут буквами до N (N · THE ACCOUNT MENU, check-brief-flow.mjs:5793), следующий новый — O.",
+   "source": "/home/user/Remixer/CLAUDE.md:2244-2249, 3819-3834; /home/user/Remixer/prototype/scripts/check-brief-flow.mjs:242,4180,4923,5135,5352,5550,5794",
+   "status": "code-fact",
+   "date": "2026-09-29"
+  },
+  {
+   "topic": "CLAUDE.md: публикация артефакта",
+   "fact": "«Лимит публикации неизвестен; CEILING в скрипте — это ПОЛ, а не потолок… если файл больше — пробовать публикацию, и при успехе поднимать CEILING… Понижать „на всякий случай“ нельзя» (186-193); в коде `const CEILING = 1_150_263` (build-artifact.mjs:212). «Сначала pip install fonttools brotli» (194-199). «Публиковать ТОЛЬКО из ветки, в которой есть вся работа» (3702). «перед публикацией читать то, что сейчас лежит по ссылке — read возвращает и размер, и содержимое» (3717-3719). «Пока дизайнер рядом и смотрит — перевыкладывать артефакт после КАЖДОГО принятого куска» (3835-3838).",
+   "source": "/home/user/Remixer/CLAUDE.md:183-199, 3700-3721, 3835-3838; /home/user/Remixer/prototype/scripts/build-artifact.mjs:212",
+   "status": "code-fact",
+   "date": "2026-09-29"
+  },
+  {
+   "topic": "decisions: правка текста на месте — модель из плана",
+   "fact": "09.09.2026: «Build Plan редактируется по месту, как документ (world.planEdits)» (556); «Правки — слой поверх скомпилированного плана, а не копия — Копия протухнет…» (557); «React не владеет текстом редактируемой строки — узел рендерится пустым, текст пишется императивно и только вне фокуса» (558); «Клавиши документа: Enter фиксирует…, Escape возвращает как было, Backspace в пустом пункте убирает его — правка, из которой нельзя выйти, это ловушка» (559). design-system: «plaintext-only, а не true: вставка из браузера иначе принесла бы в документ свою разметку»; «Аффорданс — документный: в покое ничего…, под курсором тихая поверхность, в фокусе настоящее кольцо. Поверхность вынесена наружу ровно на свой паддинг, поэтому строка не сдвигается ни на пиксель» (2422-2456).",
+   "source": "/home/user/Remixer/docs/knowledge/decisions.md:556-560; /home/user/Remixer/docs/knowledge/design-system.md:2422-2456",
+   "status": "code-fact",
+   "date": "2026-09-09"
+  },
+  {
+   "topic": "decisions: кольцо-поле на каждой строке ОТКЛОНЕНО",
+   "fact": "Дизайнер 21.09: «зачем ты даёшь редактировать текст так? выделяется только строка, почему не сделать так как в редактировании обычных документов, как в гугл док?». Принято: «План правится КАК ДОКУМЕНТ: один contentEditable на всю прозу… каждая строка зажигала синее кольцо, то есть идиому ПОЛЯ. У документа одна каретка, одно выделение и никаких коробок» (219); «правки уходят в стор на blur хоста» (220). В полном варианте Review строки остались полями — это «открыто» (221).",
+   "source": "/home/user/Remixer/docs/knowledge/decisions.md:205-221",
+   "status": "code-fact",
+   "date": "2026-09-21"
+  },
+  {
+   "topic": "decisions: бесплатное действие не идёт через sendMessage",
+   "fact": "«ОЦЕНКА БЕСПЛАТНА — ответ не идёт через sendMessage | Тот путь списывает 10 кредитов и зажигает свечение… Отдельная проверка на неизменившийся баланс». Для Visual Editor это значит: правка обязана обходить sendMessage.",
+   "source": "/home/user/Remixer/docs/knowledge/decisions.md:599",
+   "status": "code-fact",
+   "date": "2026-09-09"
+  },
+  {
+   "topic": "decisions: Autopilot срабатывает на ПРАВКУ САЙТА",
+   "fact": "«Приходит после каждой ПРАВКИ САЙТА, не после каждого ответа — Выбор дизайнера из трёх предложенных триггеров». Решения о том, считается ли ручная правка через Visual Editor «правкой сайта» для окна Autopilot, нет. Там же: «Принятое предложение постится как СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ… Тред — запись о принятых решениях» (622), но «Пропуск МОЛЧАЛИВ — ни строки в треде» (601). Два прецедента, если решать, оставляет ли ручная правка ход в треде.",
+   "source": "/home/user/Remixer/docs/knowledge/decisions.md:613, 601, 622",
+   "status": "code-fact",
+   "date": "2026-09-09"
+  },
+  {
+   "topic": "decisions: undo / история",
+   "fact": "В decisions.md нет ни одного решения про undo, redo или историю версий (grep undo|redo|отмен|history|истори|version|restore|откат: только несвязанные строки). В CLAUDE.md:2192-2196 — только размещение «Истории версий» в пилюле шапки чата (дизайнер 07.09). В design-system.md 2456 «Escape возвращает как было» — единственная записанная семантика «отменить» (для плана).",
+   "source": "/home/user/Remixer/docs/knowledge/decisions.md (grep); /home/user/Remixer/CLAUDE.md:2192-2196",
+   "status": "code-fact",
+   "date": "2026-09-30 (grep)"
+  },
+  {
+   "topic": "decisions: отклонённое, что план Visual Editor может случайно предложить снова",
+   "fact": "Скелетон или затемнение превью при загрузке — «отклонено, не возвращать» (714). Иридесцентное (спектр Siri) свечение утилитарного инструмента — отклонено: «выглядит стремно, верни как было» (694). Бегущий блик .glass-sheen на непрозрачной панели — откатан (695). Стекло на сплошной панели Publish — заменено на сплошную (709). Полноэкранный лист вместо роста окна — отклонён (237). Кольцо-поле на каждой строке вместо документа — заменено (219). Блюр на словах при печати — запрещён (CLAUDE.md, per-frame paint). «Направленное заполнение» / «мягче старт» — не сделаны как спорные (148).",
+   "source": "/home/user/Remixer/docs/knowledge/decisions.md:148,219,237,694,695,709,714; /home/user/Remixer/CLAUDE.md:303-306, 341-346",
+   "status": "code-fact",
+   "date": "2026-08-17..2026-09-23"
+  },
+  {
+   "topic": "decisions: тулбар канваса уходит при открытой полке",
+   "fact": "29.09.2026: «Тулбар канваса уходит, пока открыта полка (вверх 10 px + растворение 220 мс; возврат 360 мс с тактом 140)» и «Тулбар канваса и ряд заголовка полки меняются по очереди — никогда в одном кадре». Режим Visual Editor, живущий в тулбаре, должен определиться с поведением при открытии полки сайтов.",
+   "source": "/home/user/Remixer/docs/knowledge/decisions.md:109-110; /home/user/Remixer/prototype/src/App.tsx:1070-1076",
+   "status": "code-fact",
+   "date": "2026-09-29"
+  },
+  {
+   "topic": "Аудит: правки, которые затирает следующий промпт",
+   "fact": "«Fine-grained visual edits get silently overwritten by later prompts (Superblocks)» (258). Открытый вопрос аудита §10.2 п. 5: «Where does the Visual Editor write, and can a later chat turn silently overwrite manual visual edits? …the free-edit lane and the lock mechanism must ship together or the free lane makes the problem worse» (788). Tier-1 п. 2: в поповере кредитов панель «Always free» с пунктом «Visual Editor edits» (545).",
+   "source": "/home/user/Remixer/docs/audits/synthesis.md:258, 545, 788",
+   "status": "unconfirmed",
+   "date": "2026-08-13"
+  },
+  {
+   "topic": "CLAUDE.md: состояние — один источник",
+   "fact": "«src/state/world.ts — единственный источник правды… Новое измерение состояния сначала добавляется сюда». decisions: «Единый источник правды — world.ts; новое измерение состояния добавляется сначала туда».",
+   "source": "/home/user/Remixer/CLAUDE.md (Архитектура, раздел Прототип); /home/user/Remixer/docs/knowledge/decisions.md:719",
+   "status": "code-fact",
+   "date": "≤2026-08-16"
+  },
+  {
+   "topic": "Приоритет источников",
+   "fact": "«CLAUDE.md правит над любым документом в docs/… Макет Figma правит над docs/ для геометрии и токенов… Код прототипа — не источник правды о продукте… Но он источник правды о том, ЧТО СЕЙЧАС СОБРАНО».",
+   "source": "/home/user/Remixer/docs/README.md:31-40",
+   "status": "code-fact",
+   "date": "n/a"
+  }
+ ],
+ "implications_for_plan": [
+  "Завести docs/features/visual-editor/README.md по шаблону docs/features/README.md:32-48 (7 разделов) с номерами узлов Figma и датой снятия в первой строке. В «Состояния» перечислить и ненарисованные: пустое, ошибка загрузки фото, нулевой баланс (редактор работает), неопубликованный сайт против живого, мобильная рамка, полка сайтов открыта. Добавить строку «Visual Editor» последней в алфавитную таблицу индекса и поднять дату «Обновлено».",
+  "Моушен-компонент(ы) Visual Editor добавить строкой в реестр design-system.md §7 (5 колонок) после Page Switcher (4541) или Account Menu (4543). Выше реестра — свой подраздел §7 «### … — <Name> (заказ дизайнера, дд.мм.2026)». В последней колонке — спека в docs/handoff/ или «блок O check:brief».",
+  "Правка вручную обязана обходить sendMessage: тот путь списывает 10 кредитов и зажигает glow (decisions.md:599). Правка делает +1 к unpublished и не трогает credits. Проверка в check:brief читает world.credits, а не пиксель (CLAUDE.md:1899-1901). Glow на ручную правку не зажигать: glow — AI-процесс и единственный индикатор загрузки превью.",
+  "Оставлять ли ручную правку ходом в треде и будит ли она окно Autopilot («после каждой ПРАВКИ САЙТА»), не решено. Спросить дизайнера, молча не решать.",
+  "На живом сайте кнопка топбара должна стать «Publish changes» со счётчиком, на неопубликованном остаётся синяя «Publish». Через canPublish(world), а не отдельную логику (CLAUDE.md:2827-2845).",
+  "Правку текста строить на уроках плана: слой правок поверх захардкоженного контента SitePreview (по образцу planEdits), а не копия. Ключ — путь страницы (ui.previewPath) + id элемента. React не владеет текстом contentEditable. `plaintext-only`. Enter фиксирует, Escape возвращает как было. Коммит в стор на blur. Кольцо-поле на каждой строке дизайнер уже отклонял в плане — для выделения элемента на сайте показать ему варианты, а не навязывать.",
+  "Выделение (ховер и выбор) — однотонно-синее #1587FF, ручной инструмент. Не спектр и не фиолетовый: они принадлежат AI. Обводки и кольца — inset-тенями или оверлеем, не border, чтобы не сдвигать вёрстку сайта. Анимировать только transform/opacity: никакого анимированного outline или box-shadow покадрово.",
+  "Кнопка Visual Editor сейчас — мёртвая Glass-пилюля 36 px без button и onClick (App.tsx:1080-1085). В новом плане она становится настоящим переключателем режима. Размер 36 или 40 — открытый вопрос правила 32/40/48 (CLAUDE.md:836-845), спросить.",
+  "Новая ось состояния (например siteEdits или editMode) — сначала в world.ts. Ось правок принадлежит сайту, поэтому идёт в SITE_AXES, SITE_BASE (TypeScript заставит) и патч startBuild. Режим редактирования, скорее всего, ось ui, а не сайта: решить явно. Из-за стеллажа v6 без новой оси (world.ts:1034-1039) поднять ключ до v7 и обновить 9 хардкодов 'world/v6' в check-brief-flow.mjs и пробниках.",
+  "Undo: в базе знаний нет ни одного решения. Отгруженный Visual Editor DreamHost говорит `Save · Undo · Redo · Exit` (verified через суммаризатор, 13.09.2026). Предложить дизайнеру словарь: Undo/Redo (и Save/Exit или Done?) и завести эти слова в glossary.md. Не путать с «Version history» (инертная кнопка в шапке чата).",
+  "Замена фото: загрузка своего файла бесплатна, а AI-генерация картинки стоит кредиты (product-facts.md:45). Если в поток замены фото войдёт AI-генерация, у неё должна быть цена. Лимитов загрузки и форматов в базе нет — не выдумывать, пометить unconfirmed. Проверить в Figma 15 фреймов «Image Library» до того, как рисовать свой пикер.",
+  "Моушен только из motion.ts. Уход — EXIT 140 мс плоско. Для каждого варианта со смещением — пара *Fade под useReducedMotion. onUpdate={keepOnMainThread} на фейдах, иначе будут кадры-моргания. Имена классов — полными литералами. Любая скроллящаяся панель (например, инспектор) — через ScrollArea.",
+  "Проверки — новым блоком «O · THE VISUAL EDITOR» в check-brief-flow.mjs на production-сборке (vite preview). Ассерты по innerText, не textContent. Перед публикацией прочитать живой артефакт (v119, 1 149 149 байт), публиковать из этой ветки, после успеха поднять CEILING, если файл больше 1 150 263.",
+  "Запись сессии — новый файл docs/sessions/2026-09-30--<slug>.md (например 2026-09-30--visual-editor.md), созданный В НАЧАЛЕ работы, плюс строка наверху index.md. Заодно закрыть отставание индекса: раунды 56-58 от 29.09 в него не попали."
+ ],
+ "open_questions_for_designer": [
+  "Оставляет ли ручная правка через Visual Editor строку в треде чата (как принятое предложение Autopilot) или она молчит (как пропуск оценки)?",
+  "Считается ли ручная правка «правкой сайта», после которой приходит окно-предложение Autopilot?",
+  "Какие слова в тулбаре режима: отгруженные DreamHost `Save · Undo · Redo · Exit` или наши (например Done / Undo)? Нужен ли явный Save, если правка сразу попадает в «Publish changes»?",
+  "Undo — только внутри сеанса редактирования (Cmd+Z / кнопка) или правка откатывается и после выхода из режима? Как это соотносится с кнопкой «Version history» в шапке чата (сейчас инертна)?",
+  "Выделение элемента: синее кольцо или бокс вокруг элемента сайта (идиома Lovable) — или «документная» подсветка без коробок, как он просил для плана («как в гугл док»)?",
+  "Размер кнопки Visual Editor в тулбаре: 36 как остальные пилюли тулбара на борде или 40 по правилу 32/40/48?",
+  "Замена фото: открывает системный пикер файлов, Image Library (в Figma лежат 15 фреймов «Website Builder / Image Library») или даёт ещё и AI-генерацию (платную, кредиты)?",
+  "Что происходит с режимом редактирования при открытии полки сайтов (тулбар уходит), при переключении страниц через Page Switcher и в мобильной рамке 390×844?",
+  "Может ли следующий промпт в чате затереть ручные правки (открытый вопрос аудита §10.2 п. 5), и нужен ли в первой итерации lock или предупреждение?",
+  "Сделать ли панель «Always free» в поповере кредитов с пунктом «Visual Editor edits» (Tier-1 п. 2 аудита), чтобы клиент видел, что правки бесплатны?"
+ ]
+}

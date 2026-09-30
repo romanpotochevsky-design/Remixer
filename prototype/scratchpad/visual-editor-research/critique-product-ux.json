@@ -1,0 +1,169 @@
+{
+ "issues": [
+  {
+   "severity": "major",
+   "issue": "The '+1 per Save' rule makes the counter dishonest. Our own code defines the count as 'how far behind is what people see'. Under the draft, undoing back to the live state and pressing Save gives 'Publish changes 2' while the site matches what is live. One Save of 7 edits reads '1 unpublished change', so a novice thinks 6 edits were lost.",
+   "evidence": "prototype/src/App.tsx:945-953 (the count 'answers \"how far behind is what people see\"'); prototype/src/modules/publish/PublishPanel.tsx:110-120 (changeCount prints 'N unpublished change(s)'), :1155; the draft, §5 and §6 ('Если откатить уже сохранённое… даст ещё +1')",
+   "fix": "At publish time (publishNow / retryPublish, PublishPanel.tsx:1059, 1098), keep a snapshot `publishedEdits`. A Save whose result equals that snapshot must not add to the counter; if it undoes the only pending change, take it off. Where the Save is confirmed, show what changed ('3 texts · 1 photo edited') instead of relying on 'N changes' alone. Ask the designer whether one Save counts as one change."
+  },
+  {
+   "severity": "major",
+   "issue": "Save gives the customer no visible result. By design there is no glow, no chat line and no credit change, and the counter only shows on a published site. In the default world and in the trial-expired preset (both published:false), pressing Save changes nothing on screen: the novice asks 'did it save?' and the CEO never sees the key '+1, 0 credits' moment. The draft also never explains that Save does not mean live. That is the heaviest three-layer model in the category (draft → saved → published), next to GoDaddy's 'updates right away, then Publish' and Base44's autosave.",
+   "evidence": "prototype/src/App.tsx:1199-1201 (badge only when published && unpublished>0); DEFAULT_WORLD published:false (world.ts:607-643); trial-expired preset published:false (scenarios.ts:290-298); GoDaddy (recon_dossiers.json:2658-2659, verified 13.08.2026); Base44 autosave (web research, likely, seen 30.09.2026)",
+   "fix": "Add explicit Save feedback. The button briefly changes to 'Saved', like the Publish settle label ('Published', PublishPanel.tsx settleLabel), and one line appears: 'Saved. Publish to show it on your site.' The body of the Exit dialog says the same. Make the console preset 'manual edits waiting' (published:true) required rather than optional, and give the zero-credit preset published:true as well."
+  },
+  {
+   "severity": "major",
+   "issue": "The leave dialog 'Save your edits? [Save] [Discard]' cannot be built on ConfirmDialog, and wiring it naively is dangerous. The cancel button, Escape and a scrim click all just call close() with no callback, and focus lands on the cancel button by default. If Discard is the cancel button, Enter chooses 'Discard' but does nothing and the navigation hangs. If it is wired to actually discard, the keyboard default destroys the customer's work. There is also no 'Keep editing' for someone who clicked Home by mistake.",
+   "evidence": "prototype/src/ui/ConfirmDialog.tsx:43-55 (ConfirmRequest has only onConfirm), :77-87 (Esc → close, focus → cancel), :99 (scrim → close), :115-121 (cancel → close)",
+   "fix": "Specify three outcomes: Save (primary), Discard (clearly destructive) and Keep editing (the default answer for Esc, a scrim click and initial focus). Extend ConfirmRequest with a third action or onCancel, or build a dedicated dialog. Put it in the feature README as a state."
+  },
+  {
+   "severity": "major",
+   "issue": "Escape reverts what was typed, and the reverted text is gone for good: it never became an undo step, so Redo cannot bring it back. For a novice, Esc means 'I'm done', not 'throw it away'. The precedent the draft imports is our own call for the Build Plan with no board behind it, not the designer's. Rejecting empty text by silently reverting is a second trap of the same kind.",
+   "evidence": "docs/knowledge/decisions.md:559 (status 'принято (наше, борда нет)'); v0 Escape deselects (recon_dossiers.json:3433-3434, verified 13.08.2026); Lovable Esc steps up to the parent (web research, likely, 30.09.2026); no competitor documents Esc as discard",
+   "fix": "Make Esc commit and deselect. If the designer wants revert, push the revert as an undoable step. For an emptied field, show an inline hint instead of silently restoring the text. Put this to the designer as a question rather than inheriting the plan rule."
+  },
+  {
+   "severity": "major",
+   "issue": "On every inner page the largest heading is the page name, and the draft declares it not editable. It is the first thing a novice clicks on About, Services or Contact, and today it would get a ring that promises an edit and then does nothing. Renaming the page is not a safe fallback either: it changes both the address and the page template.",
+   "evidence": "prototype/src/modules/preview/SitePreview.tsx:126-131 (PageHead h1 = page name), :141-143 (the template is chosen by page.name.en), :100-110 (footer links = page names); prototype/src/modules/preview/pages.ts:48-55",
+   "fix": "Define a state for 'visible but not editable here': no edit ring, and a tooltip such as 'This is the page name. Rename it in Pages'. Alternatively, split the display heading from the page name as a separate content key. Ask the designer."
+  },
+  {
+   "severity": "major",
+   "issue": "The content model is per occurrence, while novices edit entities. The business name 'fit.' appears in the logo, the eyebrow, the footer line and the Services lead. The dish names appear on Home, Menu, the Item page and in the Cloud table, which mirrors the same six dishes. With keys like 'meal.2.name', renaming the business or a dish changes one spot. In a demo, the Cloud window would then contradict the site. Real sites get this content from a database, and Lovable cannot edit dynamic text at all.",
+   "evidence": "prototype/src/modules/preview/SitePreview.tsx:27, 117, 128, 183-199; prototype/src/data/cloud.ts:12-30 ('the same six dishes, the same tints and emoji'); Lovable 'Dynamic text cannot be edited' (docs.lovable.dev/features/preview-toolbar, snippet, verified 30.09.2026); live Cloud has 'Edit Record' (docs/research/live-ai-editor.md:77-78)",
+   "fix": "Add entity keys (business.name, contact.email, meal.<id>.name) and resolve them everywhere, Cloud rows included. Or mark data-bound items as coming from the Menu table and point to Cloud for editing. Put the choice to the designer; the draft's question about the dish on three pages is only a fragment of this."
+  },
+  {
+   "severity": "major",
+   "issue": "Nested and mixed-content elements break the 'plain text only' rule. The logo is 'fit' plus a green '.' span. Each stat is `<b>4 000+</b><br/>meals delivered`. The macros line is computed from numbers. 'Full menu →' carries an arrow. Plain-text editing flattens the bold, the line break and the brand dot, and turns the numbers into free text. Separately, CSS :hover applies to ancestors, so if a card and its title are both targets, both rings light up. The draft never states which elements can be selected.",
+   "evidence": "prototype/src/modules/preview/SitePreview.tsx:27, 55-59, 68, 72-80; the draft state_model hover rule `.site-stage[data-editing] [data-edit]:hover`",
+   "fix": "State the rule: only leaves (text runs and photos) are targets, and containers are never selectable. That removes the need for parent selection or Bolt-style 'Pick from layers'. Split mixed nodes into separate targets (the number and its label) or leave them out. List every target in a table in docs/features/visual-editor/README.md."
+  },
+  {
+   "severity": "major",
+   "issue": "Photo replacement has nothing real to replace. Every 'photo' is a gradient with an emoji, marked aria-hidden. Labelling an emoji tile 'Photo' and swapping it for another drawn tile looks like a toy in a CEO demo; the presenter may have no photo on the machine; and whether upload works inside the claude.ai panel is unverified. The invented 'Photos on your site' set also risks GoDaddy's two-asset-manager trap. It would sit next to the unbuilt Image Library (15 Figma frames) and the live rail's photo-stack module.",
+   "evidence": "prototype/src/modules/preview/SitePreview.tsx:73-75, 149, 188; prototype/src/data/cloud.ts ('because we ship no photos'); docs/audits/synthesis.md:387 (GoDaddy Menu vs Media trap); docs/features/domains/figma-boards.md:286-288 (15 Image Library frames); docs/research/live-ai-editor.md:22-23 (photo-stack rail icon, unconfirmed 22.09.2026)",
+   "fix": "Before designing the picker, ask the designer whether the demo site gets real-looking images (small WebP or SVG illustrations within the artifact size limit). Make Replace open the same object as the future Image Library, not a second library. Test the file input inside the claude.ai panel before the plan relies on upload."
+  },
+  {
+   "severity": "major",
+   "issue": "Blue rings around each element repeat an idiom the designer rejected on 21.09. For the Build Plan he refused 'every line lights a blue ring' as the field idiom and asked for Google-Docs-style editing. The draft proposes per-element hover and selected boxes without mentioning that decision.",
+   "evidence": "docs/knowledge/decisions.md:205-219; docs/knowledge/design-system.md:2422-2456 (the quiet document-style plate); the draft §2",
+   "fix": "Cite decisions.md:219 in the plan and show two options: boxes (the category norm: v0, Bolt, Webflow) or a quiet document-style plate. Let him choose."
+  },
+  {
+   "severity": "major",
+   "issue": "The paragraph on why this matters overclaims for a management audience. 'В 2026 году AI-билдеры начали брать плату за ручные правки' leaves out that GoDaddy Airo, our structural twin, keeps Edit free, and so do Base44 and Replit. Lovable's 100-a-day cap was already in our 13.08 dossier, before 15.06. Bolt and v0 charge because their Apply runs through the model. Every 30.09 web fact is snippet-only (all sources returned 403), and the research itself says to re-read them before quoting to management. We already corrected the same overclaim about publishing.",
+   "evidence": "docs/audits/synthesis.md:365-367 (GoDaddy Edit free, verified 13.08.2026); docs/research/recon_dossiers.json:177-178, 1700-1701, 4219-4220; docs/knowledge/product-facts.md:46 ('паритет, а не преимущество'); CLAUDE.md facts discipline (synthesis §10.1)",
+   "fix": "Reframe it: parity with GoDaddy, Base44 and Replit, and an advantage over Lovable, v0 and Bolt. Tag the web facts 'по сниппетам 30.09, перечитать вживую' and keep them out of CEO material until re-read."
+  },
+  {
+   "severity": "major",
+   "issue": "There is no link between chat and the editor in either direction. From chat: the canned replies for headline and photo requests cost 10 credits for exactly what the free editor does, and even promise 'upload yours and they drop straight in'. GoDaddy's docs steer users with 'Use Edit for simple edits… It's free'. From the editor: a selected element is a dead end for 'make this bigger', although audit item #12 and Wix, v0 and Lovable all hand the element to the AI.",
+   "evidence": "prototype/src/modules/chat/thread.ts:61, 82; docs/research/recon_dossiers.json:2652 (verified 13.08.2026); docs/audits/synthesis.md:560 (#12, automatic escalation); docs/research/lenses.json:1026-1028",
+   "fix": "Add both to the plan. Update the text and photo replies in thread.ts to point to the Visual Editor. Raise 'Ask Remixer about this', with the element attached and priced as AI work, as an open question with no invented credit price."
+  },
+  {
+   "severity": "major",
+   "issue": "Saved edits disappear on F5 whenever the URL has parameters, because the URL wins whole. The draft frames this as 'rescue it or accept it'. With 'Save' as the verb, accepting it makes the verb a lie, and a presenter who reloads to show that edits persist will fail.",
+   "evidence": "prototype/src/state/world.ts:974-1009 (the URL wins except for a resumable transcript), :855-868 (siteEdits not in URL KEYS); the draft risk #2",
+   "fix": "When the site id matches, restore siteEdits from storage, the same way the resumable-transcript exception works. Treat this as required, not optional, and add a check to block O."
+  },
+  {
+   "severity": "minor",
+   "issue": "The draft lists what stays on the canvas toolbar in edit mode (page switcher, device toggle) and what hides (reload), but says nothing about the credits chip. Hiding it would break the audit's 'credits always in the toolbar' rule and remove the only on-screen proof that edits are free.",
+   "evidence": "CLAUDE.md 'Кредиты — постоянно в тулбаре' (audit rule 6); CLAUDE.md:1899-1901 (the credits counter was the only thing showing questions were free); the draft §1",
+   "fix": "State explicitly that the credits chip and Publish stay visible in edit mode."
+  },
+  {
+   "severity": "minor",
+   "issue": "Using the chat while edit mode is on, with no unsaved edits, is not covered. Sending lights the glow over the edit chrome, the AI's +1 lands mid-session, and blue selection rings mix with the glow. Collapsing the preview by dragging the chat divider is also missing from the auto-close list.",
+   "evidence": "prototype/src/App.tsx:836-882 (busy/glow), :1003-1012 (collapsing is a divider drag), ui.previewOpen; the draft state_model covers only 'dirty' sends",
+   "fix": "A composer send closes the session (asking first if there are unsaved edits); collapsing the preview closes it too. Add both to the README's states."
+  },
+  {
+   "severity": "minor",
+   "issue": "The session state goes into ui.ts, although the user said 'новое измерение сначала в world.ts'. The reason given (every set() rewrites the URL and storage) applies to hover and selection only. Turning the mode on and committing a draft on blur are rare writes. The cost: neither the console nor flows.ts can stage 'editor open with 2 unsaved edits' for a CEO demo.",
+   "evidence": "User request §3; prototype/src/state/world.ts:1014-1019; docs/research live-editor implication ('держать стек правок сессии в world')",
+   "fix": "Either put `editing` and the draft into world (out of the URL and stash), or get the designer's explicit OK for ui.ts. Keep hover and selection out of both stores."
+  },
+  {
+   "severity": "minor",
+   "issue": "The draft asks what to do on the drawn demo sites as if it were neutral, but a standing project rule answers it: hide the control.",
+   "evidence": "CLAUDE.md:1896-1898, 2202 ('Контрол, которому нечего делать, лучше отсутствует, чем мёртв'); prototype/src/modules/preview/SiteStage.tsx:22",
+   "fix": "Recommend hiding, cite the rule, and ask only for confirmation."
+  },
+  {
+   "severity": "minor",
+   "issue": "The Autopilot question is presented as neutral, but decision 613 says the proposal comes 'after every SITE EDIT', and a manual Save is literally one. The chat-trace question also has two conflicting precedents that the draft does not cite.",
+   "evidence": "docs/knowledge/decisions.md:613, 601 ('Пропуск МОЛЧАЛИВ'), 622 ('Тред — запись о принятых решениях')",
+   "fix": "Quote 613 and the 601/622 pair in the question to the designer."
+  },
+  {
+   "severity": "minor",
+   "issue": "Some citations are wrong. lenses.json:545 is our own recommendation and cites only Figma Make, not v0 or Bolt. The zero-balance claim is attributed to product-facts.md:45 as verified; it actually sits at :955-960 and is rated likely (a 30.09 snippet supports it). Audit item #12 is synthesis.md:560, not 561.",
+   "evidence": "docs/research/lenses.json:544-547; docs/knowledge/product-facts.md:45, 955-960; docs/audits/synthesis.md:560",
+   "fix": "Correct the references and give the zero-balance line its real status and date."
+  },
+  {
+   "severity": "minor",
+   "issue": "The draft plans to write Save / Undo / Redo / Exit into glossary.md as canon, while its own risk #11 says those strings have not been checked by a person and that a legacy-Remixer article sits beside them.",
+   "evidence": "the draft deliverables vs risk #11; docs/research/lenses.json:666; docs/research/dreamhost-domain-connect-research.md:92-139",
+   "fix": "Add them to glossary.md marked 'proposed, pending eyes-on KB 50653967848468'."
+  },
+  {
+   "severity": "minor",
+   "issue": "Several targets live inside real <button> elements: the logo, the footer page links and the 404 'Back to home'. Editable text inside a button is unreliable across browsers (Firefox cannot place a caret there, Space and Enter fire a click). This is also the 'links that navigate' case.",
+   "evidence": "prototype/src/modules/preview/SitePreview.tsx:27, 102-110, 237",
+   "fix": "In edit mode, render these as non-button elements or leave them out; add a check to block O."
+  },
+  {
+   "severity": "minor",
+   "issue": "Edits have no language. `text: Record<EditKey,string>` has no language key, while the footer line and the 404 page are bilingual. An edit made in EN either shows up in UK or silently disappears there.",
+   "evidence": "prototype/src/modules/preview/SitePreview.tsx:114-116, 227-245; the draft state_model SiteEdits",
+   "fix": "Decide whether edits are per language (`key@lang`) or the site content is single-language, and write that down."
+  },
+  {
+   "severity": "minor",
+   "issue": "How the ring is drawn is unspecified in ways that matter. An inset ring on tight text boxes (h1 leading 1.08) overlaps the letters and has poor contrast on the green CTA pill (#2e7d4f). ::after on inline <b> elements breaks across line wraps. The meal cards are overflow-hidden, so an inner ring gets clipped. The user's 'inset-тени' rule is about Figma strokes, not selection chrome over site content.",
+   "evidence": "prototype/src/modules/preview/SitePreview.tsx:44, 52, 56, 72; CLAUDE.md:742-747",
+   "fix": "Draw the rings on a separate overlay placed from getBoundingClientRect, 2–4 px outside the element and animated by opacity only. Record why this is not a breach of the inset rule."
+  },
+  {
+   "severity": "minor",
+   "issue": "This would be the prototype's first real change to the site, and it is the free one: a paid AI reply still changes nothing visible. A CEO will ask what the 10 credits bought. It also means the 'AI overwrites my manual edit' question cannot be demonstrated.",
+   "evidence": "docs/research code summary ('the site itself never changes', send.ts:242-260); prototype/src/modules/chat/thread.ts:82",
+   "fix": "Ask the designer whether the headline and photo keyword replies should write to the same content layer."
+  },
+  {
+   "severity": "minor",
+   "issue": "'Edits are free' is fine as one quiet line, but the project has rules against price tags on actions.",
+   "evidence": "docs/knowledge/glossary.md:20-21 ('«Connect · free» не писать'); docs/audits/critique.md:62 (per-message cost receipts raise credit anxiety)",
+   "fix": "Keep it to one line in the edit bar. Never put it on the Save button or repeat it in the Save confirmation."
+  }
+ ],
+ "missing_topics": [
+  "Telling Save apart from Publish for a novice: what the customer sees right after Save, and the 'Saved. Publish to show it on your site' line",
+  "A three-way leave dialog (Save / Discard / Keep editing), and which answer Esc and initial focus give",
+  "Business-wide items (business name, contact email, dish names) versus single spots on the page, and keeping edits in sync with the Cloud tables",
+  "Which elements can be selected at all (only text runs and photos), and how text with mixed styling is split (stats, logo, macros line)",
+  "A 'visible but not editable here' state for page names and footer links",
+  "Pointing chat to the editor (thread.ts replies, GoDaddy's 'Use Edit for simple edits') and passing a selected element from the editor to Remixer as priced AI work",
+  "A hint inside the mode ('Click any text or photo to change it') and a one-time reveal of everything editable on entry (Framer, Hostinger)",
+  "Whether the credits chip and Publish stay visible in edit mode",
+  "Chat sends and collapsing the preview while edit mode is on",
+  "Real images on the demo site before photo replacement, the 15 Figma Image Library frames, and the live rail's photo module",
+  "Whether file upload works inside the claude.ai preview panel (checked there, not in a browser tab)",
+  "Language of edits (EN/UK)",
+  "Keyboard and screen-reader access: Tab through editable elements; photo tiles are aria-hidden today",
+  "A before/after toggle (v0) comparing the edit with what is live",
+  "Touch devices: no hover, and the keyboard popping up on real phones",
+  "The Replace window's material: solid gray-850 like the Publish panel, no glass, no .glass-sheen (decisions.md:695, 709)",
+  "The 'Version history' button next to the new Undo: a dead history button beside a live Undo invites a wrong click",
+  "Undo after Save and Exit is gone, with no version history to fall back on: how the customer is told"
+ ],
+ "verdict": "The direction is right, but the plan should not go to the designer as it stands. What holds up: an explicit Save · Undo · Redo · Exit session modelled on the live DreamHost editor, a free path that never touches sendMessage or the glow, a single blue colour for a hand tool, no single-letter shortcuts, siteEdits as a per-site axis, and the v7 storage key. What fails the novice test and the CEO demo: (1) the '+1 per Save' counter can say the site is behind when it matches what is live, and Save gives no visible result on the default, never-published world; (2) the Save/Discard leave dialog does not fit ConfirmDialog and has no 'Keep editing', so the keyboard default either discards work or does nothing; (3) Esc throws away typed text, and it cannot be undone; (4) the biggest heading on every inner page is the page name, and it cannot be edited; (5) edits are tied to single spots on the page, so renaming the business or a dish changes one place and leaves the Cloud table out of step; (6) the site has no real photos to replace; (7) the boxes around elements repeat the idiom the designer rejected on 21.09, and the plan does not cite that decision; (8) the paragraph for management overstates the advantage (GoDaddy Edit is free too) and rests on web facts that have not been re-read. Also missing: hand-offs between chat and the editor, keeping the credits chip visible in edit mode, and making saved edits survive a reload. Fix these in the plan, and ask the designer where a choice is his, before any code."
+}

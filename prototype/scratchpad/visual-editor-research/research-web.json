@@ -1,0 +1,392 @@
+{
+ "summary": "Свежий веб-ресёрч (30.09.2026). Все первоисточники (docs.lovable.dev, lovable.dev, v0.app, community.vercel.com, support.bolt.new, docs.base44.com, docs.replit.com, hostinger.com, godaddy.com, help.dreamhost.com, framer.com, wix.com) прокси вернул с 403. Поэтому каждый факт ниже взят из сниппетов WebSearch с этих страниц; даты публикаций я вычислил из ID постов в X и LinkedIn. Статус «verified» здесь значит: первоисточник и одинаковая формулировка минимум в двух независимых поисках. Перед тем как цитировать руководству, страницы надо перечитать вживую. Главный вывод — рынок разошёлся на два лагеря. Чистые AI-билдеры в 2026 году перевели ручные и визуальные правки на модель и берут за них кредиты при применении. Lovable 15.06.2026 заменил Visual Edits (панель стилей) на плавающий «preview toolbar» из четырёх режимов: Draw, Select (S), Edit text (T), Comment (C). Бесплатными там остались только 100 инлайн-правок текста в сутки. Select и Draw идут как обычная сборка, а фото меняется через чат. У v0 новый Design Mode (июнь 2026) держит правки «в ожидании», пока не нажмёшь Apply. Apply отправляет правки в чат, AI генерирует новую версию и тратит кредиты. Старый Save такую версию делал бесплатно, и пользователи жалуются на это с 17.06.2026. В Bolt Visual Edits с 03.09.2026: правки копятся пачкой, а токены списываются при «Save changes». Во втором лагере хостеры и платформы. У них детерминированные ручные правки бесплатны и применяются мгновенно: GoDaddy Airo (Edit → Replace → «Use this image», без кредитов), Base44 (автосейв, до 50 шагов undo/redo), Replit (простые правки пишутся в код без Agent), живой DreamHost Remixer, а также Framer, Webflow, Squarespace и Wix. Hostinger после ребренда 18.08.2026 (Horizons → «AI Builder», agentic mode) противоречит сам себе. Его справка одновременно говорит «visual edits are free» и «manual edits in Select & edit mode also deduct a small number of credits». Про DreamHost нашлось новое, чего нет в репозитории. Пресс-релиз 24.09.2026 «DreamHost Gives Remixer Users More Control…» представил Visual Editor рядом с чатом и галерею готовых дизайнов. Статья KB Visual Editor описывает Pages Manager слева, панель свойств справа, инлайн-текст и Save/Undo/Redo/Exit в топбаре. KB про кредиты: генерация новой AI-картинки стоит кредиты, а прямые правки бесплатны даже при нулевом балансе. Паттерны взаимодействия: ховер-подсветка и клик (Bolt, v0, Webflow). Метка с именем элемента в левом верхнем углу есть у Webflow. Выбранный элемент становится чипом в композере у Lovable и v0. Родителя выбирают стрелкой вверх (Webflow), через «Pick from layers» (Bolt) или по Esc: у Lovable Esc сначала поднимает на родителя, потом снимает выбор (likely), у v0 Esc снимает выбор. Текст правится двойным кликом у Webflow, Wix и Squarespace, одним кликом в режиме у Lovable, Hostinger, Airo и DreamHost. Редактируемое заранее обводят: синим у Framer, пунктиром у Hostinger. Источники для замены фото: загрузка есть везде. Библиотека медиа: Base44, DreamHost, Wix, Squarespace. Сток: Unsplash бесплатно у Squarespace и Wix, Getty у GoDaddy (только через чат и за кредиты), сток Durable, сток по умолчанию у Bolt. AI-генерация картинок платная везде, где это задокументировано. Цвета ховера и выделения у Lovable, v0 и Bolt ни в одном первоисточнике не нашлись (unconfirmed). Наш synthesis.md:441 (v0 Design Mode «free… Apply batches into one real chat version») отчасти устарел. Visual Edits Bolt, тулбар Lovable и ребренд Hostinger вышли после аудита от 13.08.2026 либо в нём отражены неполно.",
+ "findings": [
+  {
+   "topic": "Lovable — preview toolbar replaced Visual Edits",
+   "fact": "Lovable's new 'preview toolbar' replaces the previous Visual Edits experience: 'Instead of using a separate editing panel, you choose a toolbar mode, point at what you want to change, and describe the update in plain language.' Available on all plans. Announced by Lovable on X and LinkedIn; the launch date comes from decoding the post IDs.",
+   "source": "https://docs.lovable.dev/features/preview-toolbar ; https://x.com/Lovable/status/2066536196788957198 ; https://www.linkedin.com/posts/lovable-dev_introducing-lovables-new-toolbar-shift-activity-7472302094436368384-R1ES",
+   "status": "verified",
+   "date": "published 2026-06-15; seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — toolbar modes and shortcuts",
+   "fact": "Four modes: Draw annotation, Select elements (shortcut S), Edit text inline (shortcut T), Add a comment (shortcut C; places a pin with a thread). No first-party source found for a Draw shortcut.",
+   "source": "https://docs.lovable.dev/features/preview-toolbar (search snippets)",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — Select elements",
+   "fact": "Click an element; multi-select by dragging or by Cmd/Ctrl+click. Each selected element attaches to the chat input as a reference (a badge/chip), then the user types the change and sends it. Select elements and Draw annotation are 'treated as standard build usage and consume credits'.",
+   "source": "https://docs.lovable.dev/features/preview-toolbar",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — Edit text inline flow",
+   "fact": "Press T (or the button), click into any text, edit it in place, then click Send and Lovable applies the change. Inline text edits and comment threads 'run as their own request after the current task', and the UI labels them 'Runs after the current task'. Dynamic text cannot be edited. Mixed-content text became editable in Nov 2025. Marketing claims that inline edits sync to the backend database or cloud.",
+   "source": "https://docs.lovable.dev/features/preview-toolbar ; https://www.threads.com/@lovable.dev/post/DRm47DhiTbC ; https://x.com/futurepedia_io/status/2066714207635324965",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — free inline text edits quota",
+   "fact": "'Your account includes 100 free inline text edits, counted across all your workspaces and projects. Each free edit becomes available again 24 hours after you use it.' A shared workspace cap is 2,000 free inline edits per 24h. After either limit, inline edits consume credits. Adding comments is free; sending a comment thread to Lovable costs credits.",
+   "source": "https://docs.lovable.dev/features/preview-toolbar (also docs.lovable.dev/features/design)",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — image replacement",
+   "fact": "'To replace an image, use Select elements to select the image in the preview, then attach a new image or add an image URL in the chat input.' So in the new toolbar a photo swap goes through the AI build request, which costs credits (Select = standard build usage).",
+   "source": "https://docs.lovable.dev/features/preview-toolbar",
+   "status": "likely",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — toolbar chrome",
+   "fact": "The toolbar floats and can be dragged anywhere. It snaps to the corners and to the default bottom-center position, and it remembers its position and state per project. An options menu pins its appearance to Auto, Light or Dark; Auto adapts to whatever is behind it while scrolling. It is shown via a 'Show preview toolbar' icon in the top-right controls above the preview, next to Share and Publish.",
+   "source": "https://docs.lovable.dev/features/preview-toolbar",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — user pushback",
+   "fact": "A Facebook group post is titled 'Lovable's new Visual Edit Toolbar a step backward?'. Its content was unreadable (blocked). A search summary also mentions an earlier complaint that the toolbar was fixed far from the workspace at the bottom; the draggable toolbar in the docs addresses that.",
+   "source": "https://www.facebook.com/groups/1025218999555060/posts/1363639569046333/",
+   "status": "unconfirmed",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — Esc behaviour",
+   "fact": "In Select mode, pressing Esc goes to the parent element, and pressing Esc again deselects.",
+   "source": "search snippet attributed to https://docs.lovable.dev/features/preview-toolbar (single query)",
+   "status": "likely",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — Visual Edits history (2025)",
+   "fact": "Launched 2025-02-12 ('Introducing Visual Edits'): click 'Edit' in the prompt box, select a component, then change size, colour or text; a custom Tailwind classes field. 2025-02-19 update: font weight, alignment, image resize, 'select parent elements'. 2025-05-02 CEO Anton Osika: 'Visual edits – lets you edit small details without wasting credits'. 2025-07-13: 'new Visual Edits — visually edit any styles'. 2025-11-21/28 v2: multi-select, margins/padding/borders/shadows/colours/icons in the sidebar, 'update or generate images with AI'.",
+   "source": "https://lovable.dev/blog/introducing-visual-edits ; https://www.linkedin.com/posts/lovable-dev_new-lovable-visual-edits-update-edit-activity-7298015411114016768-34Ko ; https://x.com/antonosika/status/1918273461157290304 ; https://www.threads.com/@lovable.dev/post/DMDxgIlBPqC ; https://www.threads.com/@lovable.dev/post/DRU3glSj95Z ; https://www.threads.com/@lovable.dev/post/DRm47DhiTbC",
+   "status": "verified",
+   "date": "2025-02-12…2025-11-28; seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — Visual Edits quota before the toolbar",
+   "fact": "Third-party feature atlas: Visual Edits v2 was 'free up to 100 edits per user per 24 hours and 500 per IP per 24 hours; additional edits use credits' (entry dated Apr 2026).",
+   "source": "https://atlas.dahlingdigital.com/features/ai-powered-visual-edits",
+   "status": "likely",
+   "date": "entry Apr 2026; seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — how Visual Edits were engineered",
+   "fact": "Client-side AST mutation plus a client-side Tailwind generator preview the edit optimistically before saving. On save, JSX/TSX is regenerated from the AST, only the modified lines are diffed, the change is pushed to the cloud environment, and HMR fires back to the session.",
+   "source": "https://lovable.dev/blog/visual-edits",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Lovable — saving and undo",
+   "fact": "Every change creates a version automatically; there is no save button for AI changes. In code mode: Save / Cmd+S / Discard, 'each save becomes a version in your project's version history', Save is disabled while Lovable is working, and leaving with unsaved changes asks for confirmation. Versioning 2.0 (Mar 2025): restoring an old version creates a new edit card in chat (like a git revert). There is no dedicated undo button for AI changes (third-party claim).",
+   "source": "https://docs.lovable.dev/features/code-mode ; https://docs.lovable.dev/features/projects/history ; https://lovable.dev/blog/versioning-with-lovable-two-point-zero ; https://www.rapidevelopers.com/lovable-issues/rolling-back-to-previous-versions-in-lovable",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Bolt — Visual Edits launch",
+   "fact": "Visual Edits went live on 2026-09-03 for every Bolt.new user, free and paid. It lives on the Select button in the chatbox. Elements with text get a toolbar: font size by pixel or picker, styling, lists, links, in-place editing. The colour picker reads the palette off the rendered page. Limits: you can't drag elements or rearrange the layout, and applying one change across many elements 'isn't something to count on yet'.",
+   "source": "https://bolt.new/blog/visual-edits ; https://support.bolt.new/building/visual-edits ; https://x.com/boltdotnew/status/2095548282080481706",
+   "status": "verified",
+   "date": "published 2026-09-03; seen 2026-09-30"
+  },
+  {
+   "topic": "Bolt — batching and tokens",
+   "fact": "Select an element, make the edits, then 'Add changes' puts them in a batch above the chatbox. Re-editing the same element updates its existing entry instead of stacking a new one; discarding one entry snaps the preview back. 'Save changes' sends the whole batch to the currently selected model. 'Making visual edits in the preview is free… Bolt uses tokens only when you save your changes' — fewer tokens than prompting each change separately.",
+   "source": "https://support.bolt.new/building/visual-edits ; https://bolt.new/blog/visual-edits",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Bolt — selection",
+   "fact": "Click Select, point at elements (Bolt highlights each one on hover), click to select. 'Pick from layers' lists every element stacked at that point, so you can target the card or section rather than the heading inside it. The Visual Inspector ('click what you want to change & tell Bolt') dates from 2025-02-20.",
+   "source": "https://support.bolt.new/building/using-bolt/interacting-ai ; https://x.com/boltdotnew/status/1892620448266907688",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Bolt — images",
+   "fact": "Stock images are used by default. Custom AI images 'use more tokens than using stock images', so the user must first turn on Settings → Account → Add-on features → Image Generation. To edit an existing image: Select → click the image → 'Edit with AI' → describe the change → blue arrow.",
+   "source": "https://support.bolt.new/building/images",
+   "status": "verified",
+   "date": "doc dated ~2026-07-06; seen 2026-09-30"
+  },
+  {
+   "topic": "v0 — original Design Mode (2025)",
+   "fact": "Launched 2025-06-11: 'Quickly tweak your generation — copy, typography, layout, colors, styling… Preview changes and save when ready. No need to spend credits or wait for an LLM. Tailwind and shadcn native.' The old Save created a new version without an AI call.",
+   "source": "https://x.com/v0/status/1932892095565660490 ; https://community.vercel.com/t/introducing-design-mode-on-v0/13225",
+   "status": "verified",
+   "date": "published 2025-06-11; seen 2026-09-30"
+  },
+  {
+   "topic": "v0 — Design Mode revamp (June 2026)",
+   "fact": "A floating toolbar appears on the selected element. It adds drag handles for spacing and flex gaps, drag-to-reorder, a delete shortcut, a Layers view of the component hierarchy, a Properties panel (fonts, colours, radius, shadows), a measure overlay for spacing, an Inspector (links, element IDs), and annotations that are sent to the AI as a single prompt.",
+   "source": "https://v0.app/changelog ; https://v0.app/docs/design-mode ; https://www.createwith.com/tool/v0/updates/v0-launches-design-mode-with-visual-editing-and-layer-management",
+   "status": "likely",
+   "date": "June 2026; seen 2026-09-30"
+  },
+  {
+   "topic": "v0 — interaction details",
+   "fact": "Hovering highlights elements; clicking shows selection handles plus the design panel. The selected element 'will appear as a badge in the message input'. Cmd/Ctrl+I toggles between inspect and normal interaction; Escape deselects; arrow keys navigate, Enter edits, ⌘+click quick-selects. Typing an instruction at a selection auto-attaches a screenshot of that element.",
+   "source": "https://v0.app/docs/design-mode ; https://community.vercel.com/t/edit-ui-with-v0s-design-mode/17477",
+   "status": "likely",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "v0 — pending edits, Apply, credits",
+   "fact": "Tweaks apply live but are 'held as pending edits until you apply them' (kept until Apply or until you leave the chat). There is Undo/Redo over pending tweaks and a Reset that clears the current element's pending edits. Apply serialises the edits plus any instructions and screenshots, sends them to the chat, and generates a new version. Community thread 44083 (2026-06-17): in the new Design Mode 'even changing a single heading requires clicking Apply, which sends the change to the chat and consumes credits', whereas the old Save made a version with no AI cost. The docs still say 'without spending credits', so the sources conflict.",
+   "source": "https://v0.app/docs/design-mode ; https://community.vercel.com/t/new-design-mode-why-do-simple-edits-now-require-ai-credits/44083 ; https://community.vercel.com/t/how-to-save-and-persist-edits-in-v0-design-mode/36625",
+   "status": "likely",
+   "date": "thread 2026-06-17; seen 2026-09-30"
+  },
+  {
+   "topic": "v0 — collateral changes when AI applies manual edits",
+   "fact": "Users report that targeted Design Mode edits (e.g., one font size) come back with unsolicited changes to surrounding elements. The docs explain that the agent must read and write surrounding code (for example the parent's flex rules).",
+   "source": "https://community.vercel.com/t/why-v0-design-mode-applies-unsolicited-changes-to-surrounding-elements-during-targeted-edits/36673",
+   "status": "likely",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "v0 — images in Design Mode",
+   "fact": "From Oct 2025 images can be edited in Design Mode via 'Regenerate' (variations) and 'Prompt to Edit' — both AI. Credit cost not documented in anything found.",
+   "source": "https://www.linkedin.com/posts/v0dev_you-can-now-edit-images-in-design-mode-in-activity-7381840135551881216-Gjpx ; https://www.oreateai.com/blog/vercels-v0-design-mode-where-ai-meets-intuitive-image-editing/b6174102263ab595b94e16aef9d5a294",
+   "status": "unconfirmed",
+   "date": "published 2025-10-08; seen 2026-09-30"
+  },
+  {
+   "topic": "Our KB is outdated on v0",
+   "fact": "The audit says Design Mode is 'a real property inspector, free on the Free tier… Apply batches edits into one real chat version'. The June 2026 credit change on Apply and the June 2026 toolbar/layers revamp are not reflected.",
+   "source": "/home/user/Remixer/docs/audits/synthesis.md:441",
+   "status": "code-fact",
+   "date": "audit dated 2026-08-13"
+  },
+  {
+   "topic": "Base44 — Visual Edits",
+   "fact": "Launched 2025-03-19; update 2025-07-03 (text editing, colour controls). Click Edit at the top of the editor/chat, select an element, and use the T icon for text. The toolbar changes by element type: colours, typography, spacing, corner radius, opacity, custom Tailwind classes. Canvas: double-click a page to enter visual edit mode directly.",
+   "source": "https://docs.base44.com/Building-your-app/Design ; https://www.linkedin.com/posts/maor-shlomo-1088b4144_announcing-base44-visual-edits-sometimes-activity-7308186812559056900-hSN3 ; https://www.linkedin.com/posts/maor-shlomo-1088b4144_base44-visual-edits-update-weve-added-activity-7346503069171384320-n8WV ; https://docs.base44.com/Building-your-app/Canvas",
+   "status": "verified",
+   "date": "2025-03-19 / 2025-07-03; seen 2026-09-30"
+  },
+  {
+   "topic": "Base44 — credits",
+   "fact": "Manual visual edits (dragging elements, changing layouts, editing text directly in the editor) do not use credits.",
+   "source": "https://docs.base44.com/Getting-Started/Credits",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Base44 — autosave and undo",
+   "fact": "Visual editing was rebuilt with autosave: 'Edits save automatically as you work'. Undo/redo covers up to 50 steps within a visual-edit session, edits survive preview reloads, and the browser warns if you leave with unsaved changes.",
+   "source": "https://docs.base44.com/Getting-started/changelog ; https://docs.base44.com/Building-your-app/AI-chat-modes",
+   "status": "likely",
+   "date": "2026 (exact date not found); seen 2026-09-30"
+  },
+  {
+   "topic": "Base44 — image replace",
+   "fact": "Edit → click the image → Replace → search or browse the app's file library → select → Replace.",
+   "source": "https://docs.base44.com/Building-your-app/Using-media",
+   "status": "likely",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Replit — Element Editor / Visual Editor",
+   "fact": "Element Editor was announced 2025-05-21: activate it from chat, click any element in the preview, see the change live, save. 'If the edits are direct, your edits will directly update the source code without consuming credits; if there's a larger scope, Element Editor… sends targeted metadata to Agent.' The Visual Editor docs group controls into Text / Layout / Color / Border, plus an Image section where you swap by URL or upload. It 'hands off to Agent automatically' for hidden complexity and works both on the Design canvas and in the Preview.",
+   "source": "https://blog.replit.com/element-editor ; https://x.com/Replit/status/1925297354170855515 ; https://docs.replit.com/design/visual-editor",
+   "status": "verified",
+   "date": "2025-05-21; seen 2026-09-30"
+  },
+  {
+   "topic": "Hostinger — rebrand",
+   "fact": "On 2026-08-18 Hostinger merged Horizons and its Website Builder into 'Hostinger AI Builder' with two modes: agentic (the former Horizons) and manual (drag-and-drop). A manual-mode site can be switched to agentic; switching agentic → manual is not supported.",
+   "source": "https://www.hostinger.com/blog/ai-builder-launch/ ; https://www.manilatimes.net/2026/08/18/tmt-newswire/globenewswire/hostinger-brings-the-full-online-journey-into-the-agentic-era-with-ai-builder/2407879 ; https://www.hostinger.com/support/hostinger-ai-builder-how-to-switch-to-agentic-mode/",
+   "status": "verified",
+   "date": "2026-08-18; seen 2026-09-30"
+  },
+  {
+   "topic": "Hostinger — edit mode UX",
+   "fact": "Content-editing mode was announced 2025-06-19. Currently it is a 'Select and Edit' toggle in the preview (formerly 'Edit Content'), and editable elements carry a dashed outline. Text gets an inline rich-text editor (bold, colours, font size, links). Clicking an image opens a pop-up to upload from device. Multi-select works by dragging or Shift+click. Save / Discard; clicking the toggle again exits. Changes save automatically to the preview server as drafts, an edit history can restore earlier text edits, and Publish pushes the changes live.",
+   "source": "https://www.hostinger.com/support/11695969-hostinger-ai-builder-agentic-mode-visual-editor-changes/ ; https://www.hostinger.com/support/10673361-hostinger-ai-builder-agentic-mode-how-to-edit-and-update-your-project/ ; https://www.linkedin.com/posts/hostinger_text-editing-mode-in-hostinger-horizons-activity-7341325437303697408-r0kr",
+   "status": "verified",
+   "date": "2025-06-19 launch; seen 2026-09-30"
+  },
+  {
+   "topic": "Hostinger — credits for manual edits (conflicting)",
+   "fact": "The marketing page says content editing is 'completely free', and the agentic-mode edit doc says 'visual edits are free'. Yet the credit docs say: 'Manual edits made directly in Select & edit mode, such as changing text or replacing an image, also deduct a small number of credits from your balance, since these edits are processed the same way as AI-generated changes.' Credits are dynamic, down to two decimals.",
+   "source": "https://www.hostinger.com/support/11136677-hostinger-ai-builder-agentic-mode-ai-credits/ ; https://www.hostinger.com/support/hostinger-ai-builder-agentic-mode-understanding-dynamic-credits/ ; https://www.hostinger.com/horizons/features/content-editing-mode",
+   "status": "unconfirmed",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "GoDaddy Airo — Edit mode for text",
+   "fact": "'Click Edit in the top toolbar, then click any headline or paragraph to open the inline editor' — wording, bold/italic, colour, alignment, links — without asking the agent. The credit rule: credits are used only by agent actions, 'not used for non-agent actions'. Publishing does not draw credits.",
+   "source": "https://airo-builder.godaddy.com/discover/learn/make-your-ai-credits-go-further ; https://www.godaddy.com/help/airo-ai-builder-credits-faq-42828",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "GoDaddy Airo — image replace",
+   "fact": "Edit → select the image → Replace in the toolbar → pick a file from the device → 'Use this image'. 'Your image updates right away. No prompt is needed and no credits are used.' Formats jpg/png/webp, max 25 MB. Anything done through chat costs credits, including attaching an image from the device, AI image generation, and inserting a stock photo (stock comes from Getty Images).",
+   "source": "https://www.godaddy.com/help/add-generate-or-replace-images-in-airo-ai-builder-42963 ; https://www.godaddy.com/help/what-can-i-do-with-images-in-airo-ai-builder-42969",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "GoDaddy Airo — 2026 updates",
+   "fact": "May 2026: 'Quick Edit' works on mobile — a wand button in the chat toolbar toggles inline edit mode, and tapping an element opens a toolbar that repositions itself to stay on screen. July 2026: 'Small polish happens in Edit mode. Bigger changes stay in chat'; you can move chat aside and jump straight into Edit mode. Restore uses Change History plus daily backups.",
+   "source": "https://airo-builder.godaddy.com/discover/news/product-update-may-2026 ; https://airo-builder.godaddy.com/discover/news/product-update-july-2026 ; https://www.godaddy.com/help/backup-and-restore-with-airo-ai-builder-42967",
+   "status": "likely",
+   "date": "May/July 2026; seen 2026-09-30"
+  },
+  {
+   "topic": "DreamHost Remixer — live Visual Editor (KB)",
+   "fact": "'Select any element directly on the page and edit it there, without spending credits.' Layout: Pages Manager on the left, canvas in the centre, element options in a panel on the right. Text is edited inline. 'Save, Undo, Redo, and Exit controls appear in the top bar while you are in Visual Editor mode.' Available on all plans, including Legacy, Trial and paid.",
+   "source": "https://help.dreamhost.com/hc/en-us/articles/50653967848468-Remixer-Visual-Editor-overview",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "DreamHost — press release 24.09.2026 (new; not found by grep in the repo KB)",
+   "fact": "'DreamHost Gives Remixer Users More Control Over How They Build with AI': the Visual Editor works alongside chat mode — chat for larger structural changes, the Visual Editor for 'targeted, manual adjustments'. It also adds a gallery of complete site designs as a starting point, plus a blank prompt. Quote from Ralph Castro, SVP Product: 'AI should be useful when you need it without becoming the only way to build.' Included in plans and the 30-day trial; Build from $9.99/mo.",
+   "source": "https://www.dreamhost.com/news/press-releases/dreamhost-gives-remixer-users-more-control-over-how-they-build-with-ai/ ; https://www.financialcontent.com/article/bizwire-2026-9-24-dreamhost-gives-remixer-users-more-control-over-how-they-build-with-ai",
+   "status": "verified",
+   "date": "published 2026-09-24; seen 2026-09-30"
+  },
+  {
+   "topic": "DreamHost — credits KB",
+   "fact": "'Manual edits, hosting, and publishing never use credits.' Credits are used by initial generation, AI chat prompts and 'generating a new AI image'. 'Anything you change directly in the editor (e.g., clicking text to retype it or adjusting spacing) is free, even after your credits are exhausted.' The published site is unaffected by the credit balance; monthly credits don't roll over.",
+   "source": "https://help.dreamhost.com/hc/en-us/articles/44981865908884-Understanding-Remixer-credits",
+   "status": "verified",
+   "date": "KB updated Jul 2026; seen 2026-09-30"
+  },
+  {
+   "topic": "DreamHost — image library",
+   "fact": "A media/image-library icon at the top right of the editor opens a library of all images used on the site, with 'Upload Media' at the bottom. The 'Create a Site' KB also says you 'reference new images using the chat box to add or replace media in specific sections'. So whether the live Visual Editor swaps images manually (free) or only via chat is ambiguous.",
+   "source": "https://help.dreamhost.com/hc/en-us/articles/45943689634196-Create-a-Site-with-Remixer ; https://help.dreamhost.com/hc/en-us/articles/50653967848468-Remixer-Visual-Editor-overview",
+   "status": "unconfirmed",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "DreamHost — July 2026 release",
+   "fact": "Video generation, upgraded AI image generation, a new customer-driven design system, and uploaded video and audio living alongside images in a single media library.",
+   "source": "https://www.businesswire.com/news/home/20260721489456/en/DreamHost-Brings-Video-Generation-and-Advanced-Design-to-Remixer",
+   "status": "verified",
+   "date": "published 2026-07-21; seen 2026-09-30"
+  },
+  {
+   "topic": "Wix Harmony",
+   "fact": "Launched 2026-01-21: the Aria agent plus the classic visual editor, on every plan. Double-click text to edit. The element action bar has an 'Ask Aria' button with element-specific suggestions (e.g., 'Generate new design', 'Fix layout'). The image toolbar has Remove Background, Edit with AI and Ask Aria. Every Aria action uses credits, and each AI image generate/modify costs 1 credit whether you keep the result or not. Wix advises using action-bar tools instead of AI for simple swaps.",
+   "source": "https://www.globenewswire.com/news-release/2026/01/21/3222826/0/en/Wix-Launches-Wix-Harmony-the-AI-Website-Builder-that-Merges-Human-and-Artificial-Intelligence-Reinventing-Web-Creation.html ; https://support.wix.com/en/article/wix-harmony-editor-working-with-aria ; https://support.wix.com/en/article/wix-harmony-editor-adding-and-customizing-text ; https://support.wix.com/en/article/wix-harmony-editor-editing-and-customizing-images ; https://support.wix.com/en/article/about-ai-credits",
+   "status": "likely",
+   "date": "2026-01-21; seen 2026-09-30"
+  },
+  {
+   "topic": "Wix — media sources and alt text",
+   "fact": "The Media Manager holds your uploads plus free Wix media, free Unsplash, paid Shutterstock, and the AI Image Creator. Alt text lives in the image Settings panel; the Accessibility Wizard can AI-generate alt text for one image or the whole page, with a warning to review it.",
+   "source": "https://support.wix.com/en/article/wix-media-about-the-media-manager ; https://support.wix.com/en/article/wix-media-adding-unsplash-images ; https://support.wix.com/en/article/studio-editor-adding-alt-text-to-images",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Framer — On-Page Editing",
+   "fact": "Launched 2025-08-06. On a published site an Edit button appears; edit mode draws blue outlines around all editable text, images and components. Built-in rich text (format, links, lists). 'Finish Editing' emails collaborators who can publish; they review and publish. On-Page Editing 2.0 (2026-01-08): drag-and-drop rearranging, designers can lock layers or sections, and localized edits. Alt text sits in an Accessibility panel.",
+   "source": "https://www.businesswire.com/news/home/20250806909861/en/Framer-Launches-On-Page-Editing-Enabling-Anyone-to-Update-Websites-Instantly ; https://www.framer.com/help/articles/on-page-editing/ ; https://www.cmswire.com/digital-experience/framer-expands-on-page-editing-with-drag-and-drop-localization/ ; https://www.framer.com/help/articles/how-to-add-alt-tags-to-images/",
+   "status": "verified",
+   "date": "2025-08-06 / 2026-01-08; seen 2026-09-30"
+  },
+  {
+   "topic": "Webflow — selection patterns",
+   "fact": "On hover, a blue outline highlights element edges. On select, a label at the top-left shows the element type or class name. The Up arrow selects the direct parent; right-click → 'Select Parent Element' lists all ancestors. Edit mode lives inside the Designer: double-click text to edit inline. The legacy Editor was retired on 2026-08-04.",
+   "source": "https://help.webflow.com/hc/en-us/articles/33961319255059-Webflow-canvas-overview ; https://help.webflow.com/hc/en-us/articles/33961320786451-Navigator ; https://university.webflow.com/videos/edit-mode ; https://www.pravinkumar.co/blog/webflow-legacy-editor-retiring-client-seats-2026",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Squarespace — inline editing and images",
+   "fact": "Click a block, then the pencil icon, or double-click the block; hovering a text block shows 'Edit'. A Squarespace AI icon in text areas rewrites, shortens or expands text. The image picker has three tabs: My Library / Free Images (Unsplash) / Premium. A built-in image editor handles crop, rotate and filters.",
+   "source": "https://support.squarespace.com/hc/en-us/articles/206543757-Adding-content-with-blocks ; https://support.squarespace.com/hc/en-us/articles/205813798-Text-blocks ; https://support.squarespace.com/hc/en-us/articles/206542437-Searching-and-adding-stock-images ; https://support.squarespace.com/hc/en-us/articles/16282290976013-Using-Squarespace-AI",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Durable",
+   "fact": "Click text to edit inline, with AI rewrite in tones. Clicking an image opens a panel to upload your own, regenerate with AI, or swap from 10M+ stock photos. A 'Restyle' button regenerates a section's layout, background and spacing.",
+   "source": "https://cybernews.com/best-website-builders/durable-ai-website-builder-review/ ; https://www.makingthatwebsite.com/how-to-build-a-website-with-durable-ai-website-builder/",
+   "status": "likely",
+   "date": "2026 reviews; seen 2026-09-30"
+  },
+  {
+   "topic": "10Web",
+   "fact": "An Elementor-based drag-and-drop editor plus an AI Co-Pilot (enabled for sites generated after Nov 2024). AI chat editing requests use plan credits. Whether manual Elementor edits cost credits: nothing found.",
+   "source": "https://help.10web.io/hc/en-us/articles/23970145055122-Co-Pilot-Editor ; https://help.10web.io/hc/en-us/articles/36411956830738-10Web-AI-Editor",
+   "status": "unconfirmed",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Cross-cutting — 2026 split on the cost of manual edits",
+   "fact": "AI-first builders moved visual edits onto the model in 2026 and bill for them. Lovable (2026-06-15): only 100 free inline text edits a day; select, restyle and image swaps are build usage. v0 (June 2026): Apply = AI generation = credits. Bolt (2026-09-03): tokens on 'Save changes'. Deterministic, free manual edits remain at GoDaddy Airo, Base44, Replit (simple edits), DreamHost Remixer, Framer, Webflow and Squarespace; Wix's manual tools are free, only Aria costs credits. Hostinger's docs contradict themselves.",
+   "source": "synthesis of the findings above",
+   "status": "likely",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Cross-cutting — entry points",
+   "fact": "Top-bar toggle or button: Hostinger 'Select and Edit', GoDaddy 'Edit', DreamHost live 'Visual Editor'. Composer or chat button: Bolt 'Select', old Lovable 'Edit' in the prompt box, Replit, Base44 'Edit'. Floating mode toolbar over the preview: Lovable 2026. Keyboard: Lovable S/T/C, v0 Cmd+I.",
+   "source": "sources above",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Cross-cutting — showing what is editable",
+   "fact": "Framer outlines every editable element in blue as soon as edit mode opens; Hostinger marks editable elements with a dashed outline. Webflow, Bolt and v0 highlight on hover only. The exact hover and selected colours of Lovable, v0 and Bolt were not found in any first-party source.",
+   "source": "https://www.framer.com/help/articles/on-page-editing/ ; https://www.hostinger.com/support/11695969-hostinger-ai-builder-agentic-mode-visual-editor-changes/ ; https://help.webflow.com/hc/en-us/articles/33961319255059-Webflow-canvas-overview",
+   "status": "unconfirmed",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Cross-cutting — save and undo models",
+   "fact": "Explicit Save + Undo/Redo + Exit: DreamHost live. Save/Discard with autosaved drafts and edit history: Hostinger. Autosave + 50-step session undo + leave-page warning: Base44. Pending batch with per-item discard, then Save: Bolt. Pending edits with Undo/Redo/Reset, then Apply: v0. Immediate apply, then Publish: GoDaddy. 'Finish Editing' → review by a publisher: Framer. Each save becomes a version, and a restore becomes a new chat card: Lovable.",
+   "source": "sources above",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  },
+  {
+   "topic": "Cross-cutting — image sources and AI-image cost",
+   "fact": "Upload from device: everywhere. Site/file media library: Base44, DreamHost, Wix, Squarespace. Free stock: Squarespace (Unsplash), Wix (Unsplash; Shutterstock paid), Durable (10M+), Bolt (default stock); GoDaddy's Getty stock only via chat, for credits. AI generation is paid wherever documented: DreamHost ('generating a new AI image' uses credits), GoDaddy, Wix (1 credit/generation), Bolt (opt-in add-on, more tokens), Lovable (build usage).",
+   "source": "sources above",
+   "status": "verified",
+   "date": "seen 2026-09-30"
+  }
+ ],
+ "implications_for_plan": [
+  "Differentiator for the plan: in 2026 Lovable, v0 and Bolt all started billing for visual edits, while DreamHost's KB promises that manual edits never use credits, even at a zero balance. For the prototype this means: an edit applies instantly on the client, with no 'Send' or 'Apply → model' step, the credit chip never moves, and editing keeps working with 0 credits. Worth making it visible in the mode itself, e.g. a quiet 'Edits are free' line in the editor bar. KB quote: help.dreamhost.com/hc/en-us/articles/44981865908884.",
+  "Entering the mode: keep the existing canvas-toolbar button 'Visual Editor' as a toggle into a mode. Mirror the live product's verified top-bar set Save · Undo · Redo · Exit (docs/research/dreamhost-domain-connect-research.md:625; KB 50653967848468). Don't copy Lovable's floating four-mode toolbar: it serves AI-mediated edits, and Lovable users called it 'a step backward'.",
+  "Hover and select: hover gets a light outline; select gets a stronger outline plus an element-name chip (Webflow-style label at the top-left). Select-parent via Up arrow or the chip; Esc climbs to the parent, then deselects (Lovable, likely) — or plain deselect as in v0; the designer decides. When the mode opens, briefly show every editable element (Framer's blue outlines, Hostinger's dashed ones) so the user sees what can be touched. First-party colour specs for Lovable/v0/Bolt were not found, so the colours are ours to choose (Figma).",
+  "Inline text: a click in edit mode (Lovable T, Hostinger, Airo, DreamHost) or a double-click (Webflow, Wix, Squarespace) puts a caret in the text itself. Blur, Enter or Esc commits; only static strings are editable (Lovable can't edit dynamic text either). Rich-text controls (bold, italic, link, colour), as in Airo and Hostinger, are a scope question.",
+  "Photo replace: 'Replace' on the selected image opens a sheet with Upload from device + the site's own media library. The live DreamHost library shows all images used on the site and has Upload Media. This path is free and instant, like Airo's 'Use this image'. If AI-generate is offered, it must be labelled with its credit cost, since the KB says generating a new AI image uses credits. Don't invent a stock library (Unsplash/Getty): none was verified for DreamHost. An alt-text field is table stakes (Wix, Framer, Squarespace).",
+  "Link to 'Publish changes': Save (or each committed edit, depending on the decision) adds +1 to world unpublished and 0 to credits. This matches GoDaddy, Hostinger and DreamHost, where saving and publishing are separate. Architecture: put the edit overlay (per-page by ui.previewPath, i.e. a site axis) and the session undo stack into world.ts, into SITE_AXES and into startBuild, as the brief requires.",
+  "Undo: a session undo/redo stack (Base44 has 50 steps, v0 undoes pending edits) with Cmd+Z / Shift+Cmd+Z. Exit with unsaved changes gets a Save/Discard confirmation (Base44 warns on leave, Lovable code mode confirms). Saved edits become a version in history — Lovable's 'each save becomes a version' — so they can be rolled back like any AI change.",
+  "Overwrite risk (synthesis.md:258, :788): v0's AI-applied edits produce collateral changes, and later chat turns overwrite manual edits. The prototype should show manual edits in the transcript, e.g. an 'Edited 3 texts · 1 photo' event, so the AI turn 'knows' about them. The lock mechanism is a separate question.",
+  "Worth updating the knowledge base (my slice is read-only; this is for the next step): the Lovable toolbar of 2026-06-15, v0's June 2026 change (Apply = credits; synthesis.md:441 is outdated), Bolt Visual Edits of 2026-09-03, the Hostinger → AI Builder rebrand of 2026-08-18 with its contradictory credit docs, and DreamHost's press release of 2026-09-24 and its July 2026 media library."
+ ],
+ "open_questions_for_designer": [
+  "How does saving work? An explicit Save in the editor bar, as the live Remixer has (Save · Undo · Redo · Exit), or autosave of every edit (Base44, GoDaddy)? And what counts toward Publish changes: +1 per Save, or +1 per edit?",
+  "Is the Visual Editor a separate mode (chat disabled or dimmed while it's on, entered by a toggle) or an always-available click-to-edit on the preview? Can the user chat while in edit mode?",
+  "Scope of v1: text and photos only, or also colour, font size and spacing? The live DreamHost KB mentions 'font size or color of a heading' and a right-hand properties panel. Do we need a right panel at all, or only an inline toolbar next to the element?",
+  "Inline text: plain text only, or minimal rich text (bold / italic / link), as in GoDaddy and Hostinger? Single click or double-click to enter the text?",
+  "Photo sources: device upload + the site's own media library only? Do we offer AI generation (it costs credits under the KB — show the price on the button)? A stock library (Unsplash) has not been confirmed for DreamHost; do we want to draw it as a proposal?",
+  "Should all editable elements be shown on entering the mode (Framer's blue outlines, Hostinger's dashed), or only on hover?",
+  "Esc: step up to the parent, then deselect (Lovable), or just deselect (v0)? Is 'select parent' needed in v1?",
+  "Do we show an explicit 'Edits are free · no credits' in the mode itself, or is the unchanged credit chip enough?",
+  "Should manual edits appear in the chat transcript as an event card, so the next AI turn doesn't overwrite them (the overwrite risk from synthesis.md:258/788)?",
+  "Is the Visual Editor available in the mobile 390×844 frame, and do we show a Pages Manager (the live product has one on the left), or do we switch pages through the existing previewPath address bar?"
+ ]
+}
