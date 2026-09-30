@@ -5989,7 +5989,7 @@ await shot('30-plan-review')
     const e = w.siteEdits ?? { text: {}, photo: {}, fit: {}, opacity: {}, height: {} }
     return {
       raw, credits: w.credits ?? 640, unpublished: w.unpublished ?? 0, site: w.site, project: w.project, chat: w.chat,
-      sent: (w.sent || []).map((m) => ({ who: m.who, about: m.about })), siteEdits: e, search: location.search,
+      sent: (w.sent || []).map((m) => ({ who: m.who, about: m.about, kind: m.kind })), versions: (w.versions || []).map((v) => ({ kind: v.kind, cost: v.cost })), siteEdits: e, search: location.search,
       /* how many edits each OTHER site's stashed slice carries — the leak SITE_AXES exists to prevent */
       stash: Object.fromEntries(Object.entries(w.stash || {}).map(([id, s]) => [id, s.siteEdits ? Object.keys(s.siteEdits.text || {}).length + Object.keys(s.siteEdits.photo || {}).length + Object.keys(s.siteEdits.fit || {}).length : 0])),
     }
