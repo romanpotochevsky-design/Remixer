@@ -3166,9 +3166,9 @@ check('…and the typed prompt is built as given', await cardUp())
         && glintPeak > 0.9 && glintLast !== null && glintLast < glintPeak,
       JSON.stringify({ first: pf[0]?.panelS, maxS, maxAt: pf.find((s) => s.panelS === maxS)?.t, last: pf[pf.length - 1]?.panelS, glintPeak, glintLast }))
     /* the WHITE glint keeps its full ink — only the TINTED pane lights were halved (`--glint-k`, 24.09.2026) */
-    const panelGlint = await p.$eval('[role="dialog"] .glass-glint', (n) => getComputedStyle(n).boxShadow).catch(() => null)
-    check(`…in the cards’ white at full ink (ring .24) — the halving belongs to tinted lights only — ${label}`,
-      panelGlint !== null && /rgba\(255, 255, 255, 0\.24\)/.test(panelGlint), String(panelGlint).slice(0, 60))
+    const panelGlint = await p.$eval('[role="dialog"] .glass-glint', (n) => getComputedStyle(n).backgroundImage).catch(() => null)
+    check(`…in the cards’ white at full ink (rim sweep body .10, head .28) — the halving belongs to tinted lights only — ${label}`,
+      panelGlint !== null && /conic-gradient/.test(panelGlint) && /rgba\(255, 255, 255, 0\.1\)/.test(panelGlint) && /rgba\(255, 255, 255, 0\.28\)/.test(panelGlint), String(panelGlint).slice(0, 80))
     const flight = await world()
     check(`the connect starts the walk and touches nothing else — ${label}`,
       flight.domain === 'connecting' && String(flight.published) === v, JSON.stringify(flight))
@@ -4874,12 +4874,12 @@ await shot('30-plan-review')
       && oS.filter((s) => s.t <= 120).every((s) => s.site >= 0.8) && oP.every((s) => s.paneZ > (oS.find((x) => x.t === s.t)?.siteZ ?? 0)),
     JSON.stringify({ frames: oS.length, at120: oS.filter((s) => s.t <= 120).pop(), last: oS[oS.length - 1], goneAt: openFilm.find((s) => s.site === null)?.t }))
   const glintPeakO = Math.max(0, ...oP.map((s) => s.glint ?? 0)); const glintLastO = oP[oP.length - 1].glint
-  const glintShadow = await CSS('[data-canvas-pane] .glass-glint', 'boxShadow')
+  const glintShadow = await CSS('[data-canvas-pane] .glass-glint', 'backgroundImage')
   /* 24.09.2026 — the designer, on the violet edge mid-unfold: «раза в 2 прозрачнее». A tinted light carries
      HALF the ink of a white one (`--glint-k` .5, motion.ts `PANE_TINT_K`): the glint's ring .24 → .12, the
      rim's .62 → .31. The white lights elsewhere keep their numbers — asserted on the Publish panel below. */
-  check('…its rim catches the light in the MODULE’S violet (149 117 205) at HALF the white ink (ring .12) — rising to full and on its way down by the end of the film',
-    /rgba\(149, 117, 205, 0\.12\)/.test(glintShadow) && glintPeakO > 0.9 && glintLastO !== null && glintLastO < 0.2,
+  check('…its rim catches the light in the MODULE’S violet (149 117 205) at HALF the white ink (sweep body .05, head .14) — rising to full and on its way down by the end of the film',
+    /rgba\(149, 117, 205, 0\.05\)/.test(glintShadow) && /rgba\(149, 117, 205, 0\.14\)/.test(glintShadow) && glintPeakO > 0.9 && glintLastO !== null && glintLastO < 0.2,
     JSON.stringify({ shadow: glintShadow.slice(0, 60), peak: glintPeakO, peakAt: oP.find((s) => s.glint === glintPeakO)?.t, last: glintLastO }))
   const mid = oP.find((s) => s.t >= 380 && s.rows)
   const allIn = oP.find((s) => s.rows && s.rows.every((o) => o >= 0.99))

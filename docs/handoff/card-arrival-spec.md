@@ -52,6 +52,16 @@ peak → `none` by ~850ms; body 1.035 → 1; first row full by ~450ms, last by ~
 ~750ms (outline); light peaks 1.0 at ~430–500ms, 0 by 1.25s; worst frame 22ms. The settled
 box equals the laid-out box: nothing moves once the animation is over.
 
+## The rim light, since 30.09.2026 — Rim Sweep
+
+The uniform inset ring (24 % white rising to full and fading over 1.1 s) described above is
+**replaced** for every arriving surface: a 1 px ring drawn by a conic gradient under a border-box
+mask, lit from the top centre and running round the contour as two fronts (`--gl-a` 0 → 200° in
+~450 ms, 30° feathered heads), body .10, head .28, dissolving by 1.1 s. Designer, by recording:
+«бордер на пару секунд становится белым… раза в 2–3 менее ярким… вспышка по бордеру, от центра
+распространяющаяся и заполняющая весь контур… во всех компонентах». Law and numbers —
+`design-system.md` §5 «Rim Sweep»; CSS — `index.css` «THE RIM SWEEP».
+
 ## Reduced motion
 
 `useReducedMotion()` selects the `…Fade` variants: opacity only, no scale, no offset. The
