@@ -205,6 +205,8 @@ export function countEdits(e: SiteEdits): number {
  * what a span is (audits/lovable-visual-edits-teardown.md §5).
  */
 export function labelOf(key: string): string {
+  /* the Website media panel's «add to chat»: `media:<n>` pictures from the library */
+  if (key.startsWith('media:')) { const n = Number(key.slice(6)) || 1; return n === 1 ? 'Photo from library' : `${n} photos from library` }
   if (key.endsWith('.photo')) return 'Photo'
   if (key.endsWith('.title') || key === 'home.hero.title') return 'Heading'
   if (key.endsWith('.name')) return 'Dish name'

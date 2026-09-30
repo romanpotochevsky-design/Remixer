@@ -334,6 +334,14 @@ interface UIStore {
    */
   accountOpen: boolean
   /**
+   * The WEBSITE MEDIA panel over the canvas at the right rail (docs/features/visual-editor/
+   * media-library-spec.md). `manage` — opened from the rail: browse, select, delete, upload.
+   * `pick` — opened from the Visual Editor's Image window («From Library»): one click on a
+   * picture hands it to the photo being edited and the panel closes. Session state: it is the
+   * shell's navigation, not a fact about the world (the library itself is `world.media`).
+   */
+  mediaOpen: 'manage' | 'pick' | null
+  /**
    * Whether the Publish panel's "Ready to put your site live?" nudge is still up
    * (Figma 29697:36970). It only ever shows for a site that has never gone live
    * (`world.published`), and its ✕ takes it down — this is that ✕.
@@ -450,6 +458,8 @@ interface UIStore {
   closePanel: () => void
   togglePublish: (open?: boolean) => void
   toggleAccount: (open?: boolean) => void
+  openMedia: (mode: 'manage' | 'pick') => void
+  closeMedia: () => void
   dismissPublishHint: () => void
   triggerReload: (ms?: number) => void
 }
@@ -481,6 +491,7 @@ export const useUI = create<UIStore>((set, get) => ({
   domainModal: null,
   publishOpen: false,
   accountOpen: false,
+  mediaOpen: null,
   publishHintOpen: true,
   device: 'desktop',
   chatWidth: CHAT_DEFAULT,
@@ -497,7 +508,7 @@ export const useUI = create<UIStore>((set, get) => ({
      attachment via `openBuilder`, which is exactly when it should die. */
   goHome: () => {
     clearBootTimers()
-    set({ page: 'home', boot: null, publishOpen: false, accountOpen: false, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false })
+    set({ page: 'home', boot: null, publishOpen: false, accountOpen: false, mediaOpen: null, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false })
   },
   /*
    * The transition, phase by phase. The curtain is raised FIRST and the page switches
@@ -603,9 +614,12 @@ export const useUI = create<UIStore>((set, get) => ({
   // handoff closes the publish popover on the way out.
   openPanel: (panel) => set({ panel, publishOpen: false, domainModal: null }),
   closePanel: () => set({ panel: null }),
-  togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen, accountOpen: false }),
+  togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen, accountOpen: false, mediaOpen: null }),
   /* one floating panel at a time in the top-right corner: opening the account menu takes Publish down */
-  toggleAccount: (open) => { const next = open ?? !get().accountOpen; set(next ? { accountOpen: true, publishOpen: false } : { accountOpen: false }) },
+  /* one floating window at the right edge at a time: Publish, Account and Media close each other */
+  toggleAccount: (open) => { const next = open ?? !get().accountOpen; set(next ? { accountOpen: true, publishOpen: false, mediaOpen: null } : { accountOpen: false }) },
+  openMedia: (mode) => set({ mediaOpen: mode, publishOpen: false, accountOpen: false }),
+  closeMedia: () => set({ mediaOpen: null }),
   dismissPublishHint: () => set({ publishHintOpen: false }),
   triggerReload: (ms = 3200) => {
     if (reloadTimer) clearTimeout(reloadTimer)

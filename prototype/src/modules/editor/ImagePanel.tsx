@@ -31,8 +31,8 @@
  *  · Opacity → `opacity` 0–100.
  *  · Upload File → the system file picker; the file is downscaled and kept in the media store
  *    (media.ts), the slot gets `{ kind: 'upload', id }`.
- *  · From Library → the site's own pictures, inline, until the designer's Website media panel is
- *    built from his recording (docs/features/visual-editor/media-library-spec.md); then this opens THAT.
+ *  · From Library → opens the WEBSITE MEDIA panel in pick mode (modules/media/MediaPanel.tsx, built
+ *    30.09.2026 from the designer's recording): one click there hands the picture to this photo.
  *  · Generate via Prompt → the one PAID path in the editor: a new picture costs credits (the KB:
  *    generating an AI image uses credits; the price is not verified — `IMAGE_COST` is the chat's
  *    COST until the designer names one). It simulates a generation the way the chat does (a beat
@@ -42,11 +42,12 @@ import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from '
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useT } from '@/i18n'
+import { useUI } from '@/state/ui'
 import { useWorld, canUseAI } from '@/state/world'
 import { panelIn, panelInBody, panelInBodyFade, panelInFade, segmentedPill } from '@/ui/motion'
 import { IconCloseM, IconSparkleAI } from '@/ui/icons'
 import { fitOf, heightOf, opacityOf, photoOf } from '@/modules/preview/content'
-import { SITE_PHOTOS, photoIds } from '@/modules/preview/photos'
+import { photoIds } from '@/modules/preview/photos'
 import { photoSrc } from '@/modules/preview/site-parts'
 import { fileToPhoto, putUpload } from './media'
 import { useEditor } from './session'
@@ -70,7 +71,11 @@ const BAR_ROOM = 88
 
 function place(el: Element): Anchor {
   const r = el.getBoundingClientRect()
-  const right = r.right + GAP + PANEL_W <= window.innerWidth - 8
+  /* the Website media panel, when up, owns the right edge — this window keeps clear of it so the
+     picture being picked stays visible (the panel is this window's helper in pick mode) */
+  const media = document.querySelector('[data-media-panel]')?.getBoundingClientRect()
+  const edge = media ? media.left - 8 : window.innerWidth - 8
+  const right = r.right + GAP + PANEL_W <= edge
   const left = right ? r.right + GAP : Math.max(8, r.left - GAP - PANEL_W)
   const top = Math.max(8, Math.min(r.top, window.innerHeight - PANEL_H - BAR_ROOM))
   return { left, top, side: right ? 'right' : 'left' }
@@ -145,7 +150,10 @@ export function ImagePanel() {
   const preset = useWorld((s) => s.preset)
   const [anchor, setAnchor] = useState<Anchor | null>(null)
   const [box, setBox] = useState<{ w: number; h: number } | null>(null)
-  const [section, setSection] = useState<'library' | 'generate' | null>(null)
+  const [section, setSection] = useState<'generate' | null>(null)
+  const mediaOpen = useUI((s) => s.mediaOpen)
+  const openMedia = useUI((s) => s.openMedia)
+  const closeMedia = useUI((s) => s.closeMedia)
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -177,7 +185,7 @@ export function ImagePanel() {
     window.addEventListener('scroll', measure, true)
     window.addEventListener('resize', measure)
     return () => { window.removeEventListener('scroll', measure, true); window.removeEventListener('resize', measure) }
-  }, [key, openPanel, heightNow])
+  }, [key, openPanel, heightNow, mediaOpen])
 
   /* a press outside the panel and outside its photo closes it — a popover's law */
   useEffect(() => {
@@ -187,6 +195,8 @@ export function ImagePanel() {
       if (!el) return
       if (panel.current?.contains(el)) return
       if (el.closest(`[data-edit="${CSS.escape(key)}"]`)) return
+      /* the Website media panel in pick mode is this window's helper, not «outside» — nor is its lightbox */
+      if (el.closest('[data-media-panel]') || el.closest('[data-media-lightbox]') || el.closest('[role="alertdialog"]')) return
       openPanel(null)
     }
     window.addEventListener('pointerdown', down, true)
@@ -323,7 +333,7 @@ export function ImagePanel() {
               <div className="flex flex-col gap-4">
                 <div className="flex gap-2">
                   <OutlineButton icon={<GlyphUpload size={20} />} label={t({ en: 'Upload File', uk: 'Завантажити файл' })} onClick={() => file.current?.click()} testId="upload" />
-                  <OutlineButton icon={<GlyphLibrary size={20} />} label={t({ en: 'From Library', uk: 'З бібліотеки' })} onClick={() => setSection((s) => (s === 'library' ? null : 'library'))} pressed={section === 'library'} testId="library" />
+                  <OutlineButton icon={<GlyphLibrary size={20} />} label={t({ en: 'From Library', uk: 'З бібліотеки' })} onClick={() => (mediaOpen === 'pick' ? closeMedia() : openMedia('pick'))} pressed={mediaOpen === 'pick'} testId="library" />
                 </div>
                 {uploadError && <p className="-mt-2 text-[12px] text-[#fbbf24]" data-ve-upload-error>{uploadError}</p>}
                 <button
@@ -341,26 +351,6 @@ export function ImagePanel() {
               {/* the two doors open INSIDE the window, under the buttons. They fade IN and simply leave: a
                   nested AnimatePresence here was the second thing that could hold the panel's exit open */}
               <>
-                {section === 'library' && (
-                  <motion.div key="library" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.16 } }} onUpdate={keepOnMainThread} className="grid grid-cols-3 gap-2" data-ve-library>
-                    {photoIds.map((id) => {
-                      const cur = photoOf(edits, key)
-                      const on = cur.kind === 'site' && cur.id === id
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => stage('photo', key, { kind: 'site', id })}
-                          aria-pressed={on}
-                          title={SITE_PHOTOS[id].alt}
-                          className={`relative aspect-[14/9] overflow-hidden rounded-[8px] transition-shadow duration-[var(--dur-fast)] ease-std ${on ? 'shadow-[inset_0_0_0_2px_var(--action)]' : 'hover:shadow-[inset_0_0_0_1px_var(--white-300)]'}`}
-                        >
-                          <img src={SITE_PHOTOS[id].src} alt="" className="h-full w-full object-cover" />
-                        </button>
-                      )
-                    })}
-                  </motion.div>
-                )}
                 {section === 'generate' && (
                   <motion.div key="generate" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.16 } }} onUpdate={keepOnMainThread} className="flex flex-col gap-2" data-ve-generate>
                     <input

@@ -402,6 +402,16 @@ export interface SiteEdits {
   height: Record<string, number>
 }
 export const EMPTY_SITE_EDITS: SiteEdits = { text: {}, photo: {}, fit: {}, opacity: {}, height: {} }
+/**
+ * A generated site's library starts with the pictures it was generated with — the demo site's
+ * photographs, one per dish, service tile and the kitchen (modules/preview/photos.ts). The ids are
+ * the photo table's keys; `world.ts` names them rather than importing the pixels, so the state
+ * module stays free of the 145 KB of image data.
+ */
+export const DEFAULT_MEDIA: PhotoRef[] = [
+  'kitchen', 'power-bowl', 'salmon-teriyaki', 'lean-beef-rice', 'chicken-pesto-pasta', 'greek-wrap',
+  'protein-pancakes', 'svc-weekly-plan', 'svc-custom-macros', 'svc-office-delivery',
+].map((id) => ({ kind: 'site', id }))
 
 export interface World {
   /** Which language the simulated product renders in. */
@@ -590,6 +600,14 @@ export interface World {
   planEdits: PlanEdits
   /** The customer's own edits to the SITE — texts and photos replaced in the Visual Editor. */
   siteEdits: SiteEdits
+  /**
+   * THE SITE'S MEDIA LIBRARY — what the «Website media» panel lists (docs/features/visual-editor/
+   * media-library-spec.md): the pictures the site was generated with plus whatever the customer
+   * uploaded, minus what they deleted. Refs only — an upload's bytes live in modules/editor/media.ts,
+   * never here (a data URL in the world costs ~40 ms per `set`, see that file). Order = display order,
+   * newest first.
+   */
+  media: PhotoRef[]
 }
 
 /** The composer's mode switcher (Figma 29697:54553). See `World.mode`. */
@@ -606,7 +624,7 @@ export type ChatMode = 'autopilot' | 'build'
  */
 export const SITE_AXES = [
   'project', 'unpublished', 'published', 'mode', 'domain', 'customDomain', 'icann',
-  'chat', 'sent', 'brief', 'build', 'suggest', 'planEdits', 'siteEdits',
+  'chat', 'sent', 'brief', 'build', 'suggest', 'planEdits', 'siteEdits', 'media',
 ] as const
 export type SiteAxis = (typeof SITE_AXES)[number]
 export type SiteSlice = Pick<World, SiteAxis>
@@ -642,7 +660,7 @@ export function sliceOf(w: World): SiteSlice {
 const SITE_BASE: Omit<SiteSlice, 'sent' | 'domain' | 'customDomain' | 'published' | 'unpublished'> = {
   project: 'built', mode: 'autopilot', icann: false, chat: 'long',
   brief: EMPTY_BRIEF, build: EMPTY_BUILD, suggest: EMPTY_SUGGEST, planEdits: EMPTY_PLAN_EDITS,
-  siteEdits: EMPTY_SITE_EDITS,
+  siteEdits: EMPTY_SITE_EDITS, media: DEFAULT_MEDIA,
 }
 export const SITE_SLICES: Record<string, SiteSlice> = {
   synco: {
@@ -705,6 +723,7 @@ export const DEFAULT_WORLD: World = {
   suggest: EMPTY_SUGGEST,
   planEdits: EMPTY_PLAN_EDITS,
   siteEdits: EMPTY_SITE_EDITS,
+  media: DEFAULT_MEDIA,
 }
 
 /* ------------------------------------------------------------- selectors */
@@ -1124,7 +1143,7 @@ export const useWorld = create<Store>((set, get) => ({
        * retired every snapshot to fix a key that no default changed for (the rule: bump when a
        * DEFAULT changes).
        */
-      const whole = restored ? { ...restored, siteEdits: restored.siteEdits ?? EMPTY_SITE_EDITS } : {}
+      const whole = restored ? { ...restored, siteEdits: restored.siteEdits ?? EMPTY_SITE_EDITS, media: restored.media ?? DEFAULT_MEDIA } : {}
       patch = { ...whole, ...patch, stash }
     }
     // Moving the chat axis means a different situation is being staged, so a

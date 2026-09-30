@@ -38,6 +38,7 @@ import { EditBar } from '@/modules/editor/EditBar'
 import { SiteSwitch } from '@/modules/sites/SiteSwitch'
 import { SitesShelf } from '@/modules/sites/SitesShelf'
 import { AccountMenu } from '@/modules/account/AccountMenu'
+import { MediaPanel, MEDIA_TILE, MEDIA_INK } from '@/modules/media/MediaPanel'
 import { useSitePark, toolbarP, toolbarHome } from '@/modules/sites/park'
 import { SiriGlow } from '@/ui/SiriGlow'
 import {
@@ -51,7 +52,7 @@ import {
 import { ChatResizer } from '@/ui/ChatResizer'
 import { useT } from '@/i18n'
 import {
-  LogoRemixer, IconHistory, IconSidebar, IconStyle, IconExtension, IconAnalytics, IconCloud,
+  LogoRemixer, IconHistory, IconSidebar, IconStyle, IconExtension, IconAnalytics, IconCloud, IconPhotoLibrary,
   IconChatBubble, IconExpand,
 } from '@/ui/icons'
 
@@ -100,6 +101,11 @@ const RAIL = [
   { id: 'integrations', label: 'Integrations', Icon: IconExtension, tile: '#2554f71f', ink: 'var(--action)', goes: null },
   { id: 'analytics', label: 'Analytics', Icon: IconAnalytics, tile: 'rgba(102,187,106,0.1)', ink: '#66bb6a', goes: 'analytics' },
   { id: 'cloud', label: 'Cloud', Icon: IconCloud, tile: 'rgba(149,117,205,0.12)', ink: '#9575cd', goes: 'cloud' },
+  /* WEBSITE MEDIA (30.09.2026, the designer's recording + boards 23383:32801…) — not a surface: the
+     panel lies OVER the canvas at the rail, so `goes` is null and `opens` names it. The kit's state
+     sheet has a fifth accent row, «Photo Library», whose values the board does not print — this blue
+     is the Image tab's own tint (asked). */
+  { id: 'media', label: 'Website media', Icon: IconPhotoLibrary, tile: MEDIA_TILE, ink: MEDIA_INK, goes: null, opens: 'media' },
   // Domains and Email still have no home in the rail. That gap is the audit's headline.
 ] as const
 
@@ -737,6 +743,9 @@ export default function App() {
   const { world } = useWorld()
   const accountOpen = useUI((s) => s.accountOpen)
   const toggleAccount = useUI((s) => s.toggleAccount)
+  const mediaOpen = useUI((s) => s.mediaOpen)
+  const openMedia = useUI((s) => s.openMedia)
+  const closeMedia = useUI((s) => s.closeMedia)
   /* the reload and the device switch moved INTO the page pill (PageSwitcher.tsx, board 31379:2968) — the
      shell keeps `device` for the stage's box and `reloading` for the glow */
   const { surface, openSurface, closeSurface, togglePublish, reloading, device, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
@@ -1323,6 +1332,8 @@ export default function App() {
           {/* the Visual Editor's bar at the canvas's foot (board 31280:115372) — over the site, not inside the phone frame */}
           <EditBar />
           <AccountMenu />
+          {/* the Website media library over the canvas at the rail (modules/media/MediaPanel.tsx) */}
+          <MediaPanel />
       {/* The design system's "are you sure?" — mounted ONCE, here, because its scrim covers
           the whole shell (board 30282:51628). Anything that needs it calls
           `useConfirm.getState().ask({…})`; see ui/ConfirmDialog.tsx. */}
@@ -1375,8 +1386,11 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.14 } }}
             >
-              {RAIL.map(({ id, label, Icon, tile, ink, goes }, i) => {
-                const on = goes != null && surface === goes
+              {RAIL.map((row, i) => {
+                const { id, label, Icon, tile, ink, goes } = row
+                const opens = 'opens' in row ? row.opens : null
+                /* a panel button is «on» while its panel is up in manage mode; a pick-mode panel belongs to the Image window */
+                const on = goes != null ? surface === goes : opens === 'media' && mediaOpen === 'manage'
                 const fill = railFill && railFill.id === id ? railFill : null
                 /* painted as selected while its pane is still folding back into it — unless the accent is
                    still flooding in (the overlay paints) or draining out (the base is already resting).
@@ -1395,11 +1409,18 @@ export default function App() {
                     /* the pane unfolds from THIS box (`surfaceFrom`), and folds back into it; the accent
                        floods the tile from the point of the click, and drains back into it */
                     onClick={(e) => {
+                      if (opens === 'media') {
+                        floodTile(id, e, on ? 'out' : 'in')
+                        if (on) closeMedia()
+                        else openMedia('manage')
+                        return
+                      }
                       if (!goes) return
                       floodTile(id, e, on ? 'out' : 'in')
                       if (on) closeSurface()
                       else openSurface(goes, fromRect(e.currentTarget))
                     }}
+                    data-rail-media={opens === 'media' || undefined}
                     /* One after the other from the top, 70ms apart: the rail fills in the
                        direction it is read. Only transform and opacity, so the stagger
                        costs the compositor and nothing else. */

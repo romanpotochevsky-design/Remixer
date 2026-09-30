@@ -30,3 +30,7 @@ prototype/scratchpad/media-library/zoom/
 prototype/scratchpad/media-library/sheets/dense_*
 prototype/scratchpad/media-library/sheets/seg60_*
 prototype/scratchpad/media-library/sheets/overview_*
+prototype/scratchpad/media-library/shots/*
+!prototype/scratchpad/media-library/shots/m1-open.png
+!prototype/scratchpad/media-library/shots/m2-selected.png
+!prototype/scratchpad/media-library/shots/m6-pick.png

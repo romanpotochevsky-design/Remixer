@@ -12,7 +12,7 @@
  * Only the submitted answers start the build. Copied from Lovable's live flow,
  * frame by frame — see docs/audits/lovable-prebuild-flow/.
  */
-import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, EMPTY_SITE_EDITS, type Message, type Suggest, type OutlineEdits, type HomeProject } from '@/state/world'
+import { useWorld, canUseAI, EMPTY_BRIEF, EMPTY_SUGGEST, EMPTY_PLAN_EDITS, EMPTY_SITE_EDITS, DEFAULT_MEDIA, type Message, type Suggest, type OutlineEdits, type HomeProject } from '@/state/world'
 import { CUSTOM_DOMAIN } from '@/data/domains'
 import { slugOf } from '@/modules/preview/pages'
 import type { Text } from '@/i18n'
@@ -806,6 +806,8 @@ export function startBuild(prompt: string) {
       /* the texts and photos the customer replaced in the Visual Editor belong to the site they
          replaced them on; a new site starts with its own compiled copy (30.09.2026) */
       siteEdits: EMPTY_SITE_EDITS,
+      /* and its media library — a new site is generated with its own pictures (30.09.2026) */
+      media: DEFAULT_MEDIA,
       /*
        * ⚠️ `intakeDomain` IS ABSENT ON PURPOSE — the one axis a new site KEEPS.
        *
