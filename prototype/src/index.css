@@ -5187,8 +5187,8 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
   position: relative;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px; /* board 31442:44739 (01.10.2026): 36, r12, glyph 24 in a 6 pad — was 32 */
+  height: 36px;
   border-radius: 12px; /* board 31422:43616 (30.09.2026): hover, press and the selected disc all sit on r12 — «чтобы выглядело симметрично и ровно» */
   color: #fff;
   transition: background-color var(--dur-fast) var(--ease-std), opacity var(--dur-fast) var(--ease-std);

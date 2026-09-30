@@ -117,9 +117,11 @@ function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: stri
    01.10.2026: «подкладка под кнопками становится больше, увеличиваясь во все стороны… как жидкий объект»);
    same spring as the stretch, so the two edges breathe together. Only the glass moves. */
 const GLASS_SWELL = 4
-/* board 31442:44737: frame 78 × 42 — 1 px rim inside + 4 padding around 32 tools with a 4 gap */
+/* board 31442:44737 (01.10.2026, designer: «размер самих кнопок… с 32 на 36»): frame 86 × 46 — 1 px rim inside +
+   4 padding around 36 tools (r12, glyph 24 in a 6 pad) with a 4 gap */
 const BAR_PAD = 5
-const BAR_H = 42
+const BAR_TOOL = 36
+const BAR_H = BAR_TOOL + 2 * BAR_PAD
 function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, children }: {
   side: 'left' | 'right'
   reveal: boolean
@@ -176,7 +178,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
     <div
       ref={(el) => { root.current = el; if (typeof pillRef === 'function') pillRef(el); else if (pillRef) (pillRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}
       {...pillProps}
-      className="pointer-events-auto relative h-[42px]"
+      className="pointer-events-auto relative h-[46px]"
       data-ve-stretched={reveal ? '' : undefined}
       data-ve-swollen={swell ? '' : undefined}
     >
@@ -192,7 +194,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
         {tail && (
           <motion.div
             ref={tailRef}
-            className="absolute flex h-[42px] items-center gap-1 pl-1 pr-[5px]"
+            className="absolute flex h-[46px] items-center gap-1 pl-1 pr-[5px]"
             style={{ top: swellV, ...(side === 'left' ? { left: tailSeat } : { right: tailSeat }) }}
             variants={editBarTail}
             initial="initial"
@@ -206,7 +208,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
         )}
       </motion.div>
       {/* THE TOOLS — in flow, on top, never moved and never scaled */}
-      <div className="relative z-[1] flex h-[42px] items-center gap-1 p-[5px]">{children}</div>
+      <div className="relative z-[1] flex h-[46px] items-center gap-1 p-[5px]">{children}</div>
     </div>
   )
 }
@@ -243,17 +245,19 @@ function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () 
   const top = useTransform(p, (v) => lerp(from.y, to.y)(v) + (lerp(from.height, to.height)(v) * FLIGHT_THIN * bell(v)) / 2)
   /* the tools follow the WIDTH, not the clock: Select is opaque once the box has room for it,
      the handle once it has room for that too; «T» sits at 4 in a pill and centred (8) in a 48 tile */
-  const selO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - 56) / 20)))
-  const tailO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - 96) / 20)))
+  const selO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - (BAR_PAD + BAR_TOOL + 4 + 12)) / 20)))
+  const tailO = useTransform(width, (w) => Math.max(0, Math.min(1, (w - (BAR_PAD + 2 * BAR_TOOL + 4 + 20)) / 20)))
   /* «T» sits at 5 in the pill (BAR_PAD) and centred (8) in the 48 tile */
-  const tLeft = useTransform(width, (w) => Math.max(BAR_PAD, Math.min(8, 8 - (w - 48) / 7)))
-  const tTop = useTransform(height, (h) => (h - 32) / 2)
+  /* seat in the 48 tile: (48 − 36) / 2 = 6 */
+  const tileSeat = (48 - BAR_TOOL) / 2
+  const tLeft = useTransform(width, (w) => Math.max(BAR_PAD, Math.min(tileSeat, tileSeat - (w - 48) / 38)))
+  const tTop = useTransform(height, (h) => (h - BAR_TOOL) / 2)
   useEffect(() => {
     const ctrl = animate(p, 1, { ...EDIT_DOCK_FLIGHT, onComplete: onDone })
     return () => ctrl.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const btn = 'absolute grid h-8 w-8 place-items-center rounded-[12px] text-white'
+  const btn = 'absolute grid h-9 w-9 place-items-center rounded-[12px] text-white'
   return (
     <motion.div
       data-ve-flight={flight.dir}
@@ -262,10 +266,10 @@ function Flight({ flight, onDone }: { flight: Flight & { to: Rect }; onDone: () 
       aria-hidden
     >
       <motion.span className={btn} style={{ left: tLeft, top: tTop }}><GlyphEditText size={24} /></motion.span>
-      <motion.span className={btn} style={{ left: BAR_PAD + 36, top: tTop, opacity: selO }}><GlyphSelect size={24} /></motion.span>
-      <motion.span className="absolute flex items-center gap-1" style={{ left: BAR_PAD + 72, top: tTop, opacity: tailO }}>
-        <span className="h-8 w-px bg-[var(--glass-divider)]" />
-        <span className="grid h-8 w-8 place-items-center rounded-[12px] text-white"><GlyphDockRight size={22} /></span>
+      <motion.span className={btn} style={{ left: BAR_PAD + BAR_TOOL + 4, top: tTop, opacity: selO }}><GlyphSelect size={24} /></motion.span>
+      <motion.span className="absolute flex items-center gap-1" style={{ left: BAR_PAD + 2 * (BAR_TOOL + 4), top: tTop, opacity: tailO }}>
+        <span className="h-9 w-px bg-[var(--glass-divider)]" />
+        <span className="grid h-9 w-9 place-items-center rounded-[12px] text-white"><GlyphDockRight size={22} /></span>
       </motion.span>
     </motion.div>
   )
@@ -460,7 +464,7 @@ export function EditBar() {
                    move; a pending batch keeps the pill where it is (Save/Clear are the only way out) */
                 tail={
                   <>
-                    <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+                    <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
                     <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} title={dockBtnLabel} onClick={dock} tabIndex={hover && !history ? 0 : -1} data-ve-dock-to-rail>
                       <GlyphDockRight size={22} />
                     </button>
@@ -517,7 +521,7 @@ export function EditBar() {
                 >
                   <GlassBar side="right" reveal={false} pillProps={{ 'data-ve-bar': '', 'data-ve-popped': '', 'data-ve-dirty': dirty ? '' : undefined }}>
                     {tools}
-                    <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
+                    <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
                     <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} title={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} onClick={undock} data-ve-undock>
                       <GlyphUndock size={22} />
                     </button>
