@@ -127,6 +127,13 @@ export interface Message {
   who: 'user' | 'ai'
   text: string | { en: string; uk: string }
   /**
+   * WHAT THE MESSAGE IS ABOUT — the element the customer picked with the edit bar's Select tool
+   * before typing («Heading», «Photo», «Dish name»; modules/editor, 30.09.2026). Lovable's Select
+   * puts the tag (`h1`) on the composer and scopes the prompt to it; ours puts the human name
+   * there, and the bubble keeps it as a small chip so the transcript shows what was pointed at.
+   */
+  about?: string
+  /**
    * What kind of turn this is. Plain text unless said otherwise:
    *  - 'clarify' — the agent asking for direction instead of building (opens the brief)
    *  - 'brief'   — the summary card of the answered questions (renders from `world.brief`)

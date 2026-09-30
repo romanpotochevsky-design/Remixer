@@ -15,7 +15,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useWorld, canUseAI } from '@/state/world'
 import { useT } from '@/i18n'
 import {
-  IconPlus, IconMic, IconArrowUp, IconChevronDown, IconCheck,
+  IconPlus, IconMic, IconArrowUp, IconChevronDown, IconCheck, IconClose,
   IconReplyArrow, IconThumbUp, IconThumbDown, IconCopy, IconMore,
 } from '@/ui/icons'
 import { ScrollArea } from '@/ui/ScrollArea'
@@ -31,6 +31,9 @@ import { BuildProgress } from './BuildProgress'
 import { endDockMotion } from './dock'
 import { PLAN_WAITING } from './plan'
 import { BRIEF_QUESTIONS, BRIEF_STATUS, answerText } from './brief'
+import { useEditor } from '@/modules/editor/session'
+import { GlyphSelect } from '@/modules/editor/icons'
+import { labelOf } from '@/modules/preview/content'
 
 /**
  * The stagger step of a turn on the Home → builder arrival (index.css "THE ARRIVAL"):
@@ -49,10 +52,13 @@ function UserBubble({
   children,
   animate,
   anchorRef,
+  about,
 }: {
   children: React.ReactNode
   animate: boolean
   anchorRef?: React.Ref<HTMLDivElement>
+  /** The element the Select tool pointed at when this was sent (Message.about). */
+  about?: string
 }) {
   return (
     <div ref={anchorRef} className="flex justify-end">
@@ -62,6 +68,12 @@ function UserBubble({
         animate="animate"
         className="liquid-glass liquid-glass--subtle max-w-[320px] origin-bottom-right rounded-[24px] rounded-br-[8px] px-5 pb-[11px] pt-[13px]"
       >
+        {about && (
+          <span className="mb-1.5 inline-flex h-6 items-center gap-1.5 rounded-full bg-[var(--white-100)] px-2 text-[12px] font-semibold leading-none text-[var(--white-720)]" data-about>
+            <GlyphSelect size={12} />
+            {about}
+          </span>
+        )}
         <p className="whitespace-pre-wrap text-[15px] leading-[26px] text-[var(--gray-350,#c7c7cd)]">{children}</p>
       </motion.div>
     </div>
@@ -799,9 +811,21 @@ export function ChatPanel() {
 
   const composerBox = useRef<HTMLDivElement>(null)
 
+  /*
+   * THE SELECT TOOL'S PICK (modules/editor, 30.09.2026: «инструмент select — нажать на что-то и
+   * задать контекст чату»): the element the customer pointed at on the site stands in the composer
+   * as a chip, the placeholder asks about it, and the message goes out carrying its name. Lovable's
+   * composer does the same with the element's tag («h1»); ours says «Heading». The pick is the
+   * editor session's, so leaving the mode or the site drops it with the session.
+   */
+  const about = useEditor((s) => s.context)
+  const setContext = useEditor((s) => s.setContext)
+  useEffect(() => { if (about) field.current?.focus() }, [about])
+
   function submit() {
     if (!armed) return
-    sendMessage(draft)
+    sendMessage(draft, undefined, about ? labelOf(about) : undefined)
+    if (about) setContext(null)
     setDraft('')
     // The flash's conic is drawn square and stretched to the box (index.css);
     // hand it the box's real aspect so the stretch is exact at any chat width.
@@ -880,6 +904,7 @@ export function ChatPanel() {
                     <UserBubble
                       animate={isFresh(m.id)}
                       anchorRef={i === lastUserIndex ? anchor : undefined}
+                      about={m.about}
                     >
                       {body}
                     </UserBubble>
@@ -1019,6 +1044,24 @@ export function ChatPanel() {
             <i className="dock-splash-rim" />
           </span>
           <div className="pb-4 pl-6 pr-2 pt-[17px]">
+            {/* the Select tool's pick, as the same glass chip the Home composer gives a domain */}
+            {about && (
+              <div className="mb-2 flex" data-about-chip>
+                <span className="liquid-glass liquid-glass--attach flex h-8 items-center gap-2 rounded-full pl-3 pr-1.5 text-[13px] font-semibold leading-none text-white">
+                  <span className="grid h-4 w-4 place-items-center text-[var(--white-720)]"><GlyphSelect size={14} /></span>
+                  <span>{labelOf(about)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setContext(null)}
+                    aria-label={t({ en: 'Remove the selected element', uk: 'Прибрати виділений елемент' })}
+                    className="grid h-5 w-5 place-items-center rounded-full text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
+                    data-about-remove
+                  >
+                    <IconClose size={9} />
+                  </button>
+                </span>
+              </div>
+            )}
             <textarea
               ref={field}
               rows={1}
@@ -1036,7 +1079,9 @@ export function ChatPanel() {
                   ? t({ en: 'AI is off — a plan is required', uk: 'AI вимкнено — потрібен план' })
                   : asking
                     ? t({ en: 'Tell Remixer what to do instead...', uk: 'Скажіть Remixer, що зробити замість цього...' })
-                    : t({ en: 'Ask Remixer...', uk: 'Запитайте Remixer...' })
+                    : about
+                      ? t({ en: 'Ask Remixer to change the selected element...', uk: 'Попросіть Remixer змінити виділений елемент...' })
+                      : t({ en: 'Ask Remixer...', uk: 'Запитайте Remixer...' })
               }
               aria-label={t({ en: 'Message Remixer', uk: 'Повідомлення для Remixer' })}
               className="block w-full resize-none bg-transparent text-[16px] leading-[26px] text-[var(--white-900)] outline-none placeholder:text-[var(--gray-400,#a1a1aa)] disabled:cursor-not-allowed"

@@ -127,7 +127,7 @@ function nextId(over: Message[]): number {
   return ++seq
 }
 
-export function sendMessage(raw: string, reply?: Text) {
+export function sendMessage(raw: string, reply?: Text, about?: string) {
   const text = raw.trim()
   if (!text) return
 
@@ -137,7 +137,9 @@ export function sendMessage(raw: string, reply?: Text) {
   // The first typed message freezes the scenario's demo transcript into `sent`
   // and takes over from there; `chat` is only a status flag afterwards.
   const base = world.sent.length ? world.sent : baselineThread(world.chat)
-  const mine: Message = { id: nextId(base), who: 'user', text }
+  /* `about` — the element the Select tool pointed at (Message.about); the reply is the
+     keyword reply as ever, the transcript just remembers what was pointed at */
+  const mine: Message = about ? { id: nextId(base), who: 'user', text, about } : { id: nextId(base), who: 'user', text }
   const fresh = world.project === 'empty'
 
   // The fork. Nothing built yet and nothing to build from → ask, don't guess.
