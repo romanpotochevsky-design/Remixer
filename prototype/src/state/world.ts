@@ -114,6 +114,8 @@ export type Project = 'empty' | 'generating' | 'built'
  * windows — count as "similar cases" is his call and is asked, not decided here.)
  */
 export type PaneMotion = 'unfold' | 'sheet' | 'focus'
+/** What the Select tool's pill says over an element — see `World.selectNames`. */
+export type SelectNames = 'tag' | 'name'
 export type Chat = 'empty' | 'short' | 'long' | 'working' | 'error'
 
 /**
@@ -616,6 +618,14 @@ export interface World {
    */
   paneMotion: PaneMotion
   /**
+   * WHAT THE SELECT TOOL CALLS AN ELEMENT — its HTML tag (default: `div`, `h1`, `img`, Lovable's
+   * pill word for word — designer 01.10.2026: «нам нужно сделать точно так же») or a human name
+   * (`Heading`, `Photo`, `Block`). A design A/B in the console, raised to the designer: a tag is a
+   * developer's word, and the customer this product is for has never seen `div`. Not a project
+   * fact and not a URL key — `startBuild` leaves it alone, like `paneMotion`.
+   */
+  selectNames: SelectNames
+  /**
    * WHICH domain is attached to this project.
    *
    * The name has to be world truth and not navigation, because the panel outlives every
@@ -814,6 +824,7 @@ export const DEFAULT_WORLD: World = {
   intakeDomain: null,
   planSimple: true,
   paneMotion: 'sheet',
+  selectNames: 'tag',
   customDomain: CUSTOM_DOMAIN,
   chat: 'long',
   projects: DEMO_PROJECTS,

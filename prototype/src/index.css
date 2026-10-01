@@ -5143,19 +5143,42 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
   25% { opacity: 0.9; }
   100% { opacity: 0; }
 }
-/* the Select tool's name for what it picked — a human word, never a tag */
-.ve-chip {
+/* THE SELECT TOOL — Lovable's tool, frame for frame, in our blue (designer 01.10.2026, with a
+   recording: «мне нравится как выглядит и работает инструмент селекта, нам нужно сделать точно так
+   же, только используй наш фирменный синий цвет»; scratchpad/lov-select/). Measured there:
+   · the ring is 1 px ON the element's own box — square corners, no gap — over a faint tint of the
+     same blue; hover and selection wear the same ring, and the selection keeps its ring while the
+     pointer rings something else;
+   · the ring JUMPS between elements — no fade, no slide (the outline is where the pointer is);
+   · a pill with the element's tag rides at the cursor (+14, +18), clamped inside the preview;
+   · the cursor is a crosshair and every element is a target — a click picks, it never follows. */
+.ve-sel {
   position: absolute;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--action);
+  background: rgb(21 135 255 / 0.05);
+}
+.ve-tag {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 45;
+  height: 23px;
+  padding: 0 10px;
+  border-radius: 999px;
   background: var(--action);
   color: #fff;
   font-family: theme(fontFamily.sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 23px;
   white-space: nowrap;
+  pointer-events: none;
+  will-change: transform;
+}
+[data-site-editing='select'] [data-site-page],
+[data-site-editing='select'] [data-site-page] * {
+  cursor: crosshair !important;
+  user-select: none;
 }
 /* a text run with the caret in it: the browser's focus ring is the overlay's job */
 .ve-text {

@@ -866,17 +866,19 @@ export function ChatPanel() {
   /*
    * THE SELECT TOOL'S PICK (modules/editor, 30.09.2026: «инструмент select — нажать на что-то и
    * задать контекст чату»): the element the customer pointed at on the site stands in the composer
-   * as a chip, the placeholder asks about it, and the message goes out carrying its name. Lovable's
-   * composer does the same with the element's tag («h1»); ours says «Heading». The pick is the
-   * editor session's, so leaving the mode or the site drops it with the session.
+   * as a chip, the placeholder asks about it, and the message goes out carrying its name. The
+   * name is the one the pill showed at the click — the element's tag («div») as Lovable has it, or
+   * a human word («Block») on the console's other side (`World.selectNames`); a pick from the
+   * Website media panel has no element and keeps its own words. Leaving the site drops it.
    */
   const about = useEditor((s) => s.context)
+  const aboutLabel = useEditor((s) => (s.context ? s.contextLabel ?? labelOf(s.context) : null))
   const setContext = useEditor((s) => s.setContext)
   useEffect(() => { if (about) field.current?.focus() }, [about])
 
   function submit() {
     if (!armed) return
-    sendMessage(draft, undefined, about ? labelOf(about) : undefined)
+    sendMessage(draft, undefined, aboutLabel ?? undefined)
     if (about) setContext(null)
     setDraft('')
     // The flash's conic is drawn square and stretched to the box (index.css);
@@ -1127,7 +1129,7 @@ export function ChatPanel() {
               <div className="mb-2 flex" data-about-chip>
                 <span className="liquid-glass liquid-glass--attach flex h-8 items-center gap-2 rounded-full pl-3 pr-1.5 text-[13px] font-semibold leading-none text-white">
                   <span className="grid h-4 w-4 place-items-center text-[var(--white-720)]"><GlyphSelect size={14} /></span>
-                  <span>{labelOf(about)}</span>
+                  <span>{aboutLabel}</span>
                   <button
                     type="button"
                     onClick={() => setContext(null)}

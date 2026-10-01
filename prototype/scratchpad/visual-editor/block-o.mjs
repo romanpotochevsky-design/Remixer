@@ -79,7 +79,7 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
     const e = w.siteEdits ?? { text: {}, photo: {}, fit: {}, opacity: {}, height: {} }
     return {
       raw, credits: w.credits ?? 640, unpublished: w.unpublished ?? 0, site: w.site, project: w.project, chat: w.chat,
-      sent: (w.sent || []).map((m) => ({ who: m.who, about: m.about })), siteEdits: e, search: location.search,
+      sent: (w.sent || []).map((m) => ({ who: m.who, about: m.about, kind: m.kind })), versions: (w.versions || []).map((v) => ({ kind: v.kind, cost: v.cost })), siteEdits: e, search: location.search,
       /* how many edits each OTHER site's stashed slice carries — the leak SITE_AXES exists to prevent */
       stash: Object.fromEntries(Object.entries(w.stash || {}).map(([id, s]) => [id, s.siteEdits ? Object.keys(s.siteEdits.text || {}).length + Object.keys(s.siteEdits.photo || {}).length + Object.keys(s.siteEdits.fit || {}).length : 0])),
     }
@@ -138,9 +138,9 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
       toolbarText: document.querySelector('[data-canvas-toolbar]')?.innerText ?? '', editing: document.querySelector('[data-site-editing]')?.getAttribute('data-site-editing') ?? null,
     }
   })
-  check('the bar stands where the board puts it: centred on the canvas column, its bottom edge 29 above the canvas’s, 40 tall (4 + 32 + 4) — two 32 × 32 tools 4 apart, neither pressed, no batch segment',
-    !!rest && rest.inMain && Math.abs(rest.centreOff) <= 1 && rest.lift === 29 && rest.h === 40 && rest.tools.length === 2 && rest.tools.map((t) => t.tool).join() === 'edit,select'
-      && rest.tools.every((t) => t.w === 32 && t.h === 32 && t.pressed === 'false' && t.glyph && !t.disc) && rest.gap === 4 && !rest.batch && !rest.dirty && rest.editing === null,
+  check('the bar stands where the board puts it: centred on the canvas column, its bottom edge 29 above the canvas’s, 46 tall (1 + 4 + 36 + 4 + 1, board 31442:44737) — two 36 × 36 tools 4 apart, neither pressed, no batch segment',
+    !!rest && rest.inMain && Math.abs(rest.centreOff) <= 1 && rest.lift === 29 && rest.h === 46 && rest.tools.length === 2 && rest.tools.map((t) => t.tool).join() === 'edit,select'
+      && rest.tools.every((t) => t.w === 36 && t.h === 36 && t.pressed === 'false' && t.glyph && !t.disc) && rest.gap === 4 && !rest.batch && !rest.dirty && rest.editing === null,
     JSON.stringify(rest && { centreOff: rest.centreOff, lift: rest.lift, w: rest.w, h: rest.h, tools: rest.tools, gap: rest.gap, batch: rest.batch }))
   check('…in the house glass: `liquid-glass` with its glint, r16, the board’s 0 8 32 at 33 %, taking the pointer inside a pointer-blind host',
     !!rest && rest.glass && rest.glint && rest.radius === '16px' && /rgba\(0, 0, 0, 0\.33\) 0px 8px 32px/.test(rest.shadow) && rest.pointer === 'auto' && rest.hostPointer === 'none',
@@ -261,6 +261,8 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
   }))
   check('Fit stages `contain` on the photo — on the site AND in the panel’s preview — and the bar counts «2 changes»',
     fitted.site === 'contain' && fitted.preview === 'contain' && fitted.tabs === 'true,false' && fitted.count === '2 changes', JSON.stringify(fitted))
+  /* since 30.09.2026 (evening) «From Library» opens the WEBSITE MEDIA panel in pick mode (block P) — the grid is
+     the panel's, each tile a `[data-media-open]` button; the panel takes its Panel Arrival, so wait for it */
   await p.click('[data-ve-row="library"]'); await p.waitForTimeout(800)
   const lib = await p.evaluate(() => {
     const g = document.querySelector('[data-ve-library]'); if (!g) return { up: false }
@@ -269,7 +271,7 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
   })
   await p.click('[data-ve-library] [data-media-tile]:nth-child(3) [data-media-open]'); await p.waitForTimeout(400)
   const picked = await p.evaluate(() => ({ src: document.querySelector('[data-edit="meal.power-bowl.photo"] img')?.getAttribute('src'), count: document.querySelector('[data-ve-count]')?.textContent, on: [...document.querySelectorAll('[data-ve-library] button[data-media-open]')].map((t) => t.getAttribute('aria-pressed')), preview: document.querySelector('[data-ve-preview] img')?.getAttribute('src') }))
-  check('From Library opens the site’s own pictures INSIDE the window with the current one marked; picking the third swaps the photo on the site and in the preview to that tile, marks it, and the bar counts «3 changes»',
+  check('From Library opens the Website media panel in pick mode with the current picture marked; picking the third swaps the photo on the site and in the preview to that tile, marks it, and the bar counts «3 changes»',
     lib.up && lib.n >= 6 && lib.on.filter((x) => x === 'true').length === 1 && lib.pressedRow === 'true' && !!lib.third && lib.third !== srcBefore && picked.src === lib.third && picked.preview === lib.third && picked.on[2] === 'true' && picked.on.filter((x) => x === 'true').length === 1 && picked.count === '3 changes',
     JSON.stringify({ n: lib.n, on: lib.on, pressedRow: lib.pressedRow, changed: lib.third !== srcBefore, picked: picked.src === lib.third, count: picked.count }))
   await shot('O5-library')
@@ -286,8 +288,8 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
   await p.waitForTimeout(200)
   const w7 = await world()
   const savedPhoto = w7.siteEdits.photo['meal.power-bowl.photo']
-  check('Save applies the batch as ONE change to the world: `unpublished` + 1, credits UNTOUCHED (640 — «manual edits… never use credits»), no transcript line, the chat idle; the saved layer carries the words, the Fit and the picked picture under their keys',
-    w7.unpublished === w7a.unpublished + 1 && w7.unpublished === 1 && w7.credits === 640 && w7a.credits === 640 && w7.sent.length === w7a.sent.length && w7.chat !== 'working'
+  check('Save applies the batch as ONE change to the world: `unpublished` + 1, credits UNTOUCHED (640 — «manual edits… never use credits»), ONE free version card in the transcript (block R), the chat idle; the saved layer carries the words, the Fit and the picked picture under their keys',
+    w7.unpublished === w7a.unpublished + 1 && w7.unpublished === 1 && w7.credits === 640 && w7a.credits === 640 && w7.sent.at(-1)?.kind === 'version' && w7.versions.at(-1)?.kind === 'edit' && w7.versions.at(-1)?.cost === 0 && w7.chat !== 'working'
       && w7.siteEdits.text['home.hero.title'] === ORIGINAL + TYPED && w7.siteEdits.fit['meal.power-bowl.photo'] === 'fit' && savedPhoto?.kind === 'site' && savedPhoto?.id !== 'power-bowl' && Object.keys(w7.siteEdits.text).length === 1,
     JSON.stringify({ unpublished: [w7a.unpublished, w7.unpublished], credits: [w7a.credits, w7.credits], sent: [w7a.sent.length, w7.sent.length], chat: w7.chat, text: w7.siteEdits.text, fit: w7.siteEdits.fit, photo: savedPhoto }))
   const afterSave = await p.evaluate(() => {
@@ -355,26 +357,42 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
   await p.click('[data-ve-tool="select"]'); await p.waitForTimeout(300)
   const sel = await p.evaluate(() => ({ pressed: document.querySelector('[data-ve-tool="select"]')?.getAttribute('aria-pressed'), editPressed: document.querySelector('[data-ve-tool="edit"]')?.getAttribute('aria-pressed'), picks: document.querySelectorAll('[data-pick]').length, edits: document.querySelectorAll('[data-edit]').length, selecting: document.querySelector('[data-site-editing]')?.getAttribute('data-site-editing'), ce: document.querySelector('[data-pick="home.hero.title"]')?.getAttribute('contenteditable') ?? null }))
   const pick = await p.$('[data-pick="home.hero.title"]')
-  await pick.hover(); await p.waitForTimeout(160)
-  const selHover = !!(await p.$('.ve-ring--hover'))
-  await pick.click(); await p.waitForTimeout(350)
+  /* Lovable's tool, in our blue (01.10.2026, scratchpad/lov-select/): the ring sits 1 px ON the box with a 5 % tint,
+     a pill with the TAG rides at the cursor +14/+18, a click picks and the bar re-forms into «1 selection · Clear» */
+  const pb = await pick.boundingBox()
+  const hx = Math.round(pb.x + 40), hy = Math.round(pb.y + pb.height / 2)
+  await p.mouse.move(hx, hy, { steps: 4 }); await p.waitForTimeout(160)
+  const selHover = await p.evaluate(({ hx, hy }) => {
+    const ring = document.querySelector('[data-ve-hover]'); const tag = document.querySelector('[data-ve-tag]'); const t = document.querySelector('[data-pick="home.hero.title"]')
+    if (!ring || !tag || !t) return { ring: !!ring, tag: !!tag }
+    const r = ring.getBoundingClientRect(); const b = t.getBoundingClientRect(); const q = tag.getBoundingClientRect(); const cs = getComputedStyle(ring)
+    return { on: Math.max(Math.abs(r.x - b.x), Math.abs(r.y - b.y), Math.abs(r.width - b.width), Math.abs(r.height - b.height)) < 0.6, shadow: cs.boxShadow, radius: cs.borderRadius, tint: cs.backgroundColor,
+      word: tag.textContent, dx: q.x - hx, dy: q.y - hy, h: q.height, bg: getComputedStyle(tag).backgroundColor, cursor: getComputedStyle(t).cursor }
+  }, { hx, hy })
+  await p.mouse.click(hx, hy); await p.waitForTimeout(350)
   const chosen = await p.evaluate(() => {
-    const ring = document.querySelector('.ve-ring--pinned'); const chip = document.querySelector('[data-ve-chip]'); const ta = document.querySelector('aside textarea')
-    return { pinned: !!ring, chip: chip?.textContent ?? null, chipBg: chip ? getComputedStyle(chip).backgroundColor : null, chipAbove: ring && chip ? chip.getBoundingClientRect().bottom <= ring.getBoundingClientRect().top + 0.5 : null, composer: document.querySelector('[data-about-chip]')?.textContent ?? null, placeholder: ta?.getAttribute('placeholder'), focused: document.activeElement === ta, hover: !!document.querySelector('.ve-ring--hover'), edits: document.querySelectorAll('[data-edit]').length }
+    const ring = document.querySelector('[data-ve-pick]'); const t = document.querySelector('[data-pick="home.hero.title"]'); const ta = document.querySelector('aside textarea')
+    const r = ring?.getBoundingClientRect(); const b = t?.getBoundingClientRect()
+    return { pinned: !!ring, on: r && b ? Math.max(Math.abs(r.x - b.x), Math.abs(r.y - b.y), Math.abs(r.width - b.width), Math.abs(r.height - b.height)) < 0.6 : null, oldChip: !!document.querySelector('[data-ve-chip]'),
+      composer: document.querySelector('[data-about-chip]')?.textContent ?? null, placeholder: ta?.getAttribute('placeholder'), focused: document.activeElement === ta,
+      bar: document.querySelector('[data-ve-pick-count]')?.textContent ?? null, clear: !!document.querySelector('[data-ve-pick-clear]'), editTool: !!document.querySelector('[data-ve-tool="edit"]'), edits: document.querySelectorAll('[data-edit]').length }
   })
-  check('the Select tool: pressed, every target a `data-pick` (no contentEditable anywhere), the hover ring; a click PINS the title with a chip that says «Heading» (a human word, not a tag) sitting above the ring, the composer grows the same chip, its placeholder asks about the selected element, and the caret is already in the field',
-    sel.pressed === 'true' && sel.editPressed === 'false' && sel.picks >= 20 && sel.edits === 0 && sel.selecting === 'select' && sel.ce === null && selHover
-      && chosen.pinned && chosen.chip === 'Heading' && chosen.chipBg === ACTION && chosen.chipAbove === true && chosen.composer === 'Heading' && /selected element/.test(chosen.placeholder || '') && chosen.focused && !chosen.hover,
+  check('the Select tool, Lovable\'s: pressed, every content target a `data-pick` (no contentEditable anywhere), a crosshair; the hover ring sits 1 px ON the heading\'s box (inset action blue, square, 5 % tint) and a pill «h1» rides at the cursor +14/+18; a click PINS the heading on its box, no chip on the site, the composer grows a chip «h1», its placeholder asks about the selected element, the caret is in the field, and the bar re-forms into «1 selection · Clear» with the Edit tool stepped aside',
+    sel.pressed === 'true' && sel.editPressed === 'false' && sel.picks >= 20 && sel.edits === 0 && sel.selecting === 'select' && sel.ce === null
+      && selHover.on && /21, 135, 255/.test(selHover.shadow || '') && /inset/.test(selHover.shadow || '') && selHover.radius === '0px' && selHover.tint === 'rgba(21, 135, 255, 0.05)'
+      && selHover.word === 'h1' && Math.abs(selHover.dx - 14) <= 1 && Math.abs(selHover.dy - 18) <= 1 && selHover.h === 23 && selHover.bg === ACTION && selHover.cursor === 'crosshair'
+      && chosen.pinned && chosen.on && !chosen.oldChip && chosen.composer === 'h1' && /selected element/.test(chosen.placeholder || '') && chosen.focused
+      && chosen.bar === '1 selection' && chosen.clear && !chosen.editTool,
     JSON.stringify({ sel, selHover, chosen }))
   await shot('O7-select-picked')
   await p.keyboard.type('Make it shorter'); await p.keyboard.press('Enter'); await p.waitForTimeout(700)
-  const sent = await p.evaluate(() => ({ bubbles: [...document.querySelectorAll('aside [data-about]')].map((e) => e.textContent), composer: !!document.querySelector('[data-about-chip]'), pinned: !!document.querySelector('.ve-ring--pinned'), chip: !!document.querySelector('[data-ve-chip]'), placeholder: document.querySelector('aside textarea')?.getAttribute('placeholder'), text: document.querySelector('aside').innerText.includes('Make it shorter') }))
+  const sent = await p.evaluate(() => ({ bubbles: [...document.querySelectorAll('aside [data-about]')].map((e) => e.textContent), composer: !!document.querySelector('[data-about-chip]'), pinned: !!document.querySelector('[data-ve-pick]'), bar: !!document.querySelector('[data-ve-picked]'), placeholder: document.querySelector('aside textarea')?.getAttribute('placeholder'), text: document.querySelector('aside').innerText.includes('Make it shorter') }))
   /* the paid lane: the chat's COST comes off when the answer lands (send.ts `deliverAnswer`, ~2.6 s) */
   await p.waitForFunction((k) => (JSON.parse(localStorage.getItem(k) || '{}').credits ?? 640) === 630, KEY, { timeout: 8000 }).catch(() => {})
   const w10 = await world()
-  check('sending carries the pick: a user bubble tagged «Heading», the composer’s chip and the pinned ring gone, the placeholder back to plain — and the message went down the CHAT’s lane: 10 credits off (640 → 630), one more unpublished change (1 → 2), the transcript carrying `about: "Heading"`; the editor’s saved layer untouched by the send',
-    sent.bubbles.join() === 'Heading' && !sent.composer && !sent.pinned && !sent.chip && !/selected element/.test(sent.placeholder || '') && sent.text
-      && w10a.credits === 640 && w10.credits === 630 && w10a.unpublished === 1 && w10.unpublished === 2 && w10.sent.some((m) => m.who === 'user' && m.about === 'Heading')
+  check('sending carries the pick: a user bubble tagged «h1», the composer’s chip, the pick ring and the bar’s «1 selection» gone, the placeholder back to plain — and the message went down the CHAT’s lane: 10 credits off (640 → 630), one more unpublished change (1 → 2), the transcript carrying `about: "h1"`; the editor’s saved layer untouched by the send',
+    sent.bubbles.join() === 'h1' && !sent.composer && !sent.pinned && !sent.bar && !/selected element/.test(sent.placeholder || '') && sent.text
+      && w10a.credits === 640 && w10.credits === 630 && w10a.unpublished === 1 && w10.unpublished === 2 && w10.sent.some((m) => m.who === 'user' && m.about === 'h1')
       && w10.siteEdits.text['home.hero.title'] === ORIGINAL + TYPED && w10.siteEdits.fit['meal.power-bowl.photo'] === 'fit',
     JSON.stringify({ sent, credits: [w10a.credits, w10.credits], unpublished: [w10a.unpublished, w10.unpublished], about: w10.sent.filter((m) => m.about), text: w10.siteEdits.text, fit: w10.siteEdits.fit }))
   await shot('O8-select-sent')

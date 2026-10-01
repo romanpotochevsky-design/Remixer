@@ -38,4 +38,10 @@ prototype/scratchpad/lov-dock/f10/
 prototype/scratchpad/lov-dock/crop/
 prototype/scratchpad/edit-dock/shots/
 prototype/scratchpad/edit-dock/undock-rec/f*.jpg
+# The Lovable Select recording (01.10.2026): raw frames and per-frame crops stay local; the keyframes
+# (k*.jpg), contact sheets, the bar strip, the pill zooms and track.json carry the analysis.
+prototype/scratchpad/lov-select/full/
+prototype/scratchpad/lov-select/frames/
+prototype/scratchpad/lov-select/tr/
+prototype/scratchpad/lov-select/bar/
 prototype/scratchpad/edit-dock/undock-rec/full/

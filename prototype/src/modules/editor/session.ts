@@ -33,6 +33,7 @@
  */
 import { create } from 'zustand'
 import { useWorld, EMPTY_SITE_EDITS, type PhotoRef, type SiteEdits } from '@/state/world'
+import { useUI } from '@/state/ui'
 import { countEdits, mergeEdits, sameEdits } from '@/modules/preview/content'
 import { followThread, recordEdit } from '@/modules/versions/model'
 
@@ -66,15 +67,23 @@ interface EditorStore {
   selected: string | null
   /** The photo whose Image panel is open (a photo key), or null. */
   panel: string | null
-  /** The Select tool's pick: the element the composer's chip names, or null. */
+  /** The Select tool's pick: the element the composer's chip names, or null. A content key
+   *  (`home.hero.title`, `media:3`) when the pick has one, else an id the overlay made up
+   *  (`el:7`) for an element the content table does not know — Lovable's tool picks ANY element
+   *  (designer 01.10.2026: «нам нужно сделать точно так же»). */
   context: string | null
+  /** The pick's own node, so its ring can follow it; null for a pick that has none (`media:3`). */
+  contextEl: Element | null
+  /** What the chip and the message call the pick (`div`, `Heading`), fixed at the moment of the
+   *  click — the console's word switch must not rename an element already in the composer. */
+  contextLabel: string | null
 
   open: (tool: Tool) => void
   toggle: (tool: Tool) => void
   close: () => void
   select: (key: string | null) => void
   openPanel: (key: string | null) => void
-  setContext: (key: string | null) => void
+  setContext: (key: string | null, pick?: { el?: Element | null; label?: string }) => void
   /** Stage one change. No-op when the value already reads so. */
   stage: (field: Field, key: string, after: Value) => void
   undo: () => void
@@ -107,6 +116,8 @@ export const useEditor = create<EditorStore>((set, get) => ({
   site: null,
   ...fresh,
   context: null,
+  contextEl: null,
+  contextLabel: null,
 
   open: (tool) => {
     const { world } = useWorld.getState()
@@ -128,7 +139,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
   },
   select: (selected) => set({ selected }),
   openPanel: (panel) => set({ panel, ...(panel ? { selected: panel } : {}) }),
-  setContext: (context) => set({ context }),
+  setContext: (context, pick) => set({ context, contextEl: context ? pick?.el ?? null : null, contextLabel: context ? pick?.label ?? null : null }),
 
   stage: (field, key, after) => {
     const { draft, past } = get()
@@ -174,9 +185,21 @@ export const useEditor = create<EditorStore>((set, get) => ({
  */
 useWorld.subscribe((state, prev) => {
   const s = useEditor.getState()
-  if (!s.tool) { if (s.context && (state.world.site !== prev.world.site)) useEditor.setState({ context: null }); return }
+  const off = { context: null, contextEl: null, contextLabel: null }
+  if (!s.tool) { if (s.context && (state.world.site !== prev.world.site)) useEditor.setState(off); return }
   const siteMoved = state.world.site !== s.site
   const noSite = state.world.site === prev.world.site && state.world.project !== 'built'
   const restaged = state.preset !== prev.preset && state.preset !== null
-  if (siteMoved || noSite || restaged) useEditor.setState({ tool: null, site: null, ...fresh, context: null })
+  if (siteMoved || noSite || restaged) useEditor.setState({ tool: null, site: null, ...fresh, ...off })
+})
+
+/*
+ * A PICK LIVES ON ITS PAGE. The Select tool holds a node of the page on the canvas; another page
+ * (the page switcher, a link in the site) unmounts it, and a chip naming an element nobody can see
+ * any more would be the composer lying. A pick from the Website media panel has no node and stays.
+ */
+useUI.subscribe((state, prev) => {
+  if (state.previewPath === prev.previewPath) return
+  const s = useEditor.getState()
+  if (s.contextEl) useEditor.setState({ context: null, contextEl: null, contextLabel: null })
 })

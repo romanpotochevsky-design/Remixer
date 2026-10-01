@@ -20,7 +20,10 @@
  *    its width with the words squeezed inside — ours stretches the glass over tools that stay put (`GlassBar`) and the new
  *    segment fades in a beat later (editBarSegment), the house Panel Arrival at pill size;
  *  · their verbs are Send / Clear — ours are Save / Clear, with Undo and Redo between (the
- *    designer's order), because "Send" is the chat's word and this path never touches the chat.
+ *    designer's order), because "Send" is the chat's word and this path never touches the chat;
+ *  · a Select pick re-forms the bar exactly as theirs does (01.10.2026, from a recording: «нам
+ *    нужно сделать точно так же»): the other tool steps aside, «1 selection» and a tonal Clear —
+ *    which drops the pick and keeps the tool on — come in beside the select disc.
  *
  * THE BAR HAS TWO HOMES (designer 30.09.2026, from a Lovable recording — scratchpad/lov-dock/):
  * hovering the pill grows a glass segment with «›» («прибить этот бар в панель справа»); a click
@@ -302,6 +305,8 @@ export function EditBar() {
   const count = useEditor(draftCount)
   const canUndo = useEditor((s) => s.past.length > 0)
   const canRedo = useEditor((s) => s.future.length > 0)
+  /* the Select tool holds an element of the page — Lovable's bar re-forms into «1 selection · Clear» */
+  const picking = useEditor((s) => s.tool === 'select' && s.contextEl !== null)
   const { undo, redo, clear, save, close, select, openPanel, setContext } = useEditor.getState()
   /* an old version on the canvas is looked at, never edited — the preview bar takes the slot */
   const previewing = useUI((s) => s.versionPreview !== null)
@@ -388,13 +393,42 @@ export function EditBar() {
   /* the tools — one set, rendered in whichever home is up */
   const tools = (
     <>
-      <ToolButton tool="edit" label={t({ en: 'Visual Editor — edit text and photos yourself, free', uk: 'Візуальний редактор — правте текст і фото самі, безкоштовно' })}>
+      {/* a pick hides the other tool, as a pending batch does — Lovable's bar keeps only the tool in use */}
+      <ToolButton tool="edit" label={t({ en: 'Visual Editor — edit text and photos yourself, free', uk: 'Візуальний редактор — правте текст і фото самі, безкоштовно' })} hidden={picking}>
         <GlyphEditText size={24} />
       </ToolButton>
       {/* once a batch is pending only its own tool stays: Lovable hides the others too */}
       <ToolButton tool="select" label={t({ en: 'Select an element to ask Remixer about', uk: 'Виділити елемент, щоб спитати Remixer про нього' })} hidden={history}>
         <GlyphSelect size={24} />
       </ToolButton>
+      {/* THE PICK (01.10.2026, from Lovable's recording): the select disc, «1 selection», and a tonal
+          Clear that drops the pick and keeps the tool on — no divider, the words sit by the disc */}
+      <AnimatePresence initial={false}>
+        {picking && (
+          <motion.div
+            key="pick"
+            className="flex items-center"
+            variants={editBarSegment}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onUpdate={keepOnMainThread}
+            data-ve-picked
+          >
+            <span className="whitespace-nowrap pl-2 text-[13px] font-medium text-white" data-ve-pick-count>
+              {t({ en: '1 selection', uk: 'Вибрано: 1' })}
+            </span>
+            <button
+              type="button"
+              className="press-bloom ml-11 mr-0.5 h-8 whitespace-nowrap rounded-[10px] bg-[var(--white-100)] px-4 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+              onClick={() => setContext(null)}
+              data-ve-pick-clear
+            >
+              {t({ en: 'Clear', uk: 'Очистити' })}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence initial={false}>
         {history && (
           <motion.div
@@ -474,7 +508,7 @@ export function EditBar() {
             >
               <GlassBar
                 side="left"
-                reveal={hover && !history}
+                reveal={hover && !history && !picking}
                 swell={hover}
                 pillRef={barRef}
                 pillProps={{ 'data-ve-bar': '', 'data-ve-dirty': dirty ? '' : undefined }}
@@ -483,7 +517,7 @@ export function EditBar() {
                 tail={
                   <>
                     <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
-                    <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} title={dockBtnLabel} onClick={dock} tabIndex={hover && !history ? 0 : -1} data-ve-dock-to-rail>
+                    <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} title={dockBtnLabel} onClick={dock} tabIndex={hover && !history && !picking ? 0 : -1} data-ve-dock-to-rail>
                       <GlyphDockRight size={22} />
                     </button>
                   </>

@@ -677,6 +677,19 @@ export const AXES: Axis[] = [
     ],
   },
   {
+    /*
+     * THE SELECT TOOL'S WORD FOR AN ELEMENT (01.10.2026). Lovable's pill says the tag — `div`, `img` —
+     * and the designer asked for exactly that; the human names (`Block`, `Photo`) are the other side
+     * of the A/B, kept so he can put both in front of the product owners. Only while a site exists.
+     */
+    key: 'selectNames', group: G.project, label: { en: 'Select tool — element names', uk: 'Інструмент Select — назви елементів' }, kind: 'segmented',
+    appliesWhen: (w) => w.project === 'built',
+    options: [
+      { value: 'tag', label: { en: 'Tags', uk: 'Теги' }, hint: { en: 'div, h1, img — as Lovable shows them', uk: 'div, h1, img — як у Lovable' } },
+      { value: 'name', label: { en: 'Names', uk: 'Назви' }, hint: { en: 'Block, Heading, Photo — words a customer knows', uk: 'Block, Heading, Photo — слова, які знає клієнт' } },
+    ],
+  },
+  {
     key: 'unpublished', group: G.project, label: { en: 'Unpublished changes', uk: 'Неопублікованих правок' }, kind: 'number',
     min: 0, max: 12, step: 1,
   },

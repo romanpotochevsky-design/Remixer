@@ -6267,26 +6267,42 @@ await shot('30-plan-review')
   await p.click('[data-ve-tool="select"]'); await p.waitForTimeout(300)
   const sel = await p.evaluate(() => ({ pressed: document.querySelector('[data-ve-tool="select"]')?.getAttribute('aria-pressed'), editPressed: document.querySelector('[data-ve-tool="edit"]')?.getAttribute('aria-pressed'), picks: document.querySelectorAll('[data-pick]').length, edits: document.querySelectorAll('[data-edit]').length, selecting: document.querySelector('[data-site-editing]')?.getAttribute('data-site-editing'), ce: document.querySelector('[data-pick="home.hero.title"]')?.getAttribute('contenteditable') ?? null }))
   const pick = await p.$('[data-pick="home.hero.title"]')
-  await pick.hover(); await p.waitForTimeout(160)
-  const selHover = !!(await p.$('.ve-ring--hover'))
-  await pick.click(); await p.waitForTimeout(350)
+  /* Lovable's tool, in our blue (01.10.2026, scratchpad/lov-select/): the ring sits 1 px ON the box with a 5 % tint,
+     a pill with the TAG rides at the cursor +14/+18, a click picks and the bar re-forms into «1 selection · Clear» */
+  const pb = await pick.boundingBox()
+  const hx = Math.round(pb.x + 40), hy = Math.round(pb.y + pb.height / 2)
+  await p.mouse.move(hx, hy, { steps: 4 }); await p.waitForTimeout(160)
+  const selHover = await p.evaluate(({ hx, hy }) => {
+    const ring = document.querySelector('[data-ve-hover]'); const tag = document.querySelector('[data-ve-tag]'); const t = document.querySelector('[data-pick="home.hero.title"]')
+    if (!ring || !tag || !t) return { ring: !!ring, tag: !!tag }
+    const r = ring.getBoundingClientRect(); const b = t.getBoundingClientRect(); const q = tag.getBoundingClientRect(); const cs = getComputedStyle(ring)
+    return { on: Math.max(Math.abs(r.x - b.x), Math.abs(r.y - b.y), Math.abs(r.width - b.width), Math.abs(r.height - b.height)) < 0.6, shadow: cs.boxShadow, radius: cs.borderRadius, tint: cs.backgroundColor,
+      word: tag.textContent, dx: q.x - hx, dy: q.y - hy, h: q.height, bg: getComputedStyle(tag).backgroundColor, cursor: getComputedStyle(t).cursor }
+  }, { hx, hy })
+  await p.mouse.click(hx, hy); await p.waitForTimeout(350)
   const chosen = await p.evaluate(() => {
-    const ring = document.querySelector('.ve-ring--pinned'); const chip = document.querySelector('[data-ve-chip]'); const ta = document.querySelector('aside textarea')
-    return { pinned: !!ring, chip: chip?.textContent ?? null, chipBg: chip ? getComputedStyle(chip).backgroundColor : null, chipAbove: ring && chip ? chip.getBoundingClientRect().bottom <= ring.getBoundingClientRect().top + 0.5 : null, composer: document.querySelector('[data-about-chip]')?.textContent ?? null, placeholder: ta?.getAttribute('placeholder'), focused: document.activeElement === ta, hover: !!document.querySelector('.ve-ring--hover'), edits: document.querySelectorAll('[data-edit]').length }
+    const ring = document.querySelector('[data-ve-pick]'); const t = document.querySelector('[data-pick="home.hero.title"]'); const ta = document.querySelector('aside textarea')
+    const r = ring?.getBoundingClientRect(); const b = t?.getBoundingClientRect()
+    return { pinned: !!ring, on: r && b ? Math.max(Math.abs(r.x - b.x), Math.abs(r.y - b.y), Math.abs(r.width - b.width), Math.abs(r.height - b.height)) < 0.6 : null, oldChip: !!document.querySelector('[data-ve-chip]'),
+      composer: document.querySelector('[data-about-chip]')?.textContent ?? null, placeholder: ta?.getAttribute('placeholder'), focused: document.activeElement === ta,
+      bar: document.querySelector('[data-ve-pick-count]')?.textContent ?? null, clear: !!document.querySelector('[data-ve-pick-clear]'), editTool: !!document.querySelector('[data-ve-tool="edit"]'), edits: document.querySelectorAll('[data-edit]').length }
   })
-  check('the Select tool: pressed, every target a `data-pick` (no contentEditable anywhere), the hover ring; a click PINS the title with a chip that says «Heading» (a human word, not a tag) sitting above the ring, the composer grows the same chip, its placeholder asks about the selected element, and the caret is already in the field',
-    sel.pressed === 'true' && sel.editPressed === 'false' && sel.picks >= 20 && sel.edits === 0 && sel.selecting === 'select' && sel.ce === null && selHover
-      && chosen.pinned && chosen.chip === 'Heading' && chosen.chipBg === ACTION && chosen.chipAbove === true && chosen.composer === 'Heading' && /selected element/.test(chosen.placeholder || '') && chosen.focused && !chosen.hover,
+  check('the Select tool, Lovable\'s: pressed, every content target a `data-pick` (no contentEditable anywhere), a crosshair; the hover ring sits 1 px ON the heading\'s box (inset action blue, square, 5 % tint) and a pill «h1» rides at the cursor +14/+18; a click PINS the heading on its box, no chip on the site, the composer grows a chip «h1», its placeholder asks about the selected element, the caret is in the field, and the bar re-forms into «1 selection · Clear» with the Edit tool stepped aside',
+    sel.pressed === 'true' && sel.editPressed === 'false' && sel.picks >= 20 && sel.edits === 0 && sel.selecting === 'select' && sel.ce === null
+      && selHover.on && /21, 135, 255/.test(selHover.shadow || '') && /inset/.test(selHover.shadow || '') && selHover.radius === '0px' && selHover.tint === 'rgba(21, 135, 255, 0.05)'
+      && selHover.word === 'h1' && Math.abs(selHover.dx - 14) <= 1 && Math.abs(selHover.dy - 18) <= 1 && selHover.h === 23 && selHover.bg === ACTION && selHover.cursor === 'crosshair'
+      && chosen.pinned && chosen.on && !chosen.oldChip && chosen.composer === 'h1' && /selected element/.test(chosen.placeholder || '') && chosen.focused
+      && chosen.bar === '1 selection' && chosen.clear && !chosen.editTool,
     JSON.stringify({ sel, selHover, chosen }))
   await shot('O7-select-picked')
   await p.keyboard.type('Make it shorter'); await p.keyboard.press('Enter'); await p.waitForTimeout(700)
-  const sent = await p.evaluate(() => ({ bubbles: [...document.querySelectorAll('aside [data-about]')].map((e) => e.textContent), composer: !!document.querySelector('[data-about-chip]'), pinned: !!document.querySelector('.ve-ring--pinned'), chip: !!document.querySelector('[data-ve-chip]'), placeholder: document.querySelector('aside textarea')?.getAttribute('placeholder'), text: document.querySelector('aside').innerText.includes('Make it shorter') }))
+  const sent = await p.evaluate(() => ({ bubbles: [...document.querySelectorAll('aside [data-about]')].map((e) => e.textContent), composer: !!document.querySelector('[data-about-chip]'), pinned: !!document.querySelector('[data-ve-pick]'), bar: !!document.querySelector('[data-ve-picked]'), placeholder: document.querySelector('aside textarea')?.getAttribute('placeholder'), text: document.querySelector('aside').innerText.includes('Make it shorter') }))
   /* the paid lane: the chat's COST comes off when the answer lands (send.ts `deliverAnswer`, ~2.6 s) */
   await p.waitForFunction((k) => (JSON.parse(localStorage.getItem(k) || '{}').credits ?? 640) === 630, KEY, { timeout: 8000 }).catch(() => {})
   const w10 = await world()
-  check('sending carries the pick: a user bubble tagged «Heading», the composer’s chip and the pinned ring gone, the placeholder back to plain — and the message went down the CHAT’s lane: 10 credits off (640 → 630), one more unpublished change (1 → 2), the transcript carrying `about: "Heading"`; the editor’s saved layer untouched by the send',
-    sent.bubbles.join() === 'Heading' && !sent.composer && !sent.pinned && !sent.chip && !/selected element/.test(sent.placeholder || '') && sent.text
-      && w10a.credits === 640 && w10.credits === 630 && w10a.unpublished === 1 && w10.unpublished === 2 && w10.sent.some((m) => m.who === 'user' && m.about === 'Heading')
+  check('sending carries the pick: a user bubble tagged «h1», the composer’s chip, the pick ring and the bar’s «1 selection» gone, the placeholder back to plain — and the message went down the CHAT’s lane: 10 credits off (640 → 630), one more unpublished change (1 → 2), the transcript carrying `about: "h1"`; the editor’s saved layer untouched by the send',
+    sent.bubbles.join() === 'h1' && !sent.composer && !sent.pinned && !sent.bar && !/selected element/.test(sent.placeholder || '') && sent.text
+      && w10a.credits === 640 && w10.credits === 630 && w10a.unpublished === 1 && w10.unpublished === 2 && w10.sent.some((m) => m.who === 'user' && m.about === 'h1')
       && w10.siteEdits.text['home.hero.title'] === ORIGINAL + TYPED && w10.siteEdits.fit['meal.power-bowl.photo'] === 'fit',
     JSON.stringify({ sent, credits: [w10a.credits, w10.credits], unpublished: [w10a.unpublished, w10.unpublished], about: w10.sent.filter((m) => m.about), text: w10.siteEdits.text, fit: w10.siteEdits.fit }))
   await shot('O8-select-sent')

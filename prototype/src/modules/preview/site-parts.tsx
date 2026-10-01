@@ -8,7 +8,8 @@
  * instance with a tool on turns them into hosts:
  *  · `edit`   — `T` becomes a contentEditable host (EditableText), `Photo` grows its "Replace
  *               photo" button and opens the Image panel;
- *  · `select` — both carry `data-pick`, the overlay rings them, a click hands the key to the chat.
+ *  · `select` — both carry `data-pick` so a pick on them has a name and a key; the Select tool
+ *               itself picks ANY element of the page (Lovable's tool, 01.10.2026 — EditOverlay.tsx).
  *
  * `edits` is ALREADY MERGED by SitePreview: saved layer under the staged draft for the canvas,
  * saved layer alone for a picture of another site. The parts never touch a store for the text —
