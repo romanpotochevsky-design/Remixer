@@ -6514,13 +6514,24 @@ await shot('30-plan-review')
   /* ── 2 · «›» flies the glass into the rail ─────────────────────────────────────── */
   await p.mouse.move(bb.x + 20, bb.y + 20); await p.waitForTimeout(500)
   const from = await p.evaluate(() => { const r = document.querySelector('[data-ve-bar] [data-ve-glass]').getBoundingClientRect(); return { x: r.x, w: r.width } })
+  /* sampled IN THE PAGE on every frame from the press — a 25 ms poll from here lands its first sample
+     ~50 ms in, when the .42 s flight has already crossed ~200 px (measured on the build before and
+     after the Select rebuild alike: the trajectories match frame for frame; the poll missed the start) */
+  await p.evaluate(() => {
+    window.__dockTr = []; window.__dockT0 = 0
+    document.addEventListener('pointerdown', () => { window.__dockT0 = performance.now() }, { capture: true, once: true })
+    const tick = () => {
+      if (window.__dockT0) {
+        const f = document.querySelector('[data-ve-flight]')
+        if (f) { const r = f.getBoundingClientRect(); const bar = document.querySelector('[data-ve-bar]'); const host = document.querySelector('[data-ve-dock-host]'); window.__dockTr.push({ x: Math.round(r.x), w: Math.round(r.width), h: Math.round(r.height), barVis: bar ? getComputedStyle(bar).visibility : 'none', dockVis: host ? getComputedStyle(host).visibility : null }) }
+      }
+      if (!window.__dockT0 || performance.now() - window.__dockT0 < 1200) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
   await p.click('[data-ve-dock-to-rail]')
-  const flight = []
-  for (let i = 0; i < 40; i++) {
-    await p.waitForTimeout(25)
-    flight.push(await p.evaluate(() => { const f = document.querySelector('[data-ve-flight]'); if (!f) return null; const r = f.getBoundingClientRect(); const bar = document.querySelector('[data-ve-bar]'); const host = document.querySelector('[data-ve-dock-host]'); return { x: Math.round(r.x), w: Math.round(r.width), h: Math.round(r.height), barVis: bar ? getComputedStyle(bar).visibility : 'none', dockVis: host ? getComputedStyle(host).visibility : null } }))
-  }
-  const fr = flight.filter(Boolean)
+  await p.waitForTimeout(1300)
+  const fr = await p.evaluate(() => window.__dockTr)
   await p.waitForTimeout(600)
   const docked = await p.evaluate(() => {
     const d = document.querySelector('[data-ve-dock]'); const sup = document.querySelector('nav button[aria-label="Support chat"]')
