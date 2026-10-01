@@ -40,7 +40,7 @@ const cards = () => page.evaluate(() => [...document.querySelectorAll('[data-ver
 let cs = await cards()
 check('demo thread: one card, «First Version», current, only the chevron', cs.length === 1 && cs[0].title === 'First Version' && cs[0].cur && !cs[0].revert && cs[0].chev, cs)
 const geo = await page.evaluate(() => { const c = document.querySelector('[data-version-card]'); const col = document.querySelector('.chat-col'); const r = c.getBoundingClientRect(), q = col.getBoundingClientRect(); return { dx: Math.round(r.x - q.x), w: Math.round(r.width), colW: Math.round(q.width), h: Math.round(r.height), bg: getComputedStyle(c).backgroundColor, radius: getComputedStyle(c).borderRadius } })
-check('card metrics: 8 px from the column edge (board x 8), 56 tall, #18181a, r16', geo.dx === 8 && geo.h === 56 && geo.bg === 'rgb(24, 24, 26)' && geo.radius === '16px' && geo.w === geo.colW - 16, geo)
+check('card metrics: 8 px from the column edge (board x 8), 56 tall, #18181a, r16', geo.dx === 8 && geo.h === 56 && geo.bg === 'rgb(24, 24, 26)' && geo.radius === '16px' && geo.w === geo.colW - 24, geo)
 await shotChat('p1-demo')
 
 /* 2 · a chat edit */

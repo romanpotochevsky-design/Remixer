@@ -941,7 +941,12 @@ export function ChatPanel() {
            glass — but what is behind them is the chat's own flat ground, so the blur has nothing
            to blur and the loss is zero (the same test the dock's own shell had to pass). */
         className={`chat-dim min-h-0 flex-1${dockUp ? ' chat-dim--on' : ''}`}
-        innerClassName="chat-col pl-4 pr-2"
+        /* 16 on BOTH sides (designer, 01.10.2026: «слева и внизу от чат бокса 16px, а справа до полоски
+           всего 8px, а должно быть 16»; and «скрол впритык к тексту»). The board's 16/8 gutters left the
+           floating scroll bar 1 px from the bubbles; the right 16 is now the bar's lane, and the bar
+           sits in the middle of it (`.chat-thumb`: 6 · 4 · 6). */
+        innerClassName="chat-col pl-4 pr-4"
+        thumbClassName="chat-thumb"
         viewportRef={viewport}
       >
         {/*
@@ -1065,7 +1070,7 @@ export function ChatPanel() {
       </ScrollArea>
 
       {/* ------------------------------------------------------------ composer */}
-      <div className="flex-none pb-4 pl-4 pr-2" style={{ background: 'var(--black-900)' }}>
+      <div className="flex-none pb-4 pl-4 pr-4" style={{ background: 'var(--black-900)' }}>
         {/*
           * `brief-dock`: while the questions are up, the panel and the composer are ONE
           * glass object — Figma 29464:34334, and the board's own structural call. Lovable

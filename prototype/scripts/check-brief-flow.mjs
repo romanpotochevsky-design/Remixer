@@ -6632,7 +6632,7 @@ await shot('30-plan-review')
   let cs = await cards()
   const geo = await p.evaluate(() => { const c = document.querySelector('[data-version-card]'); const col = document.querySelector('.chat-col'); const r = c.getBoundingClientRect(), q = col.getBoundingClientRect(); return { dx: Math.round(r.x - q.x), w: Math.round(r.width), colW: Math.round(q.width), h: Math.round(r.height), bg: getComputedStyle(c).backgroundColor, radius: getComputedStyle(c).borderRadius, title: getComputedStyle(c.querySelector('[data-version-title]')).fontSize } })
   check('the demo thread carries version 1: «First Version», current (green mark), the chevron only', cs.length === 1 && cs[0].title === 'First Version' && cs[0].cur && !cs[0].revert && !cs[0].eye && cs[0].chev, JSON.stringify(cs))
-  check('…at the board’s metrics: 8 px left of the text column (x 8 in 432), as wide as the column minus 16 (416 at 432), 56 tall, #18181a, r16, title 15', geo.dx === 8 && geo.w === geo.colW - 16 && geo.h === 56 && geo.bg === 'rgb(24, 24, 26)' && geo.radius === '16px' && geo.title === '15px', JSON.stringify(geo))
+  check('…at the board’s metrics: 8 px left of the text column (x 8 in 432), as wide as the column minus 24 (408 at 432 — the text column has 16 on both sides since 01.10.2026), 56 tall, #18181a, r16, title 15', geo.dx === 8 && geo.w === geo.colW - 24 && geo.h === 56 && geo.bg === 'rgb(24, 24, 26)' && geo.radius === '16px' && geo.title === '15px', JSON.stringify(geo))
   /* the customer's message stops being a grey surface (board 31422:42646, 01.10.2026: «каша из серых
      квадратов»): a 4 % → 0 % wash and a rim lit 24 % → 4 % → 8 % along its own diagonal, no blur,
      white 64 % words, and 16 more air below it — 40 to the version card that answers it */
@@ -6640,6 +6640,11 @@ await shot('30-plan-review')
   check('the customer’s bubble by board 31422:42646: wash white 4 % → 0 % and a 1 px rim 24 % → 4 % @50 % → 8 %, both along the bubble’s own diagonal, NO blur, radius 24/24/8/24, padding 13/20/11/20, words white 64 %; 40 from the bubble to the card below',
     /rgba\(255, 255, 255, 0\.04\).*rgba\(255, 255, 255, 0\)/.test(bub.bg) && /0\.24\).*0\.04\) 50%.*0\.08\)/.test(bub.rim) && bub.rimPad === '1px' && (bub.blur === 'none' || !bub.blur)
       && bub.radius === '24px/24px/8px/24px' && bub.pad === '13px/20px/11px/20px' && bub.ink === 'rgba(255, 255, 255, 0.64)' && Math.abs(bub.angle - bub.diag) < 0.05 && bub.toCard === 40, JSON.stringify(bub))
+  /* 16 on both sides of the thread and the composer, 16 below it, the scroll bar mid-gutter (designer 01.10.2026:
+     «справа от чата до полоски всего 8px, а должно быть 16», «скрол впритык к тексту») */
+  const gut = await p.evaluate(() => { const r = (e) => e.getBoundingClientRect(); const aside = r(document.querySelector('.chat-dim')); const col = getComputedStyle(document.querySelector('.chat-dim .chat-col')); const f = r(document.querySelector('.composer-field')); const edge = document.querySelector('.chat-resizer')?.getBoundingClientRect().left ?? aside.right; const t = getComputedStyle(document.querySelector('.chat-thumb')); return { pad: [col.paddingLeft, col.paddingRight], left: Math.round(f.left - aside.left), right: Math.round(edge - f.right), bottom: Math.round(innerHeight - f.bottom), thumbRight: t.right, thumbW: t.width } })
+  check('the chat’s gutters are symmetric: thread 16 / 16, composer 16 from the left, 16 from the divider and 16 from the bottom; the scroll bar 4 wide in the middle of the right 16 (6 from the divider)',
+    gut.pad.join() === '16px,16px' && gut.left === 16 && gut.right === 16 && gut.bottom === 16 && gut.thumbRight === '6px' && gut.thumbW === '4px', JSON.stringify(gut))
 
   /* ── 2 · a chat edit: working card → lands with the site ───────────────────────── */
   await p.fill('textarea', 'Can you update the main navigation menu?'); await p.keyboard.press('Enter')
