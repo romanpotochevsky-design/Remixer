@@ -281,7 +281,7 @@ function NotFound({ path, go, t }: { path: string; go: (path: string) => void; t
 }
 
 
-import { useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useContext, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react'
 import { useT, type Text } from '@/i18n'
 import { useWorld, siteSliceOf, type SiteAi, type SiteEdits } from '@/state/world'
@@ -372,7 +372,6 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
     () => ({ edits: withAi(draft ? overlay(saved, draft) : saved, ai), ai, editing: tool === 'edit', selecting: tool === 'select' }),
     [saved, draft, tool, ai],
   )
-  const wrap = useRef<HTMLDivElement | null>(null)
   return (
     <SiteContext.Provider value={ctx}>
     <motion.div
@@ -397,13 +396,13 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
           <ScrollArea className="h-full" innerClassName="bg-[var(--sp)] font-sans text-[#1d1f1a]" thumb="auto">
             {/* a page shorter than the canvas still ends in its footer, not in bare ground; `relative`
                 so the editor's overlay (rings) rides inside the scroll content with the page */}
-            <div ref={wrap} className="relative flex min-h-full flex-col">
+            <div className="relative flex min-h-full flex-col" data-site-root>
               <SiteNav go={go} />
               <div className="flex-1">
                 {page ? (page.index === 0 ? <HomeBody /> : <InnerBody page={page} t={t} />) : <NotFound path={path} go={go} t={t} />}
               </div>
               <SiteFooter pages={pages} current={path} go={go} t={t} />
-              {tool && <EditOverlay host={wrap} />}
+              {tool && <EditOverlay />}
             </div>
           </ScrollArea>
         </motion.div>

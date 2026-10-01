@@ -5121,7 +5121,8 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
 .ve-overlay {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  /* above the site's own layers — its sticky nav is z 10, and a ring under it would not draw */
+  z-index: 20;
   pointer-events: none;
 }
 .ve-ring {
@@ -5150,7 +5151,8 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
      same blue; hover and selection wear the same ring, and the selection keeps its ring while the
      pointer rings something else;
    · the ring JUMPS between elements — no fade, no slide (the outline is where the pointer is);
-   · a pill with the element's tag rides at the cursor (+14, +18), clamped inside the preview;
+   · a pill with the element's tag rides at the cursor (+14, +18), clamped inside the preview, and
+     lives inside the page like Lovable's (under the edit bar, inside the preview's clip);
    · the cursor is a crosshair and every element is a target — a click picks, it never follows. */
 .ve-sel {
   position: absolute;
@@ -5158,10 +5160,10 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
   background: rgb(21 135 255 / 0.05);
 }
 .ve-tag {
-  position: fixed;
+  position: absolute;
   left: 0;
   top: 0;
-  z-index: 45;
+  z-index: 1;
   height: 23px;
   padding: 0 10px;
   border-radius: 999px;

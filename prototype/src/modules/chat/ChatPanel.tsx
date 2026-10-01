@@ -1152,6 +1152,11 @@ export function ChatPanel() {
                   e.preventDefault()
                   submit()
                 }
+                /* the pick put the caret here, so Escape here is the pick's way out — the chip's ✕ */
+                if (e.key === 'Escape' && about) {
+                  e.preventDefault()
+                  setContext(null)
+                }
               }}
               disabled={!canUseAI(world)}
               placeholder={

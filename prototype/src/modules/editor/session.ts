@@ -186,10 +186,16 @@ export const useEditor = create<EditorStore>((set, get) => ({
 useWorld.subscribe((state, prev) => {
   const s = useEditor.getState()
   const off = { context: null, contextEl: null, contextLabel: null }
-  if (!s.tool) { if (s.context && (state.world.site !== prev.world.site)) useEditor.setState(off); return }
-  const siteMoved = state.world.site !== s.site
   const noSite = state.world.site === prev.world.site && state.world.project !== 'built'
   const restaged = state.preset !== prev.preset && state.preset !== null
+  /* a pick outlives its tool (the chip stays in the composer) — but never its site, its project or
+     a situation the console has just staged: a chip asking about «the selected element» over an
+     empty project would go out with the first prompt of the brief */
+  if (!s.tool) {
+    if (s.context && (state.world.site !== prev.world.site || noSite || restaged)) useEditor.setState(off)
+    return
+  }
+  const siteMoved = state.world.site !== s.site
   if (siteMoved || noSite || restaged) useEditor.setState({ tool: null, site: null, ...fresh, ...off })
 })
 

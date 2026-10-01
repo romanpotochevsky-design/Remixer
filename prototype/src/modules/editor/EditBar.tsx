@@ -60,7 +60,7 @@ const POP_LINGER_MS = 160
 
 const keepOnMainThread = () => {}
 
-function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: string; children: React.ReactNode; hidden?: boolean }) {
+function ToolButton({ tool, label, children, hidden, ghost }: { tool: Tool; label: string; children: React.ReactNode; hidden?: boolean; ghost?: boolean }) {
   const active = useEditor((s) => s.tool === tool)
   const dirty = useEditor(isDirty)
   const toggle = useEditor((s) => s.toggle)
@@ -69,7 +69,12 @@ function ToolButton({ tool, label, children, hidden }: { tool: Tool; label: stri
   return (
     <button
       type="button"
-      className="ve-bar-btn press-bloom"
+      /* a GHOST keeps its seat in the layout (so nothing beside it moves) and fades out of reach —
+         the glass cuts in over its slot (GlassBar `cut`) */
+      className={`ve-bar-btn press-bloom${ghost ? ' pointer-events-none opacity-0' : ''}`}
+      tabIndex={ghost ? -1 : undefined}
+      aria-hidden={ghost || undefined}
+      data-ve-ghost={ghost ? '' : undefined}
       aria-label={label}
       aria-pressed={active}
       data-ve-tool={tool}
@@ -126,11 +131,17 @@ const GLASS_SWELL = 2
 const BAR_PAD = 5
 const BAR_TOOL = 36
 const BAR_H = BAR_TOOL + 2 * BAR_PAD
-function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, children }: {
+function GlassBar({ side, reveal, swell = false, cut = 0, tail, tailKey, pillRef, pillProps, children }: {
   side: 'left' | 'right'
   reveal: boolean
   swell?: boolean
+  /** How far the glass's anchored edge cuts IN over the tools — the slot of a ghosted tool (the
+   *  Select pick: the glass leaves the Edit slot and hugs the disc, which does not move). */
+  cut?: number
   tail?: React.ReactNode
+  /** Which tail is showing: a new key is measured again (the dock handle and the pick segment are
+   *  two widths). */
+  tailKey?: string
   pillRef?: React.Ref<HTMLDivElement>
   pillProps?: Record<string, unknown>
   children: React.ReactNode
@@ -140,8 +151,10 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
   const tailRef = useRef<HTMLDivElement>(null)
   const glassW = useMotionValue(0)
   const swellV = useMotionValue(0)
-  const glassOuterW = useTransform(() => glassW.get() + 2 * swellV.get())
+  const cutV = useMotionValue(cut)
+  const glassOuterW = useTransform(() => glassW.get() + 2 * swellV.get() - cutV.get())
   const glassInset = useTransform(swellV, (v) => -v)
+  const glassEdge = useTransform(() => cutV.get() - swellV.get())
   const glassH = useTransform(swellV, (v) => BAR_H + 2 * v)
   const glassR = useTransform(swellV, (v) => 16 + v)
   const [w, setW] = useState<{ base: number; tail: number } | null>(null)
@@ -160,7 +173,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
     ro.observe(el)
     if (tailRef.current) ro.observe(tailRef.current)
     return () => ro.disconnect()
-  }, [])
+  }, [tailKey])
   const first = useRef(true)
   useEffect(() => {
     if (!w) return
@@ -176,8 +189,14 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
     const ctrl = animate(swellV, target, EDIT_BAR_STRETCH)
     return () => ctrl.stop()
   }, [swell, reduce, swellV])
-  /* the handle sits at the content's edge in SCREEN space: the glass moved out by the swell, so the seat moves back in */
-  const tailSeat = useTransform(swellV, (v) => (w ? w.base - BAR_PAD + v : 0))
+  useEffect(() => {
+    if (reduce) { cutV.jump(cut); return }
+    const ctrl = animate(cutV, cut, EDIT_BAR_STRETCH)
+    return () => ctrl.stop()
+  }, [cut, reduce, cutV])
+  /* the handle sits at the content's edge in SCREEN space: the glass moved out by the swell (and in
+     by the cut), so the seat moves back by both */
+  const tailSeat = useTransform(() => (w ? w.base - BAR_PAD + swellV.get() - cutV.get() : 0))
   return (
     <div
       ref={(el) => { root.current = el; if (typeof pillRef === 'function') pillRef(el); else if (pillRef) (pillRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}
@@ -189,7 +208,7 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
       {/* THE GLASS — a layer behind the tools that is free to be wider than they are */}
       <motion.div
         className="liquid-glass liquid-glass--editbar absolute z-0 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.33)]"
-        style={{ width: w ? glassOuterW : '100%', top: glassInset, [side]: glassInset, height: glassH, borderRadius: glassR }}
+        style={{ width: w ? glassOuterW : '100%', top: glassInset, [side]: glassEdge, height: glassH, borderRadius: glassR }}
         data-ve-glass
         aria-hidden={!tail}
       >
@@ -205,7 +224,9 @@ function GlassBar({ side, reveal, swell = false, tail, pillRef, pillProps, child
             animate={reveal ? 'animate' : 'initial'}
             onUpdate={keepOnMainThread}
             aria-hidden={!reveal}
-            data-ve-dock-segment={reveal ? '' : undefined}
+            data-ve-tail={tailKey}
+            data-ve-dock-segment={reveal && tailKey !== 'pick' ? '' : undefined}
+            data-ve-picked={reveal && tailKey === 'pick' ? '' : undefined}
           >
             {tail}
           </motion.div>
@@ -307,10 +328,33 @@ export function EditBar() {
   const canRedo = useEditor((s) => s.future.length > 0)
   /* the Select tool holds an element of the page — Lovable's bar re-forms into «1 selection · Clear» */
   const picking = useEditor((s) => s.tool === 'select' && s.contextEl !== null)
+  /* THE PICK, TWO WAYS — one per home.
+     · Under the preview the bar does NOT re-form in flow: the select disc stays put and the glass
+       stretches right over «1 selection · Clear» (the bar's tail, as the dock handle is) while it
+       cuts in over the Edit slot, which ghosts out (review 01.10.2026: an in-flow re-form re-centred
+       the bar — the disc teleported 111 px in one frame and Clear painted outside the glass for six).
+       `pickTail` keeps the segment in the tail while the glass shrinks back over it after Clear.
+     · In the rail's pop-out the segment stays in flow; `pickSeg` holds the Edit tool back until its
+       exit has finished, so the pop-out changes width once. */
+  const [pickSeg, setPickSeg] = useState(false)
+  const [pickTail, setPickTail] = useState(false)
+  /* Clear is not under a finger that has only just picked: the segment takes the pointer a beat
+     after it arrives (a double-click on the site beside the bar must not pick and clear) */
+  const [pickArmed, setPickArmed] = useState(false)
+  /* after Clear the pointer is still on the bar — the dock handle must not open under it */
+  const [noTail, setNoTail] = useState(false)
+  useEffect(() => {
+    if (picking) { setPickSeg(true); setPickTail(true); const a = window.setTimeout(() => setPickArmed(true), 320); return () => window.clearTimeout(a) }
+    setPickArmed(false)
+    const t = window.setTimeout(() => setPickTail(false), 520)
+    return () => window.clearTimeout(t)
+  }, [picking])
   const { undo, redo, clear, save, close, select, openPanel, setContext } = useEditor.getState()
   /* an old version on the canvas is looked at, never edited — the preview bar takes the slot */
   const previewing = useUI((s) => s.versionPreview !== null)
   const show = project === 'built' && live && surface === 'preview' && !previewing
+  const showRef = useRef(show)
+  showRef.current = show
 
   /* the two homes and the flight between them */
   const barRef = useRef<HTMLDivElement>(null)
@@ -343,13 +387,15 @@ export function EditBar() {
     const glass = barRef.current?.querySelector('[data-ve-glass]') ?? barRef.current
     const from = glass ? rectOf(glass) : null
     setHover(false)
-    if (from && !reduce) setFlight({ dir: 'dock', from })
+    /* the clone is the two tools' picture (Flight); a bar re-formed by a batch or a pick is another
+       picture, and a swap on landing would show — it steps across without a flight instead */
+    if (from && !reduce && !history && !picking) setFlight({ dir: 'dock', from })
     setDocked(true)
   }
   const undock = () => {
     const from = dockRef.current ? rectOf(dockRef.current) : null
     setPopped(false)
-    if (from && !reduce) setFlight({ dir: 'undock', from })
+    if (from && !reduce && !history && !picking) setFlight({ dir: 'undock', from })
     setDocked(false)
   }
   const popIn = () => { if (linger.current) { window.clearTimeout(linger.current); linger.current = null } setPopped(true) }
@@ -372,7 +418,12 @@ export function EditBar() {
       if (e.key === 'Escape') {
         if (typing && el?.dataset.edit) { el.blur(); e.preventDefault(); return }
         if (typing) return
+        /* the ladder is the bar's: with the bar off screen (a canvas window, the sites shelf, an old
+           version) the Escape belongs to whatever stands on top, and one press must not also drop
+           the pick or turn the tool off underneath it */
+        if (!showRef.current) return
         if (s.panel) { openPanel(null); e.preventDefault(); return }
+        if (document.querySelector('[role="dialog"]:not([data-ve-image-panel]), [role="alertdialog"]')) return
         if (s.tool === 'select' && s.context) { setContext(null); e.preventDefault(); return }
         if (s.selected) { select(null); e.preventDefault(); return }
         if (!isDirty(s)) { close(); e.preventDefault() }
@@ -390,45 +441,61 @@ export function EditBar() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [tool, undo, redo, save, close, select, openPanel, setContext])
 
-  /* the tools — one set, rendered in whichever home is up */
-  const tools = (
+  const clearPick = () => { setNoTail(true); setContext(null) }
+  /* the pick segment, as the floating bar's tail (`inFlow` false) or in the pop-out's flow */
+  const pickSegment = (inFlow: boolean) => (
     <>
-      {/* a pick hides the other tool, as a pending batch does — Lovable's bar keeps only the tool in use */}
-      <ToolButton tool="edit" label={t({ en: 'Visual Editor — edit text and photos yourself, free', uk: 'Візуальний редактор — правте текст і фото самі, безкоштовно' })} hidden={picking}>
+      <span className={`whitespace-nowrap text-[13px] font-medium text-white ${inFlow ? 'pl-2' : 'pl-1'}`} data-ve-pick-count>
+        {t({ en: '1 selection', uk: 'Вибрано: 1' })}
+      </span>
+      <button
+        type="button"
+        className="press-bloom ml-11 mr-0.5 h-8 whitespace-nowrap rounded-[10px] bg-[var(--white-100)] px-4 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+        style={inFlow || pickArmed ? undefined : { pointerEvents: 'none' }}
+        tabIndex={picking ? 0 : -1}
+        onClick={clearPick}
+        data-ve-pick-clear
+      >
+        {t({ en: 'Clear', uk: 'Очистити' })}
+      </button>
+    </>
+  )
+
+  /* the tools — one set, rendered in whichever home is up */
+  const toolsFor = (home: 'float' | 'pop') => (
+    <>
+      {/* a pick takes the other tool out of reach, as a pending batch does — Lovable's bar keeps only
+          the tool in use; under the preview it ghosts in place, in the pop-out it leaves the flow */}
+      <ToolButton
+        tool="edit"
+        label={t({ en: 'Visual Editor — edit text and photos yourself, free', uk: 'Візуальний редактор — правте текст і фото самі, безкоштовно' })}
+        hidden={home === 'pop' && (picking || pickSeg)}
+        ghost={home === 'float' && picking}
+      >
         <GlyphEditText size={24} />
       </ToolButton>
       {/* once a batch is pending only its own tool stays: Lovable hides the others too */}
       <ToolButton tool="select" label={t({ en: 'Select an element to ask Remixer about', uk: 'Виділити елемент, щоб спитати Remixer про нього' })} hidden={history}>
         <GlyphSelect size={24} />
       </ToolButton>
-      {/* THE PICK (01.10.2026, from Lovable's recording): the select disc, «1 selection», and a tonal
-          Clear that drops the pick and keeps the tool on — no divider, the words sit by the disc */}
-      <AnimatePresence initial={false}>
-        {picking && (
-          <motion.div
-            key="pick"
-            className="flex items-center"
-            variants={editBarSegment}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            onUpdate={keepOnMainThread}
-            data-ve-picked
-          >
-            <span className="whitespace-nowrap pl-2 text-[13px] font-medium text-white" data-ve-pick-count>
-              {t({ en: '1 selection', uk: 'Вибрано: 1' })}
-            </span>
-            <button
-              type="button"
-              className="press-bloom ml-11 mr-0.5 h-8 whitespace-nowrap rounded-[10px] bg-[var(--white-100)] px-4 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
-              onClick={() => setContext(null)}
-              data-ve-pick-clear
+      {home === 'pop' && (
+        <AnimatePresence initial={false} onExitComplete={() => setPickSeg(false)}>
+          {picking && (
+            <motion.div
+              key="pick"
+              className="flex items-center"
+              variants={editBarSegment}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              onUpdate={keepOnMainThread}
+              data-ve-picked
             >
-              {t({ en: 'Clear', uk: 'Очистити' })}
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {pickSegment(true)}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
       <AnimatePresence initial={false}>
         {history && (
           <motion.div
@@ -501,29 +568,34 @@ export function EditBar() {
               transition={EDIT_BAR_SPRING}
               onUpdate={keepOnMainThread}
               onPointerEnter={() => setHover(true)}
-              onPointerLeave={() => setHover(false)}
+              onPointerLeave={() => { setHover(false); setNoTail(false) }}
               onFocus={() => setHover(true)}
               onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHover(false) }}
               style={hidden}
             >
               <GlassBar
                 side="left"
-                reveal={hover && !history && !picking}
+                /* the tail is the pick segment while a pick stands (and while the glass shrinks back
+                   over it), else the dock handle, uncovered by a hover — never right after Clear,
+                   with the pointer still on the bar */
+                reveal={picking || (hover && !history && !pickTail && !noTail)}
                 swell={hover}
+                cut={picking ? BAR_TOOL + 4 : 0}
+                tailKey={pickTail ? 'pick' : 'dock'}
                 pillRef={barRef}
                 pillProps={{ 'data-ve-bar': '', 'data-ve-dirty': dirty ? '' : undefined }}
                 /* the dock handle: the glass stretches to the right to uncover it — the tools do not
                    move; a pending batch keeps the pill where it is (Save/Clear are the only way out) */
-                tail={
+                tail={pickTail ? pickSegment(false) : (
                   <>
                     <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
                     <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} title={dockBtnLabel} onClick={dock} tabIndex={hover && !history && !picking ? 0 : -1} data-ve-dock-to-rail>
                       <GlyphDockRight size={22} />
                     </button>
                   </>
-                }
+                )}
               >
-                {tools}
+                {toolsFor('float')}
               </GlassBar>
             </motion.div>
           )}
@@ -572,7 +644,7 @@ export function EditBar() {
                   onUpdate={keepOnMainThread}
                 >
                   <GlassBar side="right" reveal={false} pillProps={{ 'data-ve-bar': '', 'data-ve-popped': '', 'data-ve-dirty': dirty ? '' : undefined }}>
-                    {tools}
+                    {toolsFor('pop')}
                     <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
                     <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} title={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} onClick={undock} data-ve-undock>
                       <GlyphUndock size={22} />

@@ -6277,22 +6277,25 @@ await shot('30-plan-review')
     if (!ring || !tag || !t) return { ring: !!ring, tag: !!tag }
     const r = ring.getBoundingClientRect(); const b = t.getBoundingClientRect(); const q = tag.getBoundingClientRect(); const cs = getComputedStyle(ring)
     return { on: Math.max(Math.abs(r.x - b.x), Math.abs(r.y - b.y), Math.abs(r.width - b.width), Math.abs(r.height - b.height)) < 0.6, shadow: cs.boxShadow, radius: cs.borderRadius, tint: cs.backgroundColor,
-      word: tag.textContent, dx: q.x - hx, dy: q.y - hy, h: q.height, bg: getComputedStyle(tag).backgroundColor, cursor: getComputedStyle(t).cursor }
+      word: tag.textContent, dx: q.x - hx, dy: q.y - hy, h: q.height, bg: getComputedStyle(tag).backgroundColor, cursor: getComputedStyle(t).cursor,
+      inPage: !!tag.closest('[data-ve-overlay]'), discX: document.querySelector('[data-ve-tool="select"]')?.getBoundingClientRect().x }
   }, { hx, hy })
-  await p.mouse.click(hx, hy); await p.waitForTimeout(350)
+  await p.mouse.click(hx, hy); await p.waitForTimeout(800)
   const chosen = await p.evaluate(() => {
     const ring = document.querySelector('[data-ve-pick]'); const t = document.querySelector('[data-pick="home.hero.title"]'); const ta = document.querySelector('aside textarea')
     const r = ring?.getBoundingClientRect(); const b = t?.getBoundingClientRect()
+    const g = document.querySelector('[data-ve-bar] [data-ve-glass]')?.getBoundingClientRect(); const c = document.querySelector('[data-ve-pick-clear]')?.getBoundingClientRect()
     return { pinned: !!ring, on: r && b ? Math.max(Math.abs(r.x - b.x), Math.abs(r.y - b.y), Math.abs(r.width - b.width), Math.abs(r.height - b.height)) < 0.6 : null, oldChip: !!document.querySelector('[data-ve-chip]'),
+      discX: document.querySelector('[data-ve-tool="select"]')?.getBoundingClientRect().x, clearInGlass: g && c ? c.left >= g.left && c.right <= g.right + 0.5 : null,
       composer: document.querySelector('[data-about-chip]')?.textContent ?? null, placeholder: ta?.getAttribute('placeholder'), focused: document.activeElement === ta,
-      bar: document.querySelector('[data-ve-pick-count]')?.textContent ?? null, clear: !!document.querySelector('[data-ve-pick-clear]'), editTool: !!document.querySelector('[data-ve-tool="edit"]'), edits: document.querySelectorAll('[data-edit]').length }
+      bar: document.querySelector('[data-ve-picked] [data-ve-pick-count]')?.textContent ?? null, clear: !!document.querySelector('[data-ve-pick-clear]'), editTool: !!document.querySelector('[data-ve-tool="edit"]:not([data-ve-ghost])'), edits: document.querySelectorAll('[data-edit]').length }
   })
-  check('the Select tool, Lovable\'s: pressed, every content target a `data-pick` (no contentEditable anywhere), a crosshair; the hover ring sits 1 px ON the heading\'s box (inset action blue, square, 5 % tint) and a pill «h1» rides at the cursor +14/+18; a click PINS the heading on its box, no chip on the site, the composer grows a chip «h1», its placeholder asks about the selected element, the caret is in the field, and the bar re-forms into «1 selection · Clear» with the Edit tool stepped aside',
+  check('the Select tool, Lovable\'s: pressed, every content target a `data-pick` (no contentEditable anywhere), a crosshair; the hover ring sits 1 px ON the heading\'s box (inset action blue, square, 5 % tint) and a pill «h1» rides at the cursor +14/+18; a click PINS the heading on its box, no chip on the site, the composer grows a chip «h1», its placeholder asks about the selected element, the caret is in the field, and the bar re-forms into «1 selection · Clear» — the glass stretching over it from a disc that stays put, the Edit tool ghosted out of reach',
     sel.pressed === 'true' && sel.editPressed === 'false' && sel.picks >= 20 && sel.edits === 0 && sel.selecting === 'select' && sel.ce === null
       && selHover.on && /21, 135, 255/.test(selHover.shadow || '') && /inset/.test(selHover.shadow || '') && selHover.radius === '0px' && selHover.tint === 'rgba(21, 135, 255, 0.05)'
       && selHover.word === 'h1' && Math.abs(selHover.dx - 14) <= 1 && Math.abs(selHover.dy - 18) <= 1 && selHover.h === 23 && selHover.bg === ACTION && selHover.cursor === 'crosshair'
       && chosen.pinned && chosen.on && !chosen.oldChip && chosen.composer === 'h1' && /selected element/.test(chosen.placeholder || '') && chosen.focused
-      && chosen.bar === '1 selection' && chosen.clear && !chosen.editTool,
+      && chosen.bar === '1 selection' && chosen.clear && !chosen.editTool && selHover.inPage && Math.abs(chosen.discX - selHover.discX) < 0.5 && chosen.clearInGlass === true,
     JSON.stringify({ sel, selHover, chosen }))
   await shot('O7-select-picked')
   await p.keyboard.type('Make it shorter'); await p.keyboard.press('Enter'); await p.waitForTimeout(700)
@@ -6306,6 +6309,52 @@ await shot('30-plan-review')
       && w10.siteEdits.text['home.hero.title'] === ORIGINAL + TYPED && w10.siteEdits.fit['meal.power-bowl.photo'] === 'fit',
     JSON.stringify({ sent, credits: [w10a.credits, w10.credits], unpublished: [w10a.unpublished, w10.unpublished], about: w10.sent.filter((m) => m.about), text: w10.siteEdits.text, fit: w10.siteEdits.fit }))
   await shot('O8-select-sent')
+
+  /* ── 11 · the Select tool where the review (01.10.2026) broke it: after a page switch, through a
+     canvas window round trip, on Clear, on Escape in the composer ───────────────────────────── */
+  await p.waitForTimeout(2600) /* the chat's answer lands */
+  const sel11 = () => p.evaluate(() => {
+    const r = document.querySelector('[data-ve-pick]')?.getBoundingClientRect()
+    return {
+      path: document.querySelector('[data-site-page]')?.getAttribute('data-site-page'), pick: r ? [r.x, r.y, r.width, r.height] : null,
+      hover: !!document.querySelector('[data-ve-hover]'), tag: document.querySelector('[data-ve-tag]')?.textContent ?? null,
+      bar: document.querySelector('[data-ve-picked] [data-ve-pick-count]')?.textContent ?? null, chip: document.querySelector('[data-about-chip]')?.textContent ?? null,
+      pressed: document.querySelector('[data-ve-tool="select"]')?.getAttribute('aria-pressed') ?? null, edit: !!document.querySelector('[data-ve-tool="edit"]:not([data-ve-ghost])'),
+    }
+  })
+  const toPage = async (row) => { await p.click('[data-page-switch]'); await p.waitForTimeout(400); await p.click(`[data-page-row="${row}"]`); await p.waitForTimeout(900) }
+  await toPage('/about')
+  const ab = await p.$eval('[data-site-page="/about"] h1', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, h: r.height } })
+  await p.mouse.move(ab.x + 30, ab.y + ab.h / 2, { steps: 4 }); await p.waitForTimeout(160)
+  const s11a = await sel11()
+  const btn = await p.$('[data-site-page="/about"] footer button, [data-site-page="/about"] nav button')
+  const bb = await btn.boundingBox()
+  await p.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2); await p.waitForTimeout(500)
+  const s11b = await sel11()
+  await toPage('/')
+  const s11c = await sel11()
+  check('after a page switch the Select tool works on the new page: the About heading rings with a pill «h1», a click on a site button there PICKS it (chip «button», «1 selection») and the page stays /about — and switching back to Home drops that pick',
+    s11a.hover && s11a.tag === 'h1' && s11b.path === '/about' && !!s11b.pick && s11b.chip === 'button' && s11b.bar === '1 selection' && s11c.path === '/' && !s11c.pick && !s11c.chip && s11c.pressed === 'true',
+    JSON.stringify({ s11a, s11b, s11c }))
+  const hh = await p.$eval('[data-pick="home.hero.title"]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, h: r.height } })
+  await p.mouse.click(hh.x + 30, hh.y + hh.h / 2); await p.waitForTimeout(500)
+  const s11d = await sel11()
+  await p.click('[aria-label="Cloud"]'); await p.waitForTimeout(1300)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(1400)
+  const s11e = await sel11()
+  check('a pick survives a canvas window round trip: Cloud opened and closed over a picked heading, the ring stands on the SAME box (the site layer remounted, the pick re-seated by its key), «1 selection» and the chip «h1» as before',
+    !!s11d.pick && !!s11e.pick && s11e.pick.every((v, i) => Math.abs(v - s11d.pick[i]) <= 1) && s11e.bar === '1 selection' && s11e.chip === 'h1' && s11e.pressed === 'true',
+    JSON.stringify({ s11d, s11e }))
+  const disc0 = await p.$eval('[data-ve-tool="select"]', (e) => e.getBoundingClientRect().x)
+  await p.click('[data-ve-pick-clear]'); await p.waitForTimeout(700)
+  const s11f = await sel11()
+  const disc1 = await p.$eval('[data-ve-tool="select"]', (e) => e.getBoundingClientRect().x)
+  await p.mouse.click(hh.x + 30, hh.y + hh.h / 2); await p.waitForTimeout(500)
+  await p.focus('aside textarea'); await p.keyboard.press('Escape'); await p.waitForTimeout(500)
+  const s11g = await sel11()
+  check('Clear drops the pick and keeps the tool, the Edit tool back in reach and the select disc where it stood all along; Escape in the composer (where a pick puts the caret) drops the pick too',
+    !s11f.pick && !s11f.chip && s11f.pressed === 'true' && s11f.edit && Math.abs(disc1 - disc0) < 0.5 && !s11g.pick && !s11g.chip && s11g.pressed === 'true',
+    JSON.stringify({ s11f, s11g, disc: [disc0, disc1] }))
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════

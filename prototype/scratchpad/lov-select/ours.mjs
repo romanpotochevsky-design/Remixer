@@ -74,7 +74,7 @@ ok(!!pick && Math.abs(pick[0] - ib.x) < 0.6 && Math.abs(pick[2] - ib.width) < 0.
 ok((await page.$eval('[data-about-chip]', (e) => e.textContent).catch(() => 'none')) === 'img', 'composer chip says «img»')
 ok(!!(await page.$('[data-ve-picked]')), 'bar shows the pick segment')
 ok((await page.$eval('[data-ve-pick-count]', (e) => e.textContent).catch(() => '')) === '1 selection', 'bar says «1 selection»')
-ok(!(await page.$('[data-ve-tool="edit"]')), 'the Edit tool steps aside while a pick stands')
+ok(!!(await page.$('[data-ve-tool="edit"][data-ve-ghost]')), 'the Edit tool ghosts out of reach while a pick stands')
 await page.waitForTimeout(500)
 const bar = await page.$eval('[data-ve-bar]', (e) => { const r = e.getBoundingClientRect(); return [r.x, r.width, r.height] })
 console.log('bar with pick:', bar)
@@ -104,7 +104,7 @@ await page.click('[data-ve-pick-clear]')
 await page.waitForTimeout(450)
 ok(!(await page.$('[data-ve-pick]')), 'Clear drops the pick ring')
 ok(!(await page.$('[data-about-chip]')), 'Clear drops the composer chip')
-ok(!!(await page.$('[data-ve-tool="edit"]')), 'Edit tool is back')
+await page.waitForTimeout(400); ok(!!(await page.$('[data-ve-tool="edit"]:not([data-ve-ghost])')), 'Edit tool is back')
 ok((await page.$eval('[data-ve-tool="select"]', (e) => e.getAttribute('aria-pressed'))) === 'true', 'select stays on after Clear')
 
 /* leaving the site hides the pill */
