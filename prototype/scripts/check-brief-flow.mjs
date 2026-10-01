@@ -5905,7 +5905,7 @@ await shot('30-plan-review')
   })
   const m = geo.menu
   check('the account menu lies where the re-drawn board draws it — 288 wide, 8 from the top and right edges, 598 tall = header 139 + credits card 260 + list 191 + 8 — covering the avatar that opened it',
-    m.w === 288 && m.x === geo.vw - 296 && m.y === 8 && m.h === 598 && geo.header.h === 135 && geo.credits.h === 260 && geo.credits.w === 276 && geo.credits.x === m.x + 6 && geo.list.h === 191 && geo.trigger[0] > m.x && geo.trigger[1] < m.y + 40 && geo.expanded === 'true',
+    m.w === 288 && m.x === geo.vw - 296 && m.y === 8 && m.h === 598 && geo.header.h === 139 && geo.credits.h === 260 && geo.credits.w === 276 && geo.credits.x === m.x + 6 && geo.list.h === 191 && geo.trigger[0] > m.x && geo.trigger[1] < m.y + 40 && geo.expanded === 'true',
     JSON.stringify(geo))
   check('…inside, the board’s numbers: avatar 56 at (116, 16), balance row 45, the bar 236 at 20 in, the inner card 264 × 107 r16 with rows 53 / 52, Add Credits 244 × 40, three rows 272 × 40 ONE apart from 12 below the card, Logout 268 × 40 at the foot',
     geo.avatar.w === 56 && geo.avatar.x === m.x + 116 && geo.avatar.y === m.y + 16 && geo.balRow.h === 45 && geo.bar.w === 236 && geo.bar.x === m.x + 26 && geo.bar.h === 8
