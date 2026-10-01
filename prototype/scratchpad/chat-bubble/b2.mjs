@@ -1,0 +1,11 @@
+import { chromium } from 'playwright'
+const browser = await chromium.launch({ executablePath: process.env.CHROME, args: ['--no-sandbox'] })
+const page = await browser.newPage({ viewport: { width: 1600, height: 1100 }, deviceScaleFactor: 1 })
+await page.goto('http://localhost:4173/?p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640', { waitUntil: 'networkidle' })
+await page.evaluate(() => localStorage.clear()); await page.reload({ waitUntil: 'networkidle' })
+await page.click('.home-card-face'); await page.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }); await page.waitForTimeout(600)
+await page.click('button[aria-label="Prototype console"]'); await page.waitForTimeout(400)
+await page.click('button:has-text("Versions — the board’s thread")'); await page.waitForTimeout(400)
+await page.click('button[aria-label="Prototype console"]').catch(() => {}); await page.waitForTimeout(1400)
+const els = await page.$$('[data-user-msg]'); await els[1].screenshot({ path: 'scratchpad/chat-bubble/bubble2.png' })
+await browser.close()

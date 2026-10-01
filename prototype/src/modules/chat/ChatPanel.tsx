@@ -63,13 +63,35 @@ function UserBubble({
   /** The element the Select tool pointed at when this was sent (Message.about). */
   about?: string
 }) {
+  const bubble = useRef<HTMLDivElement>(null)
+  /* The board's two gradients run along the bubble's OWN diagonal (handle top-left corner →
+     bottom-right corner, isolines across it), so their angle is the box's aspect — a long one-line
+     bubble and a short three-line one get different angles. CSS has no atan of a box, so the angle
+     is measured once per size change (`--bub-a`, default 102deg ≈ the board's 320 × 76). */
+  useLayoutEffect(() => {
+    const el = bubble.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const set = () => {
+      const w = el.offsetWidth
+      const h = el.offsetHeight
+      if (w && h) el.style.setProperty('--bub-a', `${(90 + (Math.atan2(h, w) * 180) / Math.PI).toFixed(2)}deg`)
+    }
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   return (
-    <div ref={anchorRef} className="flex justify-end">
+    /* pb-4: the board wraps each customer message in a frame with 16 below it (31499:3876), so
+       the bubble stands apart from the version card that answers it — 40 to the card, not 24 */
+    <div ref={anchorRef} className="flex justify-end pb-4" data-user-msg>
       <motion.div
+        ref={bubble}
         variants={bubbleSend}
         initial={animate ? 'initial' : false}
         animate="animate"
-        className="liquid-glass liquid-glass--subtle max-w-[320px] origin-bottom-right rounded-[24px] rounded-br-[8px] px-5 pb-[11px] pt-[13px]"
+        data-user-bubble
+        className="user-bubble max-w-[320px] origin-bottom-right rounded-[24px] rounded-br-[8px] px-5 pb-[11px] pt-[13px]"
       >
         {about && (
           <span className="mb-1.5 inline-flex h-6 items-center gap-1.5 rounded-full bg-[var(--white-100)] px-2 text-[12px] font-semibold leading-none text-[var(--white-720)]" data-about>
@@ -77,7 +99,7 @@ function UserBubble({
             {about}
           </span>
         )}
-        <p className="whitespace-pre-wrap text-[15px] leading-[26px] text-[var(--gray-350,#c7c7cd)]">{children}</p>
+        <p className="relative whitespace-pre-wrap text-[15px] leading-[26px] text-[rgba(255,255,255,0.64)]">{children}</p>
       </motion.div>
     </div>
   )

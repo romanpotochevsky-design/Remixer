@@ -5243,14 +5243,14 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
  * THE VERSION CARD — a change to the site, as the chat records it (board 31422:42642, read
  * 30.09.2026 through the Plugin API and `get_variable_defs` in the DARK theme; modules/versions).
  *
- * The card is OPAQUE (#171719), so the board's `background blur 32` would blur nothing: omitted on
+ * The card is OPAQUE (#18181a), so the board's `background blur 32` would blur nothing: omitted on
  * the standing rule — look at what is behind you before you blur. Its rim is the board's gradient
  * stroke, 1 px INSIDE the geometry (the mask ring every glass rim in the house uses, never a
  * `border`): TL → BR, 15 % → 3 % at 50.48 % → 15 % white.
  * Only PAINT lives here — sizes and paddings are Tailwind on the element, because this block is
  * unlayered and would otherwise out-rank the utilities.
  * ------------------------------------------------------------------------ */
-.vcard { position: relative; background: #171719; border-radius: 16px; }
+.vcard { position: relative; background: #18181a; border-radius: 16px; } /* board 31422:42646: #18181a on four cards and 6 % white over #09090b on the fifth — the same colour written twice */
 .vcard::before {
   content: '';
   position: absolute;
@@ -5280,6 +5280,37 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
   z-index: 1;
 }
 .vcard[data-previewing] > .vc-ring { opacity: 1; }
+
+/* ---------------------------------------------------------------------------------------------
+ * THE CUSTOMER'S MESSAGE — board 31422:42646 (01.10.2026). Designer: the bubble's grey fill and rim
+ * looked like the version cards and their buttons, and the thread became «a porridge of grey
+ * squares». So the bubble stops being a surface: no blur, no plate — a wash that fades OUT across
+ * it and a rim that is lit only at its start. The cards stay solid (#18181a); the bubble is light.
+ *   fill   — linear, white 4 % → 0 %, along the bubble's own diagonal (TL corner → BR corner);
+ *   stroke — 1 px INSIDE, linear on the same diagonal: Neutral Alpha/300 24 % → /50 4 % @50 % →
+ *            /100 8 %; drawn as a masked ring on ::before (a CSS border would sit outside and
+ *            shrink the text box by 2 px);
+ *   text   — Neutral Alpha/700 = white 64 % (was gray-350), Proxima 15/26; radius 24/24/8/24;
+ *            padding 13/20/11/20 — those live on the element.
+ * `--bub-a` is the diagonal's angle, measured in ChatPanel `UserBubble` (CSS cannot take atan of a box).
+ * Paint only here: this block is unlayered and would out-rank the Tailwind sizes. */
+.user-bubble {
+  position: relative;
+  background: linear-gradient(var(--bub-a, 102deg), rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+}
+.user-bubble::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(var(--bub-a, 102deg), rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.08));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
 
 /* «Icon button 36px (Dark hover)» — revert and eye: no plate at rest; the board's three plates */
 .vc-icon { border-radius: 10px; color: #fff; transition: background-color 0.16s cubic-bezier(0.2, 0, 0, 1), color 0.16s, opacity 0.16s; }

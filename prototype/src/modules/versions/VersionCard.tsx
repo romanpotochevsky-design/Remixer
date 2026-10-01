@@ -6,7 +6,7 @@
  *
  * ANATOMY (the board, to the pixel — scratchpad/version-cards/board-spec.md):
  *  · 416 × 56, 8 px wider than the text column on the left (the thread's gutter is 16, the board's
- *    card sits at 8): `#171719`, the gradient rim INSIDE, radius 16, `py 2` round a 52 row;
+ *    card sits at 8): `#18181a` (was #171719 before 01.10), the gradient rim INSIDE, radius 16, `py 2` round a 52 row;
  *  · left, a 32 slot — the customer's own edit wears the edit bar's «T in a frame» at 48 % white;
  *    the CURRENT version wears the green mark (a 2 px ring #A0DDAA round an 8 px core #57BC67);
  *    a card with no slot starts its title at 20;

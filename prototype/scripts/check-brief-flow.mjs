@@ -6586,7 +6586,7 @@ await shot('30-plan-review')
  *
  * WHAT THIS BLOCK GUARDS (modules/versions, docs/features/versions/README.md):
  *  · the demo thread carries version 1, current (green mark, chevron only), 8 px left of the text
- *    column, 416 × 56 at the board's width, #171719, r16;
+ *    column, 416 × 56 at the board's width, #18181a, r16;
  *  · a chat edit posts a WORKING card first (-ing line, no buttons), the green mark STAYS on the old
  *    version until the change lands, then moves in the same frame the site changes; the old card
  *    pops in revert + eye; the page really changes (nav, a testimonials block);
@@ -6621,7 +6621,14 @@ await shot('30-plan-review')
   let cs = await cards()
   const geo = await p.evaluate(() => { const c = document.querySelector('[data-version-card]'); const col = document.querySelector('.chat-col'); const r = c.getBoundingClientRect(), q = col.getBoundingClientRect(); return { dx: Math.round(r.x - q.x), w: Math.round(r.width), colW: Math.round(q.width), h: Math.round(r.height), bg: getComputedStyle(c).backgroundColor, radius: getComputedStyle(c).borderRadius, title: getComputedStyle(c.querySelector('[data-version-title]')).fontSize } })
   check('the demo thread carries version 1: «First Version», current (green mark), the chevron only', cs.length === 1 && cs[0].title === 'First Version' && cs[0].cur && !cs[0].revert && !cs[0].eye && cs[0].chev, JSON.stringify(cs))
-  check('…at the board’s metrics: 8 px left of the text column (x 8 in 432), as wide as the column minus 16 (416 at 432), 56 tall, #171719, r16, title 15', geo.dx === 8 && geo.w === geo.colW - 16 && geo.h === 56 && geo.bg === 'rgb(23, 23, 25)' && geo.radius === '16px' && geo.title === '15px', JSON.stringify(geo))
+  check('…at the board’s metrics: 8 px left of the text column (x 8 in 432), as wide as the column minus 16 (416 at 432), 56 tall, #18181a, r16, title 15', geo.dx === 8 && geo.w === geo.colW - 16 && geo.h === 56 && geo.bg === 'rgb(24, 24, 26)' && geo.radius === '16px' && geo.title === '15px', JSON.stringify(geo))
+  /* the customer's message stops being a grey surface (board 31422:42646, 01.10.2026: «каша из серых
+     квадратов»): a 4 % → 0 % wash and a rim lit 24 % → 4 % → 8 % along its own diagonal, no blur,
+     white 64 % words, and 16 more air below it — 40 to the version card that answers it */
+  const bub = await p.evaluate(() => { const el = document.querySelector('[data-user-bubble]'); const cs = getComputedStyle(el), rim = getComputedStyle(el, '::before'), r = el.getBoundingClientRect(); const card = document.querySelector('.vcard'); return { bg: cs.backgroundImage, blur: cs.backdropFilter, rim: rim.backgroundImage, rimPad: rim.padding, radius: [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].join('/'), pad: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].join('/'), ink: getComputedStyle(el.querySelector('p')).color, angle: parseFloat(el.style.getPropertyValue('--bub-a')), diag: 90 + Math.atan2(r.height, r.width) * 180 / Math.PI, toCard: Math.round(card.getBoundingClientRect().top - r.bottom) } })
+  check('the customer’s bubble by board 31422:42646: wash white 4 % → 0 % and a 1 px rim 24 % → 4 % @50 % → 8 %, both along the bubble’s own diagonal, NO blur, radius 24/24/8/24, padding 13/20/11/20, words white 64 %; 40 from the bubble to the card below',
+    /rgba\(255, 255, 255, 0\.04\).*rgba\(255, 255, 255, 0\)/.test(bub.bg) && /0\.24\).*0\.04\) 50%.*0\.08\)/.test(bub.rim) && bub.rimPad === '1px' && (bub.blur === 'none' || !bub.blur)
+      && bub.radius === '24px/24px/8px/24px' && bub.pad === '13px/20px/11px/20px' && bub.ink === 'rgba(255, 255, 255, 0.64)' && Math.abs(bub.angle - bub.diag) < 0.05 && bub.toCard === 40, JSON.stringify(bub))
 
   /* ── 2 · a chat edit: working card → lands with the site ───────────────────────── */
   await p.fill('textarea', 'Can you update the main navigation menu?'); await p.keyboard.press('Enter')
