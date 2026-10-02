@@ -6048,8 +6048,8 @@ await shot('30-plan-review')
       toolbarText: document.querySelector('[data-canvas-toolbar]')?.innerText ?? '', editing: document.querySelector('[data-site-editing]')?.getAttribute('data-site-editing') ?? null,
     }
   })
-  check('the bar stands where the board puts it: centred on the canvas column, its bottom edge 29 above the canvas’s, 46 tall (1 + 4 + 36 + 4 + 1, board 31442:44737) — two 36 × 36 tools 4 apart, neither pressed, no batch segment',
-    !!rest && rest.inMain && Math.abs(rest.centreOff) <= 1 && rest.lift === 29 && rest.h === 46 && rest.tools.length === 2 && rest.tools.map((t) => t.tool).join() === 'edit,select'
+  check('the bar stands where the board puts it: centred on the canvas column, its bottom edge 8 above the preview’s, which stands 2 above the window’s (10 in all — designer 02.10.2026), 46 tall (1 + 4 + 36 + 4 + 1, board 31442:44737) — two 36 × 36 tools 4 apart, neither pressed, no batch segment',
+    !!rest && rest.inMain && Math.abs(rest.centreOff) <= 1 && rest.lift === 10 && rest.h === 46 && rest.tools.length === 2 && rest.tools.map((t) => t.tool).join() === 'edit,select'
       && rest.tools.every((t) => t.w === 36 && t.h === 36 && t.pressed === 'false' && t.glyph && !t.disc) && rest.gap === 4 && !rest.batch && !rest.dirty && rest.editing === null,
     JSON.stringify(rest && { centreOff: rest.centreOff, lift: rest.lift, w: rest.w, h: rest.h, tools: rest.tools, gap: rest.gap, batch: rest.batch }))
   check('…in the house glass: `liquid-glass` with its glint, r16, the board’s 0 8 32 at 33 %, taking the pointer inside a pointer-blind host',
@@ -6487,7 +6487,7 @@ await shot('30-plan-review')
  *    and «|‹»; Edit from there switches the mode on and lights the rail button in the action blue;
  *    leaving folds the pop-out; the Esc ladder still works while docked;
  *  · «‹» flies the glass back: the pill mounts hidden at its resting place and shows only when the
- *    flight lands — 86 wide, centred, 29 up; slot and rail button gone.
+ *    flight lands — 86 wide, centred, 10 up; slot and rail button gone.
  * ═══════════════════════════════════════════════════════════════════════════════════════════ */
 {
   const KEY = 'remixer-prototype/world/v6'
@@ -6589,7 +6589,7 @@ await shot('30-plan-review')
   await p.waitForTimeout(600)
   const home = await p.evaluate(() => { const el = document.querySelector('[data-ve-bar]'); const m = document.querySelector('main').getBoundingClientRect(); if (!el) return null; const r = el.getBoundingClientRect(); return { w: r.width, off: Math.round((r.x + r.width / 2) - (m.x + m.width / 2)), lift: Math.round(m.bottom - r.bottom), vis: getComputedStyle(el).visibility, opacity: getComputedStyle(el).opacity, slot: !!document.querySelector('[data-rail-dock]'), dock: !!document.querySelector('[data-ve-dock]'), flight: !!document.querySelector('[data-ve-flight]') } })
   check('«‹» flies the glass back — from 48 wide to the pill\'s width, the pill hidden until it lands', bf.length >= 8 && bf[0].w <= 84 && bf.at(-1).w >= 70 && bf.every((f) => f.barVis === 'hidden'), JSON.stringify({ first: bf[0], last: bf.at(-1) }))
-  check('home again: the pill is 86 wide, centred, 29 up and visible; the slot and the rail button are gone', !!home && home.w === 86 && home.off === 0 && home.lift === 29 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, JSON.stringify(home))
+  check('home again: the pill is 86 wide, centred, 10 up and visible; the slot and the rail button are gone', !!home && home.w === 86 && home.off === 0 && home.lift === 10 && home.vis === 'visible' && home.opacity === '1' && !home.slot && !home.dock && !home.flight, JSON.stringify(home))
   await shot('Q4-home')
 }
 

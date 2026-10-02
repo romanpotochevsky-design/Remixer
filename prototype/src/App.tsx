@@ -705,7 +705,7 @@ function CanvasPane({ id, tone, canvas, flyer, motion: motionRef, handoff, child
         data-canvas-pane={id}
         data-pane-motion={arrivedAs}
         data-pane-fresh={fresh ? '' : undefined}
-        className="absolute bottom-2 left-2 right-0 top-0 z-10 overflow-hidden rounded-[16px]"
+        className="absolute bottom-0.5 left-2 right-0 top-0 z-10 overflow-hidden rounded-[16px]"
         /* promoted for its lifetime: the clip is written every frame of the unfold, and a layer of its
            own is what keeps that a compositor update, not a repaint of the window */
         style={{ clipPath, opacity, scale, y, transformOrigin: origin, willChange: 'clip-path, transform, opacity', zIndex: inFront ? 11 : undefined }}
@@ -1175,7 +1175,9 @@ export default function App() {
             because it answers container queries, not the browser width — the same
             thing Lovable gets for free from its preview iframe. Mobile is a real
             390px frame centred on the ground, not a scaled-down desktop. */}
-        <main ref={canvasRef} className="relative min-h-0 min-w-0 flex-1 pb-2 pl-2">
+        {/* the preview stands 2 px above the window's bottom edge (designer 02.10.2026, with a
+            zoomed frame: «превью сайта имеет отступ от низу экрана всего 2 px») — was 8 */}
+        <main ref={canvasRef} className="relative min-h-0 min-w-0 flex-1 pb-0.5 pl-2">
           {/*
             * THE PANE UNFOLDS FROM ITS BUTTON, THE SITE RECEDES UNDER IT (designer, 22.09.2026 —
             * motion.ts `canvasPane` / `canvasSite` has the law and the live product's numbers). Both
@@ -1198,7 +1200,7 @@ export default function App() {
                 key="site"
                 data-canvas-site
                 data-site-parked={surface === 'sites' ? '' : undefined}
-                className={`absolute bottom-2 left-2 right-0 top-0 ${surface === 'sites' ? 'z-20 pointer-events-none' : 'z-0'}`}
+                className={`absolute bottom-0.5 left-2 right-0 top-0 ${surface === 'sites' ? 'z-20 pointer-events-none' : 'z-0'}`}
                 /* under an arriving SHEET the site steps back like the card behind an iOS sheet —
                    smaller and a few px UP, the other way from the sheet (motion.ts `canvasSiteSheet`) */
                 variants={reduce ? canvasSiteFade : world.paneMotion === 'sheet' ? canvasSiteSheet : canvasSite}

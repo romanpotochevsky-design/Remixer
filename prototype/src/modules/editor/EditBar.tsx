@@ -11,7 +11,9 @@
  * rim that is a 24 % → 4 % → 12 % white diagonal — our glass rim — radius 16, shadow 0 8 32 at 33 %,
  * padding 4, two 32 icon buttons (container radius 8, glyph 24) with a 4 gap. Blur 32 is drawn
  * as 16 here: past ~16 px Chrome's backdrop blur gets WORSE, not softer (CLAUDE.md, measured
- * 26.08.2026) — raised to the designer. It stands 29 px above the canvas's bottom edge (board:
+ * 26.08.2026) — raised to the designer. It stands 8 px above the PREVIEW's bottom edge, which stands 2 px
+ * above the window's (designer 02.10.2026, a zoomed frame: «бар с инструментами от низа сайта 8px»; it was 29
+ * above the canvas's edge, read off board 31280:85401 — the old reading kept below for the record) (board:
  * frame at y 1095 in a 1166 frame).
  *
  * WHAT LOVABLE DOES AND WHAT THIS DOES INSTEAD (audits/lovable-visual-edits-teardown.md):
@@ -666,7 +668,7 @@ export function EditBar() {
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-x-0 bottom-[29px] z-30 flex justify-center" data-ve-bar-host>
+      <div className="pointer-events-none absolute inset-x-0 bottom-[10px] z-30 flex justify-center" data-ve-bar-host>
         <AnimatePresence initial={false}>
           {floating && (
             <motion.div

@@ -188,7 +188,7 @@ export function SitesShelf() {
      * with the customer's sites on it, so the shelf paints nothing of its own: the cards and the title sit
      * on `--gray-950`, and the clip stays invisible (it only cuts the approach to the canvas box).
      */
-    <div ref={root} data-sites-clip className="absolute bottom-2 left-2 right-0 z-10 overflow-hidden rounded-[16px]" style={{ top: 'calc(-1 * var(--topbar-h))' }}>
+    <div ref={root} data-sites-clip className="absolute bottom-0.5 left-2 right-0 z-10 overflow-hidden rounded-[16px]" style={{ top: 'calc(-1 * var(--topbar-h))' }}>
     <motion.div
       data-sites-shelf
       role="dialog"
