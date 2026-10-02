@@ -610,8 +610,14 @@ export function EditBar() {
             onUpdate={keepOnMainThread}
             data-ve-batch
           >
+            {/* the count is centred by its LINE BOX, not trimmed to its cap band: `text-box-trim` reads the
+                font's own cap-height field, and the designer's installed Proxima Nova carries one that sits
+                the word ~2.5 px high (02.10.2026: «у меня он криво выглядит… а у других людей ровно»;
+                reproduced with a Figtree whose field reads 55 % — trimmed: −5 dpx, line box: −1). Clear
+                and Save were never trimmed in effect (an inline span in a button) and read centred on
+                every machine; the count now does what they do */}
             <motion.span
-              className="min-w-[120px] whitespace-nowrap text-[15px] font-medium leading-none text-white [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
+              className="min-w-[120px] whitespace-nowrap text-[15px] font-medium leading-normal text-white"
               variants={reduce ? editBarInFade : editBarCount}
               initial="initial"
               animate="animate"
