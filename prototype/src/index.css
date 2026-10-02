@@ -376,8 +376,18 @@
   .site-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .site-grid.site-grid--big { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 
+  /* the two landing sites on the shelf (modules/preview/landings.tsx): a split hero, a row of three */
+  .lp-split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; }
+  .lp-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lp-title { font-size: 64px; }
+  .lp-links { display: flex; align-items: center; }
+  .lp-specs { display: flex; gap: 36px; }
+  .lp-pad { padding: 48px; }
+
   @container (max-width: 900px) {
     .site-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lp-split { grid-template-columns: minmax(0, 1fr); }
+    .lp-title { font-size: 48px; }
     .site-plans { grid-template-columns: minmax(0, 1fr); }
   }
   @container (max-width: 640px) {
@@ -390,6 +400,11 @@
     .site-grid { grid-template-columns: minmax(0, 1fr); }
     .site-grid.site-grid--big { grid-template-columns: minmax(0, 1fr); }
     .site-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lp-three { grid-template-columns: minmax(0, 1fr); }
+    .lp-title { font-size: 36px; }
+    .lp-links { display: none; }
+    .lp-specs { gap: 20px; flex-wrap: wrap; }
+    .lp-pad { padding: 28px 24px; }
   }
 
   /*

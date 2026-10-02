@@ -116,6 +116,62 @@ export const SITE_TEXT: Record<string, string> = {
   'ai.order.title': 'Order your first week',
   'ai.order.lead': 'Leave your number — we call back within the hour to set your macros.',
   'ai.order.cta': 'Send my order',
+
+  /* synco.com — the black-theme store (modules/preview/landings.tsx). Black Friday is in because its
+     own transcript says the banner went up (world.ts SITE_SLICES.synco). */
+  'synco.bar': 'Black Friday — 30% off the whole lineup · ends Sunday',
+  'synco.nav.cta': 'Shop now',
+  'synco.eyebrow': 'New · Synco Orb',
+  'synco.hero.title': 'Sound that fills the room. Not the shelf.',
+  'synco.hero.lead': 'A 360° speaker the size of a grapefruit. Forty hours on a charge, and it finds your other Synco speakers by itself.',
+  'synco.cta.primary': 'Buy Orb — $174',
+  'synco.cta.secondary': 'Hear it',
+  'synco.spec.0.value': '40 h',
+  'synco.spec.0.label': 'battery',
+  'synco.spec.1.value': '360°',
+  'synco.spec.1.label': 'sound',
+  'synco.spec.2.value': '1.2 kg',
+  'synco.spec.2.label': 'all of it',
+  'synco.line.title': 'The lineup',
+  'synco.line.badge': '−30% this week',
+  'synco.p.orb.name': 'Orb',
+  'synco.p.orb.text': 'Room-filling 360° sound',
+  'synco.p.orb.price': '$174',
+  'synco.p.orb.was': '$249',
+  'synco.p.pods.name': 'Pods',
+  'synco.p.pods.text': 'Earbuds that hand off to Orb',
+  'synco.p.pods.price': '$118',
+  'synco.p.pods.was': '$169',
+  'synco.p.halo.name': 'Halo',
+  'synco.p.halo.text': 'A light ring that dances to it',
+  'synco.p.halo.price': '$83',
+  'synco.p.halo.was': '$119',
+  'synco.footer': 'synco — sound in sync · free shipping over $50',
+
+  /* meridianroast.com — the bright roastery (modules/preview/landings.tsx). The two-week
+     subscription is in because its own transcript says it was added (world.ts SITE_SLICES). */
+  'meridian.nav.cta': 'Subscribe',
+  'meridian.eyebrow': 'Small-batch roastery · Lisbon',
+  'meridian.hero.title': 'Coffee that tastes like a good morning.',
+  'meridian.hero.lead': 'Roasted on Tuesday, at your door on Thursday. Three single origins a month, picked by the two of us.',
+  'meridian.cta.primary': 'Pick your roast',
+  'meridian.cta.secondary': 'How we roast',
+  'meridian.sticker.value': '−15%',
+  'meridian.sticker.label': 'every 2 weeks',
+  'meridian.strip': 'Ethiopia · Colombia · Guatemala · Kenya · Brazil · Rwanda ·',
+  'meridian.roasts.title': 'This month’s roasts',
+  'meridian.roasts.lead': 'Whole bean or ground to your brewer. 250 g bags, sealed the day they’re roasted.',
+  'meridian.r.sunrise.name': 'Sunrise',
+  'meridian.r.sunrise.notes': 'Ethiopia · peach, jasmine, honey',
+  'meridian.r.sunrise.price': '$18',
+  'meridian.r.cobalt.name': 'Cobalt',
+  'meridian.r.cobalt.notes': 'Colombia · cocoa, cherry, caramel',
+  'meridian.r.cobalt.price': '$16',
+  'meridian.r.jungle.name': 'Jungle',
+  'meridian.r.jungle.notes': 'Guatemala · brown sugar, orange, nuts',
+  'meridian.r.jungle.price': '$17',
+  'meridian.r.sub': '−15% on a subscription',
+  'meridian.footer': 'meridian — roasted in Lisbon · hello@meridianroast.com',
 }
 
 /** The three service tiles, in the order the Services page draws them. */
@@ -169,6 +225,11 @@ export const SITE_PHOTO_DEFAULTS: Record<string, PhotoRef> = {
   'about.photo': { kind: 'site', id: 'kitchen' },
   ...Object.fromEntries(MEALS.map((m) => [m.photoKey, { kind: 'site', id: m.id } as PhotoRef])),
   ...Object.fromEntries(SERVICES.map((s) => [`svc.${s.id}.photo`, { kind: 'site', id: `svc-${s.id}` } as PhotoRef])),
+  /* the two landing sites' photo slots (modules/preview/landings.tsx) */
+  'synco.hero.photo': { kind: 'site', id: 'synco-hero' },
+  ...Object.fromEntries(['orb', 'pods', 'halo'].map((id) => [`synco.p.${id}.photo`, { kind: 'site', id: `synco-${id}` } as PhotoRef])),
+  'meridian.hero.photo': { kind: 'site', id: 'meridian-hero' },
+  ...Object.fromEntries(['sunrise', 'cobalt', 'jungle'].map((id) => [`meridian.r.${id}.photo`, { kind: 'site', id: `meridian-${id}` } as PhotoRef])),
   /* the photo strip a chat edit can add under the hero */
   ...Object.fromEntries(['kitchen', 'salmon-teriyaki', 'protein-pancakes', 'svc-office-delivery'].map((id, i) => [`ai.strip.${i}.photo`, { kind: 'site', id } as PhotoRef])),
 }
@@ -255,6 +316,7 @@ export function labelOf(key: string): string {
   if (key.endsWith('.a')) return 'Answer'
   if (key.endsWith('.badge')) return 'Badge'
   if (key.endsWith('.title') || key === 'home.hero.title') return 'Heading'
+  if (key.endsWith('.name') && (key.startsWith('synco.') || key.startsWith('meridian.'))) return 'Product name'
   if (key.endsWith('.name')) return 'Dish name'
   if (key.endsWith('.cta') || key.startsWith('home.cta') || key === 'nav.cta') return 'Button'
   if (key.endsWith('.value')) return 'Number'

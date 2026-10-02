@@ -9,6 +9,9 @@
  * on the shelf and this stage are therefore the same picture at two scales for every site,
  * which is what the shelf's flight needs at both ends.
  *
+ * ⚠️ Since 02.10.2026 every site on the demo shelf is live (the two landings, landings.tsx), so the
+ * drawing branch is reached only by a row that names a drawing — kept for that, not used by the demo.
+ *
  * A drawn site's pages do not exist as pages, so the page switcher's rows change nothing on
  * it; said to the designer, not hidden.
  */

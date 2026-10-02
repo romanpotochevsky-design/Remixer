@@ -773,7 +773,7 @@ export const AXES: Axis[] = [
         patch: { projects: [] },
       },
       {
-        value: 'theirs', label: { en: 'Their four sites', uk: 'Їхні чотири сайти' },
+        value: 'theirs', label: { en: 'Their three sites', uk: 'Їхні три сайти' },
         hint: { en: 'the dock shows My projects; the header switches between them', uk: 'у доку «My projects»; шапка перемикає між ними' },
         patch: { projects: DEMO_PROJECTS },
       },

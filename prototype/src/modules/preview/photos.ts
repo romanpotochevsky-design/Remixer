@@ -33,6 +33,7 @@
  * the same ids `content.ts` resolves a photo slot to.
  */
 import { PHOTO_DATA, type PhotoId } from './photos/data'
+import { LANDING_PHOTO_DATA, type LandingPhotoId } from './photos/landing-data'
 
 export interface SitePhoto {
   id: string
@@ -48,7 +49,15 @@ const W = 560
 const H = 360
 
 /** English alt texts, in the voice of the meal-delivery site itself. */
-const ALT: Record<PhotoId, string> = {
+const ALT: Record<PhotoId | LandingPhotoId, string> = {
+  'synco-hero': 'Synco Orb — a graphite 360° speaker under a violet light, a Pod resting beside it',
+  'synco-orb': 'Synco Orb speaker in graphite',
+  'synco-pods': 'Synco Pods — a pair of white earbuds',
+  'synco-halo': 'Synco Halo — a light ring',
+  'meridian-hero': 'A latte in a pink cup on orange paper, coffee beans scattered around it',
+  'meridian-sunrise': 'A pink bag of Sunrise, Ethiopia, on yellow',
+  'meridian-cobalt': 'A blue bag of Cobalt, Colombia, on pink',
+  'meridian-jungle': 'A green bag of Jungle, Guatemala, on blue',
   'power-bowl': 'Power Bowl — quinoa, roasted chickpeas and grilled chicken with lemon-tahini dressing',
   'lean-beef-rice': 'Lean Beef & Rice — slow-cooked beef over jasmine rice with steamed greens',
   'salmon-teriyaki': 'Salmon Teriyaki — glazed Norwegian salmon on soba noodles with sesame and pickled ginger',
@@ -64,6 +73,12 @@ const ALT: Record<PhotoId, string> = {
 /** Every photo id, in menu order: the six meals, the kitchen, then the three service tiles. */
 export const photoIds: string[] = Object.keys(PHOTO_DATA)
 
-export const SITE_PHOTOS: Record<string, SitePhoto> = Object.fromEntries(
-  (Object.keys(PHOTO_DATA) as PhotoId[]).map((id) => [id, { id, src: PHOTO_DATA[id], w: W, h: H, alt: ALT[id] }]),
-)
+export const SITE_PHOTOS: Record<string, SitePhoto> = {
+  ...Object.fromEntries(
+    (Object.keys(PHOTO_DATA) as PhotoId[]).map((id) => [id, { id, src: PHOTO_DATA[id], w: W, h: H, alt: ALT[id] }]),
+  ),
+  /* the two landing sites' pictures (scratchpad/landing-photos/make.py) — sizes vary, read off the file */
+  ...Object.fromEntries(
+    (Object.keys(LANDING_PHOTO_DATA) as LandingPhotoId[]).map((id) => [id, { id, src: LANDING_PHOTO_DATA[id], w: 640, h: 520, alt: ALT[id] }]),
+  ),
+}

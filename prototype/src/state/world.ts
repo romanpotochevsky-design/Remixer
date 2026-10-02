@@ -206,6 +206,13 @@ export interface HomeProject {
  * ⚠️ The Home dock renders THIS list too (one list, two homes), so its first card now shows
  * the live demo site where the board drew the placeholder. Said to the designer, not hidden.
  *
+ * ⚠️ 02.10.2026: THREE SITES, ALL LIVE. The designer opened synco.com's drawing on the canvas
+ * («сделай более похожим на сайт, а то что-то непонятное, пустое»), asked for the editor on all
+ * three and removed still-studio.com («этот вообще убери из списка»). synco.com and
+ * meridianroast.com are now real landing pages (modules/preview/landings.tsx — the black store and
+ * the bright roastery; fit-ration is the white one), rendered and edited like the demo site; the
+ * paragraph above about drawings is history. Old snapshots are mended on load (`normalizeShelf`).
+ *
  * A site is named the way the dock's board names it: by its address when it has one
  * (`synco.com`), by its handle when it only has the free one (`fit-ration`). Open question
  * to the designer whether a connected domain should rename the site.
@@ -221,19 +228,13 @@ export const DEMO_PROJECTS: HomeProject[] = [
     id: 'synco',
     name: 'synco.com',
     updatedLabel: { en: 'Updated yesterday', uk: 'Оновлено вчора' },
-    thumb: 'synco',
+    thumb: 'live',
   },
   {
     id: 'meridian',
     name: 'meridianroast.com',
     updatedLabel: { en: 'Updated 3 days ago', uk: 'Оновлено 3 дні тому' },
-    thumb: 'coffee',
-  },
-  {
-    id: 'still',
-    name: 'still-studio.com',
-    updatedLabel: { en: 'Updated 2 weeks ago', uk: 'Оновлено 2 тижні тому' },
-    thumb: 'yoga',
+    thumb: 'live',
   },
 ]
 
@@ -775,26 +776,22 @@ const SITE_BASE: Omit<SiteSlice, 'sent' | 'domain' | 'customDomain' | 'published
   brief: EMPTY_BRIEF, build: EMPTY_BUILD, suggest: EMPTY_SUGGEST, planEdits: EMPTY_PLAN_EDITS,
   siteEdits: EMPTY_SITE_EDITS, media: DEFAULT_MEDIA, versions: [], siteAi: EMPTY_SITE_AI,
 }
+/* each landing's library holds its own pictures (modules/preview/landings.tsx) */
+const SYNCO_MEDIA: PhotoRef[] = ['synco-hero', 'synco-orb', 'synco-pods', 'synco-halo'].map((id) => ({ kind: 'site', id }))
+const MERIDIAN_MEDIA: PhotoRef[] = ['meridian-hero', 'meridian-sunrise', 'meridian-cobalt', 'meridian-jungle'].map((id) => ({ kind: 'site', id }))
 export const SITE_SLICES: Record<string, SiteSlice> = {
   synco: {
-    ...SITE_BASE, domain: 'live', customDomain: 'synco.com', published: true, unpublished: 2,
+    ...SITE_BASE, media: SYNCO_MEDIA, domain: 'live', customDomain: 'synco.com', published: true, unpublished: 2,
     sent: [
       { id: 2001, who: 'user', text: { en: 'Put the Black Friday banner above the product grid and make the discount bigger.', uk: 'Постав банер Чорної п’ятниці над сіткою товарів і зроби знижку більшою.' } },
       { id: 2002, who: 'ai', text: { en: 'Done — the banner now sits under the nav with the 30% set in the display size, and the grid starts right below it. Two edits are waiting to go live whenever you publish.', uk: 'Готово — банер тепер під навігацією, 30% набрано дисплейним кеглем, сітка починається одразу під ним. Дві правки чекають публікації.' } },
     ],
   },
   meridian: {
-    ...SITE_BASE, domain: 'staging', customDomain: CUSTOM_DOMAIN, published: true, unpublished: 0,
+    ...SITE_BASE, media: MERIDIAN_MEDIA, domain: 'staging', customDomain: CUSTOM_DOMAIN, published: true, unpublished: 0,
     sent: [
       { id: 2001, who: 'user', text: { en: 'Add a subscription card next to the single-bag price.', uk: 'Додай картку підписки біля ціни за одну пачку.' } },
       { id: 2002, who: 'ai', text: { en: 'Added a “Every 2 weeks” card beside the bag price with the 15% saving called out. It is live already — nothing waiting to publish.', uk: 'Додав картку «Кожні 2 тижні» біля ціни пачки з виділеною економією 15%. Уже опубліковано — нічого не чекає.' } },
-    ],
-  },
-  still: {
-    ...SITE_BASE, domain: 'staging', customDomain: CUSTOM_DOMAIN, published: false, unpublished: 0,
-    sent: [
-      { id: 2001, who: 'user', text: { en: 'Make the schedule readable on a phone.', uk: 'Зроби розклад читабельним на телефоні.' } },
-      { id: 2002, who: 'ai', text: { en: 'The schedule now stacks by day on narrow screens, with the class name and time on one line. Publish whenever you are ready to put the site live.', uk: 'Розклад тепер складається по днях на вузьких екранах, назва й час класу в одному рядку. Публікуйте, коли будете готові вивести сайт.' } },
     ],
   },
 }
@@ -1169,7 +1166,23 @@ function normalizeSite(w: World): World {
   if (w.projects.some((p) => p.id === w.site)) return w
   return { ...w, site: w.projects[0]?.id ?? DEFAULT_WORLD.site }
 }
-const normalize = (w: World) => normalizeSite(normalizeIcann(w))
+/**
+ * …and the shelf a snapshot remembers is brought up to today's demo rows (02.10.2026): synco.com and
+ * meridianroast.com became live landings (modules/preview/landings.tsx) and still-studio.com left the
+ * shelf. A snapshot stores `projects` whole, so without this every browser that had opened the build
+ * would keep the old drawings and the removed card. Mended on the way in rather than by a storage
+ * bump: a bump would also throw away the sites the designer generated himself, which sit in the
+ * same list.
+ */
+const RETIRED_SITES = ['still']
+function normalizeShelf(w: World): World {
+  if (!w.projects.some((p) => RETIRED_SITES.includes(p.id) || DEMO_PROJECTS.some((d) => d.id === p.id && d.thumb !== p.thumb))) return w
+  const projects = w.projects
+    .filter((p) => !RETIRED_SITES.includes(p.id))
+    .map((p) => { const d = DEMO_PROJECTS.find((x) => x.id === p.id); return d ? { ...p, thumb: d.thumb } : p })
+  return { ...w, projects }
+}
+const normalize = (w: World) => normalizeSite(normalizeShelf(normalizeIcann(w)))
 
 function initialWorld(): World {
   const fromUrl = paramsToWorld(window.location.search)
@@ -1193,8 +1206,11 @@ function initialWorld(): World {
      * the shared-link path as before.
      */
     if (Object.keys(saved).length) {
-      const snapshot = normalize({ ...DEFAULT_WORLD, ...saved })
-      if (worldToParams(snapshot) === new URLSearchParams(window.location.search).toString()) return snapshot
+      const stored = { ...DEFAULT_WORLD, ...saved }
+      const snapshot = normalize(stored)
+      const bar = new URLSearchParams(window.location.search).toString()
+      /* the bar may have been written before the shelf was mended (its shelf count still the old one) */
+      if (worldToParams(snapshot) === bar || worldToParams(stored) === bar) return snapshot
     }
     /*
      * The URL wins — it is the shareable state — but the transcript never

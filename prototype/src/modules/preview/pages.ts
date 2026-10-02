@@ -45,8 +45,11 @@ export function normalizePath(raw: string): string {
   return t ? `/${t}` : '/'
 }
 
-export function sitePages(answers: BriefAnswers, outline?: OutlineEdits): SitePage[] {
-  return buildOutline(answers, outline).map((p, i) => ({
+/** `landing` — a site that is ONE page (modules/preview/landings.tsx): its list is Home alone, so the
+ *  switcher never offers a page the site does not have. */
+export function sitePages(answers: BriefAnswers, outline?: OutlineEdits, landing = false): SitePage[] {
+  const outlined = buildOutline(answers, outline)
+  return (landing ? outlined.slice(0, 1) : outlined).map((p, i) => ({
     id: p.id,
     name: p.name,
     path: i === 0 ? '/' : `/${slugOf(p.name.en)}`,

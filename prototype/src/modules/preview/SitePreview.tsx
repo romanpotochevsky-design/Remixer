@@ -296,6 +296,7 @@ import { ImagePanel } from '@/modules/editor/ImagePanel'
 import { findPage, normalizePath, sitePages, type SitePage } from './pages'
 import { MEALS, SERVICES, SITE_TEXT, mealMacros } from './content'
 import { Photo, SiteContext, T, type SiteCtx } from './site-parts'
+import { Landing, landingOf } from './landings'
 
 /** Remixer's rewrites under the customer's own words — the text layer the page reads (SiteAi). */
 const withAi = (edits: SiteEdits, ai: SiteAi): SiteEdits =>
@@ -365,7 +366,11 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
   const tool = useEditor((s) => (canvas && !old ? s.tool : null))
   const draft = useEditor((s) => (canvas && !old && s.tool ? s.draft : null))
   const go = pinned !== undefined ? () => {} : setPath
-  const pages = useMemo(() => sitePages(answers, outline), [answers, outline])
+  /* WHICH site: the two landings on the shelf draw their own page (landings.tsx), every other site
+     — the demo and every site generated from Home — is the compiled fit-ration page below */
+  const siteId = useWorld((s) => site ?? s.world.site)
+  const look = landingOf(siteId)
+  const pages = useMemo(() => sitePages(answers, outline, !!look), [answers, outline, look])
   const path = normalizePath(pinned ?? previewPath)
   const page = findPage(pages, path)
   const ctx = useMemo<SiteCtx>(
@@ -383,7 +388,7 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
     >
       <AnimatePresence initial={false}>
         <motion.div
-          key={path}
+          key={`${siteId}${path}`}
           data-site-page={path}
           variants={reduce ? pageSwapFade : pageSwap}
           initial="initial"
@@ -393,15 +398,21 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
           className="absolute inset-0"
         >
           {/* each page owns its scroller, so a new page opens at its top */}
-          <ScrollArea className="h-full" innerClassName="bg-[var(--sp)] font-sans text-[#1d1f1a]" thumb="auto">
+          <ScrollArea className="h-full" innerClassName={look ? '' : 'bg-[var(--sp)] font-sans text-[#1d1f1a]'} thumb="auto">
             {/* a page shorter than the canvas still ends in its footer, not in bare ground; `relative`
                 so the editor's overlay (rings) rides inside the scroll content with the page */}
-            <div className="relative flex min-h-full flex-col" data-site-root>
-              <SiteNav go={go} />
-              <div className="flex-1">
-                {page ? (page.index === 0 ? <HomeBody /> : <InnerBody page={page} t={t} />) : <NotFound path={path} go={go} t={t} />}
-              </div>
-              <SiteFooter pages={pages} current={path} go={go} t={t} />
+            <div className="relative flex min-h-full flex-col" data-site-root data-site-look={look ?? 'fit'}>
+              {look ? (
+                <Landing id={look} missing={page ? undefined : path} />
+              ) : (
+                <>
+                  <SiteNav go={go} />
+                  <div className="flex-1">
+                    {page ? (page.index === 0 ? <HomeBody /> : <InnerBody page={page} t={t} />) : <NotFound path={path} go={go} t={t} />}
+                  </div>
+                  <SiteFooter pages={pages} current={path} go={go} t={t} />
+                </>
+              )}
               {tool && <EditOverlay />}
             </div>
           </ScrollArea>

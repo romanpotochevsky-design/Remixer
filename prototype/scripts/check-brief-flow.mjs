@@ -5645,8 +5645,10 @@ await shot('30-plan-review')
   await p.waitForTimeout(800)
   /* the Home dock is the same shelf: four cards, the first the live demo site drawn by itself */
   const dock = await p.$$eval('.home-card-face', (els) => els.map((e) => ({ name: e.querySelector('.home-thumb + div p')?.textContent, live: !!e.querySelector('[data-site-mini]') })))
-  check('the Home dock shows the customer’s four sites — the live demo site first, drawn by itself (SiteMini), then three drawn ones',
-    dock.length === 4 && dock[0].name === 'fit-ration' && dock[0].live && dock.slice(1).every((d) => !d.live) && dock.map((d) => d.name).join() === 'fit-ration,synco.com,meridianroast.com,still-studio.com',
+  /* 02.10.2026: three sites, all three LIVE — synco.com and meridianroast.com became real landings
+     (modules/preview/landings.tsx) and still-studio.com left the shelf («этот вообще убери из списка») */
+  check('the Home dock shows the customer’s three sites, each drawn by itself (SiteMini) — the demo site first, then the two landings',
+    dock.length === 3 && dock.every((d) => d.live) && dock.map((d) => d.name).join() === 'fit-ration,synco.com,meridianroast.com',
     JSON.stringify(dock))
   await p.click('.home-card-face')
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 })
@@ -5770,9 +5772,9 @@ await shot('30-plan-review')
   const cols = Math.round((shelf.grid[2] + 32) / (c0.box[2] + 32))
   check('the shelf is the board’s «Projects» (31164:75936): Gilroy 32 at the column’s top-left 24 in, the blue «New Project» 40 and a 40 ✕ 16 apart at the right; cards 320 tall 32 apart — the picture 268 over a 43 meta row, the kebab 40 on its right — the open site’s card marked and its picture dark under the parked site; then the round-+ slot and dashed empty slots filling whole rows; the chevron turned over, the button expanded',
     shelf.title === 'Projects' && shelf.titleFont === '32px' && shelf.newBtn[3] === 40 && shelf.newBg === 'rgb(21, 135, 255)' && near(shelf.close[0] - (shelf.newBtn[0] + shelf.newBtn[2]), 16, 0.5) && near(shelf.close[1], 32, 0.5)
-      && shelf.gap === '32px' && near(shelf.grid[1], 100, 0.5) && shelf.cards.length === 4 && c0.id === 'fit-ration' && c0.current && c0.pic === 'hidden' && shelf.cards.slice(1).every((c) => !c.current && c.pic === 'visible')
+      && shelf.gap === '32px' && near(shelf.grid[1], 100, 0.5) && shelf.cards.length === 3 && c0.id === 'fit-ration' && c0.current && c0.pic === 'hidden' && shelf.cards.slice(1).every((c) => !c.current && c.pic === 'visible')
       && shelf.cards.every((c) => c.box[3] === 320 && near(c.thumb[3], 268, 0.5) && near(c.meta[1] - c.box[1], 277, 0.5) && near(c.more[0] + 40, c.box[0] + c.box[2], 0.5))
-      && shelf.newSlot && shelf.newSlot[3] === 320 && (4 + 1 + shelf.empties) % cols === 0 && (4 + 1 + shelf.empties) >= cols * 4
+      && shelf.newSlot && shelf.newSlot[3] === 320 && (3 + 1 + shelf.empties) % cols === 0 && (3 + 1 + shelf.empties) >= cols * 4
       && (await p.$eval('[data-site-chevron]', (e) => getComputedStyle(e).transform)) === 'matrix(1, 0, 0, -1, 0, 0)' && (await p.$eval('[data-site-switch]', (e) => e.getAttribute('aria-expanded'))) === 'true',
     JSON.stringify({ ...shelf, cols }))
 
@@ -5799,8 +5801,8 @@ await shot('30-plan-review')
       JSON.stringify({ pickClash: pickClash.slice(0, 4).map((f) => ({ t: f.t, hd: f.hd, fl: f.flBox, objs: f.objs })), pickHeadOff, pickShelfO: pickShelfO.filter((_, i) => i % 4 === 0), pickParkO: pickParkO.filter((_, i) => i % 4 === 0) }))
   }
   await p.waitForTimeout(400)
-  const afterPick = { name: await headerName(), shelf: !!(await p.$('[data-sites-shelf]')), drawing: await p.$eval('[data-site-drawing]', (e) => e.dataset.siteDrawing).catch(() => null), world: await world(), park: await p.$eval('[data-site-park]', (e) => getComputedStyle(e).transform), spinning: !!(await p.$('header .animate-spin')), publish: await p.$eval('header button:has-text("Publish")', (e) => e.innerText), chat: await p.$eval('.chat-col', (e) => e.innerText).catch(() => ''), typing: await p.$$eval('.stream-word', (els) => els.length) }
-  check('…and on landing the builder IS synco.com: the header names it, the canvas shows its drawing at full width, the world stands in its slice (a live domain, published, two edits queued, its own two-message transcript) with fit-ration put away in the stash, the Publish button reads «Publish changes 2», and the transcript arrives already read — nothing types itself',
+  const afterPick = { name: await headerName(), shelf: !!(await p.$('[data-sites-shelf]')), drawing: await p.$eval('[data-site-root]', (e) => e.dataset.siteLook).catch(() => null), world: await world(), park: await p.$eval('[data-site-park]', (e) => getComputedStyle(e).transform), spinning: !!(await p.$('header .animate-spin')), publish: await p.$eval('header button:has-text("Publish")', (e) => e.innerText), chat: await p.$eval('.chat-col', (e) => e.innerText).catch(() => ''), typing: await p.$$eval('.stream-word', (els) => els.length) }
+  check('…and on landing the builder IS synco.com: the header names it, the canvas shows its own landing (the black store, not the demo page), the world stands in its slice (a live domain, published, two edits queued, its own two-message transcript) with fit-ration put away in the stash, the Publish button reads «Publish changes 2», and the transcript arrives already read — nothing types itself',
     afterPick.name === 'synco.com' && !afterPick.shelf && afterPick.drawing === 'synco' && afterPick.park === 'none' && afterPick.world.site === 'synco' && afterPick.world.domain === 'live' && afterPick.world.published === true && afterPick.world.unpublished === 2 && afterPick.world.sent === 2 && afterPick.world.stash.includes('fit-ration')
       && /Publish changes\s*2/.test(afterPick.publish) && /Black Friday/.test(afterPick.chat) && afterPick.typing === 0,
     JSON.stringify({ ...afterPick, chat: afterPick.chat.slice(0, 80) }))
@@ -5852,7 +5854,7 @@ await shot('30-plan-review')
   await p.keyboard.press('Control+.'); await p.waitForTimeout(400)
   const consoleText = await text()
   await p.keyboard.press('Control+.'); await p.waitForTimeout(300)
-  check('the scenario console carries the site as an axis — «Open site», one chip per site — and the shelf as «Their four sites»', /Open site/.test(consoleText) && /Their four sites/.test(consoleText))
+  check('the scenario console carries the site as an axis — «Open site», one chip per site — and the shelf as «Their three sites»', /Open site/.test(consoleText) && /Their three sites/.test(consoleText))
 
   /* ── a new site from Home is a new row on the shelf, named from its prompt ─────────── */
   await p.goto(at('p=built&v=false&u=0&a=paid&i=dh-free&d=staging&t=22&c=640'), { waitUntil: 'networkidle' })

@@ -75,6 +75,7 @@ import { ScrollArea } from '@/ui/ScrollArea'
 import { IconArrowRight, IconMonitor, IconPhone, IconTablet } from '@/ui/icons'
 import { pageMenuIn, pageMenuInFade, popoverContent } from '@/ui/motion'
 import { findPage, matchPages, normalizePath, sitePages, type SitePage } from './pages'
+import { landingOf } from './landings'
 import { GlyphCheck24, GlyphOpenNew24, GlyphReload24, GlyphSearch24 } from './boardIcons'
 
 /** The kit's `-2 density` rows are 48 with 1 px between them; the board's list window is five of
@@ -106,7 +107,8 @@ export function PageSwitcher() {
   const triggerReload = useUI((s) => s.triggerReload)
   const device = useUI((s) => s.device)
   const setDevice = useUI((s) => s.setDevice)
-  const pages = useMemo(() => sitePages(answers, outline), [answers, outline])
+  const landing = useWorld((s) => !!landingOf(s.world.site))
+  const pages = useMemo(() => sitePages(answers, outline, landing), [answers, outline, landing])
   const [open, setOpen] = useState(false)
   /* the menu measures the WHOLE pill — it lies on it corner on corner, as wide */
   const pill = useRef<HTMLDivElement>(null)
