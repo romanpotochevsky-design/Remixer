@@ -6650,6 +6650,23 @@ await shot('30-plan-review')
   const gut = await p.evaluate(() => { const r = (e) => e.getBoundingClientRect(); const aside = r(document.querySelector('.chat-dim')); const col = getComputedStyle(document.querySelector('.chat-dim .chat-col')); const f = r(document.querySelector('.composer-field')); const edge = document.querySelector('.chat-resizer')?.getBoundingClientRect().left ?? aside.right; const t = getComputedStyle(document.querySelector('.chat-thumb')); return { pad: [col.paddingLeft, col.paddingRight], left: Math.round(f.left - aside.left), right: Math.round(edge - f.right), bottom: Math.round(innerHeight - f.bottom), thumbRight: t.right, thumbW: t.width } })
   check('the chat’s gutters are symmetric: thread 16 / 16, composer 16 from the left, 16 from the divider and 16 from the bottom; the scroll bar 4 wide in the middle of the right 16 (6 from the divider)',
     gut.pad.join() === '16px,16px' && gut.left === 16 && gut.right === 16 && gut.bottom === 16 && gut.thumbRight === '6px' && gut.thumbW === '4px', JSON.stringify(gut))
+  /* …and the bar is ONE TONE end to end at both extremes (designer 01.10.2026: «как то странно скрол выглядит
+     когда его вниз самый докручиваешь или вверх»): the thread's sticky fades reached only the middle of the gutter
+     and washed the LEFT half of the thumb's end exactly when it got there. The thumb now paints above them. */
+  {
+    const vpSel = '.chat-thumb'
+    const bb0 = await (await p.$('.chat-dim')).boundingBox(); await p.mouse.move(bb0.x + 120, bb0.y + bb0.height / 2)
+    const ends = []
+    for (const where of ['top', 'bottom']) {
+      const t = await p.evaluate(([sel, w]) => { const th = document.querySelector(sel); const v = th.previousElementSibling; v.scrollTop = w === 'top' ? 0 : v.scrollHeight; return null }, [vpSel, where])
+      await p.waitForTimeout(250)
+      const g = await p.evaluate((sel) => { const b = document.querySelector(sel).getBoundingClientRect(); return { x: Math.floor(b.left + 1), a: Math.floor(b.top + 3), m: Math.floor(b.top + b.height / 2), z: Math.floor(b.bottom - 4) } }, vpSel)
+      ends.push({ where, ink: [(await pixelAt(g.x, g.a))[0], (await pixelAt(g.x, g.m))[0], (await pixelAt(g.x, g.z))[0]] })
+    }
+    check('the chat scroll bar is one tone end to end scrolled fully up AND fully down — the sticky fades no longer wash its ends (±3/255)',
+      ends.every((e) => e.ink.every((v) => Math.abs(v - e.ink[1]) <= 3)), JSON.stringify(ends))
+    await p.evaluate((sel) => { const v = document.querySelector(sel).previousElementSibling; v.scrollTop = v.scrollHeight }, vpSel)
+  }
 
   /* ── 2 · a chat edit: working card → lands with the site ───────────────────────── */
   await p.fill('textarea', 'Can you update the main navigation menu?'); await p.keyboard.press('Enter')

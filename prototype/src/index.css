@@ -1059,7 +1059,11 @@
   .scroll-thumb--x { left: 0; bottom: 3px; height: 4px; }
   /* the chat thread's bar sits in the MIDDLE of its 16 px right gutter — 6 to the text, 4 wide, 6 to the
    divider (designer, 01.10.2026: «скрол впритык к тексту… чтобы скрол нормально выглядел») */
-.scroll-thumb--y.chat-thumb { right: 6px; }
+.scroll-thumb--y.chat-thumb { right: 6px; z-index: 11; }
+/* …and ABOVE the thread's sticky fades (`z-10`, 48 on top, 32 at the bottom). Under them the thumb's ends
+   were washed out exactly when it reached them — scrolled fully up or down (designer 01.10.2026: «как то
+   странно скрол выглядит когда его вниз самый докручиваешь или вверх»). The fades dim TEXT leaving the
+   view; the bar is not content, it must stay one even tone end to end. */
 .scroll-thumb[data-off] { display: none; }
   .scroll-thumb[data-on],
   .scroll-area:hover > .scroll-thumb { opacity: 1; }

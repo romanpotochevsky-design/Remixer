@@ -961,7 +961,7 @@ export function ChatPanel() {
          * flow instead, which doubles as the gap above the first message.
          */}
         <div
-          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-2 h-12 flex-none"
+          className="pointer-events-none sticky top-0 z-10 -ml-4 -mr-4 h-12 flex-none"
           style={{ background: 'linear-gradient(to bottom, #09090b, #09090b00)' }}
           aria-hidden
         />
@@ -1063,7 +1063,7 @@ export function ChatPanel() {
             immediately over the input field, transparent to solid, with no flat
             head — a short, purely graded hand-off, not a curtain. */}
         <div
-          className="pointer-events-none sticky bottom-0 z-10 -ml-4 -mr-2 -mt-8 h-8 flex-none"
+          className="pointer-events-none sticky bottom-0 z-10 -ml-4 -mr-4 -mt-8 h-8 flex-none"
           style={{ background: 'linear-gradient(to bottom, #09090b00, #09090b)' }}
           aria-hidden
         />
