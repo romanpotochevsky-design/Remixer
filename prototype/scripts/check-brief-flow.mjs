@@ -6001,7 +6001,7 @@ await shot('30-plan-review')
   const count = () => p.$eval('[data-ve-count]', (e) => e.textContent).catch(() => null)
   /* the canvas instance's title — not a miniature's (the shelf and the Home dock draw the same page again) */
   const canvasTitle = () => p.$eval('[data-canvas-site] [data-site-page="/"] h1', (e) => e.textContent).catch(() => null)
-  const fitOfPhoto = () => p.$eval('[data-canvas-site] [data-site-page="/"] .site-grid img, [data-canvas-site] [data-site-page="/"] img', (e) => getComputedStyle(e).objectFit).catch(() => null)
+  const fitOfPhoto = () => p.$eval('[data-canvas-site] [data-site-page="/"] .site-grid img', (e) => getComputedStyle(e).objectFit).catch(() => null)
   const enter = async (q, card = '.home-card-face') => {
     await p.goto(at(q), { waitUntil: 'networkidle' }); await p.waitForTimeout(700)
     await p.click(card)
@@ -6247,7 +6247,7 @@ await shot('30-plan-review')
     after8.search === before8.search && /(^|&)u=1(&|$)/.test(after8.search.slice(1)) && dockMini === ORIGINAL + TYPED, JSON.stringify({ search: after8.search, dockMini }))
   await p.click('.home-card-face')
   await p.waitForSelector('.boot-cover', { state: 'detached', timeout: 20000 }); await p.waitForTimeout(700)
-  const back = { title: await canvasTitle(), fit: await fitOfPhoto(), src: await p.$eval('[data-canvas-site] [data-site-page="/"] img', (e) => e.getAttribute('src')).catch(() => null), bar: await bar(), pressed: await pressed('edit'), batch: !!(await p.$('[data-ve-batch]')), hosts: await p.$$eval('[data-edit]', (els) => els.length) }
+  const back = { title: await canvasTitle(), fit: await fitOfPhoto(), src: await p.$eval('[data-canvas-site] [data-site-page="/"] .site-grid img', (e) => e.getAttribute('src')).catch(() => null), bar: await bar(), pressed: await pressed('edit'), batch: !!(await p.$('[data-ve-batch]')), hosts: await p.$$eval('[data-edit]', (els) => els.length) }
   check('…and the builder reopens on the edited site — the words, the Fit and the picked picture — with the bar at rest: the SESSION died with the page (tool off, no batch, no hosts), the SAVED layer did not',
     back.title === ORIGINAL + TYPED && back.fit === 'contain' && back.src === lib.third && back.bar && back.pressed === 'false' && !back.batch && back.hosts === 0,
     JSON.stringify({ ...back, src: back.src === lib.third ? 'the picked tile' : (back.src || '').slice(0, 40) }))
