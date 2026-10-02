@@ -5866,7 +5866,7 @@ await shot('30-plan-review')
   const fresh = await p.evaluate(() => { const w = JSON.parse(localStorage.getItem('remixer-prototype/world/v6') || '{}'); return { site: w.site, names: (w.projects || []).map((x) => x.name), domain: w.domain, stash: Object.keys(w.stash || {}), project: w.project } })
   const freshHeader = await p.$eval('aside header', (e) => e.innerText)
   check('a build from the Home composer opens a NEW site: a fresh row at the front of the shelf named from the prompt («bellas-bakery-odesa»), the free address, fit-ration’s slice in the stash — and while it has no site yet the header wears the wordmark',
-    /^site-/.test(fresh.site) && fresh.names[0] === 'bellas-bakery-odesa' && fresh.names.length === 5 && fresh.domain === 'staging' && fresh.stash.includes('fit-ration') && /Remixer/.test(freshHeader) && !(await p.$('[data-site-switch]')),
+    /^site-/.test(fresh.site) && fresh.names[0] === 'bellas-bakery-odesa' && fresh.names.length === 4 && fresh.domain === 'staging' && fresh.stash.includes('fit-ration') && /Remixer/.test(freshHeader) && !(await p.$('[data-site-switch]')),
     JSON.stringify({ fresh, freshHeader }))
 }
 
@@ -6018,11 +6018,11 @@ await shot('30-plan-review')
   check('no edit bar before a site exists: the builder opened by a thin prompt (Remixer asking) has no bar and no editable host',
     !brief.bar && !brief.site && brief.project !== 'built' && brief.hosts === 0, JSON.stringify(brief))
 
-  /* a DRAWN demo site: the dock's second card, synco.com — its picture is a drawing (`thumb` ≠ live) */
+  /* a LANDING demo site (02.10.2026): the dock's second card, synco.com — a real page now, so the bar is there too */
   await enter(LIVE, 'button[aria-label="Open synco.com"]')
-  const drawn = { bar: await bar(), name: await p.$eval('[data-site-name]', (e) => e.textContent).catch(() => null), site: (await world()).site, toolbar: !!(await p.$('[data-canvas-toolbar]')), h1: !!(await p.$('[data-canvas-site] h1')) }
-  check('…and none on a drawn demo site (synco.com — a drawing has nothing editable): the builder stands in it, toolbar up, no bar',
-    !drawn.bar && drawn.name === 'synco.com' && drawn.site === 'synco' && drawn.toolbar, JSON.stringify(drawn))
+  const drawn = { bar: await bar(), name: await p.$eval('[data-site-name]', (e) => e.textContent).catch(() => null), site: (await world()).site, toolbar: !!(await p.$('[data-canvas-toolbar]')), look: await p.$eval('[data-canvas-site] [data-site-root]', (e) => e.dataset.siteLook).catch(() => null), h1: await p.$eval('[data-canvas-site] h1', (e) => e.textContent).catch(() => null) }
+  check('…and the bar is on the landings too (synco.com — «добавь эдитор этот на вот эти 3 сайта»): the builder stands in it, toolbar up, the canvas draws the black landing with its own headline',
+    drawn.bar && drawn.name === 'synco.com' && drawn.site === 'synco' && drawn.toolbar && drawn.look === 'synco' && drawn.h1 === 'Sound that fills the room. Not the shelf.', JSON.stringify(drawn))
 
   /* the staging view (Root.tsx `?view=site` — the toolbar's «open in new tab»): the bare site, no chrome */
   await p.goto(at(`${LIVE}&view=site&path=/`), { waitUntil: 'networkidle' }); await p.waitForTimeout(600)
@@ -6226,10 +6226,10 @@ await shot('30-plan-review')
   const shelf = await p.evaluate(() => ({
     bar: !!document.querySelector('[data-ve-bar]'), shelf: !!document.querySelector('[data-sites-shelf]'), current: document.querySelector('[data-site-card="fit-ration"]')?.hasAttribute('data-site-current') ?? null,
     mini: document.querySelector('[data-site-card="fit-ration"] [data-site-mini] h1')?.textContent ?? null, parked: document.querySelector('[data-site-park] h1')?.textContent ?? null,
-    others: [...document.querySelectorAll('[data-site-card]:not([data-site-card="fit-ration"])')].map((c) => [c.dataset.siteCard, !!c.querySelector('[data-site-mini]')]), panel: !!document.querySelector('[data-ve-image-panel]'),
+    others: [...document.querySelectorAll('[data-site-card]:not([data-site-card="fit-ration"])')].map((c) => [c.dataset.siteCard, c.querySelector('[data-site-mini] h1')?.textContent ?? null]), panel: !!document.querySelector('[data-ve-image-panel]'),
   }))
-  check('the bar steps aside with the toolbar while the sites shelf has the canvas; the fit-ration card’s miniature reads the SAME saved layer (the words are in it), and the three drawn sites carry no miniature for an edit to leak into',
-    !shelf.bar && shelf.shelf && shelf.current === true && shelf.mini === ORIGINAL + TYPED && shelf.others.length === 3 && shelf.others.every(([, m]) => !m) && !shelf.panel, JSON.stringify(shelf))
+  check('the bar steps aside with the toolbar while the sites shelf has the canvas; the fit-ration card’s miniature reads the SAME saved layer (the words are in it), and the two landings’ miniatures show their own headlines — the edit did not leak into another site',
+    !shelf.bar && shelf.shelf && shelf.current === true && shelf.mini === ORIGINAL + TYPED && shelf.others.length === 2 && shelf.others.every(([, m]) => !!m && !m.includes(TYPED)) && !shelf.panel, JSON.stringify(shelf))
   await p.click('[data-sites-close]')
   await p.waitForSelector('[data-sites-shelf]', { state: 'detached', timeout: 5000 }).catch(() => {})
   await p.waitForSelector('[data-ve-bar]', { timeout: 5000 }).catch(() => {})

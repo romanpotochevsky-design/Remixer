@@ -45,7 +45,7 @@ function Synco({ missing }: { missing?: string }) {
   return (
     <div className="flex flex-1 flex-col bg-[#070708] font-sans text-[#f5f5f7]">
       <T k="synco.bar" className="py-2.5 text-center text-[12.5px] font-medium tracking-[0.01em] text-[#070708] [background:linear-gradient(90deg,#a28bff,#7aa7ff,#5ee0ff)]" />
-      <div className="site-pad sticky top-0 z-10 flex items-center justify-between border-b border-[#ffffff12] bg-[#070708d9] py-4 backdrop-blur-md">
+      <div className="site-pad sticky top-0 z-10 flex items-center justify-between border-b border-[#ffffff12] bg-[#070708f0] py-4">
         <span className="font-display text-[22px] font-semibold tracking-[-0.03em]">synco<span className={SYNCO_INK}>●</span></span>
         <nav className="lp-links gap-8 text-[13.5px] text-[#ffffff99]" aria-hidden>
           <span>Speakers</span><span>Earbuds</span><span>Lighting</span><span>Support</span>
@@ -124,7 +124,7 @@ const NAVY = '#1f1a33'
 function Meridian({ missing }: { missing?: string }) {
   return (
     <div className="flex flex-1 flex-col bg-[#fff4e6] font-sans" style={{ color: NAVY }}>
-      <div className="site-pad sticky top-0 z-10 flex items-center justify-between bg-[#fff4e6e6] py-4 backdrop-blur-md">
+      <div className="site-pad sticky top-0 z-10 flex items-center justify-between bg-[#fff4e6f2] py-4">
         <span className="flex items-center gap-2 font-display text-[23px] font-bold tracking-[-0.03em]">
           <span className="inline-block size-[22px] rounded-full bg-[#ff6b35] shadow-[inset_-5px_-5px_0_#ff4f9a]" aria-hidden />
           meridian
