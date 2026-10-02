@@ -6463,7 +6463,7 @@ await shot('30-plan-review')
   const before = await p.$eval('[data-edit="meal.power-bowl.photo"] img', (e) => e.getAttribute('src').slice(0, 64))
   await p.click('[data-ve-library] [data-media-tile]:nth-child(3) [data-media-open]'); await p.waitForTimeout(400)
   const picked = { src: await p.$eval('[data-edit="meal.power-bowl.photo"] img', (e) => e.getAttribute('src').slice(0, 64)), count: await p.$eval('[data-ve-count]', (e) => e.textContent).catch(() => null), panel: await panel(), image: !!(await p.$('[data-ve-image-panel]')), media: await media() }
-  check('a pick stages the photo («1 change»), the panel and the Image window stay, the library itself is untouched', picked.src !== before && picked.count === '1 change' && picked.panel && picked.image && picked.media === 9, JSON.stringify(picked))
+  check('a pick stages the photo («1 photo change»), the panel and the Image window stay, the library itself is untouched', picked.src !== before && picked.count === '1 photo change' && picked.panel && picked.image && picked.media === 9, JSON.stringify(picked))
   await shot('P3-media-pick')
   await p.click('[data-ve-panel-close]'); await p.waitForTimeout(500)
   check('closing the Image window takes the pick panel with it', !(await panel()))
