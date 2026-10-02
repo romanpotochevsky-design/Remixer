@@ -1,0 +1,8 @@
+PASS  the prototype opens on the Home page
+PASS  the Home → builder step plays under a cover
+PASS  the edge glow runs on the black, and no mark does
+PASS  the transition ends by itself
+PASS  a thin prompt from the hero opens the builder, not a generation
+PASS  the canvas is collapsed on arrival — preview=closed
+PASS  the chat takes the whole shell — aside=1544px
+PASS  the chat content is an 800px column, centred — [{"w":800,"left":372,"right":372},{"w":800,"left":372,"right":372}]
