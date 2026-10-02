@@ -41,7 +41,7 @@ export interface SitePalette {
   paper: string
 }
 export const PALETTES: SitePalette[] = [
-  { name: 'Garden green', accent: '#2e7d4f', soft: '#7ac996', dark: '#101210', card: '#191b17', paper: '#fbfaf7' },
+  { name: 'Ivory and ink', accent: '#1b1a17', soft: '#b9b1a3', dark: '#1b1a17', card: '#26241f', paper: '#faf8f4' },
   { name: 'Terracotta', accent: '#c2562b', soft: '#f0a07a', dark: '#1c1411', card: '#271c17', paper: '#fcf8f3' },
   { name: 'Deep forest', accent: '#1f5f47', soft: '#8fd1b3', dark: '#0c1612', card: '#13211b', paper: '#f5f7f2' },
 ]

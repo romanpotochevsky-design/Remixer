@@ -223,6 +223,7 @@ export const mealMacros = (m: Meal) => `${m.kcal} kcal · ${m.protein} g protein
  */
 export const SITE_PHOTO_DEFAULTS: Record<string, PhotoRef> = {
   'about.photo': { kind: 'site', id: 'kitchen' },
+  'home.hero.photo': { kind: 'site', id: 'kitchen' },
   ...Object.fromEntries(MEALS.map((m) => [m.photoKey, { kind: 'site', id: m.id } as PhotoRef])),
   ...Object.fromEntries(SERVICES.map((s) => [`svc.${s.id}.photo`, { kind: 'site', id: `svc-${s.id}` } as PhotoRef])),
   /* the two landing sites' photo slots (modules/preview/landings.tsx) */

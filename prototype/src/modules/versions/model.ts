@@ -57,7 +57,7 @@ const FIRST_TITLE: Text = { en: 'First Version', uk: 'Перша версія' }
 const FIRST_CHANGES: VersionChange[] = [
   { kind: 'add', text: { en: 'Home — hero, this week’s menu and the footer', uk: 'Головна — хіро, меню тижня і футер' } },
   { kind: 'add', text: { en: 'Named for later: About, Services, Contact', uk: 'Названо на потім: About, Services, Contact' } },
-  { kind: 'style', text: { en: 'Palette', uk: 'Палітра' }, after: 'Garden green on warm white', swatch: ['#2e7d4f', '#fbfaf7'] },
+  { kind: 'style', text: { en: 'Palette', uk: 'Палітра' }, after: 'Ink on ivory', swatch: ['#1b1a17', '#faf8f4'] },
 ]
 
 type VersionWorld = Pick<World, 'versions' | 'chat' | 'project' | 'siteAi' | 'siteEdits'>

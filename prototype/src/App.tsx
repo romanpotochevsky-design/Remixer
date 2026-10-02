@@ -40,6 +40,7 @@ import { SitesShelf } from '@/modules/sites/SitesShelf'
 import { AccountMenu } from '@/modules/account/AccountMenu'
 import { MediaPanel, MEDIA_TILE, MEDIA_INK } from '@/modules/media/MediaPanel'
 import { useSitePark, toolbarP, toolbarHome } from '@/modules/sites/park'
+import { landingOf } from '@/modules/preview/landings'
 import { SiriGlow } from '@/ui/SiriGlow'
 import {
   SPRING, EXIT, popoverContent, canvasSite, canvasSiteFade, canvasSiteSheet,
@@ -1271,7 +1272,9 @@ export default function App() {
                       )}
                     </div>
                   )}
-                  <SiriGlow active={glow} surface={world.project === 'built' ? 'split' : 'dark'} />
+                  {/* the glow reads the ground it burns over: the white demo site and the bright roastery are light,
+                      the black store is dark (02.10.2026 — the two-tone demo page that wanted `split` is gone) */}
+                  <SiriGlow active={glow} surface={world.project !== 'built' ? 'dark' : landingOf(world.site) === 'synco' ? 'dark' : 'light'} />
                   <VersionStageRing />
                 </motion.div>
                 </motion.div>

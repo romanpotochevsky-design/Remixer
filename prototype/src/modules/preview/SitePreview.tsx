@@ -33,18 +33,36 @@
  */
 const keepOnMainThread = () => {}
 
+/*
+ * THE WHITE ONE (02.10.2026). The designer, over a screenshot of this page: «этот сайт тоже обнови, сделай
+ * какой то белый стиль минималистичный лакшери сайт… что то белое, минималистичное, лакшери». The shelf's
+ * three sites are now three styles — this white editorial one, the black store and the bright roastery
+ * (landings.tsx). The BUSINESS stays fit-ration's (his «может свадебный фотографер» was a maybe): the
+ * demo thread, the Cloud table of dishes, Analytics and the chat's version blocks all speak about this
+ * kitchen, and a photographer's page would contradict every one of them. Only the look changed: warm
+ * paper, black ink, a serif display face (Site Serif — Instrument Serif, OFL, index.css), hairlines
+ * instead of cards, generous air. Every text key, photo key and palette variable is the same, so the
+ * editor, the versions and the palettes work as before.
+ *
+ * ⚠️ The dark menu band this page used to carry was the glow's two-tone test stand; the canvas now picks
+ * the glow's surface by the site's look (App.tsx), so the white page gets the light rim.
+ */
+const INK = 'text-[#1b1a17]'
+const MUTED = 'text-[#1b1a1799]'
+const CAPS = 'text-[11px] font-medium uppercase tracking-[0.22em]'
+
 /** The nav: the logo is the way home, the anchors are the one-pager's sections, not pages. */
 function SiteNav({ go }: { go: (path: string) => void }) {
   /* «update the navigation» swaps the one-pager's anchors (modules/versions/changes.ts) */
   const { ai } = useContext(SiteContext)
   const links = ai.mods.includes('nav') ? NAV_AFTER : NAV_BEFORE
   return (
-      <div className="site-pad sticky top-0 z-10 flex items-center justify-between border-b border-[#1d1f1a14] bg-[color-mix(in_srgb,var(--sp)_95%,transparent)] py-4 backdrop-blur-sm">
-        <button type="button" data-site-link="/" onClick={() => go('/')} className="text-[20px] font-bold tracking-[-0.02em]">fit<span className="text-[var(--sa)]">.</span></button>
-        <nav className="site-nav-links gap-7 text-[13.5px] text-[#1d1f1aa6]" aria-hidden>
+      <div className="site-pad sticky top-0 z-10 flex items-center justify-between border-b border-[#1b1a1712] bg-[color-mix(in_srgb,var(--sp)_96%,transparent)] py-5">
+        <button type="button" data-site-link="/" onClick={() => go('/')} className="site-serif text-[28px] leading-none tracking-[-0.01em]">fit<span className="text-[var(--sa)]">.</span></button>
+        <nav className={`site-nav-links gap-9 ${CAPS} ${MUTED}`} aria-hidden>
           {links.map((l) => <span key={l}>{l}</span>)}
         </nav>
-        <T as="span" k="nav.cta" className="rounded-full bg-[var(--sa)] px-4 py-2 text-[13px] font-semibold text-white" />
+        <T as="span" k="nav.cta" className={`border border-[#1b1a17] px-5 py-2.5 ${CAPS} ${INK}`} />
       </div>
 
   )
@@ -54,7 +72,7 @@ function SiteNav({ go }: { go: (path: string) => void }) {
 function Stat({ k, big = 16, block = false }: { k: string; big?: number; block?: boolean }) {
   return (
     <span>
-      <T as="b" k={`${k}.value`} className={`${block ? 'block' : ''} font-bold text-[#1d1f1a]`} style={{ fontSize: big }} />
+      <T as="b" k={`${k}.value`} className={`${block ? 'block' : ''} site-serif font-normal normal-case tracking-normal ${INK}`} style={{ fontSize: big }} />
       {!block && <br />}
       <T as="span" k={`${k}.label`} />
     </span>
@@ -67,39 +85,40 @@ function HomeBody() {
   const big = has('menuBig')
   return (
     <>
-      <div className="site-pad site-hero mx-auto max-w-[880px] text-center">
-        <T k="home.eyebrow" className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sa)]" />
-        <T as="h1" k="home.hero.title" className="site-hero-title mx-auto max-w-[16ch] font-bold leading-[1.08] tracking-[-0.03em]" style={{ textWrap: 'balance' }} />
-        <T k="home.hero.lead" className="mx-auto mt-4 max-w-[46ch] text-[16px] leading-[1.6] text-[#1d1f1a99]" />
-        <div className="site-cta mt-7 justify-center gap-3">
-          <T as="span" k="home.cta.primary" className="rounded-full bg-[var(--sa)] px-6 py-3 text-[14.5px] font-semibold text-white" />
-          <T as="span" k="home.cta.secondary" className="rounded-full border border-[#1d1f1a26] px-6 py-3 text-[14.5px] font-medium text-[#1d1f1a]" />
+      <div className="site-pad site-hero mx-auto max-w-[980px] text-center">
+        <T k="home.eyebrow" className={`mb-6 ${CAPS} text-[var(--sa)]`} />
+        <T as="h1" k="home.hero.title" className="site-hero-title mx-auto max-w-[14ch] leading-[1.02]" style={{ textWrap: 'balance' }} />
+        <T k="home.hero.lead" className={`mx-auto mt-7 max-w-[44ch] text-[16px] font-light leading-[1.75] ${MUTED}`} />
+        <div className="site-cta mt-10 justify-center gap-8">
+          <T as="span" k="home.cta.primary" className={`bg-[var(--sa)] px-8 py-4 text-center ${CAPS} text-white`} />
+          <T as="span" k="home.cta.secondary" className={`border-b border-[#1b1a17] pb-1 text-center ${CAPS} ${INK}`} />
         </div>
-        <div className="site-stats mt-10 justify-center text-[13px] text-[#1d1f1a80]">
-          <Stat k="home.stat.0" />
-          <Stat k="home.stat.1" />
-          <Stat k="home.stat.2" />
+        <div className={`site-stats mt-16 justify-center divide-x divide-[#1b1a1717] text-[12px] uppercase tracking-[0.16em] ${MUTED}`}>
+          <span className="px-8"><Stat k="home.stat.0" big={30} block /></span>
+          <span className="px-8"><Stat k="home.stat.1" big={30} block /></span>
+          <span className="px-8"><Stat k="home.stat.2" big={30} block /></span>
         </div>
       </div>
 
-      {has('photos') && <PhotoStrip />}
+      <div className="site-pad mx-auto max-w-[1180px]">
+        <Photo k="home.hero.photo" className="aspect-[21/9] w-full" tint="linear-gradient(135deg,#efe9df,#d9cfbf)" emoji="🍽️" />
+      </div>
 
-      {/* menu grid — the DARK half of the page, so the glow can be judged on both
-          grounds at once (narrow rim over the white hero, full bloom over this) */}
-      <div className="bg-[var(--sd)] pb-16 pt-12 text-[#f4f4f0]">
-        <div className="site-pad mx-auto max-w-[980px]">
-          <div className="mb-5 flex items-end justify-between">
-            <T as="h2" k="home.menu.title" className="text-[24px] font-bold tracking-[-0.02em]" />
-            <T as="span" k="home.menu.more" className="text-[13px] font-medium text-[var(--sa-soft)]" />
+      {has('photos') && <div className="pt-14"><PhotoStrip /></div>}
+
+      {/* the menu — on the same paper, under a hairline: no band, no cards, just air between the dishes */}
+      <div className="pb-24 pt-20">
+        <div className="site-pad mx-auto max-w-[1180px]">
+          <div className="mb-10 flex items-end justify-between gap-6 border-b border-[#1b1a1717] pb-5">
+            <T as="h2" k="home.menu.title" className="text-[40px] leading-none" />
+            <T as="span" k="home.menu.more" className={`${CAPS} ${INK}`} />
           </div>
-          <div className={`site-grid grid gap-4${big ? ' site-grid--big' : ''}`}>
+          <div className={`site-grid grid gap-x-8 gap-y-12${big ? ' site-grid--big' : ''}`}>
             {MEALS.map((m) => (
-              <div key={m.id} className="overflow-hidden rounded-[14px] border border-[#ffffff14] bg-[var(--sd-card)]">
-                <Photo k={m.photoKey} className={big ? 'h-44' : 'h-28'} tint={m.tint} emoji={m.emoji} />
-                <div className="p-4">
-                  <T k={m.nameKey} compiled={m.name} className="text-[15px] font-semibold" />
-                  <T k={m.macrosKey} compiled={mealMacros(m)} className="mt-1 text-[12.5px] tabular-nums text-[#f4f4f080]" />
-                </div>
+              <div key={m.id}>
+                <Photo k={m.photoKey} className={big ? 'aspect-[4/3]' : 'aspect-[5/4]'} tint={m.tint} emoji={m.emoji} />
+                <T k={m.nameKey} compiled={m.name} className={`site-serif mt-5 text-[24px] leading-tight ${INK}`} />
+                <T k={m.macrosKey} compiled={mealMacros(m)} className={`mt-2 text-[11.5px] uppercase tracking-[0.16em] tabular-nums ${MUTED}`} />
               </div>
             ))}
           </div>
@@ -120,31 +139,31 @@ function HomeBody() {
  */
 function SiteFooter({ pages, current, go, t }: { pages: SitePage[]; current: string; go: (path: string) => void; t: (x: Text) => string }) {
   return (
-    <div className="site-pad bg-[#0b0d0a] py-10 text-center">
+    <div className="site-pad border-t border-[#1b1a1717] py-14 text-center">
+      <T k="footer.tagline" className={`site-serif text-[34px] leading-none ${INK}`} />
+      <T k="footer.line" className={`mt-4 text-[13px] ${MUTED}`} />
       {pages.length > 1 && (
-        <nav className="mb-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px]" aria-label="Pages">
+        <nav className={`mt-8 flex flex-wrap justify-center gap-x-8 gap-y-2 ${CAPS}`} aria-label="Pages">
           {pages.map((p) => (
             <button
               key={p.id}
               type="button"
               data-site-link={p.path}
               onClick={() => go(p.path)}
-              className={`transition-colors duration-150 ${p.path === current ? 'font-semibold text-white' : 'text-[#ffffff8c] hover:text-white'}`}
+              className={`${CAPS} transition-colors duration-150 ${p.path === current ? INK : 'text-[#1b1a1773] hover:text-[#1b1a17]'}`}
             >
               {t(p.name)}
             </button>
           ))}
         </nav>
       )}
-      <T k="footer.tagline" className="text-[18px] font-bold text-white" />
-      <T k="footer.line" className="mt-1 text-[13px] text-[#ffffff8c]" />
     </div>
   )
 }
 
 /* ------------------------------------------------------------- inner pages */
 
-const TILE = 'rounded-[16px] border border-[#1d1f1a14] bg-white p-5'
+const TILE = 'border border-[#1b1a1714] bg-white p-5'
 
 /**
  * The page's big heading is `page.<id>.title` — its OWN key, compiled from the page's name. Editing
@@ -174,7 +193,7 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
       <>
         <PageHead page={page} title={name} leadKey="about.lead" />
         <div className="site-pad mx-auto grid max-w-[980px] gap-6 pb-16 md:grid-cols-2">
-          <Photo k="about.photo" className="min-h-[260px] rounded-[20px]" tint="linear-gradient(135deg,#dff1e4,#b7dfc4)" emoji="🥘" emojiSize={64} />
+          <Photo k="about.photo" className="min-h-[260px]" tint="linear-gradient(135deg,#dff1e4,#b7dfc4)" emoji="🥘" emojiSize={64} />
           <div className="flex flex-col justify-center gap-4 text-[15.5px] leading-[1.65] text-[#1d1f1a]">
             <T k="about.p1" />
             <T k="about.p2" />
@@ -204,7 +223,7 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
             <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]" aria-hidden>Your name</div>
             <div className="h-11 rounded-[10px] border border-[#1d1f1a1f] px-4 text-[14px] leading-[44px] text-[#1d1f1a66]" aria-hidden>Email</div>
             <div className="h-24 rounded-[10px] border border-[#1d1f1a1f] px-4 py-3 text-[14px] text-[#1d1f1a66]" aria-hidden>How can we help?</div>
-            <T as="span" k="contact.form.cta" className="mt-1 self-start rounded-full bg-[var(--sa)] px-5 py-2.5 text-[14px] font-semibold text-white" />
+            <T as="span" k="contact.form.cta" className="mt-1 self-start bg-[var(--sa)] px-6 py-3 text-[11px] font-medium uppercase tracking-[0.22em] text-white" />
           </div>
         </div>
       </>
@@ -215,13 +234,13 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
     return (
       <>
         <div className="site-pad mx-auto grid max-w-[980px] gap-8 pb-16 pt-14 md:grid-cols-2">
-          <Photo k={m.photoKey} className="min-h-[320px] rounded-[20px]" tint={m.tint} emoji={m.emoji} emojiSize={96} />
+          <Photo k={m.photoKey} className="min-h-[320px]" tint={m.tint} emoji={m.emoji} emojiSize={96} />
           <div className="flex flex-col justify-center">
             <T k={`page.${page.id}.title`} compiled={name} className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sa)]" />
             <T as="h1" k={m.nameKey} compiled={m.name} className="text-[36px] font-bold leading-[1.1] tracking-[-0.03em]" />
             <T k="item.desc" className="mt-3 text-[15.5px] leading-[1.6] text-[#1d1f1a99]" />
             <T k="item.macros" className="mt-5 text-[14px] tabular-nums text-[#1d1f1a80]" />
-            <T as="span" k="item.cta" className="mt-6 self-start rounded-full bg-[var(--sa)] px-6 py-3 text-[14.5px] font-semibold text-white" />
+            <T as="span" k="item.cta" className="mt-6 self-start bg-[var(--sa)] px-8 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-white" />
           </div>
         </div>
       </>
@@ -237,7 +256,7 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
       <div className="site-pad mx-auto grid max-w-[980px] gap-4 pb-16 md:grid-cols-3">
         {dishes
           ? MEALS.slice(0, 3).map((m) => (
-              <div key={m.id} className="overflow-hidden rounded-[16px] border border-[#1d1f1a14] bg-white">
+              <div key={m.id} className="overflow-hidden border border-[#1b1a1714] bg-white">
                 <Photo k={m.photoKey} className="h-28" tint={m.tint} emoji={m.emoji} />
                 <div className="p-5">
                   <T k={m.nameKey} compiled={m.name} className="text-[16px] font-semibold" />
@@ -246,7 +265,7 @@ function InnerBody({ page, t }: { page: SitePage; t: (x: Text) => string }) {
               </div>
             ))
           : SERVICES.map((s) => (
-              <div key={s.id} className="overflow-hidden rounded-[16px] border border-[#1d1f1a14] bg-white">
+              <div key={s.id} className="overflow-hidden border border-[#1b1a1714] bg-white">
                 <Photo k={`svc.${s.id}.photo`} className="h-28" tint={s.tint} emoji={s.emoji} />
                 <div className="p-5">
                   <T k={`svc.${s.id}.title`} className="text-[16px] font-semibold" />
@@ -272,7 +291,7 @@ function NotFound({ path, go, t }: { path: string; go: (path: string) => void; t
         type="button"
         data-site-link="/"
         onClick={() => go('/')}
-        className="mt-7 rounded-full bg-[var(--sa)] px-6 py-3 text-[14.5px] font-semibold text-white"
+        className="mt-7 bg-[var(--sa)] px-8 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-white"
       >
         {t({ en: 'Back to home', uk: 'На головну' })}
       </button>
@@ -398,7 +417,7 @@ export function SitePreview({ path: pinned, site }: { path?: string; site?: stri
           className="absolute inset-0"
         >
           {/* each page owns its scroller, so a new page opens at its top */}
-          <ScrollArea className="h-full" innerClassName={look ? '' : 'bg-[var(--sp)] font-sans text-[#1d1f1a]'} thumb="auto">
+          <ScrollArea className="h-full" innerClassName={look ? '' : 'bg-[var(--sp)] font-sans text-[#1b1a17]'} thumb="auto">
             {/* a page shorter than the canvas still ends in its footer, not in bare ground; `relative`
                 so the editor's overlay (rings) rides inside the scroll content with the page */}
             <div className="relative flex min-h-full flex-col" data-site-root data-site-look={look ?? 'fit'}>

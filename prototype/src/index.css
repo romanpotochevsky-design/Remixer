@@ -88,6 +88,19 @@
   src: url('./fonts/dm-sans-specimen.woff2') format('woff2');
   font-weight: 400; font-style: normal; font-display: swap;
 }
+/* the white demo site's display face (fit-ration, 02.10.2026 «белый минималистичный лакшери»): Instrument
+   Serif, OFL, cut to basic Latin + the site's punctuation — a separate family from the one-line specimen
+   below, which carries only the brief card's glyphs */
+@font-face {
+  font-family: 'Site Serif';
+  src: url('./fonts/instrument-serif-site-normal.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Site Serif';
+  src: url('./fonts/instrument-serif-site-italic.woff2') format('woff2');
+  font-weight: 400; font-style: italic; font-display: swap;
+}
 @font-face {
   font-family: 'Instrument Serif Specimen';
   src: url('./fonts/instrument-serif-specimen.woff2') format('woff2');
@@ -363,10 +376,12 @@
    * container query has nothing to fight over specificity.
    */
   .site-stage { container-type: inline-size; }
+  /* the white demo site's headings — the serif display face, at a book weight (SitePreview.tsx «THE WHITE ONE») */
+  .site-serif { font-family: 'Site Serif', Georgia, serif; font-weight: 400; }
 
   .site-pad { padding-left: 40px; padding-right: 40px; }
   .site-hero { padding-top: 64px; padding-bottom: 56px; }
-  .site-hero-title { font-size: 42px; }
+  .site-hero-title { font-size: 76px; }
   .site-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .site-nav-links { display: flex; align-items: center; }
   .site-cta { display: flex; align-items: center; }
@@ -394,7 +409,7 @@
     .site-pad { padding-left: 22px; padding-right: 22px; }
     .site-nav-links { display: none; }
     .site-hero { padding-top: 44px; padding-bottom: 40px; }
-    .site-hero-title { font-size: 30px; }
+    .site-hero-title { font-size: 46px; }
     .site-cta { flex-direction: column; align-items: stretch; }
     .site-stats { flex-wrap: wrap; gap: 20px 28px; }
     .site-grid { grid-template-columns: minmax(0, 1fr); }
@@ -5374,3 +5389,9 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
 
 /* the working card's title: the house Process Shimmer on white-ish ink */
 .vc-doing { color: var(--white-560, rgba(255, 255, 255, 0.56)); }
+
+/* THE WHITE DEMO SITE'S HEADINGS (fit-ration, 02.10.2026): every h1 / h2 on its pages — home, inner pages,
+   404 and the blocks a chat edit adds (site-ai.tsx) — in the serif display face at a book weight.
+   Unlayered and scoped by the look, so it outranks the blocks' `font-bold` utilities without touching the
+   two landings (data-site-look="synco" / "meridian"). */
+[data-site-look='fit'] :is(h1, h2) { font-family: 'Site Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.01em; }

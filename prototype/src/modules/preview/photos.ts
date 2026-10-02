@@ -45,8 +45,9 @@ export interface SitePhoto {
   alt: string
 }
 
-const W = 560
-const H = 360
+/* 02.10.2026: bright editorial flat-lays for the white site (scratchpad/landing-photos/make_fit.py) */
+const W = 640
+const H = 512
 
 /** English alt texts, in the voice of the meal-delivery site itself. */
 const ALT: Record<PhotoId | LandingPhotoId, string> = {
@@ -64,7 +65,7 @@ const ALT: Record<PhotoId | LandingPhotoId, string> = {
   'chicken-pesto-pasta': 'Chicken Pesto Pasta — wholegrain fusilli, basil pesto and shredded chicken with pine nuts',
   'greek-wrap': 'Greek Wrap — feta, olives, cucumber and herbed yoghurt in a wholemeal wrap',
   'protein-pancakes': 'Protein Pancakes — oat and whey pancakes with berry compote',
-  kitchen: 'Our kitchen in Odesa at dawn — the ovens on, the day’s meals being weighed to the gram',
+  kitchen: 'Three of this week’s dishes on a linen table — salmon, a power bowl, pancakes',
   'svc-weekly-plan': 'Weekly plan — five days of lunches and dinners, packed and labelled for the week',
   'svc-custom-macros': 'Custom macros — a plate portioned to your numbers, protein first',
   'svc-office-delivery': 'Office delivery — the team’s meals in one drop, at the door by 07:30',
