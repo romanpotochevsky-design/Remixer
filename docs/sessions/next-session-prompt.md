@@ -1,7 +1,7 @@
 # Промпт для следующей сессии — «элементы интерфейса в чате»
 
 Скопируй текст ниже в первое сообщение нового окна Claude Code (репозиторий `romanpotochevsky-design/Remixer`).
-Файл написан 01.10.2026, в конце сессии докинга панели инструментов; обновляй его в конце каждой сессии.
+Файл написан 01.10.2026, в конце сессии докинга панели инструментов, дополнен 02.10.2026 (состояние Save бара); обновляй его в конце каждой сессии.
 
 ---
 
@@ -14,7 +14,7 @@
    Если сессии назначена другая ветка, работу всё равно веди отсюда и пуш делай сюда.
 2. Прочитай `CLAUDE.md` целиком (правила проекта и все дорого купленные уроки), потом `docs/README.md`,
    `docs/knowledge/decisions.md` (что уже решено и отклонено — не предлагать повторно) и запись прошлой сессии
-   `docs/sessions/2026-09-30--visual-editor.md`.
+   `docs/sessions/2026-09-30--visual-editor.md` и последнюю — `docs/sessions/2026-10-02--save-bar.md`.
 3. Для чата прочитай базу `docs/features/builder-shell/README.md` и код `prototype/src/modules/chat/`
    (`ChatPanel.tsx`, `BriefPanel.tsx`, `SuggestPanel.tsx`, `send.ts`, `thread.ts`) и `prototype/src/ui/motion.ts`.
 4. `cd prototype && npm install`; `pip install fonttools brotli` (иначе артефакт не влезет в лимит);

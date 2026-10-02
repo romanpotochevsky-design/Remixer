@@ -16,7 +16,8 @@
  * the bar counts them — and nothing reaches the world until Save. Save applies the whole batch as
  * ONE change: +1 to `unpublished` (one Save = one "unpublished change", as one AI turn is one),
  * credits untouched, no glow, no transcript line (designer: «согласен»). Clear drops the batch.
- * Undo / Redo walk the batch one step at a time. While the batch is dirty the mode cannot be left
+ * Undo / Redo walk the batch one step at a time — kept in the store, but WITHOUT buttons or keys since
+ * 02.10.2026 (the developers asked to hide them until the functions exist; EditBar.tsx). While the batch is dirty the mode cannot be left
  * except through Save or Clear — Lovable hides its other tools the same way once a change is
  * pending, and it is the only rule under which a customer never loses work without choosing to.
  *
@@ -106,8 +107,8 @@ function withValue(draft: SiteEdits, field: Field, key: string, v: Value): SiteE
 
 /** Is there unsaved work — what keeps the mode from being left (Save or Clear first). */
 export const isDirty = (s: Pick<EditorStore, 'past'>) => s.past.length > 0
-/** Is there a history at all — what keeps the bar's batch segment (Undo · Redo · Clear · Save) up:
- *  after undoing the only change the work is clean, but Redo must still be there to take it back. */
+/** Is there a history at all. Kept the bar's batch segment up while Undo · Redo were buttons (a clean
+ *  draft with a Redo to take back); since 02.10.2026 the bar reads `isDirty` — this stays for their return. */
 export const hasHistory = (s: Pick<EditorStore, 'past' | 'future'>) => s.past.length > 0 || s.future.length > 0
 export const draftCount = (s: Pick<EditorStore, 'draft'>) => countEdits(s.draft)
 

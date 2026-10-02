@@ -191,32 +191,35 @@ const siteUp = () => p.$('.site-stage h1').then(Boolean)
   await p.keyboard.press('Control+End'); await p.keyboard.type(TYPED); await p.keyboard.press('Enter'); await p.waitForTimeout(400)
   const edited = await p.evaluate(() => ({
     active: document.activeElement?.getAttribute('data-edit') ?? document.activeElement?.tagName, count: document.querySelector('[data-ve-count]')?.textContent ?? null, batch: !!document.querySelector('[data-ve-batch]'),
-    save: document.querySelector('[data-ve-save]')?.disabled, undo: document.querySelector('[data-ve-undo]')?.disabled, redo: document.querySelector('[data-ve-redo]')?.disabled, clear: !!document.querySelector('[data-ve-clear]'),
+    save: document.querySelector('[data-ve-save]')?.disabled, undo: !!document.querySelector('[data-ve-undo]'), redo: !!document.querySelector('[data-ve-redo]'), clear: !!document.querySelector('[data-ve-clear]'),
     dirty: document.querySelector('[data-ve-bar]')?.hasAttribute('data-ve-dirty'), selectUp: !!document.querySelector('[data-ve-tool="select"]'), pressed: document.querySelector('[data-ve-tool="edit"]')?.getAttribute('aria-pressed'),
+    dark: !!document.querySelector('[data-ve-tool-dark]'), blue: !!document.querySelector('[data-ve-tool="edit"] [data-ve-tool-on]'),
   }))
   const w4 = await world()
-  check('a click puts the caret in the title; typing at its end and Enter commits: the h1 reads the new words, the bar re-forms into its batch — «1 change», Undo live, Redo dead, Clear, Save live — the Select tool hidden while a batch is pending, the Edit tool still pressed',
-    caretIn === 'home.hero.title' && (await canvasTitle()) === ORIGINAL + TYPED && edited.active !== 'home.hero.title' && edited.count === '1 change' && edited.batch && edited.save === false && edited.undo === false && edited.redo === true && edited.clear && edited.dirty && !edited.selectUp && edited.pressed === 'true',
+  check('a click puts the caret in the title; typing at its end and Enter commits: the h1 reads the new words, the bar re-forms into its SAVE STATE (board 31562:5194) — «1 text change», Clear, Save live, NO Undo / Redo (hidden 02.10.2026 at the developers\' request) — the Select tool gone while a batch is pending, the Edit tool still pressed and on the board\'s DARK disc, not the blue one',
+    caretIn === 'home.hero.title' && (await canvasTitle()) === ORIGINAL + TYPED && edited.active !== 'home.hero.title' && edited.count === '1 text change' && edited.batch && edited.save === false && !edited.undo && !edited.redo && edited.clear && edited.dirty && !edited.selectUp && edited.pressed === 'true' && edited.dark && !edited.blue,
     JSON.stringify({ caretIn, title: await canvasTitle(), ...edited }))
   check('…and NOTHING has reached the world: the store is byte-for-byte what it was before the click — credits 640, unpublished 0, no saved edit',
     w4.raw === storeBefore && w4.credits === 640 && w4.unpublished === 0 && Object.keys(w4.siteEdits.text).length === 0,
     JSON.stringify({ storeUnchanged: w4.raw === storeBefore, credits: w4.credits, unpublished: w4.unpublished, text: w4.siteEdits.text }))
   await shot('O3-dirty')
 
-  /* ── 5 · Undo · Redo, by button and by key ─────────────────────────────────────── */
-  await p.click('[data-ve-undo]'); await p.waitForTimeout(250)
-  const undone = { title: await canvasTitle(), count: await count(), batch: !!(await p.$('[data-ve-batch]')), save: await p.$eval('[data-ve-save]', (e) => e.disabled).catch(() => null), undo: await p.$eval('[data-ve-undo]', (e) => e.disabled).catch(() => null), redo: await p.$eval('[data-ve-redo]', (e) => e.disabled).catch(() => null), dirty: await p.$eval('[data-ve-bar]', (e) => e.hasAttribute('data-ve-dirty')), selectUp: !!(await p.$('[data-ve-tool="select"]')) }
-  check('Undo puts the words back and leaves the batch STANDING — «No changes», Save dead, Undo dead, Redo live, the bar clean but the segment up so Redo can take it back',
-    undone.title === ORIGINAL && undone.count === 'No changes' && undone.batch && undone.save === true && undone.undo === true && undone.redo === false && !undone.dirty && !undone.selectUp, JSON.stringify(undone))
-  await p.click('[data-ve-redo]'); await p.waitForTimeout(250)
-  const redone = { title: await canvasTitle(), count: await count(), save: await p.$eval('[data-ve-save]', (e) => e.disabled).catch(() => null) }
-  check('Redo brings them back: «1 change», Save live', redone.title === ORIGINAL + TYPED && redone.count === '1 change' && redone.save === false, JSON.stringify(redone))
-  /* the keys, outside a text host: ⌘Z / ⇧⌘Z walk the same history (EditBar.tsx; ctrl stands for ⌘ here) */
-  await p.keyboard.press('Control+z'); await p.waitForTimeout(200)
-  const keyUndo = { title: await canvasTitle(), count: await count() }
-  await p.keyboard.press('Control+Shift+Z'); await p.waitForTimeout(200)
-  const keyRedo = { title: await canvasTitle(), count: await count() }
-  check('⌘Z / ⇧⌘Z outside a text host walk the same history', keyUndo.title === ORIGINAL && keyUndo.count === 'No changes' && keyRedo.title === ORIGINAL + TYPED && keyRedo.count === '1 change', JSON.stringify({ keyUndo, keyRedo }))
+  /* ── 5 · the Save state against the board, 1:1 (31562:5194) ──────────────────── */
+  await p.waitForTimeout(700)
+  const board = await p.evaluate(() => {
+    const r = (s) => { const b = document.querySelector(s).getBoundingClientRect(); return [b.x, b.y, b.width, b.height].map((v) => Math.round(v * 100) / 100) }
+    const g = r('[data-ve-bar] [data-ve-glass]'); const rel = (b) => [b[0] - g[0], b[1] - g[1], b[2], b[3]]
+    const cs = (s, k) => getComputedStyle(document.querySelector(s))[k]
+    return { glass: g, t: rel(r('[data-ve-tool="edit"]')), count: rel(r('[data-ve-count]')), clear: rel(r('[data-ve-clear]')), save: rel(r('[data-ve-save]')), countFs: cs('[data-ve-count]', 'fontSize'), countFw: cs('[data-ve-count]', 'fontWeight'), clearBg: cs('[data-ve-clear]', 'backgroundColor'), clearR: cs('[data-ve-clear]', 'borderRadius'), saveBg: cs('[data-ve-save]', 'backgroundColor'), saveR: cs('[data-ve-save]', 'borderRadius'), btnFs: cs('[data-ve-save]', 'fontSize'), btnFw: cs('[data-ve-save]', 'fontWeight'), darkRim: cs('[data-ve-tool-dark]', 'boxShadow'), darkBg: cs('[data-ve-tool-dark]', 'backgroundImage'), main: (() => { const m = document.querySelector('main').getBoundingClientRect(); return [m.x, m.width] })() }
+  })
+  check('the Save state is the board\'s, 1:1: glass 360 × 58 centred on the canvas, the tool on (11, 11) 36, the count box at x 63 ≥ 120 wide in 15 Medium, Clear (199, 9) 73 × 40 on 8 % white r10, Save 71 × 40 r10 in the action blue ending at 351, labels 14 Medium; the tool\'s disc Black/600 → Black/900 under a 12 % rim',
+    board.glass[2] === 360 && board.glass[3] === 58 && Math.abs(board.glass[0] + 180 - (board.main[0] + board.main[1] / 2)) <= 1
+      && board.t[0] === 11 && board.t[1] === 11 && board.t[2] === 36 && board.count[0] === 63 && board.count[2] >= 120 && board.countFs === '15px' && board.countFw === '500'
+      && board.clear[1] === 9 && board.clear[3] === 40 && Math.abs(board.clear[0] - 199) <= 2 && Math.abs(board.clear[2] - 73) <= 3 && board.clearBg === 'rgba(255, 255, 255, 0.08)' && board.clearR === '10px'
+      && board.save[1] === 9 && board.save[3] === 40 && Math.abs(board.save[2] - 71) <= 3 && Math.abs(board.save[0] + board.save[2] - 351) <= 1 && board.saveBg === ACTION && board.saveR === '10px' && board.btnFs === '14px' && board.btnFw === '500'
+      && /rgba\(255, 255, 255, 0\.12\) 0px 0px 0px 1px inset/.test(board.darkRim) && /rgba\(9, 9, 11, 0\.56\).*rgba\(9, 9, 11, 0\.8\)/.test(board.darkBg),
+    JSON.stringify(board))
+  await shot('O3b-save-state')
 
   /* ── 6 · a photo: the Replace pill, the Image panel, Fit, the library, Esc ─────── */
   const photo = await p.$('[data-edit="meal.power-bowl.photo"]')

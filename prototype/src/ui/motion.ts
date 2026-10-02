@@ -1314,11 +1314,63 @@ export const editToolOn = {
   animate: { scale: 1, opacity: 1, transition: SPRING },
   exit: { scale: 0.85, opacity: 0, transition: EXIT },
 } as const
-/** A segment of the bar (the count, Undo/Redo, Clear/Save) comes in a beat after the box. */
+/** A segment of the bar (the pick's «1 selection · Clear») comes in a beat after the box. */
 export const editBarSegment = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.16, delay: 0.06 } },
   exit: { opacity: 0, transition: EXIT },
+} as const
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE BAR RE-FORMS INTO ITS SAVE STATE — board 31562:5194 (designer 02.10.2026: «после того как
+   ты сделаешь какое-то изменение… он трансформируется в это состояние, он становится ещё
+   больше… чтобы изменения применились, нажми тут Save… самое главное… очень красивую, плавную и
+   логическую анимацию трансформации бара из одного состояния в другое… в нашем Apple liquid
+   glass стиле»). 86 × 46 → 360 × 58, centred under the preview.
+   · THE GLASS LEADS. Its box springs as a real box (width and height, the GlassBar's measured
+     exception) with the stretch's overshoot — the edge runs past 360 and gathers back; the
+     bottom edge stays, the top rises (the bar grows up out of its own foot).
+   · THE TOOL RIDES, IT IS NOT SCALED. The «T» slides from its seat in the small pill to its seat
+     in the wide one on the same spring (`layout="position"` — position only, never size) while
+     its blue disc gives way to the board's dark glass disc (a cross-fade of two layers under one
+     glyph: the blue was the mode's colour, and beside a blue Save it would be a second CTA).
+   · THE OTHER TOOL LEAVES FIRST — Select shrinks into its glyph and is gone in 140 ms, before the
+     words arrive in the room it left.
+   · THE WORDS AND THE BUTTONS ARRIVE A BEAT LATER, left to right: the count slides in from the
+     glass's edge (−8 → 0, 220 ms from 120 ms), Clear and Save condense out of the glass as glass
+     does (.92 → 1 with one soft overshoot, 60 ms apart), and the rim catches light once
+     (`.glass-glint`) — the house arrival at pill size.
+   · THE WAY BACK is the way out (law 4): words and buttons fade in 140 ms, the glass contracts
+     on the same spring, Select grows back from its glyph.
+   ═══════════════════════════════════════════════════════════════════════════ */
+/** The count («1 text change») slides in from the glass's edge; out it only fades. */
+export const editBarCount = {
+  initial: { opacity: 0, x: -8 },
+  animate: { opacity: 1, x: 0, transition: { delay: 0.12, duration: 0.22, ease: [0.2, 0.7, 0.2, 1] } },
+  exit: { opacity: 0, transition: EXIT },
+} as const
+/** Clear and Save condense out of the glass — one soft overshoot, staggered by `custom` × 60 ms. */
+export const editBarAction = {
+  initial: { opacity: 0, scale: 0.92 },
+  animate: (i: number) => ({
+    opacity: 1,
+    scale: 1,
+    transition: { delay: 0.16 + i * 0.06, scale: { type: 'spring', duration: 0.5, bounce: 0.28, delay: 0.16 + i * 0.06 }, opacity: { duration: 0.16, delay: 0.16 + i * 0.06 } },
+  }),
+  exit: { opacity: 0, scale: 0.96, transition: EXIT },
+} as const
+/** The tool's dark disc (board 31562:5199: Black/600 → Black/900 under a 12 % rim) takes over from
+ *  the blue one — a cross-fade, 260 ms; the glyph above both never moves. */
+export const editToolDark = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.26, ease: [0.2, 0, 0, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
+} as const
+/** A tool that steps aside (Select while a batch is pending) shrinks into its glyph. */
+export const editToolAside = {
+  initial: { opacity: 0, scale: 0.7 },
+  animate: { opacity: 1, scale: 1, transition: { ...SPRING, opacity: { duration: 0.16 } } },
+  exit: { opacity: 0, scale: 0.7, transition: EXIT },
 } as const
 
 /* ═══════════════════════════════════════════════════════════════════════════

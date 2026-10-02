@@ -48,9 +48,9 @@ import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, use
 import { useT } from '@/i18n'
 import { useWorld, currentSite } from '@/state/world'
 import { useUI } from '@/state/ui'
-import { EDIT_BAR_SPRING, EDIT_BAR_STRETCH, EDIT_DOCK_DISSOLVE, EDIT_DOCK_FLIGHT, editBarIn, editBarInFade, editBarPop, editBarPopFade, editBarSegment, editBarTail, editToolOn } from '@/ui/motion'
-import { draftCount, hasHistory, isDirty, useEditor, type Tool } from './session'
-import { GlyphDockRight, GlyphEditText, GlyphRedo, GlyphSelect, GlyphUndo, GlyphUndock } from './icons'
+import { EDIT_BAR_SPRING, EDIT_BAR_STRETCH, EDIT_DOCK_DISSOLVE, EDIT_DOCK_FLIGHT, EXIT, editBarAction, editBarCount, editBarIn, editBarInFade, editBarPop, editBarPopFade, editBarSegment, editBarTail, editToolAside, editToolDark, editToolOn } from '@/ui/motion'
+import { draftCount, isDirty, useEditor, type Tool } from './session'
+import { GlyphDockRight, GlyphEditText, GlyphSelect, GlyphUndock } from './icons'
 
 type Rect = { x: number; y: number; width: number; height: number }
 type Flight = { dir: 'dock' | 'undock'; from: Rect; to?: Rect; landed?: boolean }
@@ -60,15 +60,19 @@ const POP_LINGER_MS = 160
 
 const keepOnMainThread = () => {}
 
-function ToolButton({ tool, label, children, hidden, ghost }: { tool: Tool; label: string; children: React.ReactNode; hidden?: boolean; ghost?: boolean }) {
+function ToolButton({ tool, label, children, hidden, ghost, dark }: { tool: Tool; label: string; children: React.ReactNode; hidden?: boolean; ghost?: boolean; dark?: boolean }) {
   const active = useEditor((s) => s.tool === tool)
   const dirty = useEditor(isDirty)
   const toggle = useEditor((s) => s.toggle)
   const reduce = useReducedMotion()
   if (hidden) return null
   return (
-    <button
+    <motion.button
       type="button"
+      /* the bar re-forms around the tool (the Save state, board 31562:5194): its seat moves, and the
+         button RIDES to it on the glass's spring — position only, never size */
+      layout="position"
+      transition={reduce ? { duration: 0 } : EDIT_BAR_STRETCH}
       /* a GHOST keeps its seat in the layout (so nothing beside it moves) and fades out of reach —
          the glass cuts in over its slot (GlassBar `cut`) */
       className={`ve-bar-btn press-bloom${ghost ? ' pointer-events-none opacity-0' : ''}`}
@@ -84,10 +88,11 @@ function ToolButton({ tool, label, children, hidden, ghost }: { tool: Tool; labe
       onClick={() => toggle(tool)}
     >
       <AnimatePresence initial={false}>
-        {active && (
+        {active && !dark && (
           <motion.span
             key="on"
             className="absolute inset-0 rounded-[12px] bg-[var(--action)]"
+            data-ve-tool-on
             variants={reduce ? editBarInFade : editToolOn}
             initial="initial"
             animate="animate"
@@ -96,9 +101,26 @@ function ToolButton({ tool, label, children, hidden, ghost }: { tool: Tool; labe
             aria-hidden
           />
         )}
+        {/* THE DARK DISC of the Save state (board 31562:5199: Black/600 → Black/900 under a 12 % rim,
+            the glyph white): beside a blue Save the blue disc read as a second CTA (designer
+            02.10.2026: «синяя иконка инструмента конфликтует с синей кнопкой CTA»); it cross-fades
+            in under the glyph while the blue leaves — the glyph itself never changes */}
+        {dark && (
+          <motion.span
+            key="dark"
+            className="absolute inset-0 rounded-[12px] bg-gradient-to-b from-[#09090b8f] to-[#09090bcc] shadow-[inset_0_0_0_1px_#ffffff1f]"
+            variants={reduce ? editBarInFade : editToolDark}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onUpdate={keepOnMainThread}
+            aria-hidden
+            data-ve-tool-dark
+          />
+        )}
       </AnimatePresence>
       {children}
-    </button>
+    </motion.button>
   )
 }
 
@@ -131,13 +153,26 @@ const GLASS_SWELL = 2
 const BAR_PAD = 5
 const BAR_TOOL = 36
 const BAR_H = BAR_TOOL + 2 * BAR_PAD
-function GlassBar({ side, reveal, swell = false, cut = 0, tail, tailKey, pillRef, pillProps, children }: {
+/* THE SAVE STATE — board 31562:5194 (02.10.2026): frame 360 × 58 — rim 1 inside, pl 10 / pr 8 / py 8 around a
+   40 row: the tool (36, on a dark disc) · 16 · the count in a 120 box (15 Medium) · 16 · Clear 73 × 40 · 8 ·
+   Save 71 × 40. Deliberately BIGGER than the pill (designer: «он становится ещё больше… чтобы пользователю дать
+   явно понять: чтобы изменения применились, нажми тут Save»). */
+const BATCH_H = 58
+function GlassBar({ side, reveal, swell = false, cut = 0, tall = false, grow = 'side', tail, tailKey, pillRef, pillProps, children }: {
   side: 'left' | 'right'
   reveal: boolean
   swell?: boolean
   /** How far the glass's anchored edge cuts IN over the tools — the slot of a ghosted tool (the
    *  Select pick: the glass leaves the Edit slot and hugs the disc, which does not move). */
   cut?: number
+  /** The Save state: the row is 58 tall and padded as the board draws it (BATCH_H). */
+  tall?: boolean
+  /** How the glass follows a change of the CONTENT's own width: `side` — anchored to `side`, the
+   *  far edge moves (the rail's pop-out hangs off the rail); `center` — both edges move, the glass
+   *  grows out of its own middle (the floating pill is centred under the preview, and a re-form
+   *  that re-centres it must not jump the glass to the new left edge first). A tail (the dock
+   *  handle, the pick) is ALWAYS anchored to `side`: the tools stay, the glass reaches out. */
+  grow?: 'side' | 'center'
   tail?: React.ReactNode
   /** Which tail is showing: a new key is measured again (the dock handle and the pick segment are
    *  two widths). */
@@ -149,15 +184,24 @@ function GlassBar({ side, reveal, swell = false, cut = 0, tail, tailKey, pillRef
   const reduce = useReducedMotion()
   const root = useRef<HTMLDivElement | null>(null)
   const tailRef = useRef<HTMLDivElement>(null)
-  const glassW = useMotionValue(0)
+  /* two widths on two springs: the content's own box (`baseV`, grows from the middle or the side)
+     and what the glass reaches out over past it (`tailV`, always from the side) */
+  const baseV = useMotionValue(0)
+  const tailV = useMotionValue(0)
+  const hV = useMotionValue(tall ? BATCH_H : BAR_H)
   const swellV = useMotionValue(0)
   const cutV = useMotionValue(cut)
-  const glassOuterW = useTransform(() => glassW.get() + 2 * swellV.get() - cutV.get())
-  const glassInset = useTransform(swellV, (v) => -v)
-  const glassEdge = useTransform(() => cutV.get() - swellV.get())
-  const glassH = useTransform(swellV, (v) => BAR_H + 2 * v)
-  const glassR = useTransform(swellV, (v) => 16 + v)
   const [w, setW] = useState<{ base: number; tail: number } | null>(null)
+  const baseW = w?.base ?? 0
+  /* ⚠️ the centring shift is read INLINE where it is used, not through a nested transform: a
+     computed value that reads another computed value saw it one frame stale, and the glass's left
+     edge lagged its width by a frame — 17 px off-centre at the spring's fastest (measured) */
+  const shiftOf = () => (grow === 'center' && w ? (baseW - baseV.get()) / 2 : 0)
+  const glassOuterW = useTransform(() => baseV.get() + tailV.get() + 2 * swellV.get() - cutV.get())
+  const glassInset = useTransform(swellV, (v) => -v)
+  const glassEdge = useTransform(() => cutV.get() - swellV.get() + shiftOf())
+  const glassH = useTransform(() => hV.get() + 2 * swellV.get())
+  const glassR = useTransform(swellV, (v) => 16 + v)
   /* the box is the CONTENT's own, in flow — measured, never typed; the glass layer behind it takes
      that width at once (jump), and springs to it or past it afterwards */
   useLayoutEffect(() => {
@@ -173,16 +217,28 @@ function GlassBar({ side, reveal, swell = false, cut = 0, tail, tailKey, pillRef
     ro.observe(el)
     if (tailRef.current) ro.observe(tailRef.current)
     return () => ro.disconnect()
-  }, [tailKey])
+  }, [tailKey, tall])
   const first = useRef(true)
   useEffect(() => {
     if (!w) return
-    const target = reveal ? w.base + w.tail - BAR_PAD : w.base
-    if (first.current) { first.current = false; glassW.jump(target); return }
-    if (reduce) { glassW.jump(target); return }
-    const ctrl = animate(glassW, target, EDIT_BAR_STRETCH)
+    if (first.current) { first.current = false; baseV.jump(w.base); return }
+    if (reduce) { baseV.jump(w.base); return }
+    const ctrl = animate(baseV, w.base, EDIT_BAR_STRETCH)
     return () => ctrl.stop()
-  }, [w, reveal, reduce, glassW])
+  }, [w, reduce, baseV])
+  useEffect(() => {
+    if (!w) return
+    const target = reveal ? w.tail - BAR_PAD : 0
+    if (reduce || tailV.get() === target) { tailV.jump(target); return }
+    const ctrl = animate(tailV, target, EDIT_BAR_STRETCH)
+    return () => ctrl.stop()
+  }, [w, reveal, reduce, tailV])
+  useEffect(() => {
+    const target = tall ? BATCH_H : BAR_H
+    if (reduce) { hV.jump(target); return }
+    const ctrl = animate(hV, target, EDIT_BAR_STRETCH)
+    return () => ctrl.stop()
+  }, [tall, reduce, hV])
   useEffect(() => {
     const target = swell ? GLASS_SWELL : 0
     if (reduce) { swellV.jump(target); return }
@@ -195,15 +251,16 @@ function GlassBar({ side, reveal, swell = false, cut = 0, tail, tailKey, pillRef
     return () => ctrl.stop()
   }, [cut, reduce, cutV])
   /* the handle sits at the content's edge in SCREEN space: the glass moved out by the swell (and in
-     by the cut), so the seat moves back by both */
-  const tailSeat = useTransform(() => (w ? w.base - BAR_PAD + swellV.get() - cutV.get() : 0))
+     by the cut, and by a centred growth), so the seat moves back by all three */
+  const tailSeat = useTransform(() => (w ? w.base - BAR_PAD + swellV.get() - cutV.get() - shiftOf() : 0))
   return (
     <div
       ref={(el) => { root.current = el; if (typeof pillRef === 'function') pillRef(el); else if (pillRef) (pillRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}
       {...pillProps}
-      className="pointer-events-auto relative h-[46px]"
+      className="pointer-events-auto relative"
       data-ve-stretched={reveal ? '' : undefined}
       data-ve-swollen={swell ? '' : undefined}
+      data-ve-tall={tall ? '' : undefined}
     >
       {/* THE GLASS — a layer behind the tools that is free to be wider than they are */}
       <motion.div
@@ -212,13 +269,15 @@ function GlassBar({ side, reveal, swell = false, cut = 0, tail, tailKey, pillRef
         data-ve-glass
         aria-hidden={!tail}
       >
-        {!reduce && <span className="glass-glint" aria-hidden />}
+        {/* the rim catches light when the bar forms — and again when it re-forms into its Save
+            state (a new key replays the sweep) */}
+        {!reduce && <span key={tall ? 'tall' : 'base'} className="glass-glint" aria-hidden />}
         {/* what the stretch uncovers sits inside the glass, past the content's edge, clipped until reached */}
         {tail && (
           <motion.div
             ref={tailRef}
-            className="absolute flex h-[46px] items-center gap-1 pl-1 pr-[5px]"
-            style={{ top: swellV, ...(side === 'left' ? { left: tailSeat } : { right: tailSeat }) }}
+            className="absolute flex items-center gap-1 pl-1 pr-[5px]"
+            style={{ top: swellV, height: hV, ...(side === 'left' ? { left: tailSeat } : { right: tailSeat }) }}
             variants={editBarTail}
             initial="initial"
             animate={reveal ? 'animate' : 'initial'}
@@ -232,8 +291,9 @@ function GlassBar({ side, reveal, swell = false, cut = 0, tail, tailKey, pillRef
           </motion.div>
         )}
       </motion.div>
-      {/* THE TOOLS — in flow, on top, never moved and never scaled */}
-      <div className="relative z-[1] flex h-[46px] items-center gap-1 p-[5px]">{children}</div>
+      {/* THE TOOLS — in flow, on top, never scaled; the row's height is the glass's (it rides the
+          same spring), its padding the board's for each state */}
+      <motion.div className={`relative z-[1] flex items-center ${tall ? 'gap-4 pl-[11px] pr-[9px]' : 'gap-1 px-[5px]'}`} style={{ height: hV }}>{children}</motion.div>
     </div>
   )
 }
@@ -322,10 +382,13 @@ export function EditBar() {
   const setDocked = useUI((s) => s.setEditBarDocked)
   const tool = useEditor((s) => s.tool)
   const dirty = useEditor(isDirty)
-  const history = useEditor(hasHistory)
+  /* the bar is in its Save state while a batch is pending. Undo / Redo were here (designer
+     30.09.2026) and are hidden since 02.10.2026 — the developers asked («пока что у нас не будет
+     этих функций, будет только то что в макете»); the session's history stands behind them
+     (session.ts), unused */
+  const history = dirty
   const count = useEditor(draftCount)
-  const canUndo = useEditor((s) => s.past.length > 0)
-  const canRedo = useEditor((s) => s.future.length > 0)
+  const textCount = useEditor((s) => Object.keys(s.draft.text).length)
   /* the Select tool holds an element of the page — Lovable's bar re-forms into «1 selection · Clear» */
   const picking = useEditor((s) => s.tool === 'select' && s.contextEl !== null)
   /* THE PICK, TWO WAYS — one per home.
@@ -349,7 +412,7 @@ export function EditBar() {
     const t = window.setTimeout(() => setPickTail(false), 520)
     return () => window.clearTimeout(t)
   }, [picking])
-  const { undo, redo, clear, save, close, select, openPanel, setContext } = useEditor.getState()
+  const { clear, save, close, select, openPanel, setContext } = useEditor.getState()
   /* an old version on the canvas is looked at, never edited — the preview bar takes the slot */
   const previewing = useUI((s) => s.versionPreview !== null)
   const show = project === 'built' && live && surface === 'preview' && !previewing
@@ -404,9 +467,10 @@ export function EditBar() {
   /*
    * THE KEYBOARD, while a tool is on. Escape climbs out one level at a time: a caret → commit and
    * leave the text (the host's own handler blurs; here only the fallback), an open Image panel →
-   * close it, a selection → drop it, a clean mode → off. ⌘Z / ⇧⌘Z outside a text host walk the
-   * session's history (inside one the browser's own undo of the typing stands, and the commit
-   * retires it — EditableText.tsx). ⌘S saves a dirty batch: the word on the button is Save.
+   * close it, a selection → drop it, a clean mode → off. ⌘S saves a dirty batch: the word on the
+   * button is Save. (⌘Z / ⇧⌘Z walked the session's history until 02.10.2026 — gone with the Undo /
+   * Redo buttons; inside a text host the browser's own undo of the typing stands, and the commit
+   * retires it — EditableText.tsx.)
    */
   useEffect(() => {
     if (!tool) return
@@ -429,19 +493,24 @@ export function EditBar() {
         if (!isDirty(s)) { close(); e.preventDefault() }
         return
       }
-      if (mod && (e.key === 'z' || e.key === 'Z') && !typing) {
-        e.preventDefault()
-        if (e.shiftKey) redo(); else undo()
-        return
-      }
-      if (mod && (e.key === 'y' || e.key === 'Y') && !typing) { e.preventDefault(); redo(); return }
       if (mod && (e.key === 's' || e.key === 'S')) { e.preventDefault(); if (isDirty(s)) save() }
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [tool, undo, redo, save, close, select, openPanel, setContext])
+  }, [tool, save, close, select, openPanel, setContext])
 
   const clearPick = () => { setNoTail(true); setContext(null) }
+  /* Save and Clear are pressed with the pointer ON the bar: the glass contracts under it, and the
+     dock handle must not open there — it waits for the pointer to leave (the Clear-of-a-pick rule) */
+  const settleBar = () => {
+    setNoTail(true)
+    /* the pressed button leaves with the batch, and a node removed while focused fires no blur —
+       the bar would stay «hovered» (swollen) by focus until the pointer came back */
+    ;(document.activeElement as HTMLElement | null)?.blur?.()
+    setHover(false)
+  }
+  const clearBatch = () => { settleBar(); clear() }
+  const saveBatch = () => { settleBar(); save() }
   /* the pick segment, as the floating bar's tail (`inFlow` false) or in the pop-out's flow */
   const pickSegment = (inFlow: boolean) => (
     <>
@@ -461,23 +530,53 @@ export function EditBar() {
     </>
   )
 
+  /* the count, as the board words it («1 text change»): what KIND of change when the batch is of
+     one kind — words, or pictures (a replaced photo, its Fit, opacity, height) — and plain
+     «changes» when it is mixed */
+  const photoCount = count - textCount
+  const countLabel = count === 0
+    ? t({ en: 'No changes', uk: 'Без змін' })
+    : photoCount === 0
+      ? (count === 1 ? t({ en: '1 text change', uk: '1 зміна тексту' }) : t({ en: `${count} text changes`, uk: `${count} змін тексту` }))
+      : textCount === 0
+        ? (count === 1 ? t({ en: '1 photo change', uk: '1 зміна фото' }) : t({ en: `${count} photo changes`, uk: `${count} змін фото` }))
+        : t({ en: `${count} changes`, uk: `${count} змін` })
+
   /* the tools — one set, rendered in whichever home is up */
   const toolsFor = (home: 'float' | 'pop') => (
     <>
-      {/* a pick takes the other tool out of reach, as a pending batch does — Lovable's bar keeps only
-          the tool in use; under the preview it ghosts in place, in the pop-out it leaves the flow */}
+      {/* a pick takes the other tool out of reach — Lovable's bar keeps only the tool in use; under
+          the preview it ghosts in place, in the pop-out it leaves the flow. A pending batch puts the
+          tool on the board's dark disc (`dark`). */}
       <ToolButton
         tool="edit"
         label={t({ en: 'Visual Editor — edit text and photos yourself, free', uk: 'Візуальний редактор — правте текст і фото самі, безкоштовно' })}
         hidden={home === 'pop' && (picking || pickSeg)}
         ghost={home === 'float' && picking}
+        dark={history}
       >
         <GlyphEditText size={24} />
       </ToolButton>
-      {/* once a batch is pending only its own tool stays: Lovable hides the others too */}
-      <ToolButton tool="select" label={t({ en: 'Select an element to ask Remixer about', uk: 'Виділити елемент, щоб спитати Remixer про нього' })} hidden={history}>
-        <GlyphSelect size={24} />
-      </ToolButton>
+      {/* once a batch is pending only its own tool stays (Lovable hides the others too): Select
+          shrinks into its glyph and leaves the flow at once (`popLayout`), so the glass starts
+          re-forming in the same frame */}
+      <AnimatePresence initial={false} mode="popLayout">
+        {!history && (
+          <motion.div
+            key="select"
+            className="flex"
+            variants={reduce ? editBarInFade : editToolAside}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onUpdate={keepOnMainThread}
+          >
+            <ToolButton tool="select" label={t({ en: 'Select an element to ask Remixer about', uk: 'Виділити елемент, щоб спитати Remixer про нього' })}>
+              <GlyphSelect size={24} />
+            </ToolButton>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {home === 'pop' && (
         <AnimatePresence initial={false} onExitComplete={() => setPickSeg(false)}>
           {picking && (
@@ -496,49 +595,61 @@ export function EditBar() {
           )}
         </AnimatePresence>
       )}
-      <AnimatePresence initial={false}>
+      {/* THE SAVE STATE (board 31562:5194): the count · Clear · Save. In: the count slides in from
+          the glass's edge, Clear and Save condense out of the glass a beat apart (editBarCount,
+          editBarAction). Out: everything fades in 140 ms and leaves the flow at once, so the glass
+          contracts under the fade. */}
+      <AnimatePresence initial={false} mode="popLayout">
         {history && (
           <motion.div
             key="batch"
-            className="flex items-center gap-1"
-            variants={editBarSegment}
-            initial="initial"
-            animate="animate"
-            exit="exit"
+            className="flex items-center gap-4"
+            exit={{ opacity: 0, transition: EXIT }}
             onUpdate={keepOnMainThread}
             data-ve-batch
           >
-            <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-            <span className="whitespace-nowrap pl-2 pr-1 text-[13px] font-medium tabular-nums text-white" data-ve-count>
-              {count === 0 ? t({ en: 'No changes', uk: 'Без змін' }) : count === 1 ? t({ en: '1 change', uk: '1 зміна' }) : t({ en: `${count} changes`, uk: `${count} змін` })}
-            </span>
-            <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Undo', uk: 'Скасувати' })} disabled={!canUndo} onClick={undo} data-ve-undo>
-              <GlyphUndo size={22} />
-            </button>
-            <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Redo', uk: 'Повернути' })} disabled={!canRedo} onClick={redo} data-ve-redo>
-              <GlyphRedo size={22} />
-            </button>
-            <span className="h-8 w-px bg-[var(--glass-divider)]" aria-hidden />
-            <button
-              type="button"
-              className="press-bloom h-8 whitespace-nowrap rounded-[8px] px-3 text-[13px] font-semibold text-[var(--white-700)] transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-100)] hover:text-white"
-              onClick={clear}
-              data-ve-clear
+            <motion.span
+              className="min-w-[120px] whitespace-nowrap text-[15px] font-medium leading-none text-white [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
+              variants={reduce ? editBarInFade : editBarCount}
+              initial="initial"
+              animate="animate"
+              onUpdate={keepOnMainThread}
+              data-ve-count
             >
-              {t({ en: 'Clear', uk: 'Очистити' })}
-            </button>
-            <button
-              type="button"
-              className="press-bloom h-8 whitespace-nowrap rounded-[8px] bg-[var(--action)] px-3 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] disabled:cursor-default disabled:opacity-40"
-              onClick={save}
-              /* not while Remixer is making a change: its version is posted and lands on the site
-                 as it stood — a Save in between would be built over (modules/versions) */
-              disabled={!dirty || busy}
-              title={busy ? t({ en: 'Wait until Remixer finishes', uk: 'Зачекайте, поки Remixer закінчить' }) : undefined}
-              data-ve-save
-            >
-              {t({ en: 'Save', uk: 'Зберегти' })}
-            </button>
+              {countLabel}
+            </motion.span>
+            <div className="flex items-center gap-2">
+              <motion.button
+                type="button"
+                className="press-bloom h-10 whitespace-nowrap rounded-[10px] bg-[var(--white-100)] px-5 text-[14px] font-medium text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
+                variants={reduce ? editBarInFade : editBarAction}
+                custom={0}
+                initial="initial"
+                animate="animate"
+                onUpdate={keepOnMainThread}
+                onClick={clearBatch}
+                data-ve-clear
+              >
+                <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Clear', uk: 'Очистити' })}</span>
+              </motion.button>
+              <motion.button
+                type="button"
+                className="press-bloom h-10 whitespace-nowrap rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-medium text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] disabled:cursor-default disabled:opacity-40"
+                variants={reduce ? editBarInFade : editBarAction}
+                custom={1}
+                initial="initial"
+                animate="animate"
+                onUpdate={keepOnMainThread}
+                onClick={saveBatch}
+                /* not while Remixer is making a change: its version is posted and lands on the site
+                   as it stood — a Save in between would be built over (modules/versions) */
+                disabled={!dirty || busy}
+                title={busy ? t({ en: 'Wait until Remixer finishes', uk: 'Зачекайте, поки Remixer закінчить' }) : undefined}
+                data-ve-save
+              >
+                <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Save', uk: 'Зберегти' })}</span>
+              </motion.button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -575,6 +686,8 @@ export function EditBar() {
             >
               <GlassBar
                 side="left"
+                grow="center"
+                tall={history}
                 /* the tail is the pick segment while a pick stands (and while the glass shrinks back
                    over it), else the dock handle, uncovered by a hover — never right after Clear,
                    with the pointer still on the bar */
@@ -643,7 +756,7 @@ export function EditBar() {
                   transition={EDIT_BAR_SPRING}
                   onUpdate={keepOnMainThread}
                 >
-                  <GlassBar side="right" reveal={false} pillProps={{ 'data-ve-bar': '', 'data-ve-popped': '', 'data-ve-dirty': dirty ? '' : undefined }}>
+                  <GlassBar side="right" reveal={false} tall={history} pillProps={{ 'data-ve-bar': '', 'data-ve-popped': '', 'data-ve-dirty': dirty ? '' : undefined }}>
                     {toolsFor('pop')}
                     <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
                     <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} title={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} onClick={undock} data-ve-undock>
