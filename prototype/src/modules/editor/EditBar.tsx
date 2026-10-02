@@ -47,7 +47,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
-import { useT } from '@/i18n'
+import { useT, type Text } from '@/i18n'
+import { Tooltip } from '@/ui/Tooltip'
 import { useWorld, currentSite } from '@/state/world'
 import { useUI } from '@/state/ui'
 import { EDIT_BAR_SPRING, EDIT_BAR_STRETCH, EDIT_DOCK_DISSOLVE, EDIT_DOCK_FLIGHT, EXIT, editBarAction, editBarCount, editBarIn, editBarInFade, editBarPop, editBarPopFade, editBarSegment, editBarTail, editToolAside, editToolDark, editToolOn } from '@/ui/motion'
@@ -62,13 +63,43 @@ const POP_LINGER_MS = 160
 
 const keepOnMainThread = () => {}
 
+/**
+ * THE BAR'S TOOLTIPS (02.10.2026, designer over a crop of the bar: «нужно добавить наш тултип с грамотным
+ * текстом на все кнопки в баре»). The house bubble (ui/Tooltip.tsx) on every button of every home — the
+ * floating bar, the rail tile, its pop-out, the Save state, the pick segment — in place of the browser's
+ * `title`, which drew a second, unstyled label after its own delay. A ghosted control (out of reach) gets
+ * none: a bubble over a slot that cannot be pressed would describe nothing.
+ */
+const TIP: Record<string, { title?: Text; text: Text }> = {
+  edit: { title: { en: 'Edit', uk: 'Редагувати' }, text: { en: 'Click any text to type over it, or a photo to replace it. Free — no credits.', uk: 'Клацніть текст, щоб переписати, або фото, щоб замінити. Безкоштовно.' } },
+  editOn: { text: { en: 'Stop editing', uk: 'Завершити редагування' } },
+  editDirty: { text: { en: 'Save or clear your changes first', uk: 'Спершу збережіть або скасуйте зміни' } },
+  select: { title: { en: 'Select', uk: 'Виділити' }, text: { en: 'Pick any part of the page, then tell Remixer what to change about it.', uk: 'Виділіть будь-яку частину сторінки й скажіть Remixer, що в ній змінити.' } },
+  selectOn: { text: { en: 'Stop selecting', uk: 'Завершити виділення' } },
+  dock: { text: { en: 'Pin the tools to the side panel', uk: 'Закріпити інструменти на бічній панелі' } },
+  undock: { text: { en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' } },
+  docked: { text: { en: 'Editing tools', uk: 'Інструменти редагування' } },
+  clear: { text: { en: 'Discard these changes', uk: 'Скасувати ці зміни' } },
+  save: { text: { en: 'Keep these changes — they go live when you publish', uk: 'Зберегти зміни — вони зʼявляться на сайті після публікації' } },
+  saveBusy: { text: { en: 'Wait until Remixer finishes', uk: 'Зачекайте, поки Remixer закінчить' } },
+  pickClear: { text: { en: 'Deselect', uk: 'Зняти виділення' } },
+}
+
+/** A bar button under the house tooltip — `off` leaves it bare (a ghost, a control out of reach). */
+function Tip({ tip, off, children }: { tip: { title?: Text; text: Text }; off?: boolean; children: React.ReactNode }) {
+  if (off) return <>{children}</>
+  return <Tooltip text={tip.text} title={tip.title} interactive>{children}</Tooltip>
+}
+
 function ToolButton({ tool, label, children, hidden, ghost, dark }: { tool: Tool; label: string; children: React.ReactNode; hidden?: boolean; ghost?: boolean; dark?: boolean }) {
   const active = useEditor((s) => s.tool === tool)
   const dirty = useEditor(isDirty)
   const toggle = useEditor((s) => s.toggle)
   const reduce = useReducedMotion()
   if (hidden) return null
+  const tip = active ? (dirty ? TIP.editDirty : tool === 'edit' ? TIP.editOn : TIP.selectOn) : TIP[tool]
   return (
+    <Tip tip={tip} off={ghost}>
     <motion.button
       type="button"
       /* the bar re-forms around the tool (the Save state, board 31562:5194): its seat moves, and the
@@ -85,8 +116,7 @@ function ToolButton({ tool, label, children, hidden, ghost, dark }: { tool: Tool
       aria-pressed={active}
       data-ve-tool={tool}
       /* a dirty batch leaves only through Save or Clear (session.ts) — the active tool's own
-         button does nothing then, and says so */
-      title={active && dirty ? undefined : label}
+         button does nothing then, and its tooltip says so */
       onClick={() => toggle(tool)}
     >
       <AnimatePresence initial={false}>
@@ -123,6 +153,7 @@ function ToolButton({ tool, label, children, hidden, ghost, dark }: { tool: Tool
       </AnimatePresence>
       {children}
     </motion.button>
+    </Tip>
   )
 }
 
@@ -519,6 +550,7 @@ export function EditBar() {
       <span className={`whitespace-nowrap text-[13px] font-medium text-white ${inFlow ? 'pl-2' : 'pl-1'}`} data-ve-pick-count>
         {t({ en: '1 selection', uk: 'Вибрано: 1' })}
       </span>
+      <Tip tip={TIP.pickClear} off={!picking}>
       <button
         type="button"
         className="press-bloom ml-11 mr-0.5 h-8 whitespace-nowrap rounded-[10px] bg-[var(--white-100)] px-4 text-[13px] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
@@ -529,6 +561,7 @@ export function EditBar() {
       >
         {t({ en: 'Clear', uk: 'Очистити' })}
       </button>
+      </Tip>
     </>
   )
 
@@ -627,6 +660,7 @@ export function EditBar() {
               {countLabel}
             </motion.span>
             <div className="flex items-center gap-2">
+              <Tip tip={TIP.clear}>
               <motion.button
                 type="button"
                 className="press-bloom h-10 whitespace-nowrap rounded-[10px] bg-[var(--white-100)] px-5 text-[14px] font-medium text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--white-200)]"
@@ -640,6 +674,8 @@ export function EditBar() {
               >
                 <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Clear', uk: 'Очистити' })}</span>
               </motion.button>
+              </Tip>
+              <Tip tip={busy ? TIP.saveBusy : TIP.save}>
               <motion.button
                 type="button"
                 className="press-bloom h-10 whitespace-nowrap rounded-[10px] bg-[var(--action)] px-5 text-[14px] font-medium text-white transition-colors duration-[var(--dur-fast)] ease-std hover:bg-[var(--action-hover)] disabled:cursor-default disabled:opacity-40"
@@ -652,11 +688,11 @@ export function EditBar() {
                 /* not while Remixer is making a change: its version is posted and lands on the site
                    as it stood — a Save in between would be built over (modules/versions) */
                 disabled={!dirty || busy}
-                title={busy ? t({ en: 'Wait until Remixer finishes', uk: 'Зачекайте, поки Remixer закінчить' }) : undefined}
                 data-ve-save
               >
                 <span className="[text-box-edge:cap_alphabetic] [text-box-trim:trim-both]">{t({ en: 'Save', uk: 'Зберегти' })}</span>
               </motion.button>
+              </Tip>
             </div>
           </motion.div>
         )}
@@ -710,9 +746,11 @@ export function EditBar() {
                 tail={pickTail ? pickSegment(false) : (
                   <>
                     <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
-                    <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} title={dockBtnLabel} onClick={dock} tabIndex={hover && !history && !picking ? 0 : -1} data-ve-dock-to-rail>
+                    <Tip tip={TIP.dock} off={!(hover && !history && !picking)}>
+                    <button type="button" className="ve-bar-btn press-bloom" aria-label={dockBtnLabel} onClick={dock} tabIndex={hover && !history && !picking ? 0 : -1} data-ve-dock-to-rail>
                       <GlyphDockRight size={22} />
                     </button>
+                    </Tip>
                   </>
                 )}
               >
@@ -742,7 +780,6 @@ export function EditBar() {
             className={`press-bloom grid h-12 w-12 place-items-center rounded-[16px] transition-colors duration-[var(--dur-fast)] ease-std${tool ? '' : ' text-white hover:bg-[var(--white-100)]'}`}
             style={tool ? { background: 'rgba(21,135,255,0.12)', color: 'var(--action)' } : undefined}
             aria-label={dockBtnLabel}
-            title={dockBtnLabel}
             aria-pressed={!!tool}
             aria-expanded={popped || history}
             onClick={() => setPopped((v) => !v)}
@@ -767,9 +804,11 @@ export function EditBar() {
                   <GlassBar side="right" reveal={false} tall={history} pillProps={{ 'data-ve-bar': '', 'data-ve-popped': '', 'data-ve-dirty': dirty ? '' : undefined }}>
                     {toolsFor('pop')}
                     <span className="h-9 w-px bg-[var(--glass-divider)]" aria-hidden />
-                    <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} title={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} onClick={undock} data-ve-undock>
+                    <Tip tip={TIP.undock}>
+                    <button type="button" className="ve-bar-btn press-bloom" aria-label={t({ en: 'Put the tools back under the preview', uk: 'Повернути інструменти під превʼю' })} onClick={undock} data-ve-undock>
                       <GlyphUndock size={22} />
                     </button>
+                    </Tip>
                   </GlassBar>
                 </motion.div>
               </div>

@@ -6060,6 +6060,23 @@ await shot('30-plan-review')
   check('the old «Visual Editor» pill is gone from the toolbar (board 31379:2968 — the mode lives in the bar now)',
     !!rest && !/Visual Editor/.test(rest.toolbarText) && rest.toolbarText.length > 0, JSON.stringify(rest?.toolbarText))
   await shot('O1-bar-rest')
+  /* THE BAR'S TOOLTIPS (02.10.2026, «нужно добавить наш тултип с грамотным текстом на все кнопки в баре»):
+     the house bubble over each tool after the hover delay, with its lead and line, and no browser `title`
+     left on any bar button to draw a second, unstyled label */
+  const tipOver = async (sel) => {
+    const r = await p.$eval(sel, (e) => { const b = e.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2, b.y] })
+    await p.mouse.move(r[0], r[1]); await p.waitForTimeout(800)
+    const tip = await p.$eval('[role="tooltip"]', (e) => { const b = e.getBoundingClientRect(); return { text: e.innerText, bottom: b.bottom, glass: e.classList.contains('tip-glass') } }).catch(() => null)
+    return tip && { ...tip, above: tip.bottom <= r[2] + 1 }
+  }
+  const tipEdit = await tipOver('[data-ve-tool="edit"]')
+  const tipSelect = await tipOver('[data-ve-tool="select"]')
+  const titles = await p.$$eval('[data-ve-bar] button[title]', (els) => els.length)
+  await p.mouse.move(800, 300); await p.waitForTimeout(300)
+  check('each bar button wears the house tooltip, above the bar after the hover delay: Edit and Select each with a lead and one line saying what they do, and no native `title` left on a bar button',
+    !!tipEdit && tipEdit.glass && tipEdit.above && /^Edit\n/.test(tipEdit.text) && /Free/.test(tipEdit.text)
+      && !!tipSelect && tipSelect.above && /^Select\n/.test(tipSelect.text) && /Remixer/.test(tipSelect.text) && titles === 0,
+    JSON.stringify({ tipEdit, tipSelect, titles }))
 
   /* ── 3 · the Edit tool on ──────────────────────────────────────────────────────── */
   await p.click('[data-ve-tool="edit"]'); await p.waitForTimeout(120)
