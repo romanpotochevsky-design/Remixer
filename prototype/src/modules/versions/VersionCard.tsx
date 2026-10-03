@@ -514,6 +514,20 @@ export function VersionRun({
     recompute.current()
   }
 
+  /* THE GLOW UNDER THE POINTER (designer 03.10.2026: «какой то лёгкий и очень нежный эффект свечения
+     растушёванный в том месте где ты наводишь на блок который раскрывает стек»). The folded stack's
+     front card lights softly where the pointer is: a feathered wash inside and a brighter trace on the
+     rim nearest the pointer. Its position goes straight to the DOM (`--gx/--gy` on the glow layer read
+     by `transform` of two blobs) — never through React: a re-render per pointermove would re-lay the
+     whole run. Transform only per frame; the fade in/out is opacity on `[data-lift]`. */
+  const aimGlow = (e: React.PointerEvent) => {
+    const g = box.current?.querySelector<HTMLElement>('[data-run-glow]')
+    if (!g) return
+    const r = g.getBoundingClientRect()
+    g.style.setProperty('--gx', `${e.clientX - r.left}px`)
+    g.style.setProperty('--gy', `${e.clientY - r.top}px`)
+  }
+
   useLayoutEffect(() => { arrange('flip') }, [n, stacked, lifted]) // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const c = col.current
@@ -530,7 +544,8 @@ export function VersionRun({
       data-version-run={n}
       data-version-stacked={stacked ? '' : undefined}
       onClick={(e) => { if (stacked && !(e.target as Element).closest('button')) { setLift(false); setOpen(true) } }}
-      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setLift(true) }}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') { setLift(true); aimGlow(e) } }}
+      onPointerMove={(e) => { if (e.pointerType === 'mouse') aimGlow(e) }}
       onPointerLeave={() => setLift(false)}
     >
       <div ref={col} className="flex flex-col" style={{ gap: stackable ? GAP_STACK : GAP_APART }}>
@@ -562,7 +577,7 @@ export function VersionRun({
           const x = mv(id)
           const k = n - 1 - i
           return (
-            <Layered key={id} id={id} x={x}>
+            <Layered key={id} id={id} x={x} glow={stacked && k === 0} lit={lifted}>
               <VersionCard
                 v={v}
                 current={current === v.n}
@@ -593,10 +608,16 @@ function ukEdits(n: number) {
   return 'правок'
 }
 
-function Layered({ id, x, children }: { id: number; x: CardMV; children: ReactNode }) {
+function Layered({ id, x, glow, lit, children }: { id: number; x: CardMV; glow: boolean; lit: boolean; children: ReactNode }) {
   return (
     <motion.div data-run-card data-id={id} className="relative" style={{ y: x.y, scaleX: x.sx, opacity: x.op, transformOrigin: '50% 0%' }}>
       {children}
+      {glow && (
+        <span data-run-glow className="vc-glow" data-lift={lit ? '' : undefined} aria-hidden>
+          <span className="vc-glow-wash"><i /></span>
+          <span className="vc-glow-rim"><i /></span>
+        </span>
+      )}
       <motion.span className="vc-veil vc-veil--mid rounded-[16px]" style={{ opacity: x.mid }} aria-hidden />
       <motion.span className="vc-veil vc-veil--back rounded-[16px]" style={{ opacity: x.back }} aria-hidden />
     </motion.div>

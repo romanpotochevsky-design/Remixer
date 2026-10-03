@@ -6753,6 +6753,23 @@ await shot('30-plan-review')
   check('…and the fold TRAVELS: ≥ 4 distinct heights on the way, no frame jumping more than 40 px', new Set(hs).size >= 4 && Math.max(...hs.slice(1).map((h, i) => Math.abs(h - hs[i]))) <= 40, hs.join(' '))
   await off()
   await shot('R3-stack')
+  /* the folded stack's front card lights softly under the pointer (designer 03.10.2026: «лёгкий и очень
+     нежный эффект свечения растушёванный в том месте где ты наводишь»): off at rest, lit on hover, centred
+     on the pointer and following it, gone when the pointer leaves */
+  {
+    const gl = () => p.evaluate(() => { const g = document.querySelector('[data-version-run] [data-run-glow]'); if (!g) return null; const b = g.querySelector('.vc-glow-wash i').getBoundingClientRect(), r = g.getBoundingClientRect(); return { op: getComputedStyle(g).opacity, cx: Math.round(b.left + b.width / 2 - r.left), cy: Math.round(b.top + b.height / 2 - r.top), w: Math.round(r.width) } })
+    const rest = await gl()
+    const fb = await (await p.$('[data-version-run] [data-run-card]:last-child')).boundingBox()
+    await p.mouse.move(fb.x + 90, fb.y + 20); await p.waitForTimeout(60); await p.mouse.move(fb.x + 100, fb.y + 22); await p.waitForTimeout(400)
+    const a = await gl()
+    await p.mouse.move(fb.x + fb.width - 120, fb.y + 40, { steps: 6 }); await p.waitForTimeout(300)
+    const b = await gl()
+    await p.mouse.move(5, 5); await p.waitForTimeout(500)
+    const gone = await gl()
+    check('the folded stack’s front card glows softly under the pointer: off at rest, lit on hover, centred on the pointer and following it across, gone when it leaves',
+      !!rest && rest.op === '0' && a.op === '1' && Math.abs(a.cx - 100) <= 1 && Math.abs(a.cy - 22) <= 1 && Math.abs(b.cx - (b.w - 120)) <= 1 && Math.abs(b.cy - 40) <= 1 && gone.op === '0',
+      JSON.stringify({ rest, a, b, gone }))
+  }
   await p.click('[data-version-run] [data-run-card]:last-child [data-version-title]')
   const fan = await film(() => { const run = document.querySelector('[data-version-run]'); return { h: Math.round(run.getBoundingClientRect().height) } }, 900)
   const fanEnd = await p.evaluate(() => { const run = document.querySelector('[data-version-run]'); return { stacked: run.hasAttribute('data-version-stacked'), badge: !!document.querySelector('[data-version-badge]'), ys: [...run.querySelectorAll('[data-run-card]')].map((c) => Math.round(c.getBoundingClientRect().top - run.getBoundingClientRect().top)) } })
