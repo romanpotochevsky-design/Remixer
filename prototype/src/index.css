@@ -5419,3 +5419,17 @@ html[data-drag] .chat-reopen .chat-reopen-grip { opacity: 1; }
    Unlayered and scoped by the look, so it outranks the blocks' `font-bold` utilities without touching the
    two landings (data-site-look="synco" / "meridian"). */
 [data-site-look='fit'] :is(h1, h2) { font-family: 'Site Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.01em; }
+
+/*
+ * THE RAIL DRAWER'S ROWS (ui/RailDrawer.tsx, modules/integrations) — they arrive a beat behind the
+ * drawer, one after the other from the top, 50 ms apart: the room fills in the direction it is read.
+ * Transform and opacity only. Under reduced motion the global rule stops it and the rows just stand.
+ */
+@keyframes drawer-row-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.drawer-row {
+  animation: drawer-row-in 0.46s cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: calc(0.18s + var(--i, 0) * 0.05s);
+}

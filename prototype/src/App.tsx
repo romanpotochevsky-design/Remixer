@@ -39,6 +39,8 @@ import { SiteSwitch } from '@/modules/sites/SiteSwitch'
 import { SitesShelf } from '@/modules/sites/SitesShelf'
 import { AccountMenu } from '@/modules/account/AccountMenu'
 import { MediaPanel, MEDIA_TILE, MEDIA_INK } from '@/modules/media/MediaPanel'
+import { IntegrationsPanel } from '@/modules/integrations/IntegrationsPanel'
+import { DRAWER_CLOSE, DRAWER_GAP, DRAWER_OPEN, drawerP, drawerW, fitsDocked, useDrawerRoom } from '@/ui/drawer'
 import { useSitePark, toolbarP, toolbarHome } from '@/modules/sites/park'
 import { landingOf } from '@/modules/preview/landings'
 import { SiriGlow } from '@/ui/SiriGlow'
@@ -100,7 +102,9 @@ function Glass({ children, className = '' }: { children: React.ReactNode; classN
  */
 const RAIL = [
   { id: 'style', label: 'Website Styles', Icon: IconStyle, tile: 'rgba(80,185,123,0.1)', ink: '#50b97b', goes: null },
-  { id: 'integrations', label: 'Integrations', Icon: IconExtension, tile: '#2554f71f', ink: 'var(--action)', goes: null },
+  /* INTEGRATIONS (03.10.2026, the live editor's recording) — a rail drawer like Website media: a room
+     beside the preview, or glass over it when there is no room (ui/drawer.ts) */
+  { id: 'integrations', label: 'Integrations', Icon: IconExtension, tile: '#2554f71f', ink: 'var(--action)', goes: null, opens: 'integrations' },
   { id: 'analytics', label: 'Analytics', Icon: IconAnalytics, tile: 'rgba(102,187,106,0.1)', ink: '#66bb6a', goes: 'analytics' },
   { id: 'cloud', label: 'Cloud', Icon: IconCloud, tile: 'rgba(149,117,205,0.12)', ink: '#9575cd', goes: 'cloud' },
   /* WEBSITE MEDIA (30.09.2026, the designer's recording + boards 23383:32801…) — not a surface: the
@@ -749,6 +753,8 @@ export default function App() {
   const editBarDocked = useUI((s) => s.editBarDocked)
   const openMedia = useUI((s) => s.openMedia)
   const closeMedia = useUI((s) => s.closeMedia)
+  const integrationsOpen = useUI((s) => s.integrationsOpen)
+  const toggleIntegrations = useUI((s) => s.toggleIntegrations)
   /* the reload and the device switch moved INTO the page pill (PageSwitcher.tsx, board 31379:2968) — the
      shell keeps `device` for the stage's box and `reloading` for the glow */
   const { surface, openSurface, closeSurface, togglePublish, reloading, device, chatWidth, goHome, previewOpen, setPreviewOpen, boot } = useUI()
@@ -764,6 +770,38 @@ export default function App() {
   const [canvasSettling, setCanvasSettling] = useState(false)
   const prevSurface = useRef(surface)
   const canvasRef = useRef<HTMLElement>(null)
+
+  /*
+   * THE RAIL DRAWER'S ROOM (ui/drawer.ts). The centre column's width decides the form — docked beside
+   * the preview, or floating over it — and `drawerP` is the preview's give-way, written straight into
+   * the canvas's right margin (no React render per frame). The column itself never changes width with
+   * the drawer, so measuring it cannot feed back into the decision.
+   */
+  const columnRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = columnRef.current
+    if (!el) return
+    const put = () => useDrawerRoom.setState({ col: el.getBoundingClientRect().width })
+    put()
+    const ro = new ResizeObserver(put)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const drawerCol = useDrawerRoom((s) => s.col)
+  const drawerWant = useDrawerRoom((s) => s.want)
+  const drawerDocked =
+    world.project === 'built' && previewOpen && fitsDocked(drawerCol, drawerWant) &&
+    (mediaOpen === 'manage' || integrationsOpen)
+  const reduceDrawer = useReducedMotion()
+  useEffect(() => {
+    const target = drawerDocked ? 1 : 0
+    if (reduceDrawer) { drawerP.jump(target); drawerW.jump(drawerWant); return }
+    const a = animate(drawerP, target, target ? DRAWER_OPEN : DRAWER_CLOSE)
+    /* the width eases only while docked; a floating drawer takes its width at once */
+    const b = drawerP.get() > 0 ? animate(drawerW, drawerWant, DRAWER_OPEN) : (drawerW.jump(drawerWant), null)
+    return () => { a.stop(); b?.stop() }
+  }, [drawerDocked, drawerWant, reduceDrawer])
+  const canvasGive = useTransform(() => drawerP.get() * (drawerW.get() + DRAWER_GAP))
   const reduce = useReducedMotion()
   /* Read DURING render, not from the effect below: the press that closes the window also asks
      for the panel in the same commit, and an effect-set flag would arrive one render late — the
@@ -1066,7 +1104,7 @@ export default function App() {
       {/* ================================================== center column —
           clipped, so that while the aside grows this column shrinks to nothing
           instead of re-flowing its toolbar into a heap. */}
-      <div className="arrive-canvas flex min-w-0 flex-1 flex-col overflow-hidden" aria-hidden={!previewOpen}>
+      <div ref={columnRef} className="arrive-canvas flex min-w-0 flex-1 flex-col overflow-hidden" aria-hidden={!previewOpen} data-canvas-column>
         {/*
           * ⚠️ THE CANVAS TOOLBAR IS ABSENT UNTIL THERE IS A SITE (designer, 11.09.2026,
           * on the Build Plan board: "эти кнопки пока сайт не сгенерирован нам не нужны,
@@ -1178,7 +1216,8 @@ export default function App() {
             390px frame centred on the ground, not a scaled-down desktop. */}
         {/* the preview stands 2 px above the window's bottom edge (designer 02.10.2026, with a
             zoomed frame: «превью сайта имеет отступ от низу экрана всего 2 px») — was 8 */}
-        <main ref={canvasRef} className="relative min-h-0 min-w-0 flex-1 pb-0.5 pl-2">
+        {/* `marginRight` is the rail drawer's room: the preview gives way while a docked drawer opens beside it */}
+        <motion.main ref={canvasRef} className="relative min-h-0 min-w-0 flex-1 pb-0.5 pl-2" style={{ marginRight: canvasGive }} data-canvas-main>
           {/*
             * THE PANE UNFOLDS FROM ITS BUTTON, THE SITE RECEDES UNDER IT (designer, 22.09.2026 —
             * motion.ts `canvasPane` / `canvasSite` has the law and the live product's numbers). Both
@@ -1344,11 +1383,13 @@ export default function App() {
           <AccountMenu />
           {/* the Website media library over the canvas at the rail (modules/media/MediaPanel.tsx) */}
           <MediaPanel />
+          {/* Integrations — the rail's puzzle button, a drawer like the library (modules/integrations) */}
+          <IntegrationsPanel />
       {/* The design system's "are you sure?" — mounted ONCE, here, because its scrim covers
           the whole shell (board 30282:51628). Anything that needs it calls
           `useConfirm.getState().ask({…})`; see ui/ConfirmDialog.tsx. */}
       <ConfirmHost />
-        </main>
+        </motion.main>
       </div>
 
       {/* ================================================== right rail, 56px */}
@@ -1400,7 +1441,7 @@ export default function App() {
                 const { id, label, Icon, tile, ink, goes } = row
                 const opens = 'opens' in row ? row.opens : null
                 /* a panel button is «on» while its panel is up in manage mode; a pick-mode panel belongs to the Image window */
-                const on = goes != null ? surface === goes : opens === 'media' && mediaOpen === 'manage'
+                const on = goes != null ? surface === goes : opens === 'media' ? mediaOpen === 'manage' : opens === 'integrations' && integrationsOpen
                 const fill = railFill && railFill.id === id ? railFill : null
                 /* painted as selected while its pane is still folding back into it — unless the accent is
                    still flooding in (the overlay paints) or draining out (the base is already resting).
@@ -1425,12 +1466,18 @@ export default function App() {
                         else openMedia('manage')
                         return
                       }
+                      if (opens === 'integrations') {
+                        floodTile(id, e, on ? 'out' : 'in')
+                        toggleIntegrations(!on)
+                        return
+                      }
                       if (!goes) return
                       floodTile(id, e, on ? 'out' : 'in')
                       if (on) closeSurface()
                       else openSurface(goes, fromRect(e.currentTarget))
                     }}
                     data-rail-media={opens === 'media' || undefined}
+                    data-rail-integrations={opens === 'integrations' || undefined}
                     /* One after the other from the top, 70ms apart: the rail fills in the
                        direction it is read. Only transform and opacity, so the stagger
                        costs the compositor and nothing else. */

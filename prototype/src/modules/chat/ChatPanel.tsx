@@ -596,6 +596,19 @@ export function ChatPanel() {
   /* Bumped on every send; the key restarts the flash even on rapid sends. */
   const [flash, setFlash] = useState(0)
   const field = useRef<HTMLTextAreaElement>(null)
+  /* a line handed in from elsewhere (an integration's row, ui.seedComposer): into the field, focused,
+     caret at the end — NOT sent; the person decides */
+  const seed = useUI((s) => s.composerSeed)
+  useEffect(() => {
+    if (!seed) return
+    setDraft(seed.text)
+    requestAnimationFrame(() => {
+      const el = field.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(seed.text.length, seed.text.length)
+    })
+  }, [seed])
   const viewport = useRef<HTMLDivElement | null>(null)
   const anchor = useRef<HTMLDivElement>(null)
   const spacer = useRef<HTMLDivElement>(null)

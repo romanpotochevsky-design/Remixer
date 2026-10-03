@@ -342,6 +342,17 @@ interface UIStore {
    */
   mediaOpen: 'manage' | 'pick' | null
   /**
+   * INTEGRATIONS — the rail's puzzle button (designer 03.10.2026, the live editor's recording): a
+   * drawer beside the preview listing what the site can be wired to (Stripe, Shippo). Docks or
+   * floats by room, like Website media (ui/drawer.ts). Session state — navigation, not world.
+   */
+  integrationsOpen: boolean
+  /**
+   * A line handed to the chat's composer from elsewhere (an integration's row): ChatPanel puts it
+   * in the field and focuses it — NOT sent, the person decides. `n` makes the same line re-seed.
+   */
+  composerSeed: { text: string; n: number } | null
+  /**
    * THE EDIT BAR'S HOME (designer 30.09.2026, from a Lovable recording: «при ховере… появляется
    * кнопка со стрелкой (прибить этот бар в панель справа)… этот бар… перелетает и прикрепляется
    * справа… по клику вернуть бар снова по центру превью»; then, with a screenshot of the rail:
@@ -474,6 +485,8 @@ interface UIStore {
   togglePublish: (open?: boolean) => void
   toggleAccount: (open?: boolean) => void
   openMedia: (mode: 'manage' | 'pick') => void
+  toggleIntegrations: (open?: boolean) => void
+  seedComposer: (text: string) => void
   closeMedia: () => void
   setEditBarDocked: (docked: boolean) => void
   dismissPublishHint: () => void
@@ -509,6 +522,8 @@ export const useUI = create<UIStore>((set, get) => ({
   publishOpen: false,
   accountOpen: false,
   mediaOpen: null,
+  integrationsOpen: false,
+  composerSeed: null,
   editBarDocked: false,
   publishHintOpen: true,
   device: 'desktop',
@@ -527,7 +542,7 @@ export const useUI = create<UIStore>((set, get) => ({
      attachment via `openBuilder`, which is exactly when it should die. */
   goHome: () => {
     clearBootTimers()
-    set({ page: 'home', boot: null, publishOpen: false, accountOpen: false, mediaOpen: null, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false, versionPreview: null })
+    set({ page: 'home', boot: null, publishOpen: false, accountOpen: false, mediaOpen: null, integrationsOpen: false, publishHintOpen: true, domainModal: null, templatePickerOpen: false, pickerCard: null, tplFlight: null, planTall: false, versionPreview: null })
   },
   /*
    * The transition, phase by phase. The curtain is raised FIRST and the page switches
@@ -621,7 +636,8 @@ export const useUI = create<UIStore>((set, get) => ({
   setPreviewPath: (previewPath) => set({ previewPath }),
   togglePreview: () => set({ previewOpen: !get().previewOpen }),
   togglePlanTall: () => set({ planTall: !get().planTall }),
-  openSurface: (surface, from = null) => set({ surface, surfaceFrom: from, publishOpen: false }),
+  /* a window over the canvas replaces the canvas — a drawer beside the preview has nothing left to sit beside */
+  openSurface: (surface, from = null) => set({ surface, surfaceFrom: from, publishOpen: false, mediaOpen: null, integrationsOpen: false }),
   openDomains: (screen = 'home', domain = null, from = null) =>
     set({ surface: 'domains', surfaceFrom: from, domainScreen: screen, activeDomain: domain, publishOpen: false }),
   goDomains: (screen, domain) =>
@@ -633,11 +649,18 @@ export const useUI = create<UIStore>((set, get) => ({
   // handoff closes the publish popover on the way out.
   openPanel: (panel) => set({ panel, publishOpen: false, domainModal: null }),
   closePanel: () => set({ panel: null }),
-  togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen, accountOpen: false, mediaOpen: null }),
+  /* one thing at the right edge at a time: the Publish panel and the account menu stand over the
+     rail's end of the canvas, where a drawer — docked or floating — lives */
+  togglePublish: (open) => set({ publishOpen: open ?? !get().publishOpen, accountOpen: false, mediaOpen: null, integrationsOpen: false }),
   /* one floating panel at a time in the top-right corner: opening the account menu takes Publish down */
   /* one floating window at the right edge at a time: Publish, Account and Media close each other */
-  toggleAccount: (open) => { const next = open ?? !get().accountOpen; set(next ? { accountOpen: true, publishOpen: false, mediaOpen: null } : { accountOpen: false }) },
-  openMedia: (mode) => set({ mediaOpen: mode, publishOpen: false, accountOpen: false }),
+  toggleAccount: (open) => { const next = open ?? !get().accountOpen; set(next ? { accountOpen: true, publishOpen: false, mediaOpen: null, integrationsOpen: false } : { accountOpen: false }) },
+  openMedia: (mode) => set({ mediaOpen: mode, publishOpen: false, accountOpen: false, ...(mode === 'manage' ? { integrationsOpen: false } : {}) }),
+  toggleIntegrations: (open) => {
+    const next = open ?? !get().integrationsOpen
+    set(next ? { integrationsOpen: true, mediaOpen: null, publishOpen: false, accountOpen: false } : { integrationsOpen: false })
+  },
+  seedComposer: (text) => set({ composerSeed: { text, n: (get().composerSeed?.n ?? 0) + 1 } }),
   closeMedia: () => set({ mediaOpen: null }),
   setEditBarDocked: (docked) => set({ editBarDocked: docked }),
   dismissPublishHint: () => set({ publishHintOpen: false }),
@@ -647,5 +670,5 @@ export const useUI = create<UIStore>((set, get) => ({
     reloadTimer = setTimeout(() => set({ reloading: false }), ms)
   },
   /* the canvas is the site's while an old version is on it: floating windows over it close */
-  setVersionPreview: (versionPreview) => set(versionPreview === null ? { versionPreview } : { versionPreview, publishOpen: false, mediaOpen: null, surface: 'preview' }),
+  setVersionPreview: (versionPreview) => set(versionPreview === null ? { versionPreview } : { versionPreview, publishOpen: false, mediaOpen: null, integrationsOpen: false, surface: 'preview' }),
 }))

@@ -9,16 +9,17 @@
  * The measured spec, frame by frame and node by node, is docs/features/visual-editor/
  * media-library-spec.md; this file follows its §5.
  *
- * WHERE IT SITS. The boards were drawn in the old shell (rail on the LEFT, the panel flush to
- * it); our 2026 shell has the rail on the RIGHT, so the panel stands over the canvas at its
- * right edge — `right: rail + 8`, `top: topbar + 8`, `bottom: 8`, 480 wide (the board; the live
- * panel is 512 — asked). It lies OVER the site like the Publish panel: the live editor narrows
- * the canvas instead, which would re-run the preview's container queries on every open.
- * Gray/850 under a Gray/800 rim, r16 — the board's chrome, opaque like the Publish panel (not
- * glass: what is behind it is the site, and the board does not blur it).
+ * WHERE IT SITS — a RAIL DRAWER since 03.10.2026 (ui/drawer.ts, ui/RailDrawer.tsx; the designer's
+ * recording of the live editor: «галерея и Integrations должны открываться вот так как на видео…
+ * но если места не хватает… поверх вебсайт превью с тенью»). With room for 600 px of preview beside
+ * it, the panel is a column flush to the rail under the top bar and the preview GIVES WAY (its right
+ * margin travels 0 → 488 on a critically damped spring, the panel's clip opening from the rail with
+ * it); without room — and always in `pick` mode, which helps a window pinned to a photo — it floats
+ * over the preview 8 from the rail with a deep shadow, as it did before. 480 wide (the board; the
+ * live panel is 512 — asked). Gray/850 under a Gray/800 rim, r16 — opaque, not glass.
  *
- * ENTRY — Panel Arrival, the same glass-inflates-from-its-button as the Publish panel and the
- * account menu (`panelIn`), with the origin at the rail button that opened it; the rail tile
+ * ENTRY — docked: drawn out of the rail by the preview's give-way; floating: slid and inflated out
+ * of the rail button that opened it (RailDrawer's two forms); the rail tile
  * floods with the module's accent from the point of the click (App.tsx `floodTile`). Leaving
  * is 140 ms flat. One floating window at the right edge at a time: Publish, Account and this
  * close one another (state/ui.ts).
@@ -56,7 +57,9 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useUI } from '@/state/ui'
 import { useWorld, canUseAI, type PhotoRef } from '@/state/world'
 import { useT } from '@/i18n'
-import { EXIT, SPRING, panelIn, panelInBody, panelInFade, panelInBodyFade } from '@/ui/motion'
+import { EXIT, SPRING } from '@/ui/motion'
+import { RailDrawer } from '@/ui/RailDrawer'
+import { fitsDocked, useDrawerRoom } from '@/ui/drawer'
 import { ScrollArea } from '@/ui/ScrollArea'
 import { useConfirm } from '@/ui/ConfirmDialog'
 import { SITE_PHOTOS, photoIds } from '@/modules/preview/photos'
@@ -269,6 +272,14 @@ export function MediaPanel() {
   const items = world.media
   const ids = useMemo(() => items.map(refId), [items])
   const selecting = selected.length > 0 && !pick
+  const integrationsOpen = useUI((s) => s.integrationsOpen)
+  /* a ROOM beside the preview when there is room for one (ui/drawer.ts); the library opened from the
+     Image window (`pick`) always floats — it helps a window that is pinned to a photo, and narrowing the
+     preview under it would move the photo out from under the window */
+  const col = useDrawerRoom((s) => s.col)
+  const width = wide ? MEDIA_PANEL_WIDE : MEDIA_PANEL_W
+  const docked = !pick && fitsDocked(col, width)
+  useEffect(() => { if (open) useDrawerRoom.setState({ want: width }) }, [open, width])
 
   /* the Image window closed → a pick-mode panel has nothing to hand a picture to */
   useEffect(() => { if (mode === 'pick' && !editorKey) closeMedia() }, [mode, editorKey, closeMedia])
@@ -277,13 +288,6 @@ export function MediaPanel() {
   /* selection cannot outlive the items it names */
   useEffect(() => { setSelected((s) => s.filter((id) => ids.includes(id))) }, [ids])
 
-  /* origin: the rail button that opened it — the glass inflates out of that tile */
-  const origin = useMemo(() => {
-    if (!open) return 'calc(100% + 12px) 50%'
-    const b = document.querySelector('[data-rail-media]')?.getBoundingClientRect()
-    const top = 52 + 8
-    return b ? `calc(100% + 36px) ${Math.round(b.top + b.height / 2 - top)}px` : 'calc(100% + 12px) 50%'
-  }, [open])
 
   /* Esc: menu → selection → lightbox (its own listener) → panel. Outside press closes, except on the
      rail (it toggles itself), the console, the Image window and its photo (pick mode is a helper of both). */
@@ -303,6 +307,7 @@ export function MediaPanel() {
     }
     const onDown = (e: MouseEvent) => {
       const el = e.target as Element
+      if (docked) return
       if (ref.current?.contains(el)) return
       if (el.closest?.('[data-rail-media]') || el.closest?.('[data-console]') || el.closest?.('[data-ve-image-panel]') || el.closest?.('[data-edit-kind="photo"]') || el.closest?.('[data-media-lightbox]') || el.closest?.('[role="alertdialog"]')) return
       closeMedia()
@@ -310,7 +315,7 @@ export function MediaPanel() {
     document.addEventListener('keydown', onKey, true)
     document.addEventListener('mousedown', onDown)
     return () => { document.removeEventListener('keydown', onKey, true); document.removeEventListener('mousedown', onDown) }
-  }, [open, lightbox, menu, selected.length, closeMedia, items.length])
+  }, [open, lightbox, menu, selected.length, closeMedia, items.length, docked])
 
   const toggle = useCallback((id: string, shift: boolean) => {
     /* read the anchor NOW: the updater below runs at render time, after the line that moves it */
@@ -382,35 +387,18 @@ export function MediaPanel() {
   /* the picture the photo wears NOW — the unsaved draft over the saved layer, as the site draws it */
   const current = pick && editorKey ? photoOf({ ...world.siteEdits, photo: { ...world.siteEdits.photo, ...draft.photo } }, editorKey) : null
 
-  const shellIn = reduce ? panelInFade : panelIn
-  const bodyIn = reduce ? panelInBodyFade : panelInBody
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          key="media"
-          ref={ref}
-          role="dialog"
-          aria-label={t({ en: 'Website media', uk: 'Медіа сайту' })}
-          data-media-panel={mode}
-          data-media-current={current ? refId(current) : undefined}
-          variants={shellIn}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          onUpdate={keepOnMainThread}
-          className="fixed z-40 flex flex-col overflow-hidden rounded-[16px] bg-[var(--gray-850)] shadow-[inset_0_0_0_1px_var(--gray-800),0_2px_0_#09090b,0_8px_32px_rgba(0,0,0,.4)] transition-[width] duration-300 ease-std"
-          style={{
-            right: 'calc(var(--rail-w) + 8px)',
-            top: 'calc(var(--topbar-h) + 8px)',
-            bottom: 8,
-            width: wide ? MEDIA_PANEL_WIDE : MEDIA_PANEL_W,
-            transformOrigin: origin,
-          }}
-        >
-          <span aria-hidden className="glass-glint" />
-          <motion.div variants={bodyIn} onUpdate={keepOnMainThread} className="flex min-h-0 flex-1 flex-col" style={{ transformOrigin: origin }}>
+    <RailDrawer
+      id="media"
+      open={open}
+      docked={docked}
+      handoff={integrationsOpen}
+      label={t({ en: 'Website media', uk: 'Медіа сайту' })}
+      railSelector="[data-rail-media]"
+      panelRef={ref}
+      attrs={{ 'data-media-panel': mode ?? undefined, 'data-media-current': current ? refId(current) : undefined }}
+    >
             {/* header 71 — board 23383:32808: title 24 SemiBold + chevron; unfold / close 32 r8 */}
             <div className="flex h-[71px] flex-none items-start justify-between pl-6 pr-3">
               <div className="flex items-center gap-0.5 pt-[26px]">
@@ -596,7 +584,6 @@ export function MediaPanel() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
 
           <AnimatePresence>
             {lightbox !== null && items[lightbox] && (
@@ -608,9 +595,7 @@ export function MediaPanel() {
               />
             )}
           </AnimatePresence>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </RailDrawer>
   )
 }
 
